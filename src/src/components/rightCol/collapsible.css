@@ -1,0 +1,21 @@
+.collapsible .toggle {
+  cursor: pointer;
+}
+
+.collapsible .content {
+  list-style-type: circle;
+}
+
+.collapsible .content-parent {
+  height: 0px;
+  overflow: hidden;
+}
+
+.collapsible .content-parent.show {
+  height: auto;
+}
+
+.collapsible ul {
+  display: list-item !important;
+  list-style-type: circle !important;
+}

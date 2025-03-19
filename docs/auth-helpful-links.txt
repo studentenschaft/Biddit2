@@ -1,0 +1,4 @@
+https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-web-app-nodejs-msal-sign-in
+https://learn.microsoft.com/en-us/azure/active-directory-b2c/enable-authentication-react-spa-app
+https://www.youtube.com/watch?v=0HCOzB0noiI&t=1212s&ab_channel=JadeWilson
+https://github.com/Azure-Samples/ms-identity-javascript-react-tutorial/blob/main/1-Authentication/1-sign-in/SPA/src/App.jsx

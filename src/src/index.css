@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .Toastify__toast-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    width: fit-content !important;
+    max-width: 90vw; /* Limit maximum width to 90% of viewport width */
+  }
+
+  .Toastify__toast {
+    width: 100% !important; /* Changed from fit-content to 100% */
+    font-family: "Inter", sans-serif;
+    word-wrap: break-word; /* Enable word wrapping */
+    white-space: normal; /* Allow text to wrap */
+  }
+
+  .Toastify__toast-body {
+    word-break: break-word; /* Break long words if necessary */
+  }
+
+  /* Style for the error details container */
+  .error-details {
+    max-height: 10rem; /* Adjust as needed */
+    overflow-y: auto;
+    background-color: rgb(207, 207, 207); /* Light yellow background */
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+  }
+
+  .error-details pre {
+    max-height: 100%;
+    overflow-y: auto;
+  }
+
+  /* Style for the error message */
+  .error-message {
+    font-size: 0.9em;
+    line-height: 1.4;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}

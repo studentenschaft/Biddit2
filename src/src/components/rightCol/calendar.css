@@ -1,0 +1,27 @@
+table,
+th,
+td {
+  border-style: none !important;
+}
+
+.fc-timegrid-col.fc-day .fc-timegrid-col-frame {
+  background-color: white;
+  margin: 0px 8px;
+  padding: 8px 0px;
+  border-radius: 8px;
+  box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.1);
+}
+.fc-day-today {
+  background: transparent !important;
+}
+
+.fc-axis,
+.fc-time,
+.fc-timegrid-slot-label {
+  display: none;
+}
+
+.fc-col-header-cell.fc-day {
+  color: #1f2937;
+  font-size: 0.9rem;
+}
