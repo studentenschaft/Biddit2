@@ -18,9 +18,9 @@ export const msalConfig = {
     redirectUri:
       window.location.hostname === "localhost"
         ? "http://localhost:3000/"
-        : window.location.hostname === "biddit2-dev.netlify.app"
-        ? "https://biddit2-dev.netlify.app/"
-        : "https://biddit2-dev.netlify.app/",
+        : window.location.hostname === "dev-biddit.netlify.app"
+        ? "https://dev-biddit.netlify.app/"
+        : "https://biddit.app/",
   },
   cache: {
     cacheLocation: "localStorage", // Configures cache location. "sessionStorage" is more secure, but "localStorage" gives you SSO between tabs.
