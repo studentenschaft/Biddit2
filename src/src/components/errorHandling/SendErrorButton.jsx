@@ -1,13 +1,15 @@
 // SendErrorButton.jsx //
 
 import PropTypes from "prop-types";
-import { toast } from 'react-toastify';
+import { toast } from "react-toastify";
 import { formatErrorDetails } from "./formatErrorDetails";
 
 const SendErrorButton = ({ error, buttonColor, buttonHoverColor }) => {
   const handleSendError = () => {
     const recipient = "biddit@shsg.ch";
-    const subject = encodeURIComponent("Error Report from Biddit V2");
+    const subject = encodeURIComponent(
+      `Error Report from Biddit - ${window.location.hostname}`
+    );
 
     // Construct the email body using the utility function
     const bodyContent = `
@@ -25,7 +27,9 @@ ${formatErrorDetails(error)}
       window.location.href = mailtoLink;
     } catch (error) {
       console.error("Failed to open email client:", error);
-      toast.error("Failed to open your email client. Please send an email to biddit@shsg.ch with the error details.");
+      toast.error(
+        "Failed to open your email client. Please send an email to biddit@shsg.ch with the error details."
+      );
     }
   };
 
@@ -58,8 +62,8 @@ SendErrorButton.propTypes = {
 };
 
 SendErrorButton.defaultProps = {
-  buttonColor: 'bg-blue-600',
-  buttonHoverColor: 'bg-blue-700',
+  buttonColor: "bg-blue-600",
+  buttonHoverColor: "bg-blue-700",
 };
 
 export default SendErrorButton;
