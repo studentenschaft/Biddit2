@@ -1,5 +1,5 @@
 // SelectOptions.jsx //
-// 
+//
 
 import { useRecoilState, useRecoilValue } from "recoil";
 import { cisIdListSelector } from "../../recoil/cisIdListSelector";
@@ -16,7 +16,7 @@ import { SelectLecturer } from "./SelectLecturer";
 import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
 import Select from "react-select";
-import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterAtom";
 
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
 
@@ -39,9 +39,13 @@ const sortTerms = (terms) => {
   return [...terms].sort((a, b) => {
     const [seasonA, yearA] = [a.slice(0, 2), parseInt(a.slice(2), 10)];
     const [seasonB, yearB] = [b.slice(0, 2), parseInt(b.slice(2), 10)];
-    return yearA !== yearB ? yearA - yearB : 
-           seasonA === "FS" && seasonB === "HS" ? -1 : 
-           seasonA === "HS" && seasonB === "FS" ? 1 : 0;
+    return yearA !== yearB
+      ? yearA - yearB
+      : seasonA === "FS" && seasonB === "HS"
+      ? -1
+      : seasonA === "HS" && seasonB === "FS"
+      ? 1
+      : 0;
   });
 };
 
@@ -196,7 +200,7 @@ export default function SelectSemester() {
   const [selectedSem, setSelectedSemester] = useState(
     "loading semester data..."
   );
-  
+
   const selectedSemId = termIdList.find(
     (term) => term.shortName === selectedSem
   );
@@ -239,11 +243,9 @@ export default function SelectSemester() {
     if (!termIdList?.length) {
       return ["loading semester data..."];
     }
-    const shortNames = termIdList.map(term => term.shortName);
+    const shortNames = termIdList.map((term) => term.shortName);
     return sortTerms(shortNames);
   }, [termIdList]);
-
-
 
   const handleSelect = (selectedOption) => {
     setSelectedSemester(selectedOption.value);
@@ -330,7 +332,6 @@ export default function SelectSemester() {
       <ErrorBoundary>
         <EventListContainer selectedSemesterState={selectedSemId} />
       </ErrorBoundary>
-      
     </>
   );
 }

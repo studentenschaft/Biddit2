@@ -1,5 +1,5 @@
 import { selector } from "recoil";
-import { selectedSemesterIndexAtom } from "./selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "./selectedSemesterAtom";
 import moment from "moment/moment";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
@@ -12,17 +12,20 @@ import { allCourseInfoState } from "./allCourseInfosSelector";
 const buildOverlapIndex = (courses) => {
   const timeSlotIndex = new Map();
 
-  courses.forEach(course => {
+  courses.forEach((course) => {
     if (!course.calendarEntry) return;
-    
-    course.calendarEntry.forEach(entry => {
+
+    course.calendarEntry.forEach((entry) => {
       const startMoment = moment(entry.eventDate);
-      const endMoment = moment(startMoment).add(entry.durationInMinutes, "minutes");
-      
+      const endMoment = moment(startMoment).add(
+        entry.durationInMinutes,
+        "minutes"
+      );
+
       // Store as ISO strings for consistent comparison
       const startIso = startMoment.toISOString();
       const endIso = endMoment.toISOString();
-      
+
       // Add to the index
       if (!timeSlotIndex.has(startIso)) {
         timeSlotIndex.set(startIso, new Set());
@@ -30,7 +33,7 @@ const buildOverlapIndex = (courses) => {
       timeSlotIndex.get(startIso).add(endIso);
     });
   });
-  
+
   return timeSlotIndex;
 };
 
@@ -63,7 +66,7 @@ export const calendarEntriesSelector = selector({
 
     // Use currentCourses as the relevant courses for the calendar
     const relevantCourses = currentCourses;
-    
+
     // Build an index for quick overlap detection
     const timeSlotIndex = buildOverlapIndex(relevantCourses);
 
@@ -82,7 +85,7 @@ export const calendarEntriesSelector = selector({
           entry.durationInMinutes,
           "minutes"
         );
-        
+
         const startIso = startMoment.toISOString();
         const endIso = endMoment.toISOString();
 
@@ -91,18 +94,24 @@ export const calendarEntriesSelector = selector({
         let overlapping = false;
         for (const [otherStart, endSet] of timeSlotIndex.entries()) {
           const otherStartTime = moment(otherStart);
-          
+
           // Skip entries for this exact course/event
-          if (otherStart === startIso && endSet.size === 1 && endSet.has(endIso)) {
+          if (
+            otherStart === startIso &&
+            endSet.size === 1 &&
+            endSet.has(endIso)
+          ) {
             continue;
           }
-          
+
           // Check for any overlap
-          if ((otherStartTime.isBefore(endMoment) && 
-              Array.from(endSet).some(endTime => {
-                const otherEndTime = moment(endTime);
-                return otherEndTime.isAfter(startMoment);
-              }))) {
+          if (
+            otherStartTime.isBefore(endMoment) &&
+            Array.from(endSet).some((endTime) => {
+              const otherEndTime = moment(endTime);
+              return otherEndTime.isAfter(startMoment);
+            })
+          ) {
             overlapping = true;
             break;
           }

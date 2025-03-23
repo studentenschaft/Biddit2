@@ -3,7 +3,7 @@
 import PropTypes from "prop-types";
 import { useRecoilValue, useRecoilState } from "recoil";
 import { authTokenState } from "../../recoil/authAtom";
-import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterAtom";
 
 import { useCourseSelection } from "../../helpers/useCourseSelection";
 
@@ -17,10 +17,10 @@ export default function LockOpen({ clg, event }) {
   const authToken = useRecoilValue(authTokenState);
   const index = useRecoilValue(selectedSemesterIndexAtom) + 1;
 
-  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(selectedCourseIdsAtom); 
+  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
+    selectedCourseIdsAtom
+  );
 
-
-  
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
     setSelectedCourseIds,
@@ -36,7 +36,9 @@ export default function LockOpen({ clg, event }) {
       viewBox="0 0 24 24"
       strokeWidth={2}
       stroke="currentColor"
-      className={clg + " hover:text-red-600 transition duration-500 ease-in-out"}
+      className={
+        clg + " hover:text-red-600 transition duration-500 ease-in-out"
+      }
       onMouseDown={(e) => {
         e.preventDefault();
         event
@@ -55,7 +57,7 @@ export default function LockOpen({ clg, event }) {
 
 LockOpen.propTypes = {
   clg: PropTypes.string.isRequired,
-  event: PropTypes.object
+  event: PropTypes.object,
 };
 
 export { LockOpen };

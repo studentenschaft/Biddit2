@@ -1,6 +1,6 @@
 import { selector } from "recoil";
 import { allCourseInfoState } from "./allCourseInfosSelector";
-import { selectedSemesterIndexAtom } from "./selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "./selectedSemesterAtom";
 
 export const enrolledCoursesSelector = selector({
   key: "enrolledCoursesSelector",

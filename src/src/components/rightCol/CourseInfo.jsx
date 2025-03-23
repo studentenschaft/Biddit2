@@ -9,6 +9,7 @@ import { examinationTypesState } from "../recoil/examinationTypesAtom";
 import Collapsible from "./Collapsible";
 import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
+import SimilarCourses from "./SimilarCourses.jsx";
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
@@ -401,6 +402,7 @@ export default function CourseInfo() {
               </Collapsible>
             </div>
           </section>
+          {selectedCourse && <SimilarCourses selectedCourse={selectedCourse} />}
         </div>
       </div>
     </>

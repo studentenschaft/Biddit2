@@ -5,7 +5,7 @@ import { useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
 
 import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
-import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";

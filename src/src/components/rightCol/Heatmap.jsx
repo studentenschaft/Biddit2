@@ -5,8 +5,7 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import PropTypes from "prop-types";
 import { cisIdList as cisIdListAtom } from "../recoil/cisIdListAtom";
 // import { BodyElement } from "./BodyElement";
-import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterIndexAtom";
-
+import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
 
 // Helper to get date from calendar week
 // TODO: Cleanup: move into a helper funciton file
@@ -16,43 +15,42 @@ function getDateOfISOWeek(week, year, getEndOfWeek = false) {
   const simple = new Date(year, 0, 1 + (week - 1) * 7);
   const dow = simple.getDay();
   const ISOweekStart = simple;
-  
-  if (dow <= 4)
-    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-  else
-    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-    
+
+  if (dow <= 4) ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  else ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+
   // For end of week, add 4 days to get to Friday
   if (getEndOfWeek) {
     ISOweekStart.setDate(ISOweekStart.getDate() + 4);
   }
-  
+
   return ISOweekStart;
 }
 
-
 function getSemesterDates(cisTermData, selectedIndex) {
   const selectedSemester = cisTermData[selectedIndex];
-  
+
   // Extract year from semester name (e.g. "FS24" -> "24")
   const yearStr = selectedSemester?.shortName?.slice(-2);
   // Convert to full year (e.g. "24" -> 2024)
   const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
-  
-  // Check if spring semester
-  const isSpring = selectedSemester?.shortName?.includes('FS');
 
-  console.log(`Processing semester ${selectedSemester?.shortName} for year ${year}`);
+  // Check if spring semester
+  const isSpring = selectedSemester?.shortName?.includes("FS");
+
+  console.log(
+    `Processing semester ${selectedSemester?.shortName} for year ${year}`
+  );
 
   if (isSpring) {
     return {
       start: getDateOfISOWeek(8, year),
-      end: getDateOfISOWeek(21, year, true)
+      end: getDateOfISOWeek(21, year, true),
     };
   } else {
     return {
       start: getDateOfISOWeek(38, year),
-      end: getDateOfISOWeek(51, year, true)
+      end: getDateOfISOWeek(51, year, true),
     };
   }
 }
@@ -70,7 +68,6 @@ function getSemesterDates(cisTermData, selectedIndex) {
 //   end: fall.end.toDateString()        // Should be Friday of week 51
 // });
 
-
 export const Heatmap = ({
   hovered,
   setCourseOnDay,
@@ -86,10 +83,12 @@ export const Heatmap = ({
 
   // Get dynamic semester dates
   // doesnt work correctly:
-  const { start: semesterStartDate, end: semesterEndDate } = 
-    getSemesterDates(cisIdList, selectedIndex);
+  const { start: semesterStartDate, end: semesterEndDate } = getSemesterDates(
+    cisIdList,
+    selectedIndex
+  );
 
-   // works correctly:
+  // works correctly:
   //const semesterStartDate = new Date("2024-09-16"); // comment for future reference: this also needs to be changed for #changesemester
   //const semesterEndDate = new Date("2024-12-21"); // comment for future reference: this also needs to be changed for #changesemester
 
