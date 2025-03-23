@@ -56,7 +56,6 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
 
 ```txt
 Biddit2/
-├── .vscode/               # VS Code settings
 ├── docs/                  # Documentation
 │   └── auth/              # Authentication documentation
 │   └── architecture/      # System architecture diagrams
