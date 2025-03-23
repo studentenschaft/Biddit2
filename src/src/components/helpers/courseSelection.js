@@ -20,18 +20,19 @@ export async function processCourseSelection({
   await localSelectedUpdate(course);
 
   try {
-    const isCourseSelected = selectedCourseIds.includes(course.id);
+    // checking both old (course.id) and new (course.courseNumber) course identification formats for saved courses
+    const isCourseSelected = selectedCourseIds.includes(course.id) || selectedCourseIds.includes(course.courseNumber);
 
     if (isCourseSelected) {
       setSelectedCourseIds((prevIds) =>
-        prevIds.filter((id) => id !== course.id)
+        prevIds.filter((id) => id !== course.id && id !== course.courseNumber)
       );
-      await deleteCourse(currentStudyPlanId, course.id, authToken);
-      console.log(`Course ${course.id} deleted from backend`);
+      await deleteCourse(currentStudyPlanId, course.courseNumber, authToken); 
+      console.log(`Course ${course.courseNumber} deleted from backend`);
     } else {
-      setSelectedCourseIds((prevIds) => [...prevIds, course.id]);
-      await saveCourse(currentStudyPlanId, course.id, authToken);
-      console.log(`Course ${course.id} saved to backend`);
+      setSelectedCourseIds((prevIds) => [...prevIds, course.courseNumber]); 
+      await saveCourse(currentStudyPlanId, course.courseNumber, authToken); 
+      console.log(`Course ${course.courseNumber} saved to backend`);
     }
   } catch (error) {
     console.error("Error updating course:", error);

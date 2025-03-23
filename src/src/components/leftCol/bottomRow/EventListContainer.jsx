@@ -75,7 +75,7 @@ function isEventOrNestedCourseSelected(event, selectedCourseIds) {
     return false;
   }
   // Check if the top-level event.id matches
-  if (selectedCourseIds.includes(event.id)) return true;
+  if (selectedCourseIds.includes(event.id) || selectedCourseIds.includes(event.courseNumber)) return true;
   // If event.courses exists, check each nested course
   // MB 11.02.25: Disabled due to new handling of nested courses -> lead to wrong open locks for exercise groups
   // if (event.courses && Array.isArray(event.courses)) {
@@ -250,9 +250,10 @@ export default function EventListContainer({ selectedSemesterState }) {
         setLocalSelectedCourses((prevCourses) => {
           const updatedCourses = { ...prevCourses };
           updatedCourses[index] = currentStudyPlan.courses
-            .map((courseId) => {
+            .map((courseIdentifier) => {
+              // Try to find by courseNumber first (new approach), then by id (legacy approach)
               return completeCourseInfo.find(
-                (course) => course.id === courseId
+                (course) => course.courseNumber === courseIdentifier || course.id === courseIdentifier
               );
             })
             .filter(Boolean);
@@ -263,8 +264,11 @@ export default function EventListContainer({ selectedSemesterState }) {
           const updatedCourses = { ...prevCourses };
           const semKey = selectedSemesterState.shortName;
           updatedCourses[semKey] = currentStudyPlan.courses
-            .map((courseId) => {
-              const course = completeCourseInfo.find((c) => c.id === courseId);
+            .map((courseIdentifier) => {
+              // Try to find by courseNumber first (new approach), then by id (legacy approach)
+              const course = completeCourseInfo.find(
+                (c) => c.courseNumber === courseIdentifier || c.id === courseIdentifier
+              );
               if (!course) return null;
               return {
                 id: course.id,
@@ -273,6 +277,7 @@ export default function EventListContainer({ selectedSemesterState }) {
                 credits: course.credits,
                 big_type: course.big_type,
                 calendarEntry: course.calendarEntry || [],
+                courseNumber: course.courseNumber, // Add courseNumber to the saved course data
               };
             })
             .filter(Boolean);

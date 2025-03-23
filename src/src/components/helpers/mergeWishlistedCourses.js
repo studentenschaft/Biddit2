@@ -81,12 +81,17 @@ export async function mergeWishlistedCourses(
         }
         const existingCourses = semesterMap[semesterLabel];
 
-        // Build a set of existing IDs for fast membership test
-        const existingIds = new Set(existingCourses.map(c => c.id));
+        // Build a set of existing IDs for fast membership test (NEW: add courseNumber)
+        const existingIds = new Set();
+        existingCourses.forEach(c => {
+          if (c.id) existingIds.add(c.id); // old: course.id
+          if (c.courseNumber) existingIds.add(c.courseNumber); // new: courseNumber
+        });
 
         // 6. Process each wishlisted course
         for (const courseId of plan.courses || []) {
           // Skip if already exists (enrolled or previously merged)
+          // Check both course.id and course.courseNumber
           if (existingIds.has(courseId)) {
             continue;
           }
@@ -108,12 +113,16 @@ export async function mergeWishlistedCourses(
             type: `${normalizedCourse.classification}-wishlist` || "Unknown-wishlist",
             big_type: courseType,
             id: courseId,
+            courseNumber: normalizedCourse.courseNumber || courseId,
             calendarEntry: normalizedCourse.calendarEntry || [],
           };
 
           // Add it to the semester array
           existingCourses.push(wishlistItem);
           existingIds.add(courseId); // Keep the set in sync
+          if (wishlistItem.courseNumber) {
+            existingIds.add(wishlistItem.courseNumber);
+          }
         }
       } catch (error) {
         console.error(`Error processing semester ${semesterLabel}:`, error);

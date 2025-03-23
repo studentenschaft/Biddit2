@@ -85,6 +85,7 @@ export function useCourseSelection({
           credits: course.credits,
           big_type: categoryTypeMap[course.classification] || "",
           calendarEntry: course.calendarEntry || [],
+          courseNumber: course.coursesNumber || "",
         };
 
         const courseIndex = updatedCourses[semKey]?.findIndex(
@@ -113,28 +114,33 @@ export function useCourseSelection({
             credits: course.credits,
             big_type: categoryTypeMap[course.classification] || "",
             calendarEntry: course.calendarEntry || [],
+            courseNumber: course.coursesNumber || "",
           },
         ],
       };
     });
 
     try {
-      const isCourseSelected = selectedCourseIds.includes(course.id);
+      const isCourseSelected = selectedCourseIds.includes(course.id) || selectedCourseIds.includes(course.courseNumber);
 
       if (isCourseSelected) {
         // Remove course locally and on the backend
         setSelectedCourseIds((prevIds) =>
-          prevIds.filter((id) => id !== course.id)
+          prevIds.filter((id) => id !== course.id && id !== course.courseNumber)
         );
 
+        //new: courseNumber based
+        await deleteCourse(currentStudyPlanId, course.courseNumber, authToken);
+        console.log(`Course ${course.courseNumber} deleted from backend`);
+        // Übergangslösung: To ensure old id-based courses get removed as well
         await deleteCourse(currentStudyPlanId, course.id, authToken);
         console.log(`Course ${course.id} deleted from backend`);
       } else {
         // Add course locally and on the backend
-        setSelectedCourseIds((prevIds) => [...prevIds, course.id]);
+        setSelectedCourseIds((prevIds) => [...prevIds, course.courseNumber]);
 
-        await saveCourse(currentStudyPlanId, course.id, authToken);
-        console.log(`Course ${course.id} saved to backend`);
+        await saveCourse(currentStudyPlanId, course.courseNumber, authToken);
+        console.log(`Course ${course.courseNumber} saved to backend`);
       }
     } catch (error) {
       console.error("Error updating course:", error);
