@@ -89,6 +89,7 @@ University projects are welcome as well! Just reach out and we can discuss poten
 ## Important Note
 
 This repository only contains the frontend code for Biddit2. The backend code is located in a separate repository which will be private for security reasons. The backend is hosted on a private server and is not publicly accessible. The frontend communicates with the backend via API calls to fetch and send data.
+For API documentation, see the [University of St. Gallen Event API](https://integration.unisg.ch/eventapi/swagger/index.html).
 If you are interested in the backend code, please contact us directly.
 
 ## 📝 License
