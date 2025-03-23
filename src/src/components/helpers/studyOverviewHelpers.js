@@ -22,24 +22,34 @@ export const useCurrentSemester = () => {
  * @returns {string} - Corresponding Tailwind CSS class for background color.
  */
 export const getTypeColor = (course) => {
+  // keywords for each category
+  const typeKeywords = {
+    core: ['core', 'core electives'],
+    elective: ['elective', 'electives'],
+    contextual: ['contextual', 'area of concentration', 'skills']
+  };
+  
   const colors = {
     core: "bg-green-700",
-    "core electives": "bg-green-700", // Same color as core
     elective: "bg-green-500",
-    electives: "bg-green-500", // Same color as elective
-    contextual: "bg-green-300",
-    'area of concentration': "bg-green-300", // Same color as contextual
+    contextual: "bg-green-300"
   };
 
-  const typeClean = course.type.toLowerCase();
-  const typeCleaner = typeClean.replace("-wishlist", "");
-
-  // // if big_type is available, use it to determine the color
-  // if (course.big_type) {
-  //   return colors[course.big_type.toLowerCase()] || "bg-gray-300";
-  // }
-  // if not, use the type
-  return colors[typeCleaner] || "bg-gray-300";
+  const typeClean = course.type.toLowerCase().replace("-wishlist", "").trim();
+  
+  for (const [category, keywords] of Object.entries(typeKeywords)) {
+    if (keywords.some(keyword => typeClean.includes(keyword))) {
+      return colors[category];
+    }
+  }
+  
+  // Use big_type if available
+  if (course.big_type && Object.keys(colors).includes(course.big_type.toLowerCase())) {
+    return colors[course.big_type.toLowerCase()];
+  }
+  
+  // Default color for unmatched types
+  return "bg-gray-300";
 };
 
 /**
