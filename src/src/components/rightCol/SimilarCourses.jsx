@@ -135,14 +135,22 @@ export default function SimilarCourses({ selectedCourse }) {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
-
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
     setIsLoadingLong(true);
-    for (const course of relevantCourseInfoForUpsert) {
-      try {
-        await axios.post(
-          "http://localhost:4000/similar-courses/upsert",
-          {
+
+    // might be better to clean up the course descriptions before upsert, database reset advised when applied (breaks filter out identical courses)
+    // courseDescription: course.courseContent
+    //           ? course.courseContent
+    //               .replace(/<[^>]+>/g, "") // Remove HTML tags
+    //               .replace(/\s+/g, " ") // Replace multiple spaces with a single space
+    //               .trim() // Trim leading and trailing spaces
+    //           : "",
+
+    try {
+      await axios.post(
+        "https://api.shsg.ch/similar-courses/upsert",
+        {
+          courses: relevantCourseInfoForUpsert.map((course) => ({
             courseNumber: course.courseNumber,
             semester: referenceSemesterLocalState
               ? referenceSemesterLocalState
@@ -150,26 +158,43 @@ export default function SimilarCourses({ selectedCourse }) {
             courseDescription: course.courseContent,
             category: course.classification,
             program: program,
+          })),
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
           },
-          {
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-      } catch (error) {
-        console.error("Error adding course:", error);
-        errorHandlingService.handleError(error);
-      }
+        }
+      );
+    } catch (error) {
+      console.error("Error adding courses:", error);
+      errorHandlingService.handleError(error);
     }
   }
   // if button is clicked, fetch similar courses
-  async function fetchSimilarCourses(selectedCourse, category = null) {
+  async function fetchSimilarCourses(
+    selectedCourse,
+    category = null,
+    attemptedUpsert = false
+  ) {
     setIsLoading(true);
     if (programRef.current !== null) {
       try {
+        if (!selectedCourse.courseContent) {
+          console.error("Course content is missing");
+          setIsLoading(false);
+          return;
+        }
+
+        // // might be better to clean up the course descriptions before upsert, database reset advised when applied
+        // // Clean up the course description
+        // const cleanedCourseDescription = selectedCourse.courseContent
+        //   .replace(/<[^>]+>/g, "") // Remove HTML tags
+        //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
+        //   .trim(); // Trim leading and trailing spaces
+
         const response = await axios.get(
-          "http://localhost:4000/similar-courses/query",
+          "https://api.shsg.ch/similar-courses/query",
           {
             params: {
               courseDescription: selectedCourse.courseContent,
@@ -185,23 +210,45 @@ export default function SimilarCourses({ selectedCourse }) {
             },
           }
         );
+
         setSimilarCourses(response.data);
         console.log("Similar courses:", response.data);
         setIsLoading(false);
-        setIsLoadingLong(false);
-        if (response.data.ids[0].length === 0) {
+
+        // Only attempt upsert once to prevent infinite recursion
+        if (
+          response.data.ids &&
+          response.data.ids[0] &&
+          response.data.ids[0].length === 0 &&
+          !attemptedUpsert
+        ) {
+          setIsLoadingLong(true);
           await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-          fetchSimilarCourses(selectedCourse, category);
+          setIsLoadingLong(false);
+          // Pass true to indicate we've already attempted an upsert
+          fetchSimilarCourses(selectedCourse, category, true);
         }
       } catch (error) {
         console.error("Error querying database:", error);
-        errorHandlingService.handleError(error);
+        if (error.response && error.response.status === 404) {
+          console.log("No courses found, attempting upsert");
+          if (!attemptedUpsert) {
+            setIsLoadingLong(true);
+            await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
+            setIsLoadingLong(false);
+            fetchSimilarCourses(selectedCourse, category, true);
+          } else {
+            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+          }
+        } else {
+          errorHandlingService.handleError(error);
+        }
         setIsLoading(false);
       }
     } else {
       console.log("Program not yet loaded");
       setTimeout(() => {
-        fetchSimilarCourses(selectedCourse, category);
+        fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
       }, 1000);
     }
   }

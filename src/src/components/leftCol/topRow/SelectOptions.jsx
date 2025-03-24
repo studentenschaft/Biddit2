@@ -17,6 +17,7 @@ import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
 import Select from "react-select";
 import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterAtom";
+import { selectedSemesterAtom } from "../../recoil/selectedSemesterAtom";
 
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
 
@@ -58,6 +59,7 @@ export default function SelectSemester() {
   const enrolledCourses = useRecoilValue(enrolledCoursesState);
   const [, setSelectedIndex] = useRecoilState(selectedSemesterIndexAtom);
   const isFutureSemester = useRecoilValue(isFutureSemesterSelected);
+  const [, setSelectedSemesterState] = useRecoilState(selectedSemesterAtom);
 
   // open/close search options
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -236,6 +238,7 @@ export default function SelectSemester() {
   useEffect(() => {
     if (selectedSem === "loading semester data..." && latestValidTerm) {
       setSelectedSemester(latestValidTerm);
+      setSelectedSemesterState(latestValidTerm);
     }
   }, [selectedSem, latestValidTerm]);
 

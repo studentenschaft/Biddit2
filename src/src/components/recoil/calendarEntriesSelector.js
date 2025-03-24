@@ -2,7 +2,7 @@ import { selector } from "recoil";
 import { selectedSemesterIndexAtom } from "./selectedSemesterAtom";
 import moment from "moment/moment";
 import { cisIdListSelector } from "./cisIdListSelector";
-import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
+
 import { allCourseInfoState } from "./allCourseInfosSelector";
 
 /**
