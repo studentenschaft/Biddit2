@@ -1,4 +1,4 @@
-// TabComponent.jsx // 
+// TabComponent.jsx //
 
 import { Suspense, useEffect, useState } from "react";
 import PropTypes from "prop-types";
@@ -15,7 +15,7 @@ import { Transcript } from "../components/rightCol/Transcript";
 import StudyOverview from "../components/rightCol/StudyOverview";
 
 // For dynamic tab text
-import { selectedSemesterIndexAtom } from "../components/recoil/selectedSemesterIndexAtom";
+import { selectedSemesterIndexAtom } from "../components/recoil/selectedSemesterAtom";
 import { cisIdListSelector } from "../components/recoil/cisIdListSelector";
 import { useRecoilValue } from "recoil";
 
