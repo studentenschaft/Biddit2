@@ -60,7 +60,10 @@ import { getStudyPlan } from "../../helpers/api";
 import { currentStudyPlanIdState } from "../../recoil/currentStudyPlanIdAtom";
 
 // future Semesters
-import { isFutureSemesterSelected } from "../../recoil/isFutureSemesterSelected";
+import {
+  isFutureSemesterSelected,
+  referenceSemester,
+} from "../../recoil/isFutureSemesterSelected";
 import { findStudyPlanBySemester } from "../../helpers/courseSelection";
 import { useCurrentSemester } from "../../helpers/studyOverviewHelpers";
 
@@ -71,11 +74,15 @@ import { useCourseSelection } from "../../helpers/useCourseSelection";
 function isEventOrNestedCourseSelected(event, selectedCourseIds) {
   // safety check to avoid NULL error:
   if (!Array.isArray(selectedCourseIds)) {
-    console.warn('selectedCourseIds is not an array:', selectedCourseIds);
+    console.warn("selectedCourseIds is not an array:", selectedCourseIds);
     return false;
   }
   // Check if the top-level event.id matches
-  if (selectedCourseIds.includes(event.id) || selectedCourseIds.includes(event.courseNumber)) return true;
+  if (
+    selectedCourseIds.includes(event.id) ||
+    selectedCourseIds.includes(event.courseNumber)
+  )
+    return true;
   // If event.courses exists, check each nested course
   // MB 11.02.25: Disabled due to new handling of nested courses -> lead to wrong open locks for exercise groups
   // if (event.courses && Array.isArray(event.courses)) {
@@ -110,7 +117,9 @@ export default function EventListContainer({ selectedSemesterState }) {
   const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
   const updateCourseInfo = useUpdateCourseInfoAtom();
 
-  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(selectedCourseIdsAtom);
+  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
+    selectedCourseIdsAtom
+  );
 
   // Recoil states
   const cisIdList = useRecoilValue(cisIdListSelector);
@@ -118,7 +127,8 @@ export default function EventListContainer({ selectedSemesterState }) {
     isFutureSemesterSelected
   );
   const currentRealSemesterName = useCurrentSemester(); // Get current semester name (real life)
-
+  const [referenceSemesterState, setReferenceSemesterState] =
+    useRecoilState(referenceSemester);
   // mobile view toggle of selected course / left view
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
@@ -132,13 +142,16 @@ export default function EventListContainer({ selectedSemesterState }) {
       if (index === cisIdList.length) {
         index = 2;
         setIsFutureSemesterSelected(true);
+        setReferenceSemesterState(cisIdList[1]);
       }
       if (index === cisIdList.length - 1) {
         index = 1;
         setIsFutureSemesterSelected(true);
+        setReferenceSemesterState(cisIdList[0]);
       }
     } else {
       setIsFutureSemesterSelected(false);
+      setReferenceSemesterState(null);
     }
   }
 
@@ -147,14 +160,16 @@ export default function EventListContainer({ selectedSemesterState }) {
     selectedCourseCourseInfo
   );
   const [, setLocalSelectedCourses] = useRecoilState(localSelectedCoursesState);
-  const [localSelectedBySemester, setLocalSelectedCoursesSemKey] = useRecoilState(
-    localSelectedCoursesSemKeyState
-  );
+  const [localSelectedBySemester, setLocalSelectedCoursesSemKey] =
+    useRecoilState(localSelectedCoursesSemKeyState);
 
   // useEffect to see if localSelectedBySemester changes
-      useEffect(() => {
-        console.log("DEBUG: localSelectedBySemester changed", localSelectedBySemester);
-      }, [localSelectedBySemester]);
+  useEffect(() => {
+    console.log(
+      "DEBUG: localSelectedBySemester changed",
+      localSelectedBySemester
+    );
+  }, [localSelectedBySemester]);
 
   // Instead of duplicating the logic, we use our new hook
   const { addOrRemoveCourse } = useCourseSelection({
@@ -245,7 +260,6 @@ export default function EventListContainer({ selectedSemesterState }) {
       index != null &&
       allCourseInfo[index].length === completeCourseInfo.length
     ) {
-
       if (currentStudyPlan) {
         setLocalSelectedCourses((prevCourses) => {
           const updatedCourses = { ...prevCourses };
@@ -253,7 +267,9 @@ export default function EventListContainer({ selectedSemesterState }) {
             .map((courseIdentifier) => {
               // Try to find by courseNumber first (new approach), then by id (legacy approach)
               return completeCourseInfo.find(
-                (course) => course.courseNumber === courseIdentifier || course.id === courseIdentifier
+                (course) =>
+                  course.courseNumber === courseIdentifier ||
+                  course.id === courseIdentifier
               );
             })
             .filter(Boolean);
@@ -267,7 +283,9 @@ export default function EventListContainer({ selectedSemesterState }) {
             .map((courseIdentifier) => {
               // Try to find by courseNumber first (new approach), then by id (legacy approach)
               const course = completeCourseInfo.find(
-                (c) => c.courseNumber === courseIdentifier || c.id === courseIdentifier
+                (c) =>
+                  c.courseNumber === courseIdentifier ||
+                  c.id === courseIdentifier
               );
               if (!course) return null;
               return {
@@ -505,7 +523,7 @@ export default function EventListContainer({ selectedSemesterState }) {
             {event.enrolled ? (
               <LockClosed clg="w-6 h-6 " />
             ) : isSelected ? (
-              <LockOpen 
+              <LockOpen
                 clg="w-6 h-6 "
                 selectedCourseIds={selectedCourseIds}
                 setSelectedCourseIds={setSelectedCourseIds}
