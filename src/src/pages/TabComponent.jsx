@@ -13,6 +13,7 @@ import Calendar from "../components/rightCol/Calendar";
 import SemesterSummary from "../components/rightCol/SemesterSummary";
 import { Transcript } from "../components/rightCol/Transcript";
 import StudyOverview from "../components/rightCol/StudyOverview";
+import SmartSearch from "../components/rightCol/SmartSearch";
 
 // For dynamic tab text
 import { selectedSemesterIndexAtom } from "../components/recoil/selectedSemesterAtom";
@@ -51,6 +52,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
         <Tab className={tabStyle}>{dynamicSummaryText}</Tab>
         <Tab className={tabStyle}>Transcript</Tab>
         <Tab className={tabStyle}>Study Overview</Tab>
+        <Tab className={tabStyle}>Smart Search</Tab>
       </TabList>
 
       <TabPanel>
@@ -89,6 +91,15 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
             fallback={<LoadingText>Loading Study Overview...</LoadingText>}
           >
             <StudyOverview />
+          </Suspense>
+        </ErrorBoundary>
+      </TabPanel>
+      <TabPanel>
+        <ErrorBoundary>
+          <Suspense
+            fallback={<LoadingText>Loading Smart Search...</LoadingText>}
+          >
+            <SmartSearch />
           </Suspense>
         </ErrorBoundary>
       </TabPanel>
