@@ -308,18 +308,6 @@ export default function SmartSearch() {
     const filteredDistances = [];
     const filteredMetadatas = [];
 
-    similarCourses.ids[0].forEach((id, index) => {
-      const distance = similarCourses.distances[0][index];
-      if (distance > 0.01) {
-        filteredIds.push(id);
-        filteredDistances.push(distance);
-        filteredMetadatas.push(similarCourses.metadatas[0][index]);
-      } else {
-        console.log("Removed course due to low similarity:", id);
-        console.log("Distance:", distance);
-      }
-    });
-
     setSimilarCourses((prevSimilarCourses) => {
       if (
         JSON.stringify(prevSimilarCourses.ids) !==
