@@ -303,24 +303,20 @@ export default function SmartSearch() {
 
   useEffect(() => {
     if (!similarCourses.ids) return;
-
-    const filteredIds = [];
-    const filteredDistances = [];
-    const filteredMetadatas = [];
-
+    // Only update state if the data has actually changed
     setSimilarCourses((prevSimilarCourses) => {
       if (
         JSON.stringify(prevSimilarCourses.ids) !==
-          JSON.stringify([filteredIds]) ||
+          JSON.stringify(similarCourses.ids) ||
         JSON.stringify(prevSimilarCourses.distances) !==
-          JSON.stringify([filteredDistances]) ||
+          JSON.stringify(similarCourses.distances) ||
         JSON.stringify(prevSimilarCourses.metadatas) !==
-          JSON.stringify([filteredMetadatas])
+          JSON.stringify(similarCourses.metadatas)
       ) {
         return {
-          ids: [filteredIds],
-          distances: [filteredDistances],
-          metadatas: [filteredMetadatas],
+          ids: similarCourses.ids,
+          distances: similarCourses.distances,
+          metadatas: similarCourses.metadatas,
         };
       }
       return prevSimilarCourses;
