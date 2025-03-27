@@ -4,7 +4,7 @@ import { localSelectedCoursesState } from "../recoil/localSelectedCoursesAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { currentStudyPlanIdState } from "../recoil/currentStudyPlanIdAtom";
 import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
-import { saveCourse, deleteCourse } from "../helpers/api";
+import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
@@ -24,11 +24,11 @@ export function useCourseSelection({
   authToken,
 }) {
   // Recoil: local course selections
-  const [, setLocalSelectedCourses] =
-    useRecoilState(localSelectedCoursesState);
+  const [, setLocalSelectedCourses] = useRecoilState(localSelectedCoursesState);
   // Recoil: local course selections keyed by semester shortName
-  const [, setLocalSelectedCoursesSemKey] =
-    useRecoilState(localSelectedCoursesSemKeyState);
+  const [, setLocalSelectedCoursesSemKey] = useRecoilState(
+    localSelectedCoursesSemKeyState
+  );
 
   // Recoil: current study plan
   const currentStudyPlanId = useRecoilValue(currentStudyPlanIdState);
@@ -121,7 +121,9 @@ export function useCourseSelection({
     });
 
     try {
-      const isCourseSelected = selectedCourseIds.includes(course.id) || selectedCourseIds.includes(course.courseNumber);
+      const isCourseSelected =
+        selectedCourseIds.includes(course.id) ||
+        selectedCourseIds.includes(course.courseNumber);
 
       if (isCourseSelected) {
         // Remove course locally and on the backend

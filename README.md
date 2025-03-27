@@ -27,10 +27,10 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    git clone https://github.com/studentenschaft/Biddit2.git
    ```
 
-2. Navigate to the project src directory:
+2. Navigate to the project app directory:
 
    ```bash
-   cd src
+   cd app
    ```
 
 3. Install dependencies:
@@ -46,11 +46,12 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    ```
 
 ### Testing
+
 To ensure no changes break any existing features, run the testing suite with the following command:
 
-   ```bash
-   npm test
-   ```
+```bash
+npm test
+```
 
 ## 🛠️ Technology Stack
 
@@ -66,7 +67,7 @@ Biddit2/
 ├── docs/                  # Documentation
 │   └── auth/              # Authentication documentation
 │   └── architecture/      # System architecture diagrams
-├── src/                   # Source files
+├── app/                   # App source files
 │   ├── public/            # Static assets
 │   │   └── favicon.ico    # Site favicon
 │   └── src/               # Application source code
