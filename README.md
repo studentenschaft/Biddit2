@@ -101,7 +101,7 @@ If you are interested in the backend code, please contact us directly.
 
 ## 📝 License
 
-_This project is licensed under the MIT License - see the LICENSE file for details._
+_This project is licensed under CC BY-NC-SA 4.0 - see the [LICENSE](LICENSE) file for details._
 
 ## 👥 Contact
 
