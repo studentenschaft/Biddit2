@@ -45,6 +45,13 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    npm run dev
    ```
 
+### Testing
+To ensure no changes break any existing features, run the testing suite with the following command:
+
+   ```bash
+   npm test
+   ```
+
 ## 🛠️ Technology Stack
 
 - **Frontend**: React with Vite
