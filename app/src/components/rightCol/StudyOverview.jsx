@@ -424,8 +424,14 @@ const SemesterRow = ({
 
   return (
     <div
-      className="grid grid-cols-12 gap-2 md:gap-4 mb-2 items-center"
-      onMouseEnter={() => setSelectedSemester(semester)}
+    className="grid grid-cols-12 gap-2 md:gap-4 mb-2 items-center"
+      onClick={() => setSelectedSemester(semester)}
+      onMouseEnter={() => {
+        // Only update selected semester if it's different to avoid redundant renders
+        if (selectedSemester !== semester) {
+          setSelectedSemester(semester);
+        }
+      }}
     >
       <div
         className={`col-span-2 md:col-span-1 font-semibold cursor-pointer ${
