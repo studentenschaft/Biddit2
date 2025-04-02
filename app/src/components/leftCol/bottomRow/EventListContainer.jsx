@@ -468,6 +468,10 @@ export default function EventListContainer({ selectedSemesterState }) {
         event,
         selectedCourseIds
       );
+      
+      // For future semesters, we should not show any enrolled courses as that's impossible
+      const isFutureSemester = referenceSemesterState !== null;
+      const isEnrolled = event.enrolled && !isFutureSemester;
 
       return (
         <div
@@ -509,18 +513,18 @@ export default function EventListContainer({ selectedSemesterState }) {
           <button
             id="select_course"
             onClick={() => addOrRemoveCourse(event)}
-            disabled={event.enrolled}
+            disabled={isEnrolled}
             className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out bg-white ${
               event.overlapping
                 ? "border-warning text-warning cursor-pointer hover:shadow-md"
-                : event.enrolled
+                : isEnrolled
                 ? "border-main text-main cursor-not-allowed"
                 : isSelected
                 ? "border-main text-main cursor-pointer hover:shadow-md"
                 : "hover:shadow-md"
             }`}
           >
-            {event.enrolled ? (
+            {isEnrolled ? (
               <LockClosed clg="w-6 h-6 " />
             ) : isSelected ? (
               <LockOpen
