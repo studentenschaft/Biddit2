@@ -29,6 +29,15 @@ export async function mergeWishlistedCourses(
   currentSemester,
   categoryTypeMap
 ) {
+  console.log("DEBUG mergeWishlistedCourses", {
+    scorecards,
+    studyPlan,
+    cisIdToSemesterNameMap,
+    authToken,
+    currentSemester,
+    categoryTypeMap
+  }
+  )
 
   if (!studyPlan) {
     console.warn("Study plan is null or undefined");
@@ -45,37 +54,134 @@ export async function mergeWishlistedCourses(
   const lightCourseCache = {};
 
   for (const [programName, semesterMap] of Object.entries(updatedScorecards)) {
+    console.log("DEBUG mergeWishlistedCourses programName", programName)
+    if (programName.includes("Courses in Business Education") || programName.includes("Admission conditions for Courses")) {
+      console.log("DEBUG mergeWishlistedCourses: skipping programName", programName)
+      continue; // Skip non-relevant programs
+    }
     if (!semesterMap || typeof semesterMap !== "object") {
       console.warn("Invalid semester map structure");
-      continue;
+      continue; 
     }
 
     for (const plan of studyPlan) {
       const semesterCisId = plan.id;
       const semesterLabel = cisIdToSemesterNameMap[semesterCisId] || "Unassigned";
 
+      if (semesterCisId.includes("HS")) {
+        console.log("DEBUG mergeWishlistedCoursesX: semesterCisId", semesterCisId, "contains HS")
+      }
+      if (semesterCisId.includes("Placeholder")) {
+        console.log("DEBUG mergeWishlistedCoursesX: semesterCisId", semesterCisId, "contains Placeholder")
+
+        // TODO: Need to get correct last semester's courses (e.g., HS24 for HS25) for placeholders
+        // Step 1 (if a placeholder): Look up CisIds: Is the last previous same-type semester in the cache?
+        // e.g. for "HS 25 - Placeholder", find the cisID for HS24, and use that as "semesterCisID_adapted" (adjust below to use that in lightCourse interactions)
+        // Step 2: If not, fetch the data and cache it. If yes, use the cached data and insert into this semester's course cache
+
+        // Extract semester type and year from placeholder
+        const semesterMatch = semesterCisId.match(/(HS|FS)\s*(\d{2})\s*-\s*Placeholder/);
+        if (semesterMatch) {
+          const semesterType = semesterMatch[1]; // HS or FS
+          const semesterYear = parseInt(semesterMatch[2], 10); // e.g., 25
+          
+          // Find the most recent past semester of the same type
+          let referenceSemesterId = null;
+          let referenceSemesterName = null;
+          let highestPastYear = 0;
+          
+          // Look through cisIdToSemesterNameMap for real semesters (non-placeholders)
+          console.log("DEBUG mergeWishlistedCourses: looping through cisIdToSemesterNameMap", cisIdToSemesterNameMap)
+          for (const [cisId, semName] of Object.entries(cisIdToSemesterNameMap)) {
+            if (cisId.includes("Placeholder")) continue;
+            
+            const realSemMatch = semName.match(/(HS|FS)(\d{2})/);
+            if (realSemMatch && realSemMatch[1] === semesterType) {
+              console.log("DEBUG mergeWishlistedCourses: found realSemMatch", realSemMatch)
+              const realYear = parseInt(realSemMatch[2], 10);
+              if (realYear < semesterYear && realYear > highestPastYear) {
+                highestPastYear = realYear;
+                referenceSemesterId = cisId;
+                referenceSemesterName = semName;
+              }
+            }
+          }
+
+          // If we found a reference semester, use its data
+          if (referenceSemesterId) {
+            console.log(`DEBUG mergeWishlistedCourses: For placeholder ${semesterCisId}, using reference semester ${referenceSemesterName} (${referenceSemesterId})`);
+            
+            // Ensure we have the reference semester data in the cache
+            if (!lightCourseCache[referenceSemesterId]) {
+              console.log(`DEBUG mergeWishlistedCourses: Fetching data for reference semester ${referenceSemesterName}`);
+              try {
+                const referenceCourseData = await getLightCourseDetails(
+                  referenceSemesterId,
+                  authToken
+                );
+                lightCourseCache[referenceSemesterId] = flattenSemesterCourses(referenceCourseData);
+              } catch (error) {
+                console.error(`Error fetching reference semester data for ${referenceSemesterName}:`, error);
+                // Continue without reference data
+                continue;
+              }
+            }
+            
+            // Use reference semester data for the placeholder
+            lightCourseCache[semesterCisId] = { ...lightCourseCache[referenceSemesterId] };
+            console.log(`DEBUG mergeWishlistedCourses: Copied ${Object.keys(lightCourseCache[semesterCisId]).length} courses from ${referenceSemesterName} to ${semesterCisId}`);
+          } else {
+            console.warn(`DEBUG mergeWishlistedCourses: No reference semester found for ${semesterCisId}`);
+          }
+
+        }
+
+
+
+
+      }
+
       // Skip processing if semester is in the past
       if (isSemesterInPast(
+        console.log("DEBUG mergeWishlistedCourses: check", semesterLabel, cleanedCurrentSemester),
         removeSpacesFromSemesterName(semesterLabel),
         removeSpacesFromSemesterName(cleanedCurrentSemester)
       )) {
+        console.log("DEBUG mergeWishlistedCourses: skipping (is in the past)", semesterLabel, cleanedCurrentSemester)
         continue;
       }
 
       try {
         // Ensure we have fetched and cached the data
         if (!lightCourseCache[semesterCisId]) {
+          console.log("DEBUG mergeWishlistedCourses: lightCourse is NOT cached for this semester", semesterCisId, lightCourseCache)
+          console.log("DEBUG mergeWishlistedCourses: calling getLightCourseDetails; semesterCisId/ semesterLabel", semesterCisId, semesterLabel)
+          
           const semesterCourseData = await getLightCourseDetails(
             semesterCisId,
             authToken
           );
           lightCourseCache[semesterCisId] = flattenSemesterCourses(semesterCourseData);
+          console.log("DEBUG mergeWishlistedCourses: NOW enhanced lightCourse cache", semesterCisId, lightCourseCache)
         }
 
         const courseDict = lightCourseCache[semesterCisId];
+        console.log("DEBUG mergeWishlistedCourses: courseDict", courseDict)
+        console.log("DEBUG mergeWishlistedCourses: courseDict derived from semesterCisId with lightCourseCache", semesterCisId, lightCourseCache)
+        // TODO: Let last fall semester be the default for the current semester
+        // (needs fixing, currently it doesnt't work)
+
+        // Step 1: Get all Semester CisIds and their names
+
+        // Step 2: Find the latest HS or FS semester in the past (depending on selected semester)
+
+        // Step 3: Get the course data for that semester
+
+
+
         if (!courseDict) continue;
 
-        // 5. Get or create the array for that semester
+        // Get or create the array for that semester
         if (!semesterMap[semesterLabel]) {
           semesterMap[semesterLabel] = [];
         }
@@ -89,19 +195,35 @@ export async function mergeWishlistedCourses(
         });
 
         // 6. Process each wishlisted course
+        console.log("DEBUG mergeWishlistedCourses: plan.courses", plan.courses)
         for (const courseId of plan.courses || []) {
           // Skip if already exists (enrolled or previously merged)
           // Check both course.id and course.courseNumber
           if (existingIds.has(courseId)) {
+            console.log("DEBUG mergeWishlistedCourses: already exists", courseId)
             continue;
           }
 
           // Lookup in the flattened dictionary
-          const normalizedCourse = courseDict[courseId];
+          console.log("DEBUG mergeWishlistedCourses: lookup courseId", courseId)
+            // First try direct lookup by id
+            let normalizedCourse = courseDict[courseId]; 
+            
+            // If not found, try looking up by courseNumber
+            if (!normalizedCourse) {
+            // Search through all courses in the dictionary
+            for (const course of Object.values(courseDict)) {
+              if (course.courseNumber === courseId) {
+              normalizedCourse = course;
+              break;
+              }
+            }
+            }
           if (!normalizedCourse) {
+            console.log("DEBUG mergeWishlistedCourses: course not found", courseId)
             continue; // Not found, skip
           }
-          
+          console.log("DEBUG mergeWishlistedCourses: found course", normalizedCourse)
           // Look up type from categoryTypeMap using classification
           const courseType = categoryTypeMap[normalizedCourse.classification] || 'unknown';
 
@@ -123,6 +245,7 @@ export async function mergeWishlistedCourses(
           if (wishlistItem.courseNumber) {
             existingIds.add(wishlistItem.courseNumber);
           }
+        //console.log("DEBUG mergeWishlistedCourses: looped through all courses for plan", plan.courses)
         }
       } catch (error) {
         console.error(`Error processing semester ${semesterLabel}:`, error);
@@ -130,7 +253,7 @@ export async function mergeWishlistedCourses(
       }
     }
   }
-
+  console.log("DEBUG mergeWishlistedCourses: updatedScorecards", updatedScorecards)
   return updatedScorecards;
 }
 
