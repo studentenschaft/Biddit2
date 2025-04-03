@@ -19,8 +19,6 @@ export default function SelectClassification() {
     }));
   };
 
-  // TODO: Learn how to apply style themes in React like in old biddit, green hover and selected
-
   return (
     <Select
       name="classification"

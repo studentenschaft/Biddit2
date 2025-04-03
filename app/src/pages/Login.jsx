@@ -107,7 +107,6 @@ export default function Login() {
                   <div className="flex flex-wrap items-center justify-between">
                     <div className="flex items-center flex-1">
                       <p className="ml-3 font-medium text-gray-500 mr-4">
-                        {/* TODO: Update Cookie text */}
                         <span className="">
                           We use cookies for the HSG login, as well as Google
                           Analytics.
