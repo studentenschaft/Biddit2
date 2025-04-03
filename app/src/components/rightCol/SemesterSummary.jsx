@@ -1,11 +1,14 @@
 // import PropTypes from "prop-types";
-import { useState } from "react";
-import { useRecoilState } from "recoil";
-import { useRecoilValue } from "recoil";
+import { useEffect, useState, useMemo } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
 
 import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
 import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
+import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
+import { cisIdListSelector } from "../recoil/cisIdListSelector";
+import { isFutureSemesterSelected, referenceSemester } from "../recoil/isFutureSemesterSelected";
+import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
@@ -20,49 +23,114 @@ export default function SemesterSummary() {
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
 
-  // const selectedCourses = useRecoilValue(selectedCoursesQuery);
-  //localSelectedCourses? --> needs to be also sent to the backend
-  // --> this is handled in the LockOpen component
-
-  const [selectedSemester] = useRecoilState(selectedSemesterIndexAtom);
+  const [selectedSemesterIndex] = useRecoilState(selectedSemesterIndexAtom);
+  const [selectedSemesterShortName] = useRecoilState(selectedSemesterAtom);
   const [hoveredCourse, setHoveredCourse] = useState(null);
+  const cisIdList = useRecoilValue(cisIdListSelector);
+  const isFutureSem = useRecoilValue(isFutureSemesterSelected);
+  const refSemester = useRecoilValue(referenceSemester);
 
   const allCourseInfo = useRecoilValue(allCourseInfoState);
+  // Add access to semester-keyed saved courses
+  const localSelectedBySemester = useRecoilValue(localSelectedCoursesSemKeyState);
+  
+  // Find the appropriate semester data based on semester short name instead of index
+  const currCourses = useMemo(() => {
+    // Debug statements to trace data flow
+    console.log("DEBUG SemesterSummary: Step 1 - Starting course selection logic");
+    console.log("DEBUG SemesterSummary: allCourseInfo structure:", Object.keys(allCourseInfo));
+    console.log("DEBUG SemesterSummary: localSelectedBySemester:", localSelectedBySemester);
+    console.log("DEBUG SemesterSummary: selectedSemesterIndex:", selectedSemesterIndex);
+    console.log("DEBUG SemesterSummary: selectedSemesterShortName:", selectedSemesterShortName);
+    console.log("DEBUG SemesterSummary: isFutureSem:", isFutureSem);
+    console.log("DEBUG SemesterSummary: refSemester:", refSemester);
+    
+    // Default case: Empty array when no data is available
+    if (!allCourseInfo || Object.keys(allCourseInfo).length === 0) {
+      console.log("DEBUG SemesterSummary: Step 2 - No course info available, returning empty array");
+      return [];
+    }
 
-  let adjustedSemester = selectedSemester;
-  let currCourses = [];
-  // if a future semester is selected, the index will be out of bounds
-  // in this case, we need to set the index to a valid value that resembles same term /HS /FS in the present
-  // and handle special cases like enrolled/selected courses differently TODO: THIS !!!
-  // TODO: FIX logic blow to handle future semesters and show enrolled/selected courses
-  if (allCourseInfo[adjustedSemester + 1]) {
-    currCourses = allCourseInfo[adjustedSemester + 1].filter(
-      (course) => course.enrolled || course.selected
-    );
-  } else {
-    console.warn("Future semester (projection) selected");
-    console.warn("index", adjustedSemester + 1);
-    if (adjustedSemester + 1 === allCourseInfo.length) {
-      adjustedSemester = 2;
+    // Get details about the selected semester
+    const selectedSemesterDetails = cisIdList[selectedSemesterIndex];
+    
+    if (!selectedSemesterDetails) {
+      console.log("DEBUG SemesterSummary: Step 3 - No details available for selected semester");
+      return []; 
     }
-    if (adjustedSemester + 1 === allCourseInfo.length - 1) {
-      adjustedSemester = 1;
+    
+    console.log("DEBUG SemesterSummary: Step 4 - Selected semester details:", selectedSemesterDetails);
+    
+    // For future semesters, use the semester-keyed saved courses directly
+    if (isFutureSem && selectedSemesterShortName) {
+      // Check if we have saved courses for this specific future semester
+      const semesterSavedCourses = localSelectedBySemester[selectedSemesterShortName];
+      console.log(`DEBUG SemesterSummary: Step 5A - Checking saved courses for future semester ${selectedSemesterShortName}:`, 
+        semesterSavedCourses ? `Found ${semesterSavedCourses.length} courses` : "No courses found");
+      
+      if (semesterSavedCourses && semesterSavedCourses.length > 0) {
+        console.log(`DEBUG SemesterSummary: Step 5B - Using ${semesterSavedCourses.length} saved courses for future semester ${selectedSemesterShortName}`);
+        return semesterSavedCourses;
+      }
     }
-    if (allCourseInfo[adjustedSemester + 1]) {
-      currCourses = allCourseInfo[adjustedSemester + 1].filter(
+    
+    // Normal case: Directly access data for current semester using the index
+    if (allCourseInfo[selectedSemesterIndex + 1] && !isFutureSem) {
+      console.log(`DEBUG SemesterSummary: Step 6 - Using current semester data at index ${selectedSemesterIndex + 1}`);
+      return allCourseInfo[selectedSemesterIndex + 1].filter(
         (course) => course.enrolled || course.selected
       );
     }
-  }
-  console.log("coursesInfo", allCourseInfo[adjustedSemester + 1]);
-  console.log("currCourses", currCourses);
+    
+    // Fallback for future semesters: Use reference semester as a backup method
+    if (isFutureSem && refSemester) {
+      // Try to get saved courses for the reference semester
+      const refSemesterSavedCourses = localSelectedBySemester[refSemester.shortName];
+      console.log(`DEBUG SemesterSummary: Step 7A - Checking reference semester ${refSemester.shortName} saved courses:`, 
+        refSemesterSavedCourses ? `Found ${refSemesterSavedCourses.length} courses` : "No courses found");
+      
+      // If we have saved courses for reference semester, map them to future semester
+      if (refSemesterSavedCourses && refSemesterSavedCourses.length > 0) {
+        console.log(`DEBUG SemesterSummary: Step 7B - Using ${refSemesterSavedCourses.length} saved courses from reference semester ${refSemester.shortName}`);
+        return refSemesterSavedCourses;
+      }
+
+      // Find the reference semester index in cisIdList as fallback
+      const refIndex = cisIdList.findIndex(item => 
+        item.shortName === refSemester.shortName
+      );
+      
+      console.log(`DEBUG SemesterSummary: Step 7C - Reference semester index: ${refIndex}`);
+      
+      if (refIndex >= 0 && allCourseInfo[refIndex + 1]) {
+        console.log(`DEBUG SemesterSummary: Step 7D - Using reference semester index ${refIndex} (${refSemester.shortName}) data`);
+        return allCourseInfo[refIndex + 1].filter(course => course.selected);
+      }
+    }
+    
+    // Fallback: Try to find the most recent past semester with data
+    console.log("DEBUG SemesterSummary: Step 8 - Using fallback semester data");
+    
+    // First try current semester (index 1), then previous semester (index 2)
+    if (allCourseInfo[1]?.length > 0) {
+      console.log("DEBUG SemesterSummary: Step 8A - Using current semester data (index 1)");
+      return allCourseInfo[1].filter(course => course.selected);
+    } else if (allCourseInfo[2]?.length > 0) {
+      console.log("DEBUG SemesterSummary: Step 8B - Using previous semester data (index 2)");
+      return allCourseInfo[2].filter(course => course.selected);
+    }
+    
+    // If all else fails, return empty array
+    console.log("DEBUG SemesterSummary: Step 9 - No data found, returning empty array");
+    return [];
+  }, [allCourseInfo, selectedSemesterIndex, selectedSemesterShortName, cisIdList, isFutureSem, refSemester, localSelectedBySemester]);
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
   }, 0);
 
   const totalEvents = currCourses.reduce((acc, curr) => {
-    return acc + curr.calendarEntry.length;
+    return acc + (curr.calendarEntry?.length || 0);
   }, 0);
 
   function courseSelector(fullEvent) {
@@ -83,6 +151,7 @@ export default function SemesterSummary() {
         return true;
       }
     }
+    return false;
   }
 
   function returnEventOfThatDay(course) {
@@ -219,7 +288,7 @@ export default function SemesterSummary() {
                       <div className="truncate ">{course.classification}</div>
                     </div>
                     <div className="text-center">
-                      <div className="">{course.calendarEntry.length}</div>
+                      <div className="">{course.calendarEntry?.length || 0}</div>
                     </div>
                     <div className="text-center">
                       <div className="">

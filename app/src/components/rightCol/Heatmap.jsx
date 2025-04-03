@@ -4,8 +4,9 @@ import { useRecoilValue } from "recoil";
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import PropTypes from "prop-types";
 import { cisIdList as cisIdListAtom } from "../recoil/cisIdListAtom";
-// import { BodyElement } from "./BodyElement";
 import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
+import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
+import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 
 // Helper to get date from calendar week
 // TODO: Cleanup: move into a helper funciton file
@@ -27,20 +28,40 @@ function getDateOfISOWeek(week, year, getEndOfWeek = false) {
   return ISOweekStart;
 }
 
-function getSemesterDates(cisTermData, selectedIndex) {
+function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
+  // Debug the inputs
+  console.log("DEBUG Heatmap: getSemesterDates inputs:", { 
+    cisTermData: cisTermData ? cisTermData.length : "No data", 
+    selectedIndex, 
+    selectedSemShortName 
+  });
+  
   const selectedSemester = cisTermData[selectedIndex];
+  
+  // Use the selected semester short name if provided, otherwise fall back to the semester from cisTermData
+  const shortName = selectedSemShortName || selectedSemester?.shortName;
+  console.log("DEBUG Heatmap: Using semester short name:", shortName);
+  
+  if (!shortName) {
+    console.warn("DEBUG Heatmap: No short name available for semester, using current year");
+    return {
+      start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
+      end: new Date(new Date().getFullYear(), 11, 31)
+    };
+  }
 
   // Extract year from semester name (e.g. "FS24" -> "24")
-  const yearStr = selectedSemester?.shortName?.slice(-2);
+  // Handles both "FS24" and "FS 24" formats by removing spaces first
+  const cleanShortName = shortName.replace(/\s/g, '');
+  const yearStr = cleanShortName.match(/\d+/)?.[0];
+  
   // Convert to full year (e.g. "24" -> 2024)
   const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
 
   // Check if spring semester
-  const isSpring = selectedSemester?.shortName?.includes("FS");
+  const isSpring = cleanShortName.includes("FS");
 
-  console.log(
-    `Processing semester ${selectedSemester?.shortName} for year ${year}`
-  );
+  console.log(`DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`);
 
   if (isSpring) {
     return {
@@ -78,15 +99,28 @@ export const Heatmap = ({
 
   const cisIdList = useRecoilValue(cisIdListAtom);
   const selectedIndex = useRecoilValue(selectedSemesterIndexAtom);
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterAtom);
+  const isFutureSem = useRecoilValue(isFutureSemesterSelected);
 
-  console.log("cisIdList", cisIdList);
+  console.log("DEBUG Heatmap: Component props/state:", {
+    cisIdList: cisIdList ? cisIdList.length : "No data",
+    selectedIndex,
+    selectedSemesterShortName,
+    isFutureSem,
+    events: events ? events.length : "No events"
+  });
 
-  // Get dynamic semester dates
-  // doesnt work correctly:
+  // Get dynamic semester dates with semester short name to handle future semesters correctly
   const { start: semesterStartDate, end: semesterEndDate } = getSemesterDates(
     cisIdList,
-    selectedIndex
+    selectedIndex,
+    selectedSemesterShortName
   );
+
+  console.log("DEBUG Heatmap: Calculated semester date range:", {
+    start: semesterStartDate.toISOString(),
+    end: semesterEndDate.toISOString()
+  });
 
   // works correctly:
   //const semesterStartDate = new Date("2024-09-16"); // comment for future reference: this also needs to be changed for #changesemester

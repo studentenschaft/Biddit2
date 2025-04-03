@@ -256,6 +256,7 @@ export default function SelectSemester() {
       (term) => term.shortName === selectedOption.value
     );
     setSelectedIndex(selectedIndex);
+    setSelectedSemesterState(selectedOption.value);
   };
 
   // https://react-select.com/home
