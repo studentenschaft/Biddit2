@@ -7,6 +7,7 @@ import { cisIdList as cisIdListAtom } from "../recoil/cisIdListAtom";
 import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
 import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
+import { useMemo, useCallback } from "react";
 
 // Helper to get date from calendar week
 // TODO: Cleanup: move into a helper funciton file
@@ -89,6 +90,24 @@ function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
 //   end: fall.end.toDateString()        // Should be Friday of week 51
 // });
 
+function getDateString(date) {
+  return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
+}
+
+function getWeekNumber(d) {
+  // Copy date so don't modify original
+  d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  // Set to nearest Thursday: current date + 4 - current day number
+  // Make Sunday's day number 7
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+  // Get first day of year
+  var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  // Calculate full weeks to nearest Thursday
+  var weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  // Return array of year and week number
+  return [d.getUTCFullYear(), weekNo];
+}
+
 export const Heatmap = ({
   hovered,
   setCourseOnDay,
@@ -102,25 +121,16 @@ export const Heatmap = ({
   const selectedSemesterShortName = useRecoilValue(selectedSemesterAtom);
   const isFutureSem = useRecoilValue(isFutureSemesterSelected);
 
-  console.log("DEBUG Heatmap: Component props/state:", {
-    cisIdList: cisIdList ? cisIdList.length : "No data",
-    selectedIndex,
-    selectedSemesterShortName,
-    isFutureSem,
-    events: events ? events.length : "No events"
-  });
+  // Memoize semester dates
+  const { start: semesterStartDate, end: semesterEndDate } = useMemo(() => {
+    console.log("DEBUG Heatmap: Calculating semester dates"); // This will only run when dependencies change
+    return getSemesterDates(cisIdList, selectedIndex, selectedSemesterShortName);
+  }, [cisIdList, selectedIndex, selectedSemesterShortName]);
 
-  // Get dynamic semester dates with semester short name to handle future semesters correctly
-  const { start: semesterStartDate, end: semesterEndDate } = getSemesterDates(
-    cisIdList,
-    selectedIndex,
-    selectedSemesterShortName
-  );
-
-  console.log("DEBUG Heatmap: Calculated semester date range:", {
-    start: semesterStartDate.toISOString(),
-    end: semesterEndDate.toISOString()
-  });
+  // Memoize the dates array
+  const dates = useMemo(() => {
+    return getDatesInRange(semesterStartDate, semesterEndDate);
+  }, [semesterStartDate, semesterEndDate]);
 
   // works correctly:
   //const semesterStartDate = new Date("2024-09-16"); // comment for future reference: this also needs to be changed for #changesemester
@@ -200,8 +210,6 @@ export const Heatmap = ({
 
     return dates;
   }
-
-  const dates = getDatesInRange(semesterStartDate, semesterEndDate);
 
   // filter all events from current courses
 
@@ -289,23 +297,10 @@ export const Heatmap = ({
     return false;
   }
 
-  function getDateString(date) {
-    return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
-  }
-
-  function getWeekNumber(d) {
-    // Copy date so don't modify original
-    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-    // Set to nearest Thursday: current date + 4 - current day number
-    // Make Sunday's day number 7
-    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-    // Get first day of year
-    var yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    // Calculate full weeks to nearest Thursday
-    var weekNo = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-    // Return array of year and week number
-    return [d.getUTCFullYear(), weekNo];
-  }
+  const handleMouseEnter = useCallback((date) => {
+    setHoveredDate(date);
+    setCourseOnDay(returnAllCoursesFromDate(date));
+  }, [returnAllCoursesFromDate]);
 
   return (
     <div className="flex flex-col">
@@ -377,10 +372,7 @@ export const Heatmap = ({
                 
                 
                 `}
-                onMouseEnter={() => {
-                  setHoveredDate(date);
-                  setCourseOnDay(returnAllCoursesFromDate(date));
-                }}
+                onMouseEnter={() => handleMouseEnter(date)}
                 onMouseLeave={() => {
                   setHoveredDate(null);
                   setCourseOnDay([]);
