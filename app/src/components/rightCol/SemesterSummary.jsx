@@ -36,18 +36,8 @@ export default function SemesterSummary() {
   
   // Find the appropriate semester data based on semester short name instead of index
   const currCourses = useMemo(() => {
-    // Debug statements to trace data flow
-    console.log("DEBUG SemesterSummary: Step 1 - Starting course selection logic");
-    console.log("DEBUG SemesterSummary: allCourseInfo structure:", Object.keys(allCourseInfo));
-    console.log("DEBUG SemesterSummary: localSelectedBySemester:", localSelectedBySemester);
-    console.log("DEBUG SemesterSummary: selectedSemesterIndex:", selectedSemesterIndex);
-    console.log("DEBUG SemesterSummary: selectedSemesterShortName:", selectedSemesterShortName);
-    console.log("DEBUG SemesterSummary: isFutureSem:", isFutureSem);
-    console.log("DEBUG SemesterSummary: refSemester:", refSemester);
-    
     // Default case: Empty array when no data is available
     if (!allCourseInfo || Object.keys(allCourseInfo).length === 0) {
-      console.log("DEBUG SemesterSummary: Step 2 - No course info available, returning empty array");
       return [];
     }
 
@@ -55,11 +45,9 @@ export default function SemesterSummary() {
     const selectedSemesterDetails = cisIdList[selectedSemesterIndex];
     
     if (!selectedSemesterDetails) {
-      console.log("DEBUG SemesterSummary: Step 3 - No details available for selected semester");
       return []; 
     }
     
-    console.log("DEBUG SemesterSummary: Step 4 - Selected semester details:", selectedSemesterDetails);
     
     // For future semesters, use the semester-keyed saved courses directly
     if (isFutureSem && selectedSemesterShortName) {
@@ -109,19 +97,15 @@ export default function SemesterSummary() {
     }
     
     // Fallback: Try to find the most recent past semester with data
-    console.log("DEBUG SemesterSummary: Step 8 - Using fallback semester data");
     
     // First try current semester (index 1), then previous semester (index 2)
     if (allCourseInfo[1]?.length > 0) {
-      console.log("DEBUG SemesterSummary: Step 8A - Using current semester data (index 1)");
       return allCourseInfo[1].filter(course => course.selected);
     } else if (allCourseInfo[2]?.length > 0) {
-      console.log("DEBUG SemesterSummary: Step 8B - Using previous semester data (index 2)");
       return allCourseInfo[2].filter(course => course.selected);
     }
     
     // If all else fails, return empty array
-    console.log("DEBUG SemesterSummary: Step 9 - No data found, returning empty array");
     return [];
   }, [allCourseInfo, selectedSemesterIndex, selectedSemesterShortName, cisIdList, isFutureSem, refSemester, localSelectedBySemester]);
 

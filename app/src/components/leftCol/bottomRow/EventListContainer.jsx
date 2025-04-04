@@ -205,11 +205,61 @@ export default function EventListContainer({ selectedSemesterState }) {
         );
 
         if (foundStudyPlan) {
+          // Set global state first
           setSelectedCourseIds(foundStudyPlan.courses);
           setCurrentStudyPlanId(foundStudyPlan.id);
           setCurrentStudyPlanIdState(foundStudyPlan.id);
           setCurrentStudyPlan(foundStudyPlan);
-
+  
+          // Then immediately set local selected courses while we have the data in scope
+          // Only update if we have course info for this semester
+          if (allCourseInfo[index] && allCourseInfo[index].length > 0) {
+           
+            // Update index-based atom
+            setLocalSelectedCourses((prevCourses) => {
+              const updatedCourses = { ...prevCourses };
+              updatedCourses[index] = foundStudyPlan.courses
+                .map((courseIdentifier) => {
+                  return allCourseInfo[index].find(
+                    (course) =>
+                      course.courseNumber === courseIdentifier ||
+                      course.id === courseIdentifier
+                  );
+                })
+                .filter(Boolean);
+              return updatedCourses;
+            });
+  
+            // Update semester key-based atom
+            setLocalSelectedCoursesSemKey((prevCourses) => {
+              const updatedCourses = { ...prevCourses };
+              const semKey = selectedSemesterState.shortName;
+              updatedCourses[semKey] = foundStudyPlan.courses
+                .map((courseIdentifier) => {
+                  const course = allCourseInfo[index].find(
+                    (c) =>
+                      c.courseNumber === courseIdentifier ||
+                      c.id === courseIdentifier
+                  );
+                  if (!course) return null;
+                  return {
+                    id: course.id,
+                    shortName: course.shortName,
+                    classification: course.classification,
+                    credits: course.credits,
+                    big_type: course.big_type,
+                    calendarEntry: course.calendarEntry || [],
+                    courseNumber: course.courseNumber,
+                  };
+                })
+                .filter(Boolean);
+              return updatedCourses;
+            });
+            
+            // Mark as set for this semester
+            setHasSetLocalSelectedCourses(true);
+          }
+  
           setStudyPlan({
             currentPlan: foundStudyPlan,
             allPlans: studyPlansData,
@@ -217,7 +267,7 @@ export default function EventListContainer({ selectedSemesterState }) {
             error: null,
           });
         } else {
-          // Create placeholder for future
+          // Create placeholder for future semester
           const placeholderPlan = {
             id: `${semesterName} - Placeholder`,
             courses: [],
@@ -309,6 +359,7 @@ export default function EventListContainer({ selectedSemesterState }) {
     index,
     selectedSemesterState.shortName,
     hasSetLocalSelectedCourses,
+    completeCourseInfo, // to force update when course info is fetched
   ]);
 
   // loading flags

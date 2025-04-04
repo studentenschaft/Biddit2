@@ -6,6 +6,7 @@ import { currentStudyPlanIdState } from "../recoil/currentStudyPlanIdAtom";
 import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { normalizeSemesterName } from "./courseSelection";
 
 /**
  * Shared hook for adding or removing a course in local and backend states.
@@ -74,9 +75,13 @@ export function useCourseSelection({
 
     // Update local selected courses (indexed by shortName)
     setLocalSelectedCoursesSemKey((prevCourses) => {
+      // Add debug logging to see what's happening
+      const normalizedSemesterKey = normalizeSemesterName(selectedSemesterShortName);
+      
       if (typeof prevCourses === "object" && prevCourses !== null) {
         const updatedCourses = { ...prevCourses };
-        const semKey = selectedSemesterShortName;
+        // Use the normalized semester key instead of the raw one
+        const semKey = normalizedSemesterKey;
         // minimal course object
         const minimalCourse = {
           id: course.id,
@@ -85,7 +90,7 @@ export function useCourseSelection({
           credits: course.credits,
           big_type: categoryTypeMap[course.classification] || "",
           calendarEntry: course.calendarEntry || [],
-          courseNumber: course.coursesNumber || "",
+          courseNumber: course.courseNumber || course.coursesNumber || "", // Fix to prefer courseNumber
         };
 
         const courseIndex = updatedCourses[semKey]?.findIndex(
@@ -103,10 +108,13 @@ export function useCourseSelection({
             minimalCourse,
           ];
         }
+        
         return updatedCourses;
       }
+      
+      // Create new entry if prevCourses is not an object
       return {
-        [selectedSemesterShortName]: [
+        [normalizedSemesterKey]: [
           {
             id: course.id,
             shortName: course.shortName,
@@ -114,7 +122,7 @@ export function useCourseSelection({
             credits: course.credits,
             big_type: categoryTypeMap[course.classification] || "",
             calendarEntry: course.calendarEntry || [],
-            courseNumber: course.coursesNumber || "",
+            courseNumber: course.courseNumber || course.coursesNumber || "", // Fix to use either courseNumber or coursesNumber
           },
         ],
       };

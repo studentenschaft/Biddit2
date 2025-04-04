@@ -30,21 +30,12 @@ function getDateOfISOWeek(week, year, getEndOfWeek = false) {
 }
 
 function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
-  // Debug the inputs
-  console.log("DEBUG Heatmap: getSemesterDates inputs:", { 
-    cisTermData: cisTermData ? cisTermData.length : "No data", 
-    selectedIndex, 
-    selectedSemShortName 
-  });
-  
   const selectedSemester = cisTermData[selectedIndex];
   
   // Use the selected semester short name if provided, otherwise fall back to the semester from cisTermData
   const shortName = selectedSemShortName || selectedSemester?.shortName;
-  console.log("DEBUG Heatmap: Using semester short name:", shortName);
   
   if (!shortName) {
-    console.warn("DEBUG Heatmap: No short name available for semester, using current year");
     return {
       start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
       end: new Date(new Date().getFullYear(), 11, 31)
@@ -123,7 +114,6 @@ export const Heatmap = ({
 
   // Memoize semester dates
   const { start: semesterStartDate, end: semesterEndDate } = useMemo(() => {
-    console.log("DEBUG Heatmap: Calculating semester dates"); // This will only run when dependencies change
     return getSemesterDates(cisIdList, selectedIndex, selectedSemesterShortName);
   }, [cisIdList, selectedIndex, selectedSemesterShortName]);
 

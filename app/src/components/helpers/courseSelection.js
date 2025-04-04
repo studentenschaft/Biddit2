@@ -50,10 +50,25 @@ export async function processCourseSelection({
   };
 
 
-    const normalizeSemesterName = (name) => {
-        // Convert "HS 25 - Placeholder" to "HS25"
-        const match = name.match(/(HS|FS)\s*(\d{2})/);
-        return match ? `${match[1]}${match[2]}` : name;
+  export const normalizeSemesterName = (name) => {
+        if (!name) return "";
+        
+        // First, handle the case where there's a space between HS/FS and the number
+        // Examples: "HS 25", "FS 26", "HS 25 - Placeholder"
+        const spaceMatch = name.match(/(HS|FS)\s*(\d{2})/);
+        if (spaceMatch) {
+            return `${spaceMatch[1]}${spaceMatch[2]}`;
+        }
+        
+        // Then handle the case where there's no space
+        // Examples: "HS25", "FS26"
+        const noSpaceMatch = name.match(/(HS|FS)(\d{2})/);
+        if (noSpaceMatch) {
+            return `${noSpaceMatch[1]}${noSpaceMatch[2]}`;
+        }
+        
+        // Return original if no match
+        return name;
     };
 
   
@@ -64,6 +79,10 @@ export async function processCourseSelection({
         // If selected semester is in the future compared to current semester,
         // use name matching
         if (compareSemesters(normalizedTarget, currentSem) > 0) {
+
+          // if match: console log, then return
+          if (studyPlansData.some(plan => normalizeSemesterName(plan.id) === normalizedTarget)) {
+          }
           return studyPlansData.find(plan => 
             normalizeSemesterName(plan.id) === normalizedTarget
           );
