@@ -5,7 +5,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { cisIdListSelector } from "../../recoil/cisIdListSelector";
 import { latestValidTermAtom } from "../../recoil/latestValidTermAtom";
 import axios from "axios";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { authTokenState } from "../../recoil/authAtom";
 import { cisIdList } from "../../recoil/cisIdListAtom";
 import { enrolledCoursesState } from "../../recoil/enrolledCoursesAtom";
@@ -73,27 +73,41 @@ export default function SelectSemester() {
 
   // suspense doc
   // https://recoiljs.org/docs/guides/asynchronous-data-queries
-
   useEffect(() => {
+    console.log(
+      "[CisIdList] Effect triggered - authToken exists:",
+      !!authToken,
+      "cisIdListAtom exists:",
+      !!cisIdListAtom
+    );
     if (authToken && !cisIdListAtom) {
+      console.log("[CisIdList] Conditions met, initiating fetch");
       (async () => {
         //only fetch if cisIdListAtom is empty else use stored value
         try {
-          await axios
-            .get(
-              `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
-              {
-                headers: {
-                  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                  "X-RequestedLanguage": "DE", // careful when working different languages (DE, EN)
-                  "API-Version": "1",
-                  Authorization: `Bearer ${authToken}`,
-                },
-              }
-            )
-            .then((response) => setCisIdList(response.data));
+          console.log("[CisIdList] Making API request");
+          const response = await axios.get(
+            `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
+            {
+              headers: {
+                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+                "X-RequestedLanguage": "DE", // careful when working different languages (DE, EN)
+                "API-Version": "1",
+                Authorization: `Bearer ${authToken}`,
+              },
+            }
+          );
+          console.log("[CisIdList] API response received:", response.data);
+          setCisIdList(response.data);
+          console.log("[CisIdList] State updated with term data");
         } catch (error) {
-          console.error("Error fetching data:", error);
+          console.error("[CisIdList] Error fetching data:", error);
+          console.log(
+            "[CisIdList] Error details:",
+            error.response?.data,
+            "Status:",
+            error.response?.status
+          );
           errorHandlingService.handleError(error);
         }
       })();
@@ -107,6 +121,16 @@ export default function SelectSemester() {
   const [fetchAttempted, setFetchAttempted] = useState(false);
 
   useEffect(() => {
+    console.log("[Courses] Effect triggered with:", {
+      authToken: !!authToken,
+      enrolledCoursesExist: !(
+        !enrolledCourses[1] || enrolledCourses[1].length === 0
+      ),
+      cisIdListExists: !!cisIdListAtom,
+      termIdListExists: !!termIdList,
+      fetchAttempted,
+    });
+
     if (
       authToken &&
       (!enrolledCourses[1] || enrolledCourses[1].length === 0) &&
@@ -114,29 +138,60 @@ export default function SelectSemester() {
       termIdList &&
       !fetchAttempted
     ) {
+      console.log("[Courses] All conditions met for fetch");
       let newestTermId;
       let secondNewestTermId;
+      console.log("[Courses] TermIdList first items:", termIdList.slice(0, 3));
+
       //take the newest term that is marked current
       //note: when new term is published other api calls can be different
       //observed before: Empty response of current enrollments or 429 status code
       //thats why we need the handling below
       if (termIdList[0].isCurrent) {
         newestTermId = termIdList[0].id;
+        console.log(
+          "[Courses] Using newest term:",
+          termIdList[0].shortName,
+          "ID:",
+          newestTermId
+        );
       } else if (termIdList[1].isCurrent) {
         secondNewestTermId = termIdList[1].id;
+        console.log(
+          "[Courses] Using second newest term:",
+          termIdList[1].shortName,
+          "ID:",
+          secondNewestTermId
+        );
       } else {
         if (termIdList[1].isCurrent) {
           newestTermId = termIdList[1].id;
+          console.log(
+            "[Courses] Fallback to term 1:",
+            termIdList[1].shortName,
+            "ID:",
+            newestTermId
+          );
         } else if (termIdList[2].isCurrent) {
           secondNewestTermId = termIdList[2].id;
+          console.log(
+            "[Courses] Fallback to term 2:",
+            termIdList[2].shortName,
+            "ID:",
+            secondNewestTermId
+          );
         } else {
-          console.error("No current term found");
+          console.error("[Courses] No current term found in termIdList");
         }
       }
 
       (async () => {
         //only fetch if eventListAtom is empty else use stored value
         try {
+          console.log(
+            "[Courses] Fetching courses for newest term:",
+            newestTermId
+          );
           let response = await axios.get(
             `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${newestTermId}`,
             {
@@ -148,9 +203,21 @@ export default function SelectSemester() {
               },
             }
           );
+          console.log(
+            "[Courses] Newest term response - courses count:",
+            response.data.length
+          );
           setLatestValidTerm(termIdList[0].shortName);
+          console.log(
+            "[Courses] Set latest valid term to:",
+            termIdList[0].shortName
+          );
 
           if (response.data.length === 0) {
+            console.log(
+              "[Courses] No courses found, trying second term:",
+              secondNewestTermId
+            );
             response = await axios.get(
               `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${secondNewestTermId}`,
               {
@@ -162,17 +229,39 @@ export default function SelectSemester() {
                 },
               }
             );
+            console.log(
+              "[Courses] Second term response - courses count:",
+              response.data.length
+            );
             setLatestValidTerm(termIdList[1].shortName);
+            console.log(
+              "[Courses] Updated latest valid term to:",
+              termIdList[1].shortName
+            );
             updateEnrolledCourses(response.data, 2);
+            console.log("[Courses] Updated enrolled courses with index 2");
           } else {
             updateEnrolledCourses(response.data, 1);
+            console.log("[Courses] Updated enrolled courses with index 1");
           }
         } catch (error) {
-          console.error("Error fetching data:", error);
+          console.error(
+            "[Courses] Error fetching data for newest term:",
+            error
+          );
+          console.log("[Courses] Error details:", {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message,
+          });
           // errorHandlingService.handleError(error);  --> this is ignored because is meant to fail in certain cases
           // if status code 429, then new cisId is not implemented yet at uni IT
           // try again with second newest term
           try {
+            console.log(
+              "[Courses] Attempting fallback to second term:",
+              secondNewestTermId
+            );
             const response = await axios.get(
               `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${secondNewestTermId}`,
               {
@@ -184,14 +273,28 @@ export default function SelectSemester() {
                 },
               }
             );
+            console.log(
+              "[Courses] Fallback successful - courses count:",
+              response.data.length
+            );
             setLatestValidTerm(termIdList[1].shortName);
+            console.log(
+              "[Courses] Set latest term to:",
+              termIdList[1].shortName
+            );
             updateEnrolledCourses(response.data, 2);
+            console.log("[Courses] Updated enrolled courses with index 2");
           } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("[Courses] Fallback fetch also failed:", error);
+            console.log("[Courses] Fallback error details:", {
+              status: error.response?.status,
+              data: error.response?.data,
+            });
             errorHandlingService.handleError(error);
           }
         } finally {
           setFetchAttempted(true); // avoids infinite loop when failing to fetch
+          console.log("[Courses] Set fetchAttempted to true");
         }
       })();
     }
@@ -203,9 +306,34 @@ export default function SelectSemester() {
     "loading semester data..."
   );
 
-  const selectedSemId = termIdList.find(
-    (term) => term.shortName === selectedSem
-  );
+  const selectedSemId = useMemo(() => {
+    if (!selectedSem || selectedSem === "loading semester data...") return null;
+
+    // First try to find a match with the current semester
+    const matchingTerms = termIdList.filter(
+      (term) => term.shortName === selectedSem
+    );
+    console.log(
+      "[Selection] Found",
+      matchingTerms.length,
+      "matching terms for",
+      selectedSem
+    );
+
+    if (matchingTerms.length > 1) {
+      // If multiple matches, prefer the one that matches latestValidTerm
+      if (selectedSem === latestValidTerm) {
+        const validTerm = matchingTerms.find((term) => term.isCurrent);
+        if (validTerm) {
+          console.log("[Selection] Using current term for latest valid term");
+          return validTerm;
+        }
+      }
+      console.log("[Selection] Using first matching term as fallback");
+    }
+
+    return matchingTerms[0] || null;
+  }, [selectedSem, termIdList, latestValidTerm]);
 
   //for semesters that lay in the future
   const courseInfo = useRecoilValue(courseInfoState);
@@ -215,6 +343,15 @@ export default function SelectSemester() {
 
   // handle semesters that lay in the future
   useEffect(() => {
+    console.log(
+      "[Future] Effect triggered - courseInfo entries:",
+      Object.keys(courseInfo || {}).length,
+      "term0:",
+      termIdList?.[0]?.shortName,
+      "term1:",
+      termIdList?.[1]?.shortName
+    );
+
     if (
       courseInfo &&
       Object.keys(courseInfo).length > 0 &&
@@ -223,38 +360,113 @@ export default function SelectSemester() {
     ) {
       // Check which indexes (semesters) are populated and have more than xCourses
       let xCourses = 10; // Ignores semesters with less than 10 courses for projection, also prevents default selection of semesters (this was tested when selected semester default value was null!) with less than 10 courses
+      console.log("[Future] Course counts:", {
+        index1: courseInfo[1]?.length || 0,
+        index2: courseInfo[2]?.length || 0,
+      });
 
       if (courseInfo[1]?.length > xCourses && termIdList[0]) {
         // the first (newest) is considered valid and will be copied along its neighbor [2] for projection into the future
         setLatestValidTermProjection(termIdList[0].shortName);
+        console.log(
+          "[Future] Set projection to newest term:",
+          termIdList[0].shortName
+        );
       } else {
         // the second (newest) is considered valid and will be copied along its neighbor [3] for projection into the future
         setLatestValidTermProjection(termIdList[1].shortName);
+        console.log(
+          "[Future] Set projection to second term:",
+          termIdList[1].shortName
+        );
       }
     }
-  }, [courseInfo, termIdList]);
+  }, [courseInfo, termIdList, setLatestValidTermProjection]);
 
   // handle semesters selection
+  const initialSelectionMadeRef = useRef(false);
+
   useEffect(() => {
-    if (selectedSem === "loading semester data..." && latestValidTerm) {
+    console.log(
+      "[Selection] Effect triggered - selectedSem:",
+      selectedSem,
+      "latestValidTerm:",
+      latestValidTerm,
+      "initialSelectionMade:",
+      initialSelectionMadeRef.current,
+      "fetchAttempted:",
+      fetchAttempted
+    );
+
+    // IMPORTANT: Only select a semester when latestValidTerm is set AND fetch has been attempted
+    // This ensures we don't select before data is available
+    if (
+      latestValidTerm &&
+      fetchAttempted && // Added this condition to ensure data is loaded
+      !initialSelectionMadeRef.current &&
+      (selectedSem === "loading semester data..." ||
+        selectedSem !== latestValidTerm)
+    ) {
+      console.log(
+        "[Selection] Setting initial semester to latest valid term:",
+        latestValidTerm
+      );
       setSelectedSemester(latestValidTerm);
       setSelectedSemesterState(latestValidTerm);
+
+      // Also update the selectedIndex - with better error handling
+      const validTermIndex = termIdList?.findIndex(
+        (term) => term.shortName === latestValidTerm
+      );
+      if (validTermIndex !== -1 && validTermIndex !== undefined) {
+        console.log("[Selection] Setting index to:", validTermIndex);
+        setSelectedIndex(validTermIndex);
+
+        // Mark that we've done the initial selection - ONLY AFTER successful selection
+        initialSelectionMadeRef.current = true;
+        console.log("[Selection] Initial selection completed successfully");
+      } else {
+        console.error(
+          "[Selection] Could not find index for term:",
+          latestValidTerm,
+          "in termIdList"
+        );
+      }
     }
-  }, [selectedSem, latestValidTerm]);
+  }, [
+    selectedSem,
+    latestValidTerm,
+    fetchAttempted, // Add fetchAttempted to the dependency array
+    setSelectedSemesterState,
+    termIdList,
+    setSelectedIndex,
+  ]);
 
   const sortedTermShortNames = useMemo(() => {
+    console.log(
+      "[Sorting] Computing sorted terms from",
+      termIdList?.length || 0,
+      "terms"
+    );
     if (!termIdList?.length) {
+      console.log("[Sorting] No terms, returning loading placeholder");
       return ["loading semester data..."];
     }
-    const shortNames = termIdList.map((term) => term.shortName);
-    return sortTerms(shortNames);
+
+    // Get unique shortNames by using a Set
+    const shortNames = [...new Set(termIdList.map((term) => term.shortName))];
+    const sorted = sortTerms(shortNames);
+    console.log("[Sorting] Result:", sorted);
+    return sorted;
   }, [termIdList]);
 
   const handleSelect = (selectedOption) => {
+    console.log("[Selection] User selected:", selectedOption.value);
     setSelectedSemester(selectedOption.value);
     const selectedIndex = termIdList.findIndex(
       (term) => term.shortName === selectedOption.value
     );
+    console.log("[Selection] Found at index:", selectedIndex);
     setSelectedIndex(selectedIndex);
     setSelectedSemesterState(selectedOption.value);
   };
