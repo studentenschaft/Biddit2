@@ -27,10 +27,10 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    git clone https://github.com/studentenschaft/Biddit2.git
    ```
 
-2. Navigate to the project src directory:
+2. Navigate to the project app directory:
 
    ```bash
-   cd src
+   cd app
    ```
 
 3. Install dependencies:
@@ -45,6 +45,14 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    npm run dev
    ```
 
+### Testing
+
+To ensure no changes break any existing features, run the testing suite with the following command:
+
+```bash
+npm test
+```
+
 ## 🛠️ Technology Stack
 
 - **Frontend**: React with Vite
@@ -56,11 +64,10 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
 
 ```txt
 Biddit2/
-├── .vscode/               # VS Code settings
 ├── docs/                  # Documentation
 │   └── auth/              # Authentication documentation
 │   └── architecture/      # System architecture diagrams
-├── src/                   # Source files
+├── app/                   # App source files
 │   ├── public/            # Static assets
 │   │   └── favicon.ico    # Site favicon
 │   └── src/               # Application source code
@@ -89,11 +96,12 @@ University projects are welcome as well! Just reach out and we can discuss poten
 ## Important Note
 
 This repository only contains the frontend code for Biddit2. The backend code is located in a separate repository which will be private for security reasons. The backend is hosted on a private server and is not publicly accessible. The frontend communicates with the backend via API calls to fetch and send data.
+For API documentation, see the [University of St. Gallen Event API](https://integration.unisg.ch/eventapi/swagger/index.html).
 If you are interested in the backend code, please contact us directly.
 
 ## 📝 License
 
-_This project is licensed under the MIT License - see the LICENSE file for details._
+_This project is licensed under CC BY-NC-SA 4.0 - see the [LICENSE](LICENSE) file for details._
 
 ## 👥 Contact
 
