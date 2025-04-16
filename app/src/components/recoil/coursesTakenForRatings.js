@@ -52,7 +52,11 @@ export const coursesTakenForRatingState = atom({
     get: async ({ get }) => {
       const token = get(authTokenState);
 
+      // here we define the rate-able semesters and their timeSegmentId
+      // i.e., allow ratings for users
+      // tip: use https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations to get correct timeSegmentId
       const ratingSemesterTimeSegmentIds = {
+        "Fall 24": "b6758836-d1d0-4731-a030-852322ebc880",
         "Spring 24": "cdb7331b-2557-46b9-b5dd-4151d8bf0962",
         "Fall 23": "da0fc4f3-7942-4cac-85cd-d8a5f733fe97",
         "Spring 23": "180fed8a-9db7-4e6e-aebb-22f6959b0f42",
