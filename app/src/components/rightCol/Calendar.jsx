@@ -11,10 +11,19 @@ import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/solid";
 import "./calendar.css";
 import { useRecoilValue } from "recoil";
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
+import LoadingText from "../common/LoadingText";
 
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // introduce loading state in order to ensure that the calendar is not displayed before the events are loaded
+  React.useEffect(() => {
+    if (finalEvents && finalEvents.length > 0) {
+      setIsLoading(false);
+    }
+  }, [finalEvents]);
 
   // const events = useRecoilValue(calendarEntriesSelector);
   // // check events for first and last week of entries
@@ -79,6 +88,7 @@ export default function Calendar() {
     },
     eventColor: "#006625",
   };
+  console.log("finalEvents", finalEvents);
 
   return (
     <>
@@ -96,56 +106,62 @@ export default function Calendar() {
           </span>
         )}
       />
-      <div className="flex w-full h-full">
-        <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
-          <div className="absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20">
-            <div onClick={Today}>Today</div>
-          </div>
-          <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
-            <ChevronLeftIcon
-              aria-hidden="true"
-              className="w-10 h-full text-gray-500 align-middle "
-              onClick={() => WeekChange("prev")}
-            />
-          </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full">
+          <LoadingText>Loading calendar entries...</LoadingText>
         </div>
+      ) : (
+        <div className="flex w-full h-full">
+          <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
+            <div className="absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20">
+              <div onClick={Today}>Today</div>
+            </div>
+            <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
+              <ChevronLeftIcon
+                aria-hidden="true"
+                className="w-10 h-full text-gray-500 align-middle "
+                onClick={() => WeekChange("prev")}
+              />
+            </div>
+          </div>
 
-        {/* calendar */}
-        <div className="relative flex-1">
-          <FullCalendar
-            ref={calendarRef}
-            plugins={[timeGridPlugin, dayGridPlugin]}
-            initialView="timeGridWeek"
-            height="100%"
-            events={finalEvents}
-            firstDay={cal.firstDay}
-            slotMinTime="08:00:00"
-            slotMaxTime="22:00:00"
-            hiddenDays="[0]"
-            eventColor="#006625"
-            expandRows={true}
-            slotEventOverlap={false}
-            // eventClick={clickEvent}
-            eventContent={renderEventContent}
-            eventMouseEnter={hoverEvent}
-            allDaySlot={false}
-            headerToolbar={false}
-            footerToolbar={false}
-            slotLabelFormat={cal.eventTimeFormat}
-            slotLabelInterval={cal.slotLabelInterval}
-            dayHeaderFormat={cal.dayHeaderFormat}
-          />
-        </div>
-        <div className="flex items-center mt-7">
-          <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
-            <ChevronRightIcon
-              aria-hidden="true"
-              className="w-10 text-gray-500 align-middle "
-              onClick={() => WeekChange("next")}
+          {/* calendar */}
+          <div className="relative flex-1">
+            <FullCalendar
+              ref={calendarRef}
+              plugins={[timeGridPlugin, dayGridPlugin]}
+              initialView="timeGridWeek"
+              height="100%"
+              events={finalEvents}
+              firstDay={cal.firstDay}
+              slotMinTime="08:00:00"
+              slotMaxTime="22:00:00"
+              hiddenDays="[0]"
+              eventColor="#006625"
+              expandRows={true}
+              slotEventOverlap={false}
+              // eventClick={clickEvent}
+              eventContent={renderEventContent}
+              eventMouseEnter={hoverEvent}
+              allDaySlot={false}
+              headerToolbar={false}
+              footerToolbar={false}
+              slotLabelFormat={cal.eventTimeFormat}
+              slotLabelInterval={cal.slotLabelInterval}
+              dayHeaderFormat={cal.dayHeaderFormat}
             />
           </div>
+          <div className="flex items-center mt-7">
+            <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
+              <ChevronRightIcon
+                aria-hidden="true"
+                className="w-10 text-gray-500 align-middle "
+                onClick={() => WeekChange("next")}
+              />
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }
