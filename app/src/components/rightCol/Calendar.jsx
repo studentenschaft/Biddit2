@@ -21,21 +21,30 @@ export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
   const latestValidTerm = useRecoilValue(latestValidTermAtom);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [calendarKey, setCalendarKey] = React.useState(0);
+  const calendarRef = React.useRef();
 
-  // introduce loading state in order to ensure that the calendar is not displayed before the events are loaded
+  // Force a complete re-render of the calendar when data changes
   React.useEffect(() => {
     if (finalEvents && finalEvents.length > 0) {
       setIsLoading(false);
+      // Force full re-render with new key when events change
+      setCalendarKey((prev) => prev + 1);
     }
   }, [finalEvents, latestValidTerm]);
 
-  // const events = useRecoilValue(calendarEntriesSelector);
-  // // check events for first and last week of entries
-  // const eventStartDates = events.map((event) => moment(event.start));
-  // const firstDay = moment.min(eventStartDates);
-  // const lastDay = moment.max(eventStartDates);
-  // console.log("firstDay", firstDay);
-  // console.log("lastDay", lastDay);
+  // Add effect to ensure calendar is properly rendered after loading
+  React.useEffect(() => {
+    if (!isLoading && calendarRef.current) {
+      // Small delay to ensure DOM is ready
+      const timer = setTimeout(() => {
+        const api = calendarRef.current.getApi();
+        api.render(); // Force calendar to re-render
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, calendarKey]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -71,7 +80,6 @@ export default function Calendar() {
     );
   }
 
-  const calendarRef = React.useRef();
   const WeekChange = (value) => {
     let calendarApi = calendarRef.current.getApi();
     value === "next" ? calendarApi.next() : calendarApi.prev();
@@ -129,7 +137,7 @@ export default function Calendar() {
           </div>
 
           {/* calendar */}
-          <div className="relative flex-1" key={finalEvents.length}>
+          <div className="relative flex-1" key={calendarKey}>
             <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin]}
@@ -152,6 +160,7 @@ export default function Calendar() {
               slotLabelFormat={cal.eventTimeFormat}
               slotLabelInterval={cal.slotLabelInterval}
               dayHeaderFormat={cal.dayHeaderFormat}
+              rerenderDelay={10}
             />
           </div>
           <div className="flex items-center mt-7">
