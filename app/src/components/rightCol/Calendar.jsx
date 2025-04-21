@@ -13,9 +13,13 @@ import { useRecoilValue } from "recoil";
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 
+//Debug attempt for calendar not showing labels when clicking calendar while app is still loading
+import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
+
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
+  const latestValidTerm = useRecoilValue(latestValidTermAtom);
   const [isLoading, setIsLoading] = React.useState(true);
 
   // introduce loading state in order to ensure that the calendar is not displayed before the events are loaded
@@ -23,7 +27,7 @@ export default function Calendar() {
     if (finalEvents && finalEvents.length > 0) {
       setIsLoading(false);
     }
-  }, [finalEvents]);
+  }, [finalEvents, latestValidTerm]);
 
   // const events = useRecoilValue(calendarEntriesSelector);
   // // check events for first and last week of entries
