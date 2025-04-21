@@ -88,7 +88,6 @@ export default function Calendar() {
     },
     eventColor: "#006625",
   };
-  console.log("finalEvents", finalEvents);
 
   return (
     <>
@@ -126,7 +125,7 @@ export default function Calendar() {
           </div>
 
           {/* calendar */}
-          <div className="relative flex-1">
+          <div className="relative flex-1" key={finalEvents.length}>
             <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin]}
