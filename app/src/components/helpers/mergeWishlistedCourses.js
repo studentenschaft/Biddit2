@@ -58,11 +58,6 @@ export async function mergeWishlistedCourses(
       }
       if (semesterCisId.includes("Placeholder")) {
 
-        // TODO: Need to get correct last semester's courses (e.g., HS24 for HS25) for placeholders
-        // Step 1 (if a placeholder): Look up CisIds: Is the last previous same-type semester in the cache?
-        // e.g. for "HS 25 - Placeholder", find the cisID for HS24, and use that as "semesterCisID_adapted" (adjust below to use that in lightCourse interactions)
-        // Step 2: If not, fetch the data and cache it. If yes, use the cached data and insert into this semester's course cache
-
         // Extract semester type and year from placeholder
         const semesterMatch = semesterCisId.match(/(HS|FS)\s*(\d{2})\s*-\s*Placeholder/);
         if (semesterMatch) {
@@ -91,11 +86,11 @@ export async function mergeWishlistedCourses(
 
           // If we found a reference semester, use its data
           if (referenceSemesterId) {
-            console.log(`DEBUG mergeWishlistedCourses: For placeholder ${semesterCisId}, using reference semester ${referenceSemesterName} (${referenceSemesterId})`);
+            //console.log(`DEBUG mergeWishlistedCourses: For placeholder ${semesterCisId}, using reference semester ${referenceSemesterName} (${referenceSemesterId})`);
             
             // Ensure we have the reference semester data in the cache
             if (!lightCourseCache[referenceSemesterId]) {
-              console.log(`DEBUG mergeWishlistedCourses: Fetching data for reference semester ${referenceSemesterName}`);
+              //console.log(`DEBUG mergeWishlistedCourses: Fetching data for reference semester ${referenceSemesterName}`);
               try {
                 const referenceCourseData = await getLightCourseDetails(
                   referenceSemesterId,
@@ -111,9 +106,9 @@ export async function mergeWishlistedCourses(
             
             // Use reference semester data for the placeholder
             lightCourseCache[semesterCisId] = { ...lightCourseCache[referenceSemesterId] };
-            console.log(`DEBUG mergeWishlistedCourses: Copied ${Object.keys(lightCourseCache[semesterCisId]).length} courses from ${referenceSemesterName} to ${semesterCisId}`);
+            //console.log(`DEBUG mergeWishlistedCourses: Copied ${Object.keys(lightCourseCache[semesterCisId]).length} courses from ${referenceSemesterName} to ${semesterCisId}`);
           } else {
-            console.warn(`DEBUG mergeWishlistedCourses: No reference semester found for ${semesterCisId}`);
+            //console.warn(`DEBUG mergeWishlistedCourses: No reference semester found for ${semesterCisId}`);
           }
 
         }
@@ -143,16 +138,6 @@ export async function mergeWishlistedCourses(
         }
 
         const courseDict = lightCourseCache[semesterCisId];
-        // TODO: Let last fall semester be the default for the current semester
-        // (needs fixing, currently it doesnt't work)
-
-        // Step 1: Get all Semester CisIds and their names
-
-        // Step 2: Find the latest HS or FS semester in the past (depending on selected semester)
-
-        // Step 3: Get the course data for that semester
-
-
 
         if (!courseDict) continue;
 
