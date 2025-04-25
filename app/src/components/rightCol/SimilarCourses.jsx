@@ -295,19 +295,36 @@ export default function SimilarCourses({ selectedCourse }) {
   const [overlappingCourses, setOverlappingCourses] = useState([]);
 
   useEffect(() => {
+    //bugfix: 25.04.25 undefined is not an object (evaluating 'X.courses[0].courseNumber')
     if (!coursesCurrentSemester) return;
+
     const locked = coursesCurrentSemester
-      .filter((course) => course.enrolled)
+      .filter(
+        (course) =>
+          course.enrolled &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
       .map((course) => course.courses[0].courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
-      .filter((course) => course.selected)
+      .filter(
+        (course) =>
+          course.selected &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
       .map((course) => course.courses[0].courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
-      .filter((course) => course.overlapping)
+      .filter(
+        (course) =>
+          course.overlapping &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
       .map((course) => course.courses[0].courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
