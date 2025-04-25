@@ -98,25 +98,39 @@ export function useTermSelection() {
       termIdList &&
       !fetchAttempted
     ) {
-      let newestTermId;
-      let secondNewestTermId;
+      setFetchAttempted(true);
 
-      if (termIdList[0].isCurrent) {
-        newestTermId = termIdList[0].id;
-      } else if (termIdList[1].isCurrent) {
-        secondNewestTermId = termIdList[1].id;
+      // Find the most likely current term
+      let primaryTermId;
+      let backupTermId;
+      let primaryTermShortName;
+      let backupTermShortName;
+
+      // First check for terms marked as current in the API
+      const currentTerms = termIdList.filter((term) => term.isCurrent);
+
+      if (currentTerms.length > 0) {
+        // If we have terms marked as current, use the first one
+        primaryTermId = currentTerms[0].id;
+        primaryTermShortName = currentTerms[0].shortName;
+
+        // Backup is the second current term or the first term, whichever exists
+        backupTermId = currentTerms[1]?.id || termIdList[0].id;
+        backupTermShortName =
+          currentTerms[1]?.shortName || termIdList[0].shortName;
       } else {
-        if (termIdList[1].isCurrent) {
-          newestTermId = termIdList[1].id;
-        } else if (termIdList[2].isCurrent) {
-          secondNewestTermId = termIdList[2].id;
-        }
+        // Otherwise fall back to the first two terms by index
+        primaryTermId = termIdList[0].id;
+        primaryTermShortName = termIdList[0].shortName;
+        backupTermId = termIdList[1]?.id;
+        backupTermShortName = termIdList[1]?.shortName;
       }
 
+      // Make a single request first
       (async () => {
         try {
-          let response = await axios.get(
-            `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${newestTermId}`,
+          const response = await axios.get(
+            `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${primaryTermId}`,
             {
               headers: {
                 "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
@@ -127,51 +141,70 @@ export function useTermSelection() {
             }
           );
 
-          setLatestValidTerm(termIdList[0].shortName);
+          setLatestValidTerm(primaryTermShortName);
 
-          if (response.data.length === 0) {
-            response = await axios.get(
-              `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${secondNewestTermId}`,
-              {
-                headers: {
-                  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                  "X-RequestedLanguage": "EN",
-                  "API-Version": "1",
-                  Authorization: `Bearer ${authToken}`,
-                },
-              }
-            );
-            setLatestValidTerm(termIdList[1].shortName);
-            updateEnrolledCourses(response.data, 2);
-          } else {
-            updateEnrolledCourses(response.data, 1);
+          // If we got data or it's an empty array (which is valid), use it
+          updateEnrolledCourses(response.data, 1);
+
+          // Only try backup term if the first one returned an empty array
+          if (response.data.length === 0 && backupTermId) {
+            try {
+              const backupResponse = await axios.get(
+                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
+                {
+                  headers: {
+                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+                    "X-RequestedLanguage": "EN",
+                    "API-Version": "1",
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+
+              setLatestValidTerm(backupTermShortName);
+              updateEnrolledCourses(backupResponse.data, 2);
+            } catch (backupError) {
+              console.error(
+                `[Courses] Error fetching data for backup term:`,
+                backupError
+              );
+              // We already have a valid (though empty) primary term response,
+              // so we don't need to call error handling here
+            }
           }
         } catch (error) {
           console.error(
-            "[Courses] Error fetching data for newest term:",
+            "[Courses] Error fetching data for primary term:",
             error
           );
 
-          // Fallback to second newest term
-          try {
-            const response = await axios.get(
-              `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${secondNewestTermId}`,
-              {
-                headers: {
-                  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                  "X-RequestedLanguage": "EN",
-                  "API-Version": "1",
-                  Authorization: `Bearer ${authToken}`,
-                },
-              }
-            );
-            setLatestValidTerm(termIdList[1].shortName);
-            updateEnrolledCourses(response.data, 2);
-          } catch (error) {
+          // Only try backup if primary failed
+          if (backupTermId) {
+            try {
+              const backupResponse = await axios.get(
+                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
+                {
+                  headers: {
+                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+                    "X-RequestedLanguage": "EN",
+                    "API-Version": "1",
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+
+              setLatestValidTerm(backupTermShortName);
+              updateEnrolledCourses(backupResponse.data, 2);
+            } catch (backupError) {
+              console.error(
+                `[Courses] Error fetching data for backup term:`,
+                backupError
+              );
+              errorHandlingService.handleError(backupError);
+            }
+          } else {
             errorHandlingService.handleError(error);
           }
-        } finally {
-          setFetchAttempted(true);
         }
       })();
     }
