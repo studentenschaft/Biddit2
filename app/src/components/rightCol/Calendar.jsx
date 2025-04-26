@@ -83,12 +83,21 @@ export default function Calendar() {
   const WeekChange = (value) => {
     let calendarApi = calendarRef.current.getApi();
     value === "next" ? calendarApi.next() : calendarApi.prev();
+
+    // Add a small delay to allow the calendar internal state to update
+    setTimeout(() => {
+      calendarApi.render(); // Force calendar to re-render after navigation
+    }, 50);
   };
 
   // UNCOMMENT FOR CUSTOM BUTTON
   const Today = () => {
     let calendarApi = calendarRef.current.getApi();
     calendarApi.today();
+
+    setTimeout(() => {
+      calendarApi.render();
+    }, 50);
   };
 
   var cal = {
