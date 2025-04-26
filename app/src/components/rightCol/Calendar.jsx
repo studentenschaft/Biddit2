@@ -23,6 +23,8 @@ export default function Calendar() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [calendarKey, setCalendarKey] = React.useState(0);
   const calendarRef = React.useRef();
+  // Add state to track initial date for mounting the calendar
+  const [initialDate, setInitialDate] = React.useState(new Date());
 
   // Force a complete re-render of the calendar when data changes
   React.useEffect(() => {
@@ -32,19 +34,6 @@ export default function Calendar() {
       setCalendarKey((prev) => prev + 1);
     }
   }, [finalEvents, latestValidTerm]);
-
-  // Add effect to ensure calendar is properly rendered after loading
-  React.useEffect(() => {
-    if (!isLoading && calendarRef.current) {
-      // Small delay to ensure DOM is ready
-      const timer = setTimeout(() => {
-        const api = calendarRef.current.getApi();
-        api.render(); // Force calendar to re-render
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isLoading, calendarKey]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -82,13 +71,30 @@ export default function Calendar() {
 
   const WeekChange = (value) => {
     let calendarApi = calendarRef.current.getApi();
+
+    // Navigate
     value === "next" ? calendarApi.next() : calendarApi.prev();
+
+    // Store the target date for the new calendar instance
+    const newDate = calendarApi.getDate();
+    setInitialDate(newDate);
+
+    // Force remount with new key
+    setCalendarKey((prev) => prev + 1);
   };
 
-  // UNCOMMENT FOR CUSTOM BUTTON
   const Today = () => {
     let calendarApi = calendarRef.current.getApi();
+
+    // Navigate to today
     calendarApi.today();
+
+    // Store today's date for the new calendar instance
+    const todayDate = calendarApi.getDate();
+    setInitialDate(todayDate);
+
+    // Force remount with new key
+    setCalendarKey((prev) => prev + 1);
   };
 
   var cal = {
@@ -123,6 +129,7 @@ export default function Calendar() {
         </div>
       ) : (
         <div className="flex w-full h-full">
+          {/* Left navigation */}
           <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
             <div className="absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20">
               <div onClick={Today}>Today</div>
@@ -136,12 +143,13 @@ export default function Calendar() {
             </div>
           </div>
 
-          {/* calendar */}
+          {/* Calendar */}
           <div className="relative flex-1" key={calendarKey}>
             <FullCalendar
               ref={calendarRef}
               plugins={[timeGridPlugin, dayGridPlugin]}
               initialView="timeGridWeek"
+              initialDate={initialDate} // This ensures correct date on mount
               height="100%"
               events={finalEvents}
               firstDay={cal.firstDay}
@@ -151,7 +159,6 @@ export default function Calendar() {
               eventColor="#006625"
               expandRows={true}
               slotEventOverlap={false}
-              // eventClick={clickEvent}
               eventContent={renderEventContent}
               eventMouseEnter={hoverEvent}
               allDaySlot={false}
@@ -163,6 +170,7 @@ export default function Calendar() {
               rerenderDelay={10}
             />
           </div>
+          {/* Right navigation */}
           <div className="flex items-center mt-7">
             <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
               <ChevronRightIcon
