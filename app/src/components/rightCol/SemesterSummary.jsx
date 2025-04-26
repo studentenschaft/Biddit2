@@ -53,18 +53,18 @@ export default function SemesterSummary() {
     if (isFutureSem && selectedSemesterShortName) {
       // Check if we have saved courses for this specific future semester
       const semesterSavedCourses = localSelectedBySemester[selectedSemesterShortName];
-      console.log(`DEBUG SemesterSummary: Step 5A - Checking saved courses for future semester ${selectedSemesterShortName}:`, 
-        semesterSavedCourses ? `Found ${semesterSavedCourses.length} courses` : "No courses found");
+      //console.log(`DEBUG SemesterSummary: Step 5A - Checking saved courses for future semester ${selectedSemesterShortName}:`, 
+        //semesterSavedCourses ? `Found ${semesterSavedCourses.length} courses` : "No courses found");
       
       if (semesterSavedCourses && semesterSavedCourses.length > 0) {
-        console.log(`DEBUG SemesterSummary: Step 5B - Using ${semesterSavedCourses.length} saved courses for future semester ${selectedSemesterShortName}`);
+        //console.log(`DEBUG SemesterSummary: Step 5B - Using ${semesterSavedCourses.length} saved courses for future semester ${selectedSemesterShortName}`);
         return semesterSavedCourses;
       }
     }
     
     // Normal case: Directly access data for current semester using the index
     if (allCourseInfo[selectedSemesterIndex + 1] && !isFutureSem) {
-      console.log(`DEBUG SemesterSummary: Step 6 - Using current semester data at index ${selectedSemesterIndex + 1}`);
+      //console.log(`DEBUG SemesterSummary: Step 6 - Using current semester data at index ${selectedSemesterIndex + 1}`);
       return allCourseInfo[selectedSemesterIndex + 1].filter(
         (course) => course.enrolled || course.selected
       );
@@ -74,12 +74,12 @@ export default function SemesterSummary() {
     if (isFutureSem && refSemester) {
       // Try to get saved courses for the reference semester
       const refSemesterSavedCourses = localSelectedBySemester[refSemester.shortName];
-      console.log(`DEBUG SemesterSummary: Step 7A - Checking reference semester ${refSemester.shortName} saved courses:`, 
-        refSemesterSavedCourses ? `Found ${refSemesterSavedCourses.length} courses` : "No courses found");
+      //console.log(`DEBUG SemesterSummary: Step 7A - Checking reference semester ${refSemester.shortName} saved courses:`, 
+        //refSemesterSavedCourses ? `Found ${refSemesterSavedCourses.length} courses` : "No courses found");
       
       // If we have saved courses for reference semester, map them to future semester
       if (refSemesterSavedCourses && refSemesterSavedCourses.length > 0) {
-        console.log(`DEBUG SemesterSummary: Step 7B - Using ${refSemesterSavedCourses.length} saved courses from reference semester ${refSemester.shortName}`);
+        //console.log(`DEBUG SemesterSummary: Step 7B - Using ${refSemesterSavedCourses.length} saved courses from reference semester ${refSemester.shortName}`);
         return refSemesterSavedCourses;
       }
 
@@ -88,10 +88,10 @@ export default function SemesterSummary() {
         item.shortName === refSemester.shortName
       );
       
-      console.log(`DEBUG SemesterSummary: Step 7C - Reference semester index: ${refIndex}`);
+      //console.log(`DEBUG SemesterSummary: Step 7C - Reference semester index: ${refIndex}`);
       
       if (refIndex >= 0 && allCourseInfo[refIndex + 1]) {
-        console.log(`DEBUG SemesterSummary: Step 7D - Using reference semester index ${refIndex} (${refSemester.shortName}) data`);
+        //console.log(`DEBUG SemesterSummary: Step 7D - Using reference semester index ${refIndex} (${refSemester.shortName}) data`);
         return allCourseInfo[refIndex + 1].filter(course => course.selected);
       }
     }

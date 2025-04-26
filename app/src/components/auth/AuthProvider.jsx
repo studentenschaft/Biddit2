@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
         scopes: ["https://integration.unisg.ch/api/user_impersonation"],
       });
       setAuthToken(response.accessToken);
-      console.log("Access token acquired explicitly:", response.accessToken);
+      //console.log("Access token acquired explicitly:", response.accessToken);
     } catch (error) {
       if (error instanceof InteractionRequiredAuthError) {
         try {
@@ -48,10 +48,7 @@ export const AuthProvider = ({ children }) => {
             scopes: ["https://integration.unisg.ch/api/user_impersonation"],
           });
           setAuthToken(response.accessToken);
-          console.log(
-            "Access token acquired via redirect:",
-            response.accessToken
-          );
+          //console.log("Access token acquired via redirect:", response.accessToken); );
         } catch (err) {
           console.error("Token acquisition via redirect failed:", err);
         }
@@ -71,7 +68,7 @@ export const AuthProvider = ({ children }) => {
       ) {
         const account = event.payload.account;
         msalInstance.setActiveAccount(account);
-        console.log("Active account set:", account);
+        //console.log("Active account set:", account);
         acquireToken(account);
       }
     });

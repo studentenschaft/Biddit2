@@ -10,7 +10,6 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 import { useMemo, useCallback } from "react";
 
 // Helper to get date from calendar week
-// TODO: Cleanup: move into a helper funciton file
 // Helper to get date from calendar week
 function getDateOfISOWeek(week, year, getEndOfWeek = false) {
   // Simple formula to get first day of week
