@@ -84,10 +84,13 @@ export default function Calendar() {
     let calendarApi = calendarRef.current.getApi();
     value === "next" ? calendarApi.next() : calendarApi.prev();
 
-    // Add a small delay to allow the calendar internal state to update
+    // Force full component re-render with new key
+    setCalendarKey((prev) => prev + 1);
+
+    // Small delay for render
     setTimeout(() => {
       calendarApi.render(); // Force calendar to re-render after navigation
-    }, 50);
+    }, 100); // Slightly longer delay (100ms instead of 50ms)
   };
 
   // UNCOMMENT FOR CUSTOM BUTTON
@@ -95,9 +98,13 @@ export default function Calendar() {
     let calendarApi = calendarRef.current.getApi();
     calendarApi.today();
 
+    // Force full component re-render with new key
+    setCalendarKey((prev) => prev + 1);
+
+    // Small delay for render
     setTimeout(() => {
       calendarApi.render();
-    }, 50);
+    }, 100); // Slightly longer delay
   };
 
   var cal = {
