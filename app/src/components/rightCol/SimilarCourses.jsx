@@ -271,16 +271,16 @@ export default function SimilarCourses({ selectedCourse }) {
         const creditsMatch =
           creditsFilter === "all" ||
           creditsFilter === (course.credits / 100).toFixed(2);
-        // TODO: Find out why some matches are found but not displayed
-        console.log(
-          "categoryMatch && creditsMatch",
-          categoryMatch && creditsMatch
-        );
+
+        // console.log(
+        //   "categoryMatch && creditsMatch",
+        //   categoryMatch && creditsMatch
+        // );
         return categoryMatch && creditsMatch;
       })
     : [];
 
-  console.log("filteredCourses", filteredCourses);
+  // console.log("filteredCourses", filteredCourses);
 
   // reset filter, similarCourses, Courses to display when new course selected
   useEffect(() => {

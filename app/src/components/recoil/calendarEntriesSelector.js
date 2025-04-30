@@ -5,6 +5,10 @@ import { cisIdListSelector } from "./cisIdListSelector";
 
 import { allCourseInfoState } from "./allCourseInfosSelector";
 
+// for future semesters handling
+import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
+import { referenceSemesterAtom } from "./referenceSemesterAtom";
+
 /**
  * Build an index of overlapping time slots
  * Returns a Map where keys are event start times and values are sets of event end times
@@ -53,11 +57,53 @@ export const calendarEntriesSelector = selector({
       );
       return [];
     }
-
-    // Retrieve all courses and define an adjusted semester index.
-    // Adjusted semester logic can be enhanced if needed.
+    // Retrieve all courses and define the correct semester index.
+    // If a future semester is selected, use the reference semester for course info.
     const allCourses = get(allCourseInfoState);
-    const adjustedSemester = selectedSemesterIndex;
+    const futureSemesterSelected = get(isFutureSemesterSelected);
+    const referenceSemester = get(referenceSemesterAtom);
+
+    console.log(
+      "CalendarEntriesSelector - selectedSemesterIndex:",
+      selectedSemesterIndex,
+      "referenceSemester:",
+      referenceSemester
+    );
+
+    console.log(
+      "CalendarEntriesSelector - allCourses:",
+      allCourses,
+      "futureSemesterSelected:",
+      futureSemesterSelected
+    );
+
+    let adjustedSemester = selectedSemesterIndex;
+    if (futureSemesterSelected && referenceSemester != null) {
+      // Check if referenceSemester is already a number, otherwise find the correct index
+      if (typeof referenceSemester === "number") {
+        adjustedSemester = referenceSemester;
+      } else {
+        // Find the index in cisIdList that corresponds to referenceSemester
+        console.log("referenceSemester:", referenceSemester);
+        console.log("cisIdList:", cisIdList);
+        const referenceIndex = cisIdList.findIndex(
+          (sem) => sem.shortName === referenceSemester.shortName
+        );
+        if (referenceIndex !== -1) {
+          adjustedSemester = referenceIndex;
+        }
+      }
+    }
+
+    console.log(
+      "CalendarEntriesSelector - Using adjustedSemester:",
+      adjustedSemester,
+      "which maps to:",
+      allCourses[adjustedSemester + 1]
+        ? `${allCourses[adjustedSemester + 1].length} courses`
+        : "no courses"
+    );
+
     const currentCourses = (allCourses[adjustedSemester + 1] || []).filter(
       (course) => course.enrolled || course.selected
     );
