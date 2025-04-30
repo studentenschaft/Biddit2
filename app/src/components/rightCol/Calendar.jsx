@@ -28,7 +28,7 @@ export default function Calendar() {
 
   // Force a complete re-render of the calendar when data changes
   React.useEffect(() => {
-    if (finalEvents && finalEvents.length > 0) {
+    if (finalEvents) {
       setIsLoading(false);
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
@@ -126,6 +126,12 @@ export default function Calendar() {
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <LoadingText>Loading calendar entries...</LoadingText>
+        </div>
+      ) : finalEvents.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-500 text-lg">
+            No courses available for this semester
+          </p>
         </div>
       ) : (
         <div className="flex w-full h-full">
