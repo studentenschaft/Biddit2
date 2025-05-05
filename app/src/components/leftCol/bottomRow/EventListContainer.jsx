@@ -204,17 +204,18 @@ export default function EventListContainer({ selectedSemesterState }) {
           currentRealSemesterName
         );
 
+        console.warn("studyPlan found:", foundStudyPlan);
+
         if (foundStudyPlan) {
           // Set global state first
           setSelectedCourseIds(foundStudyPlan.courses);
           setCurrentStudyPlanId(foundStudyPlan.id);
           setCurrentStudyPlanIdState(foundStudyPlan.id);
           setCurrentStudyPlan(foundStudyPlan);
-  
+
           // Then immediately set local selected courses while we have the data in scope
           // Only update if we have course info for this semester
           if (allCourseInfo[index] && allCourseInfo[index].length > 0) {
-           
             // Update index-based atom
             setLocalSelectedCourses((prevCourses) => {
               const updatedCourses = { ...prevCourses };
@@ -229,7 +230,7 @@ export default function EventListContainer({ selectedSemesterState }) {
                 .filter(Boolean);
               return updatedCourses;
             });
-  
+
             // Update semester key-based atom
             setLocalSelectedCoursesSemKey((prevCourses) => {
               const updatedCourses = { ...prevCourses };
@@ -255,11 +256,13 @@ export default function EventListContainer({ selectedSemesterState }) {
                 .filter(Boolean);
               return updatedCourses;
             });
-            
+
             // Mark as set for this semester
             setHasSetLocalSelectedCourses(true);
           }
-  
+
+          //TODO: Actually send the study plan to the backend 05.05.2025
+
           setStudyPlan({
             currentPlan: foundStudyPlan,
             allPlans: studyPlansData,
@@ -267,11 +270,13 @@ export default function EventListContainer({ selectedSemesterState }) {
             error: null,
           });
         } else {
+          console.warn("create placeholder plan for future semester");
           // Create placeholder for future semester
           const placeholderPlan = {
             id: `${semesterName} - Placeholder`,
             courses: [],
           };
+          console.warn("placeholderPlan:", placeholderPlan);
           setStudyPlan((prev) => ({
             ...prev,
             currentPlan: placeholderPlan,
@@ -519,7 +524,7 @@ export default function EventListContainer({ selectedSemesterState }) {
         event,
         selectedCourseIds
       );
-      
+
       // For future semesters, we should not show any enrolled courses as that's impossible
       const isFutureSemester = referenceSemesterState !== null;
       const isEnrolled = event.enrolled && !isFutureSemester;
