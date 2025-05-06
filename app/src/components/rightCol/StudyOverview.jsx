@@ -39,6 +39,7 @@ import {
 } from "../helpers/studyOverviewHelpers";
 import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { useMergeWishlistedCourses } from "../helpers/useMergeWishlistedCourses";
+import { usePrefetchSemesters } from "../helpers/usePrefetchSemesters";
 
 /**
  * Main component that renders the study overview page.
@@ -58,8 +59,9 @@ const StudyOverview = () => {
   const currentSemester = useCurrentSemester();
   const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
 
-  // Initialize scorecards on mount.
+  // Initialize scorecards and prefetch semester data
   useInitializeScoreCards(handleError);
+  const { isPrefetching } = usePrefetchSemesters();
   const scorecardData = useRecoilValue(scorecardDataState);
 
   // Local state for the selected semester.
@@ -229,10 +231,12 @@ const finalDisplayDataWithEnrolled = useMemo(() => {
     <div className="flex flex-col px-8 py-4">
       <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
 
-      {/* Display loading spinner if scorecard data is loading or wishlist merge is in progress */}
-      {(!scorecardData || scorecardData.loading || isMergingWishlist) && (
+      {/* Display loading spinner if still loading data */}
+      {(!scorecardData || scorecardData.loading || isMergingWishlist || isPrefetching) && (
         <div className="mb-6">
-          <LoadingText>Loading your saved courses...</LoadingText>
+          <LoadingText>
+            {isPrefetching ? "Loading data for all semesters..." : "Loading your saved courses..."}
+          </LoadingText>
           <LoadingSkeletonStudyOverview />
         </div>
       )}
@@ -241,6 +245,7 @@ const finalDisplayDataWithEnrolled = useMemo(() => {
       {scorecardData &&
         !scorecardData.loading &&
         !isMergingWishlist &&
+        !isPrefetching &&
         Object.keys(finalDisplayData).length === 0 && (
           <div>No scorecard data found.</div>
         )}
