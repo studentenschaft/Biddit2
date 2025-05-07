@@ -55,7 +55,7 @@ import { studyPlanAtom } from "../../recoil/studyPlanAtom";
 import { selectedCourseIdsAtom } from "../../recoil/selectedCourseIdsAtom";
 
 // API calls for selected course
-import { getStudyPlan } from "../../helpers/api";
+import { getStudyPlan, initializeSemester } from "../../helpers/api";
 
 import { currentStudyPlanIdState } from "../../recoil/currentStudyPlanIdAtom";
 
@@ -197,6 +197,7 @@ export default function EventListContainer({ selectedSemesterState }) {
         const currentSemesterId = selectedSemesterState.cisId;
         const semesterName = selectedSemesterState.shortName;
 
+        // this works for both semesterId and shortName, --> in the Future we should only use shortName
         const foundStudyPlan = findStudyPlanBySemester(
           studyPlansData,
           currentSemesterId,
@@ -261,8 +262,6 @@ export default function EventListContainer({ selectedSemesterState }) {
             setHasSetLocalSelectedCourses(true);
           }
 
-          //TODO: Actually send the study plan to the backend 05.05.2025
-
           setStudyPlan({
             currentPlan: foundStudyPlan,
             allPlans: studyPlansData,
@@ -270,18 +269,24 @@ export default function EventListContainer({ selectedSemesterState }) {
             error: null,
           });
         } else {
-          console.warn("create placeholder plan for future semester");
-          // Create placeholder for future semester
-          const placeholderPlan = {
-            id: `${semesterName} - Placeholder`,
-            courses: [],
-          };
-          console.warn("placeholderPlan:", placeholderPlan);
-          setStudyPlan((prev) => ({
-            ...prev,
-            currentPlan: placeholderPlan,
-            isLoading: false,
-          }));
+          // for new study plans we want to use just the shortName as identifier
+          // If no study plan is found we create a new plan using the selected semester shortName in the backend
+
+          console.warn("initializing new semester study plan:", semesterName);
+          // // initialize a new semester in the study plan backend
+          if (!semesterName) {
+            console.error(
+              "No semester name provided for initialization of new semester study plan"
+            );
+            return;
+          }
+          const newStudyPlan = await initializeSemester(
+            semesterName,
+            authToken
+          );
+          console.warn("new study plan:", newStudyPlan);
+          // after initializing we fetch again the study plan data and the newly created plan is set
+          fetchStudyPlanData(); // Re-fetch the study plan data to get the new plan
         }
       } catch (error) {
         console.error("Error fetching study plan data:", error);
