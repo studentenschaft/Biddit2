@@ -234,7 +234,7 @@ export default function SmartSearch() {
   const [creditsFilter, setCreditsFilter] = useState("all");
 
   const filteredCourses = similarCourses.ids
-    ? similarCourses.ids[0].filter((id, index) => {
+    ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
           (course) =>
             course.courses[0].courseNumber === id.replace(/[A-Z]+\d+/g, "")
@@ -242,8 +242,7 @@ export default function SmartSearch() {
         if (!course) return false;
 
         const categoryMatch =
-          categoryFilter === "all" ||
-          categoryFilter === similarCourses.metadatas[0][index].category;
+          categoryFilter === "all" || categoryFilter === course.classification; // Use local classification instead of API category
 
         const creditsMatch =
           creditsFilter === "all" ||
@@ -341,7 +340,7 @@ export default function SmartSearch() {
         </h2>
         <div className="text-sm text-gray-600 pl-2 border-l-2 border-green-200">
           <p className="mb-1">
-            Find courses based on what they're really about!
+            Find courses based on what they&apos;re really about!
           </p>
           <p className="mb-1">✨ Try descriptive phrases like:</p>
           <p className="font-medium pl-3 text-green-700">
@@ -394,9 +393,16 @@ export default function SmartSearch() {
             </option>
             {[
               ...new Set(
-                similarCourses.metadatas?.[0].map(
-                  (metadata) => metadata.category
-                )
+                similarCourses.ids?.[0]
+                  .map((id) => {
+                    const course = coursesCurrentSemester.find(
+                      (course) =>
+                        course.courses[0].courseNumber ===
+                        id.replace(/[A-Z]+\d+/g, "")
+                    );
+                    return course ? course.classification : null;
+                  })
+                  .filter((category) => category !== null)
               ),
             ]
               .sort()
@@ -591,7 +597,7 @@ export default function SmartSearch() {
             </tbody>
           </table>
         </div>
-      ) : searchInput && !isLoading ? (
+      ) : searchInput && similarCourses.ids && !isLoading ? (
         <div className="text-center mt-4">
           <p>No similar courses found</p>
         </div>
