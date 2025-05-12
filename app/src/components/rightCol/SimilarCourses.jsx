@@ -257,7 +257,7 @@ export default function SimilarCourses({ selectedCourse }) {
   const [creditsFilter, setCreditsFilter] = useState("all");
 
   const filteredCourses = similarCourses.ids
-    ? similarCourses.ids[0].filter((id, index) => {
+    ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
           (course) =>
             course.courses[0].courseNumber === id.replace(/[A-Z]+\d+/g, "")
@@ -265,17 +265,12 @@ export default function SimilarCourses({ selectedCourse }) {
         if (!course) return false;
 
         const categoryMatch =
-          categoryFilter === "all" ||
-          categoryFilter === similarCourses.metadatas[0][index].category;
+          categoryFilter === "all" || categoryFilter === course.classification; // Use local classification instead of API category
 
         const creditsMatch =
           creditsFilter === "all" ||
           creditsFilter === (course.credits / 100).toFixed(2);
 
-        // console.log(
-        //   "categoryMatch && creditsMatch",
-        //   categoryMatch && creditsMatch
-        // );
         return categoryMatch && creditsMatch;
       })
     : [];
@@ -406,9 +401,16 @@ export default function SimilarCourses({ selectedCourse }) {
             </option>
             {[
               ...new Set(
-                similarCourses.metadatas?.[0].map(
-                  (metadata) => metadata.category
-                )
+                similarCourses.ids?.[0]
+                  .map((id) => {
+                    const course = coursesCurrentSemester.find(
+                      (course) =>
+                        course.courses[0].courseNumber ===
+                        id.replace(/[A-Z]+\d+/g, "")
+                    );
+                    return course ? course.classification : null;
+                  })
+                  .filter((category) => category !== null)
               ),
             ]
               .sort()
