@@ -45,9 +45,9 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    npm run dev
    ```
 
-### Testing
+### Testing (COMING SOON)
 
-To ensure no changes break any existing features, run the testing suite with the following command:
+To ensure no changes break any existing features, run the testing suite with the following command (CURRENTLY STILL IN DEVELOPMENT):
 
 ```bash
 npm test
