@@ -14,6 +14,7 @@ import {
 } from "../recoil/selectedSemesterAtom";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUpdateEnrolledCoursesAtom } from "../helpers/useUpdateEnrolledCourses";
+import { referenceSemesterAtom } from "../recoil/referenceSemesterAtom";
 
 /**
  * Custom hook to handle term selection logic including:
@@ -31,6 +32,7 @@ export function useTermSelection() {
   const enrolledCourses = useRecoilValue(enrolledCoursesState);
   const [, setSelectedIndex] = useRecoilState(selectedSemesterIndexAtom);
   const [, setSelectedSemesterState] = useRecoilState(selectedSemesterAtom);
+  const [, setReferenceSemester] = useRecoilState(referenceSemesterAtom);
 
   // Local state
   const [fetchAttempted, setFetchAttempted] = useState(false);
@@ -259,6 +261,41 @@ export function useTermSelection() {
     setSelectedSemesterState,
     termIdList,
     setSelectedIndex,
+  ]);
+
+  // Add this new effect to update reference semester when selected semester changes
+  useEffect(() => {
+    if (termIdList?.length && selectedSem !== "loading semester data...") {
+      const selectedTermIdx = termIdList.findIndex(
+        (term) => term.shortName === selectedSem
+      );
+
+      // Check if selected semester is in the future
+      const isFutureSemester =
+        /* determine if this is a future semester */
+        // You can compare dates, check a flag, or use your existing method
+        selectedTermIdx >
+        termIdList.findIndex((term) => term.shortName === latestValidTerm);
+
+      if (isFutureSemester) {
+        // Use the reference semester for future semester projections
+        const referenceTermShortName =
+          courseInfo[1]?.length > 10 && termIdList[0]
+            ? termIdList[0].shortName
+            : termIdList[1].shortName;
+
+        setReferenceSemester(referenceTermShortName);
+      } else {
+        // For current/past semesters, reference is itself
+        setReferenceSemester(selectedSem);
+      }
+    }
+  }, [
+    selectedSem,
+    termIdList,
+    latestValidTerm,
+    courseInfo,
+    setReferenceSemester,
   ]);
 
   // Get sorted terms for the dropdown

@@ -16,6 +16,9 @@ import LoadingText from "../common/LoadingText";
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
 import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
 
+// future semesters handling
+import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
+
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
@@ -26,14 +29,51 @@ export default function Calendar() {
   // Add state to track initial date for mounting the calendar
   const [initialDate, setInitialDate] = React.useState(new Date());
 
-  // Force a complete re-render of the calendar when data changes
+  // Get future semester state
+  const isFutureSemesterSelectedState = useRecoilValue(
+    isFutureSemesterSelected
+  );
+
+  console.log("Final Events:", finalEvents);
+  console.log("Calender Entries selector:", calendarEntriesSelector);
+
+  // Get first and last event dates for future semester navigation
+  const [firstEventDate, setFirstEventDate] = React.useState(null);
+  const [lastEventDate, setLastEventDate] = React.useState(null);
+
+  // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
-    if (finalEvents && finalEvents.length > 0) {
+    if (finalEvents) {
       setIsLoading(false);
+
+      // Sort events by start date
+      const sortedEvents = [...finalEvents].sort(
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+      );
+
+      // Ignore outliers: use the 5th and 95th percentile events as boundaries if enough events exist
+      let firstIdx = 0;
+      let lastIdx = sortedEvents.length - 1;
+      if (sortedEvents.length > 10) {
+        firstIdx = Math.floor(sortedEvents.length * 0.05);
+        lastIdx = Math.ceil(sortedEvents.length * 0.95) - 1;
+      }
+
+      const firstDate = sortedEvents[firstIdx].start;
+      const lastDate = sortedEvents[lastIdx].start;
+
+      setFirstEventDate(new Date(firstDate));
+      setLastEventDate(new Date(lastDate));
+
+      // If future semester, set initial date to first event (ignoring outliers)
+      if (isFutureSemesterSelectedState && finalEvents.length > 0) {
+        setInitialDate(new Date(firstDate));
+      }
+
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
     }
-  }, [finalEvents, latestValidTerm]);
+  }, [finalEvents, latestValidTerm, isFutureSemesterSelectedState]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -83,6 +123,19 @@ export default function Calendar() {
     setCalendarKey((prev) => prev + 1);
   };
 
+  const NavigateToDate = (targetDate) => {
+    if (!targetDate) return;
+
+    let calendarApi = calendarRef.current.getApi();
+    calendarApi.gotoDate(targetDate);
+
+    // Store the target date for the new calendar instance
+    setInitialDate(targetDate);
+
+    // Force remount with new key
+    setCalendarKey((prev) => prev + 1);
+  };
+
   const Today = () => {
     let calendarApi = calendarRef.current.getApi();
 
@@ -107,6 +160,9 @@ export default function Calendar() {
     eventColor: "#006625",
   };
 
+  // handle future semesters
+  console.log("isFutureSemesterSelected:", isFutureSemesterSelectedState);
+
   return (
     <>
       <ReactTooltip
@@ -123,16 +179,57 @@ export default function Calendar() {
           </span>
         )}
       />
+
+      {/* Show projection data banner for future semesters */}
+      {isFutureSemesterSelectedState && (
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 p-2 mb-2 text-yellow-700">
+          <p className="text-sm font-medium">
+            Showing projected schedule data for a future semester. All dates are
+            based on the previous semester&apos;s schedule and are likely to
+            change.
+          </p>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-full">
           <LoadingText>Loading calendar entries...</LoadingText>
+        </div>
+      ) : finalEvents.length === 0 ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-gray-500 text-lg">
+            No courses available for this semester
+          </p>
         </div>
       ) : (
         <div className="flex w-full h-full">
           {/* Left navigation */}
           <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
-            <div className="absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20">
-              <div onClick={Today}>Today</div>
+            {/* Move navigation buttons below the notice by adding extra margin if notice is shown */}
+            <div
+              className={`absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20 ${
+                isFutureSemesterSelectedState ? "mt-12" : ""
+              }`}
+              style={isFutureSemesterSelectedState ? { top: "5.5rem" } : {}}
+            >
+              {isFutureSemesterSelectedState ? (
+                <div className="flex space-x-2">
+                  <button
+                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
+                    onClick={() => NavigateToDate(firstEventDate)}
+                  >
+                    Start
+                  </button>
+                  <button
+                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
+                    onClick={() => NavigateToDate(lastEventDate)}
+                  >
+                    End
+                  </button>
+                </div>
+              ) : (
+                <div onClick={Today}>Today</div>
+              )}
             </div>
             <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
               <ChevronLeftIcon

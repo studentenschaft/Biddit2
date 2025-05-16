@@ -190,7 +190,7 @@ export default function CourseInfo() {
         <header className="font-bold lg:text-2xl">
           <div className="flex justify-between pb-4">
             <a
-              href={selectedCourse && selectedCourse.courses[0].timeTableLink}
+              href={selectedCourse?.courses?.[0]?.timeTableLink || "#"} // bugfix 30.4.25  Error Message: undefined is not an object (evaluating 'n.courses[0]')
               target="_blank"
               rel="noreferrer"
             >
