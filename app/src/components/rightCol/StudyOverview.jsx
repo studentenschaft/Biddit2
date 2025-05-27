@@ -7,7 +7,7 @@
  */
 
 import { useEffect, useState, useMemo, useCallback } from "react";
-import { useRecoilValue, useSetRecoilState, useRecoilState } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { authTokenState } from "../recoil/authAtom";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import LoadingText from "../common/LoadingText";
@@ -24,10 +24,7 @@ import { mergedScorecardBySemesterAtom } from "../recoil/mergedScorecardBySemest
 import { mergedOverviewSelector } from "../recoil/mergedOverviewSelector";
 import { LoadingSkeletonStudyOverview } from "./LoadingSkeletons";
 
-import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
-
-
-import { enrolledCoursesState } from '../recoil/enrolledCoursesAtom';
+import { currentSemesterAllCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
 import {
   useCurrentSemester,
   getTypeColor,
@@ -51,7 +48,6 @@ const StudyOverview = () => {
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const handleError = useErrorHandler();
   const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
-  const [enrolledCourses, setEnrolledCourses] = useRecoilState(enrolledCoursesState);
   const [scorecardError, setScorecardError] = useState(false);
 
   // Retrieve current semester and wishlist mapping.
@@ -85,13 +81,22 @@ const StudyOverview = () => {
   }, [authToken, currentEnrollments, setCurrentEnrollments, handleError]);
 
   // Trigger merging of wishlisted courses via the custom hook.
-  useMergeWishlistedCourses(authToken, currentSemester, categoryTypeMap, handleError);
+  useMergeWishlistedCourses(
+    authToken,
+    currentSemester,
+    categoryTypeMap,
+    handleError
+  );
 
   // Retrieve the merged scorecard data from Recoil.
-  const mergedScorecardBySemester = useRecoilValue(mergedScorecardBySemesterAtom);
+  const mergedScorecardBySemester = useRecoilValue(
+    mergedScorecardBySemesterAtom
+  );
 
   // Determine if wishlist merging is in progress.
-  const baseSemesterKeyedScorecards = useRecoilValue(transformedScorecardsSelector);
+  const baseSemesterKeyedScorecards = useRecoilValue(
+    transformedScorecardsSelector
+  );
   const isMergingWishlist =
     !mergedScorecardBySemester &&
     baseSemesterKeyedScorecards &&
@@ -100,82 +105,78 @@ const StudyOverview = () => {
   // Retrieve final display data derived from the merged scorecards.
   const finalDisplayData = useRecoilValue(mergedOverviewSelector);
 
-
-
-  // ----- Merge enrolledCourses into the final display data -----
   // Get current semester outside of useMemo
   const currentSem = useCurrentSemester();
 
-  const allCourseInfo = useRecoilValue(allCourseInfoState);
-  
-  // Use data from allCourseInfoState instead of manually merging enrollments
-const finalDisplayDataWithEnrolled = useMemo(() => {
-  if (!finalDisplayData || !allCourseInfo) return finalDisplayData;
-  
-  // Early return if no enrolled courses
-  const currentSemesterIndex = "1";
-  const currentEnrolledCourses = allCourseInfo[currentSemesterIndex]?.filter(
-    course => course.enrolled
-  ) || [];
-  
-  if (currentEnrolledCourses.length === 0) {
-    return finalDisplayData; // No enrolled courses to add
-  }
-  
-  // Create a map for quick lookup
-  const updated = JSON.parse(JSON.stringify(finalDisplayData));
-  
-  // Pre-format all enrolled courses once
-  const enrolledCoursesFormatted = currentEnrolledCourses.map((course) => ({
-    name: course.shortName || course.eventDescription,
-    credits: course.credits / 100, 
-    type: course.classification || "core",
-    courseId: course.id,
-    courseNumber: course.courseNumber,
-    description: course.eventDescription,
-    eventCourseNumber: course.eventCourseNumber,
-    languageId: course.languageId
-  }));
-  
-  // Create a lookup set for faster duplicate checking
-  const existingCourseIds = new Set();
-  const existingCourseNames = new Set();
-  
-  // Iterate through each program
-  Object.keys(updated).forEach((program) => {
-    // Find the semester that matches the current semester
-    const semesterKeys = Object.keys(updated[program]);
-    const currentSemesterKey = semesterKeys.find(
-      (semKey) => removeSpacesFromSemesterName(semKey) === removeSpacesFromSemesterName(currentSem)
-    );
-    
-    if (currentSemesterKey) {
-      if (!updated[program][currentSemesterKey]) {
-        updated[program][currentSemesterKey] = [];
-      }
-      
-      // Collect existing course IDs and names for fast lookups
-      updated[program][currentSemesterKey].forEach(course => {
-        if (course.courseId) existingCourseIds.add(course.courseId);
-        if (course.name) existingCourseNames.add(course.name);
-      });
-      
-      // Add non-duplicate courses
-      enrolledCoursesFormatted.forEach((newCourse) => {
-        if (!existingCourseIds.has(newCourse.courseId) && 
-            !existingCourseNames.has(newCourse.name)) {
-          updated[program][currentSemesterKey].push(newCourse);
-        }
-      });
+  const allCourseInfo = useRecoilValue(currentSemesterAllCoursesSelector);
+
+  // Use data from unified course system instead of manually merging enrollments
+  const finalDisplayDataWithEnrolled = useMemo(() => {
+    if (!finalDisplayData || !allCourseInfo) return finalDisplayData;
+
+    // Early return if no enrolled courses
+    const currentEnrolledCourses =
+      allCourseInfo.filter((course) => course.enrolled) || [];
+
+    if (currentEnrolledCourses.length === 0) {
+      return finalDisplayData; // No enrolled courses to add
     }
-  });
-  
-  return updated;
-}, [finalDisplayData, allCourseInfo, currentSem]);
 
+    // Create a map for quick lookup
+    const updated = JSON.parse(JSON.stringify(finalDisplayData));
 
+    // Pre-format all enrolled courses once
+    const enrolledCoursesFormatted = currentEnrolledCourses.map((course) => ({
+      name: course.shortName || course.eventDescription,
+      credits: course.credits / 100,
+      type: course.classification || "core",
+      courseId: course.id,
+      courseNumber: course.courseNumber,
+      description: course.eventDescription,
+      eventCourseNumber: course.eventCourseNumber,
+      languageId: course.languageId,
+    }));
 
-  
+    // Create a lookup set for faster duplicate checking
+    const existingCourseIds = new Set();
+    const existingCourseNames = new Set();
+
+    // Iterate through each program
+    Object.keys(updated).forEach((program) => {
+      // Find the semester that matches the current semester
+      const semesterKeys = Object.keys(updated[program]);
+      const currentSemesterKey = semesterKeys.find(
+        (semKey) =>
+          removeSpacesFromSemesterName(semKey) ===
+          removeSpacesFromSemesterName(currentSem)
+      );
+
+      if (currentSemesterKey) {
+        if (!updated[program][currentSemesterKey]) {
+          updated[program][currentSemesterKey] = [];
+        }
+
+        // Collect existing course IDs and names for fast lookups
+        updated[program][currentSemesterKey].forEach((course) => {
+          if (course.courseId) existingCourseIds.add(course.courseId);
+          if (course.name) existingCourseNames.add(course.name);
+        });
+
+        // Add non-duplicate courses
+        enrolledCoursesFormatted.forEach((newCourse) => {
+          if (
+            !existingCourseIds.has(newCourse.courseId) &&
+            !existingCourseNames.has(newCourse.name)
+          ) {
+            updated[program][currentSemesterKey].push(newCourse);
+          }
+        });
+      }
+    });
+
+    return updated;
+  }, [finalDisplayData, allCourseInfo, currentSem]);
+
   // Set error state if scorecard data contains an error.
   useEffect(() => {
     if (scorecardData.error) {
@@ -185,7 +186,10 @@ const finalDisplayDataWithEnrolled = useMemo(() => {
 
   // Debug: Log merged scorecard data.
   useEffect(() => {
-    console.log("mergedScorecardBySemesterAtom inspection", mergedScorecardBySemester);
+    console.log(
+      "mergedScorecardBySemesterAtom inspection",
+      mergedScorecardBySemester
+    );
   }, [mergedScorecardBySemester]);
 
   // Identify the main study program description.
@@ -202,11 +206,6 @@ const finalDisplayDataWithEnrolled = useMemo(() => {
   useEffect(() => {
     console.log("Debug enrolled: currentEnrollments", currentEnrollments);
   }, [currentEnrollments]);
-  useEffect(() => {
-    console.log("Debug enrolled: enrolledCourses (Atom)", enrolledCourses);
-  }, [enrolledCourses]);
-
-  
 
   // Sort programs to prioritize the main study.
   const sortedScorecardsEntries = useMemo(() => {
@@ -305,8 +304,8 @@ const ProgramSection = ({
   }, [filteredSemesters]);
 
   const getSemesterSortValue = useCallback((semester) => {
-    const isSpring = semester.startsWith('FS');
-    const isFall = semester.startsWith('HS');
+    const isSpring = semester.startsWith("FS");
+    const isFall = semester.startsWith("HS");
     if (!isSpring && !isFall) return 0;
 
     const year = semester.slice(2);
@@ -329,21 +328,19 @@ const ProgramSection = ({
       </div>
 
       <div className="px-1 py-2 ring-1 ring-black ring-opacity-5 rounded-lg">
+        {" "}
         <SemesterList
           sortedSemesters={sortedSemesters}
           selectedSemester={selectedSemester}
           setSelectedSemester={setSelectedSemester}
-          hoveredCourse={hoveredCourse}
           setHoveredCourse={setHoveredCourse}
           maxSemesterCredits={maxSemesterCredits}
-        /> 
-        
-
+        />
         <div className="mt-2 flex flex-col items-end text-right">
-          <ProgramSummaryRow program={program} semesters={semesters} />
+          <ProgramSummaryRow program={program} />
         </div>
       </div>
-      
+
       {selectedSemester && (
         <CourseDetailsList
           courses={semesters[selectedSemester]}
@@ -373,7 +370,6 @@ const SemesterList = ({
   sortedSemesters,
   selectedSemester,
   setSelectedSemester,
-  hoveredCourse,
   setHoveredCourse,
   maxSemesterCredits,
 }) => {
@@ -424,7 +420,7 @@ const SemesterRow = ({
 
   return (
     <div
-    className="grid grid-cols-12 gap-2 md:gap-4 mb-2 items-center"
+      className="grid grid-cols-12 gap-2 md:gap-4 mb-2 items-center"
       onClick={() => setSelectedSemester(semester)}
       onMouseEnter={() => {
         // Only update selected semester if it's different to avoid redundant renders
@@ -555,7 +551,9 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
             </div>
             <div className="text-center">{course.credits} ECTS</div>
             <div className="text-center col-span-2">
-              {typeof course.grade === "number" ? course.grade.toFixed(2) : "N/A"}
+              {typeof course.grade === "number"
+                ? course.grade.toFixed(2)
+                : "N/A"}
             </div>
           </div>
         ))}
@@ -564,7 +562,7 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
   );
 };
 
-const ProgramSummaryRow = ({ program, semesters }) => {
+const ProgramSummaryRow = ({ program }) => {
   // Grab the raw scorecard data from Recoil so we can read total/earned credits
   const scorecardData = useRecoilValue(scorecardDataState);
 
@@ -583,20 +581,18 @@ const ProgramSummaryRow = ({ program, semesters }) => {
   const programRemaining = Math.max(0, programTotalRequired - programEarned);
 
   return (
-    
-      <div className="p-2 flex flex-col items-end text-right">
-        <div className="font-semibold">
-          Earned ECTS:{" "}
-          <span className="text-black-800">
-            {programEarned.toFixed(2)} / {programTotalRequired.toFixed(2)}
-          </span>
-        </div>
-        <div className="font-semibold">
-          Remaining ECTS:{" "}
-          <span className="text-black-800">{programRemaining.toFixed(2)}</span> 
-        </div>
+    <div className="p-2 flex flex-col items-end text-right">
+      <div className="font-semibold">
+        Earned ECTS:{" "}
+        <span className="text-black-800">
+          {programEarned.toFixed(2)} / {programTotalRequired.toFixed(2)}
+        </span>
       </div>
-    
+      <div className="font-semibold">
+        Remaining ECTS:{" "}
+        <span className="text-black-800">{programRemaining.toFixed(2)}</span>
+      </div>
+    </div>
   );
 };
 
@@ -652,5 +648,4 @@ CourseDetailsList.propTypes = {
 
 ProgramSummaryRow.propTypes = {
   program: PropTypes.string.isRequired,
-  semesters: PropTypes.object.isRequired, // shape: { [semesterName]: [arrayOfCourses] }
 };

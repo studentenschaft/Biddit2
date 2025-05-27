@@ -1,6 +1,7 @@
 import { useRecoilState, useRecoilValue } from "recoil";
 import { useState, useEffect, useRef } from "react";
 import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
+import { currentSemesterAllCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
 import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
 import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
 import axios from "axios";
@@ -21,7 +22,11 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 export default function SmartSearch() {
   const authToken = useRecoilValue(authTokenState);
   const [, setScoreCardEnrollments] = useRecoilState(scorecardEnrollmentsState);
+  // Use unified course data system with fallback to old system
   const allCourses = useRecoilValue(allCourseInfoState);
+  const currentSemesterCourses = useRecoilValue(
+    currentSemesterAllCoursesSelector
+  );
   const [coursesCurrentSemester, setCoursesCurrentSemester] = useState([]);
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]);
@@ -82,19 +87,24 @@ export default function SmartSearch() {
       errorHandlingService.handleError(error);
     }
   }, [isFutureSemesterSelectedSate, referenceSemesterState]);
-
   // set courses of current semester based on selected semester
   useEffect(() => {
     try {
-      if (allCourses[selectedSemesterIndex + 1] === undefined) {
-        if (allCourses[selectedSemesterIndex]) {
-          setCoursesCurrentSemester(allCourses[1]);
-        }
-        if (!allCourses[selectedSemesterIndex]) {
-          setCoursesCurrentSemester(allCourses[2]);
-        }
+      // Use unified course data when available, fallback to old system
+      if (currentSemesterCourses && currentSemesterCourses.length > 0) {
+        setCoursesCurrentSemester(currentSemesterCourses);
       } else {
-        setCoursesCurrentSemester(allCourses[selectedSemesterIndex + 1]);
+        // Fallback to old index-based system
+        if (allCourses[selectedSemesterIndex + 1] === undefined) {
+          if (allCourses[selectedSemesterIndex]) {
+            setCoursesCurrentSemester(allCourses[1]);
+          }
+          if (!allCourses[selectedSemesterIndex]) {
+            setCoursesCurrentSemester(allCourses[2]);
+          }
+        } else {
+          setCoursesCurrentSemester(allCourses[selectedSemesterIndex + 1]);
+        }
       }
     } catch (error) {
       console.error(
@@ -103,7 +113,7 @@ export default function SmartSearch() {
       );
       errorHandlingService.handleError(error);
     }
-  }, [allCourses, selectedSemesterIndex]);
+  }, [allCourses, selectedSemesterIndex, currentSemesterCourses]);
 
   useEffect(() => {
     try {

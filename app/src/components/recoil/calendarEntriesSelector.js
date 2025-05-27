@@ -4,6 +4,8 @@ import moment from "moment/moment";
 import { cisIdListSelector } from "./cisIdListSelector";
 
 import { allCourseInfoState } from "./allCourseInfosSelector";
+// Import unified course data
+import { currentSemesterAllCoursesSelector } from "./unifiedCourseDataSelectors";
 
 // for future semesters handling
 import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
@@ -57,58 +59,85 @@ export const calendarEntriesSelector = selector({
       );
       return [];
     }
-    // Retrieve all courses and define the correct semester index.
-    // If a future semester is selected, use the reference semester for course info.
-    const allCourses = get(allCourseInfoState);
-    const futureSemesterSelected = get(isFutureSemesterSelected);
-    const referenceSemester = get(referenceSemesterAtom);
 
-    console.log(
-      "CalendarEntriesSelector - selectedSemesterIndex:",
-      selectedSemesterIndex,
-      "referenceSemester:",
-      referenceSemester
-    );
-
-    console.log(
-      "CalendarEntriesSelector - allCourses:",
-      allCourses,
-      "futureSemesterSelected:",
-      futureSemesterSelected
-    );
-
-    let adjustedSemester = selectedSemesterIndex;
-    if (futureSemesterSelected && referenceSemester != null) {
-      // Check if referenceSemester is already a number, otherwise find the correct index
-      if (typeof referenceSemester === "number") {
-        adjustedSemester = referenceSemester;
-      } else {
-        // Find the index in cisIdList that corresponds to referenceSemester
-        console.log("referenceSemester:", referenceSemester);
-        console.log("cisIdList:", cisIdList);
-        const referenceIndex = cisIdList.findIndex(
-          (sem) => sem.shortName === referenceSemester.shortName
+    // Try to use unified course data first, fallback to legacy system
+    let currentCourses = [];
+    try {
+      // Get courses from unified system for current semester
+      const unifiedCourses = get(currentSemesterAllCoursesSelector);
+      if (unifiedCourses && unifiedCourses.length > 0) {
+        // Filter for enrolled or selected courses from unified system
+        currentCourses = unifiedCourses.filter(
+          (course) => course.enrolled || course.selected
         );
-        if (referenceIndex !== -1) {
-          adjustedSemester = referenceIndex;
+        console.debug(
+          "CalendarEntriesSelector - Using unified courses:",
+          currentCourses
+        );
+      } else {
+        throw new Error("No unified courses available, falling back to legacy");
+      }
+    } catch (error) {
+      console.debug(
+        "CalendarEntriesSelector - Falling back to legacy data:",
+        error.message
+      );
+
+      // Fallback to legacy system
+      const allCourses = get(allCourseInfoState);
+      const futureSemesterSelected = get(isFutureSemesterSelected);
+      const referenceSemester = get(referenceSemesterAtom);
+
+      console.log(
+        "CalendarEntriesSelector - selectedSemesterIndex:",
+        selectedSemesterIndex,
+        "referenceSemester:",
+        referenceSemester
+      );
+
+      console.log(
+        "CalendarEntriesSelector - allCourses:",
+        allCourses,
+        "futureSemesterSelected:",
+        futureSemesterSelected
+      );
+
+      let adjustedSemester = selectedSemesterIndex;
+      if (futureSemesterSelected && referenceSemester != null) {
+        // Check if referenceSemester is already a number, otherwise find the correct index
+        if (typeof referenceSemester === "number") {
+          adjustedSemester = referenceSemester;
+        } else {
+          // Find the index in cisIdList that corresponds to referenceSemester
+          console.log("referenceSemester:", referenceSemester);
+          console.log("cisIdList:", cisIdList);
+          const referenceIndex = cisIdList.findIndex(
+            (sem) => sem.shortName === referenceSemester.shortName
+          );
+          if (referenceIndex !== -1) {
+            adjustedSemester = referenceIndex;
+          }
         }
       }
+
+      console.log(
+        "CalendarEntriesSelector - Using adjustedSemester:",
+        adjustedSemester,
+        "which maps to:",
+        allCourses[adjustedSemester + 1]
+          ? `${allCourses[adjustedSemester + 1].length} courses`
+          : "no courses"
+      );
+
+      currentCourses = (allCourses[adjustedSemester + 1] || []).filter(
+        (course) => course.enrolled || course.selected
+      );
+
+      console.debug(
+        "CalendarEntriesSelector - currentCourses:",
+        currentCourses
+      );
     }
-
-    console.log(
-      "CalendarEntriesSelector - Using adjustedSemester:",
-      adjustedSemester,
-      "which maps to:",
-      allCourses[adjustedSemester + 1]
-        ? `${allCourses[adjustedSemester + 1].length} courses`
-        : "no courses"
-    );
-
-    const currentCourses = (allCourses[adjustedSemester + 1] || []).filter(
-      (course) => course.enrolled || course.selected
-    );
-
-    console.debug("CalendarEntriesSelector - currentCourses:", currentCourses);
 
     // Use currentCourses as the relevant courses for the calendar
     const relevantCourses = currentCourses;

@@ -7,6 +7,7 @@ import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
+import { useUnifiedCourseData } from "./useUnifiedCourseData";
 
 /**
  * Shared hook for adding or removing a course in local and backend states.
@@ -33,9 +34,11 @@ export function useCourseSelection({
 
   // Recoil: current study plan
   const currentStudyPlanId = useRecoilValue(currentStudyPlanIdState);
-
   // Recoil: classification to big_type map for categorizing
   const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
+
+  // New unified course data hook
+  const { updateSelectedCoursesForSemester } = useUnifiedCourseData();
 
   /**
    * Adds or removes the course from local state and from the backend.
@@ -76,8 +79,10 @@ export function useCourseSelection({
     // Update local selected courses (indexed by shortName)
     setLocalSelectedCoursesSemKey((prevCourses) => {
       // Add debug logging to see what's happening
-      const normalizedSemesterKey = normalizeSemesterName(selectedSemesterShortName);
-      
+      const normalizedSemesterKey = normalizeSemesterName(
+        selectedSemesterShortName
+      );
+
       if (typeof prevCourses === "object" && prevCourses !== null) {
         const updatedCourses = { ...prevCourses };
         // Use the normalized semester key instead of the raw one
@@ -108,10 +113,10 @@ export function useCourseSelection({
             minimalCourse,
           ];
         }
-        
+
         return updatedCourses;
       }
-      
+
       // Create new entry if prevCourses is not an object
       return {
         [normalizedSemesterKey]: [
