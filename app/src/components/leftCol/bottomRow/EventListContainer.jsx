@@ -533,13 +533,20 @@ export default function EventListContainer({ selectedSemesterState }) {
       }
     }
   }, [allCourseInfo, index]);
-
   // update filteredCourses
   useEffect(() => {
-    if (filteredCoursesState && index != null) {
-      setFilteredCourses(filteredCoursesState[index]);
+    if (filteredCoursesState && selectedSemesterState) {
+      // Try to get courses by semester shortName first (unified system)
+      const coursesByShortName =
+        filteredCoursesState[selectedSemesterState.shortName];
+      if (coursesByShortName) {
+        setFilteredCourses(coursesByShortName);
+      } else if (index != null) {
+        // Fallback to numeric index (old system)
+        setFilteredCourses(filteredCoursesState[index]);
+      }
     }
-  }, [filteredCoursesState, index]);
+  }, [filteredCoursesState, index, selectedSemesterState]);
 
   // row renderer
   const Row = ({ index, style }) => {
