@@ -28,7 +28,6 @@ import { cisIdListSelector } from "../../recoil/cisIdListSelector";
 // helpers for updating Recoil atoms
 import { useUpdateEnrolledCoursesAtom } from "../../helpers/useUpdateEnrolledCourses";
 import { useUpdateCourseInfoAtom } from "../../helpers/useUpdateCourseInfo";
-import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 
 // error handling service
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
@@ -113,17 +112,10 @@ export default function EventListContainer({ selectedSemesterState }) {
     currentStudyPlanIdState
   ); // Recoil state for current study plan ID
   const [, setStudyPlan] = useRecoilState(studyPlanAtom);
-  // Helpers to update Recoil atoms (old system - keeping for compatibility)
+
+  // Helpers to update Recoil atoms
   const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
   const updateCourseInfo = useUpdateCourseInfoAtom();
-
-  // New unified course data hook
-  const {
-    updateEnrolledCoursesForSemester,
-    updateAvailableCoursesForSemester,
-    updateSelectedCoursesForSemester,
-    initializeSemesterData,
-  } = useUnifiedCourseData();
 
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
@@ -385,6 +377,7 @@ export default function EventListContainer({ selectedSemesterState }) {
     useState(true);
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
   const [isCourseRatingsLoading, setIsCourseRatingsLoading] = useState(true);
+
   // fetch enrolled courses
   useEffect(() => {
     const fetchEnrolledCourses = async () => {
@@ -406,17 +399,7 @@ export default function EventListContainer({ selectedSemesterState }) {
               },
             }
           );
-
-          // Update both old and new systems during migration
           updateEnrolledCourses(response.data, index);
-
-          // Update unified system with semester shortName
-          if (selectedSemesterState?.shortName) {
-            updateEnrolledCoursesForSemester(
-              selectedSemesterState.shortName,
-              response.data
-            );
-          }
         } catch (error) {
           console.error("Error fetching event list:", error);
           errorHandlingService.handleError(error);
@@ -453,17 +436,7 @@ export default function EventListContainer({ selectedSemesterState }) {
               },
             }
           );
-
-          // Update both old and new systems during migration
           updateCourseInfo(response.data, index);
-
-          // Update unified system with semester shortName
-          if (selectedSemesterState?.shortName) {
-            updateAvailableCoursesForSemester(
-              selectedSemesterState.shortName,
-              response.data
-            );
-          }
         } catch (error) {
           console.error("Error fetching data:", error);
           errorHandlingService.handleError(error);
@@ -533,20 +506,13 @@ export default function EventListContainer({ selectedSemesterState }) {
       }
     }
   }, [allCourseInfo, index]);
+
   // update filteredCourses
   useEffect(() => {
-    if (filteredCoursesState && selectedSemesterState) {
-      // Try to get courses by semester shortName first (unified system)
-      const coursesByShortName =
-        filteredCoursesState[selectedSemesterState.shortName];
-      if (coursesByShortName) {
-        setFilteredCourses(coursesByShortName);
-      } else if (index != null) {
-        // Fallback to numeric index (old system)
-        setFilteredCourses(filteredCoursesState[index]);
-      }
+    if (filteredCoursesState && index != null) {
+      setFilteredCourses(filteredCoursesState[index]);
     }
-  }, [filteredCoursesState, index, selectedSemesterState]);
+  }, [filteredCoursesState, index]);
 
   // row renderer
   const Row = ({ index, style }) => {

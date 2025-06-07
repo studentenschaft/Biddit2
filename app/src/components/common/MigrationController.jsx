@@ -34,17 +34,17 @@ export function MigrationController() {
   const [activeTab, setActiveTab] = useState("summary"); // summary, compare, debug
   useEffect(() => {
     // Get migration summary on component mount
-    setSummary(getMigrationSummary());
-
-    // Log unified course data for debugging
+    setSummary(getMigrationSummary());    // Log unified course data for debugging
     console.log("🚀 Unified Course Data:", unifiedCourseData);
     console.log("📚 Old Course Info:", courseInfo);
     console.log("📝 Old Enrolled Courses:", enrolledCourses);
+    console.log("📝 Enrolled Courses Keys:", Object.keys(enrolledCourses));
+    console.log("📝 Enrolled Courses Values:", Object.values(enrolledCourses));
     console.log("⭐ Old Local Selected:", localSelectedCourses);
     console.log("🔑 Semester Key Selected:", localSelectedCoursesSemKey);
     console.log("⭐ Course Ratings:", shsgCourseRatings);
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    getMigrationSummary,
     unifiedCourseData,
     courseInfo,
     enrolledCourses,
@@ -394,19 +394,6 @@ export function MigrationController() {
                   ) : (
                     <span className="text-gray-500">No unified data yet</span>
                   )}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-green-700">Benefits</h4>
-                <div className="text-sm bg-white p-2 rounded border">
-                  <ul className="list-disc list-inside space-y-1">
-                    <li>Semester-based organization</li>
-                    <li>Consistent data structure</li>
-                    <li>Better performance</li>
-                    <li>Easier maintenance</li>
-                    <li>Built-in metadata (lastFetched)</li>
-                  </ul>
                 </div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { courseInfoState } from "../recoil/courseInfoAtom";
 import { enrolledCoursesState } from "../recoil/enrolledCoursesAtom";
 import { localSelectedCoursesState } from "../recoil/localSelectedCoursesAtom";
