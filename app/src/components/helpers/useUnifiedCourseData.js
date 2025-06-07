@@ -12,14 +12,20 @@ export function useUnifiedCourseData() {
   const [courseData, setCourseData] = useRecoilState(unifiedCourseDataState);
   const [initializedSemesters, setInitializedSemesters] = useRecoilState(
     initializedSemestersState
-  );  /**
+  );
+  /**
    * Initialize a semester with empty data structure
    */
   const initializeSemester = (semesterShortName) => {
     // Check both the initializedSemesters set AND if the semester data exists
     // This prevents race conditions during rapid state updates
-    if (initializedSemesters.has(semesterShortName) || courseData[semesterShortName]) {
-      console.log(`📋 Semester ${semesterShortName} already initialized or exists in state`);
+    if (
+      initializedSemesters.has(semesterShortName) ||
+      courseData[semesterShortName]
+    ) {
+      console.log(
+        `📋 Semester ${semesterShortName} already initialized or exists in state`
+      );
       return; // Already initialized
     }
 
@@ -27,10 +33,12 @@ export function useUnifiedCourseData() {
     setCourseData((prev) => {
       // Double-check inside the state updater to prevent race conditions
       if (prev[semesterShortName]) {
-        console.log(`📋 Semester ${semesterShortName} was already initialized during state update`);
+        console.log(
+          `📋 Semester ${semesterShortName} was already initialized during state update`
+        );
         return prev; // Already exists, don't reset it
       }
-      
+
       const newData = {
         ...prev,
         [semesterShortName]: {
@@ -41,17 +49,23 @@ export function useUnifiedCourseData() {
           lastFetched: null,
         },
       };
-      console.log(`✅ Initialized semester ${semesterShortName}:`, newData[semesterShortName]);
+      console.log(
+        `✅ Initialized semester ${semesterShortName}:`,
+        newData[semesterShortName]
+      );
       return newData;
     });
 
     setInitializedSemesters((prev) => new Set([...prev, semesterShortName]));
-  };  /**
+  };
+  /**
    * Update enrolled courses for a semester
    */
   const updateEnrolledCourses = (semesterShortName, courses) => {
-    console.log(`🔄 updateEnrolledCourses called for ${semesterShortName} with ${courses.length} courses`);
-    
+    console.log(
+      `🔄 updateEnrolledCourses called for ${semesterShortName} with ${courses.length} courses`
+    );
+
     // Only initialize if semester doesn't exist
     if (!courseData[semesterShortName]) {
       initializeSemester(semesterShortName);
@@ -66,7 +80,10 @@ export function useUnifiedCourseData() {
           lastFetched: new Date().toISOString(),
         },
       };
-      console.log(`✅ Updated enrolled courses for ${semesterShortName}:`, newData[semesterShortName]);
+      console.log(
+        `✅ Updated enrolled courses for ${semesterShortName}:`,
+        newData[semesterShortName]
+      );
       return newData;
     });
   };
@@ -74,8 +91,10 @@ export function useUnifiedCourseData() {
    * Update available courses for a semester
    */
   const updateAvailableCourses = (semesterShortName, courses) => {
-    console.log(`🔄 updateAvailableCourses called for ${semesterShortName} with ${courses.length} courses`);
-    
+    console.log(
+      `🔄 updateAvailableCourses called for ${semesterShortName} with ${courses.length} courses`
+    );
+
     // Only initialize if semester doesn't exist
     if (!courseData[semesterShortName]) {
       initializeSemester(semesterShortName);
@@ -90,15 +109,21 @@ export function useUnifiedCourseData() {
           lastFetched: new Date().toISOString(),
         },
       };
-      console.log(`✅ Updated available courses for ${semesterShortName}:`, newData[semesterShortName]);
+      console.log(
+        `✅ Updated available courses for ${semesterShortName}:`,
+        newData[semesterShortName]
+      );
       return newData;
     });
-  };  /**
+  };
+  /**
    * Update selected/wishlisted courses for a semester
    */
   const updateSelectedCourses = (semesterShortName, courses) => {
-    console.log(`🔄 updateSelectedCourses called for ${semesterShortName} with ${courses.length} courses`);
-    
+    console.log(
+      `🔄 updateSelectedCourses called for ${semesterShortName} with ${courses.length} courses`
+    );
+
     // Only initialize if semester doesn't exist
     if (!courseData[semesterShortName]) {
       initializeSemester(semesterShortName);
@@ -113,7 +138,10 @@ export function useUnifiedCourseData() {
           lastFetched: new Date().toISOString(),
         },
       };
-      console.log(`✅ Updated selected courses for ${semesterShortName}:`, newData[semesterShortName]);
+      console.log(
+        `✅ Updated selected courses for ${semesterShortName}:`,
+        newData[semesterShortName]
+      );
       return newData;
     });
   };

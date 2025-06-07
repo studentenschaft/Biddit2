@@ -34,7 +34,7 @@ export function MigrationController() {
   const [activeTab, setActiveTab] = useState("summary"); // summary, compare, debug
   useEffect(() => {
     // Get migration summary on component mount
-    setSummary(getMigrationSummary());    // Log unified course data for debugging
+    setSummary(getMigrationSummary()); // Log unified course data for debugging
     console.log("🚀 Unified Course Data:", unifiedCourseData);
     console.log("📚 Old Course Info:", courseInfo);
     console.log("📝 Old Enrolled Courses:", enrolledCourses);
