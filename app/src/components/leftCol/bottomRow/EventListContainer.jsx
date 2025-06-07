@@ -28,6 +28,7 @@ import { cisIdListSelector } from "../../recoil/cisIdListSelector";
 // helpers for updating Recoil atoms
 import { useUpdateEnrolledCoursesAtom } from "../../helpers/useUpdateEnrolledCourses";
 import { useUpdateCourseInfoAtom } from "../../helpers/useUpdateCourseInfo";
+import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 
 // error handling service
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
@@ -111,11 +112,17 @@ export default function EventListContainer({ selectedSemesterState }) {
   const [, setCurrentStudyPlanIdState] = useRecoilState(
     currentStudyPlanIdState
   ); // Recoil state for current study plan ID
-  const [, setStudyPlan] = useRecoilState(studyPlanAtom);
-
-  // Helpers to update Recoil atoms
+  const [, setStudyPlan] = useRecoilState(studyPlanAtom); // Helpers to update Recoil atoms
   const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
-  const updateCourseInfo = useUpdateCourseInfoAtom();
+  const updateCourseInfo = useUpdateCourseInfoAtom(); // New unified course data hook
+  const {
+    updateEnrolledCourses: updateUnifiedEnrolledCourses,
+    updateAvailableCourses: updateUnifiedAvailableCourses,
+    updateSelectedCourses: updateUnifiedSelectedCourses,
+    updateCourseRatingsForAllSemesters:
+      updateUnifiedCourseRatingsForAllSemesters,
+    initializeSemester: initializeUnifiedSemester,
+  } = useUnifiedCourseData();
 
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
@@ -179,6 +186,13 @@ export default function EventListContainer({ selectedSemesterState }) {
     index,
     authToken,
   });
+
+  // Initialize unified semester data for the current semester
+  useEffect(() => {
+    if (selectedSemesterState?.shortName) {
+      initializeUnifiedSemester(selectedSemesterState.shortName);
+    }
+  }, [selectedSemesterState?.shortName, initializeUnifiedSemester]);
 
   const [currentStudyPlan, setCurrentStudyPlan] = useState(null);
   useEffect(() => {
@@ -257,6 +271,22 @@ export default function EventListContainer({ selectedSemesterState }) {
                 .filter(Boolean);
               return updatedCourses;
             });
+
+            // Also update unified selected courses
+            const selectedCourses = foundStudyPlan.courses
+              .map((courseIdentifier) => {
+                const course = allCourseInfo[index].find(
+                  (c) =>
+                    c.courseNumber === courseIdentifier ||
+                    c.id === courseIdentifier
+                );
+                return course || null;
+              })
+              .filter(Boolean);
+            updateUnifiedSelectedCourses(
+              selectedSemesterState.shortName,
+              selectedCourses
+            );
 
             // Mark as set for this semester
             setHasSetLocalSelectedCourses(true);
@@ -361,6 +391,21 @@ export default function EventListContainer({ selectedSemesterState }) {
             .filter(Boolean);
           return updatedCourses;
         });
+
+        // Also update unified selected courses
+        const selectedCourses = currentStudyPlan.courses
+          .map((courseIdentifier) => {
+            const course = completeCourseInfo.find(
+              (c) =>
+                c.courseNumber === courseIdentifier || c.id === courseIdentifier
+            );
+            return course || null;
+          })
+          .filter(Boolean);
+        updateUnifiedSelectedCourses(
+          selectedSemesterState.shortName,
+          selectedCourses
+        );
       }
       setHasSetLocalSelectedCourses(true);
     }
@@ -400,6 +445,14 @@ export default function EventListContainer({ selectedSemesterState }) {
             }
           );
           updateEnrolledCourses(response.data, index);
+
+          // Also update unified enrolled courses
+          if (selectedSemesterState?.shortName) {
+            updateUnifiedEnrolledCourses(
+              selectedSemesterState.shortName,
+              response.data
+            );
+          }
         } catch (error) {
           console.error("Error fetching event list:", error);
           errorHandlingService.handleError(error);
@@ -437,6 +490,14 @@ export default function EventListContainer({ selectedSemesterState }) {
             }
           );
           updateCourseInfo(response.data, index);
+
+          // Also update unified available courses
+          if (selectedSemesterState?.shortName) {
+            updateUnifiedAvailableCourses(
+              selectedSemesterState.shortName,
+              response.data
+            );
+          }
         } catch (error) {
           console.error("Error fetching data:", error);
           errorHandlingService.handleError(error);
@@ -471,6 +532,10 @@ export default function EventListContainer({ selectedSemesterState }) {
             },
           });
           setShsgCourseRatings(response.data);
+
+          // Also update unified course ratings for ALL semesters
+          // Since ratings are global data that applies to all semesters
+          updateUnifiedCourseRatingsForAllSemesters(response.data);
         } catch (error) {
           console.error("Error fetching course ratings:", error);
           errorHandlingService.handleError(error);

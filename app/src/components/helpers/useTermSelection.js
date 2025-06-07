@@ -15,6 +15,7 @@ import {
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUpdateEnrolledCoursesAtom } from "../helpers/useUpdateEnrolledCourses";
 import { referenceSemesterAtom } from "../recoil/referenceSemesterAtom";
+import { useUnifiedCourseData } from "./useUnifiedCourseData";
 
 /**
  * Custom hook to handle term selection logic including:
@@ -41,9 +42,14 @@ export function useTermSelection() {
     "loading semester data..."
   );
   const initialSelectionMadeRef = useRef(false);
-
   // Helpers
   const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
+
+  // New unified course data hook
+  const {
+    updateEnrolledCourses: updateUnifiedEnrolledCourses,
+    initializeSemester: initializeUnifiedSemester,
+  } = useUnifiedCourseData();
 
   // For future semesters
   const courseInfo = useRecoilValue(courseInfoState);
@@ -90,6 +96,15 @@ export function useTermSelection() {
       })();
     }
   }, [authToken, setCisIdList, cisIdListAtom]);
+
+  // Initialize unified semester data when terms are available
+  useEffect(() => {
+    if (termIdList?.length) {
+      termIdList.forEach((term) => {
+        initializeUnifiedSemester(term.shortName);
+      });
+    }
+  }, [termIdList, initializeUnifiedSemester]);
 
   // 2. Find latest valid term with courses
   useEffect(() => {
@@ -142,11 +157,13 @@ export function useTermSelection() {
               },
             }
           );
-
           setLatestValidTerm(primaryTermShortName);
 
           // If we got data or it's an empty array (which is valid), use it
           updateEnrolledCourses(response.data, 1);
+
+          // Also update unified course data
+          updateUnifiedEnrolledCourses(primaryTermShortName, response.data);
 
           // Only try backup term if the first one returned an empty array
           if (response.data.length === 0 && backupTermId) {
@@ -162,9 +179,14 @@ export function useTermSelection() {
                   },
                 }
               );
-
               setLatestValidTerm(backupTermShortName);
               updateEnrolledCourses(backupResponse.data, 2);
+
+              // Also update unified course data
+              updateUnifiedEnrolledCourses(
+                backupTermShortName,
+                backupResponse.data
+              );
             } catch (backupError) {
               console.error(
                 `[Courses] Error fetching data for backup term:`,
@@ -194,9 +216,14 @@ export function useTermSelection() {
                   },
                 }
               );
-
               setLatestValidTerm(backupTermShortName);
               updateEnrolledCourses(backupResponse.data, 2);
+
+              // Also update unified course data
+              updateUnifiedEnrolledCourses(
+                backupTermShortName,
+                backupResponse.data
+              );
             } catch (backupError) {
               console.error(
                 `[Courses] Error fetching data for backup term:`,

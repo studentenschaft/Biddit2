@@ -211,6 +211,35 @@ export function useUnifiedCourseData() {
   };
 
   /**
+   * Update course ratings for ALL semesters at once
+   * Since ratings are global data that applies to all semesters
+   */
+  const updateCourseRatingsForAllSemesters = (ratings) => {
+    console.log(
+      `🔄 updateCourseRatingsForAllSemesters called with ${
+        Object.keys(ratings).length
+      } ratings`
+    );
+
+    setCourseData((prev) => {
+      const updatedData = { ...prev };
+
+      // Update ratings for all existing semesters
+      Object.keys(updatedData).forEach((semesterShortName) => {
+        updatedData[semesterShortName] = {
+          ...updatedData[semesterShortName],
+          ratings: { ...updatedData[semesterShortName]?.ratings, ...ratings },
+        };
+      });
+
+      console.log(
+        `✅ Updated ratings for ${Object.keys(updatedData).length} semesters`
+      );
+      return updatedData;
+    });
+  };
+
+  /**
    * Get data for a specific semester
    */
   const getSemesterData = (semesterShortName) => {
@@ -253,6 +282,7 @@ export function useUnifiedCourseData() {
     removeSelectedCourse,
     updateCourseRatings,
     updateCourseRatingsForSemester: updateCourseRatings, // Alias for consistency
+    updateCourseRatingsForAllSemesters, // New function for global ratings
     getSemesterData,
     needsRefresh,
   };
