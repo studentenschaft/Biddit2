@@ -10,6 +10,7 @@ import { atom } from "recoil";
  *     enrolled: [], // Courses the user is enrolled in
  *     available: [], // All available courses for this semester
  *     selected: [], // Courses the user has selected/wishlisted
+ *     filtered: [], // Filtered courses based on current filter criteria
  *     ratings: {}, // Course ratings by courseNumber
  *     lastFetched: null // When this data was last fetched
  *   },

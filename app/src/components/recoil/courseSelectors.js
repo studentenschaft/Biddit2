@@ -19,6 +19,7 @@ export const semesterDataSelector = selectorFamily({
           enrolled: [],
           available: [],
           selected: [],
+          filtered: [],
           ratings: {},
           lastFetched: null,
         }
@@ -77,6 +78,7 @@ export const semesterStatsSelector = selectorFamily({
         totalEnrolled: semesterData.enrolled.length,
         totalAvailable: semesterData.available.length,
         totalSelected: semesterData.selected.length,
+        totalFiltered: semesterData.filtered.length,
         totalRated: Object.keys(semesterData.ratings).length,
         lastFetched: semesterData.lastFetched,
       };
@@ -103,12 +105,16 @@ export const findCourseSelector = selectorFamily({
       const selected = semesterData.selected.find(
         (course) => course.courseNumber === courseNumber
       );
+      const filtered = semesterData.filtered.find(
+        (course) => course.courseNumber === courseNumber
+      );
 
       return {
-        course: enrolled || available || selected || null,
+        course: enrolled || available || selected || filtered || null,
         isEnrolled: !!enrolled,
         isAvailable: !!available,
         isSelected: !!selected,
+        isFiltered: !!filtered,
         rating: semesterData.ratings[courseNumber] || null,
       };
     },
@@ -125,19 +131,24 @@ export const allCoursesSelector = selector({
 
     Object.entries(courseData).forEach(([semester, data]) => {
       // Combine all course arrays and add semester info
-      [...data.enrolled, ...data.available, ...data.selected].forEach(
-        (course) => {
-          allCourses.push({
-            ...course,
-            semester,
-            source: data.enrolled.includes(course)
-              ? "enrolled"
-              : data.available.includes(course)
-              ? "available"
-              : "selected",
-          });
-        }
-      );
+      [
+        ...data.enrolled,
+        ...data.available,
+        ...data.selected,
+        ...data.filtered,
+      ].forEach((course) => {
+        allCourses.push({
+          ...course,
+          semester,
+          source: data.enrolled.includes(course)
+            ? "enrolled"
+            : data.available.includes(course)
+            ? "available"
+            : data.selected.includes(course)
+            ? "selected"
+            : "filtered",
+        });
+      });
     });
 
     // Remove duplicates based on courseNumber and semester
