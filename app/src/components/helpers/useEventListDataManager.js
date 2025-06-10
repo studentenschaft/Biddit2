@@ -24,7 +24,6 @@
 import { useState, useEffect } from "react";
 import { useRecoilValue } from "recoil";
 import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
-import { filteredCoursesSelector } from "../recoil/filteredCoursesSelector";
 import { selectionOptionsState } from "../recoil/selectionOptionsAtom";
 import { selectedCourseIdsAtom } from "../recoil/selectedCourseIdsAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
@@ -51,13 +50,10 @@ export const useEventListDataManager = ({
 }) => {
   // Recoil state
   const allCourseInfo = useRecoilValue(allCourseInfoState);
-  const filteredCoursesState = useRecoilValue(filteredCoursesSelector);
   const selectionOptions = useRecoilValue(selectionOptionsState);
   const selectedCourseIds = useRecoilValue(selectedCourseIdsAtom);
-
   // Local state
   const [completeCourseInfo, setCompleteCourseInfo] = useState([]);
-  const [filteredCourses, setFilteredCourses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Unified course data hook
@@ -107,20 +103,6 @@ export const useEventListDataManager = ({
       }
     }
   }, [allCourseInfo, index]);
-
-  // Update filteredCourses when filteredCoursesState changes
-  useEffect(() => {
-    if (filteredCoursesState && index != null) {
-      const filtered = filteredCoursesState[index];
-      console.log(
-        `🔍 Updating filtered courses for index ${index}: ${
-          filtered?.length || 0
-        } courses`
-      );
-      setFilteredCourses(filtered);
-    }
-  }, [filteredCoursesState, index]);
-
   // Integrate unified filtered courses system alongside legacy system
   useEffect(() => {
     // Only run if we have the necessary data
@@ -180,11 +162,10 @@ export const useEventListDataManager = ({
     isCourseRatingsLoading,
     isLoading,
   ]);
-
   return {
     // Data states
     completeCourseInfo,
-    filteredCourses,
+    // NOTE: filteredCourses now comes directly from courseSelectors in components
 
     // Loading states
     isLoading,

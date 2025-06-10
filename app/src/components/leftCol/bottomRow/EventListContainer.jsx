@@ -12,13 +12,15 @@
  * MIGRATION STATUS:
  * ✅ REFACTORED: Split data fetching into organized helper hooks
  * ✅ MAINTAINED: Same flow and order of operations
- * ✅ INTEGRATED: Unified filtered courses system alongside legacy filteredCoursesSelector
+ * ✅ INTEGRATED: Now uses unified course selectors for filtered courses display
  * ✅ COMPATIBLE: Both filtering systems work together during migration period
+ * ✅ IMPROVED: Direct selector usage eliminates intermediate state management
  *
  * The component now uses:
- * - Legacy: filteredCoursesSelector (for backwards compatibility)
- * - Unified: updateUnifiedFilteredCourses from useUnifiedCourseData (new system)
- * - NEW: Organized helper hooks for data management
+ * - NEW: semesterCoursesSelector for filtered courses (primary display source)
+ * - Fallback: completeCourseInfo when unified filtered courses not ready
+ * - Unified: updateUnifiedFilteredCourses from useUnifiedCourseData (background processing)
+ * - Organized: Helper hooks for data management (useEventListDataManager)
  */
 
 import PropTypes from "prop-types";
@@ -30,6 +32,9 @@ import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
 import { cisIdListSelector } from "../../recoil/cisIdListSelector";
+
+// Unified course selectors - NEW APPROACH
+import { semesterCoursesSelector } from "../../recoil/courseSelectors";
 
 // Data management hooks - NEW REFACTORED APPROACH
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
@@ -128,15 +133,26 @@ export default function EventListContainer({ selectedSemesterState }) {
       setReferenceSemesterState(null);
     }
   }
-
   // NEW: Use the refactored data manager hook
-  const { completeCourseInfo, filteredCourses, isLoading } =
-    useEventListDataManager({
-      authToken,
-      selectedSemesterState,
-      index,
-      cisId,
-    });
+  const { completeCourseInfo, isLoading } = useEventListDataManager({
+    authToken,
+    selectedSemesterState,
+    index,
+    cisId,
+  });
+  // NEW: Use unified course selector for filtered courses
+  const unifiedFilteredCourses = useRecoilValue(
+    semesterCoursesSelector({
+      semester: selectedSemesterState?.shortName,
+      type: "filtered",
+    })
+  );
+
+  // Fallback to completeCourseInfo if unified filtered courses are not available yet
+  const filteredCourses =
+    unifiedFilteredCourses?.length > 0
+      ? unifiedFilteredCourses
+      : completeCourseInfo;
 
   // Course selection hook (unchanged)
   const { addOrRemoveCourse } = useCourseSelection({
