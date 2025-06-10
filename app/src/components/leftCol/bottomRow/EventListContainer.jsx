@@ -10,38 +10,30 @@
  * - allows for adding courses to the user's schedule (TODO)
  *
  * MIGRATION STATUS:
- * ✅ FIXED: Row component logic bug (filteredCourses < 0 -> filteredCourses.length <= 0)
+ * ✅ REFACTORED: Split data fetching into organized helper hooks
+ * ✅ MAINTAINED: Same flow and order of operations
  * ✅ INTEGRATED: Unified filtered courses system alongside legacy filteredCoursesSelector
  * ✅ COMPATIBLE: Both filtering systems work together during migration period
  *
  * The component now uses:
  * - Legacy: filteredCoursesSelector (for backwards compatibility)
  * - Unified: updateUnifiedFilteredCourses from useUnifiedCourseData (new system)
+ * - NEW: Organized helper hooks for data management
  */
 
-import axios from "axios";
 import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { enrolledCoursesState } from "../../recoil/enrolledCoursesAtom";
-import { useEffect, useState, Suspense } from "react";
+import { useEffect, Suspense } from "react";
 import { authTokenState } from "../../recoil/authAtom";
-import { courseInfoState } from "../../recoil/courseInfoAtom";
-import { shsgCourseRatingsState } from "../../recoil/shsgCourseRatingsAtom";
 import { allCourseInfoState } from "../../recoil/allCourseInfosSelector";
-import { filteredCoursesSelector } from "../../recoil/filteredCoursesSelector";
 import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
-import { localSelectedCoursesState } from "../../recoil/localSelectedCoursesAtom";
 import { cisIdListSelector } from "../../recoil/cisIdListSelector";
-// helpers for updating Recoil atoms
-import { useUpdateEnrolledCoursesAtom } from "../../helpers/useUpdateEnrolledCourses";
-import { useUpdateCourseInfoAtom } from "../../helpers/useUpdateCourseInfo";
-import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
-import { useCourseSelection } from "../../helpers/useCourseSelection";
 
-// error handling service
-import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
+// Data management hooks - NEW REFACTORED APPROACH
+import { useEventListDataManager } from "../../helpers/useEventListDataManager";
+import { useCourseSelection } from "../../helpers/useCourseSelection";
 
 //icons
 import { PlusIcon } from "@heroicons/react/outline";
@@ -62,18 +54,10 @@ import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
 // Missing recoil atoms
 import { selectedCourseIdsAtom } from "../../recoil/selectedCourseIdsAtom";
-import { currentStudyPlanIdState } from "../../recoil/currentStudyPlanIdAtom";
-import { studyPlanAtom } from "../../recoil/studyPlanAtom";
 import {
   isFutureSemesterSelected,
   referenceSemester,
 } from "../../recoil/isFutureSemesterSelected";
-import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
-
-// API calls and helpers
-import { getStudyPlan, initializeSemester } from "../../helpers/api";
-import { findStudyPlanBySemester } from "../../helpers/courseSelection";
-import { useCurrentSemester } from "../../helpers/studyOverviewHelpers";
 
 // helper function - TODO: put into own file
 function isEventOrNestedCourseSelected(event, selectedCourseIds) {
@@ -99,57 +83,35 @@ function isEventOrNestedCourseSelected(event, selectedCourseIds) {
 }
 
 export default function EventListContainer({ selectedSemesterState }) {
-  // Recoil values and state hooks
-  const authToken = useRecoilValue(authTokenState); // User's authentication token
-  const enrolledCourses = useRecoilValue(enrolledCoursesState); // Enrolled courses from Recoil state
-  const courseInfos = useRecoilValue(courseInfoState); // Course information from Recoil state
-  const [shsgCourseRatings, setShsgCourseRatings] = useRecoilState(
-    shsgCourseRatingsState
-  ); // Course ratings from SHSG API
-  const allCourseInfo = useRecoilValue(allCourseInfoState); // All course information from Recoil state
-  const [completeCourseInfo, setCompleteCourseInfo] = useState([]); // Local state for complete course info
-  const filteredCoursesState = useRecoilValue(filteredCoursesSelector); // Filtered courses from Recoil selector
-  const [filteredCourses, setFilteredCourses] = useState([]); // Local state for filtered courses
-  const [isLoading, setIsLoading] = useState(true); // Loading state for the component
-
-  const [, setCurrentStudyPlanId] = useState(null); // Current study plan ID
-  const [, setCurrentStudyPlanIdState] = useRecoilState(
-    currentStudyPlanIdState
-  ); // Recoil state for current study plan ID
-  const [, setStudyPlan] = useRecoilState(studyPlanAtom); // Helpers to update Recoil atoms
-  const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
-  const updateCourseInfo = useUpdateCourseInfoAtom(); // New unified course data hook
-  const {
-    updateEnrolledCourses: updateUnifiedEnrolledCourses,
-    updateAvailableCourses: updateUnifiedAvailableCourses,
-    updateSelectedCourses: updateUnifiedSelectedCourses,
-    updateCourseRatingsForAllSemesters:
-      updateUnifiedCourseRatingsForAllSemesters,
-    initializeSemester: initializeUnifiedSemester,
-    updateFilteredCourses: updateUnifiedFilteredCourses,
-  } = useUnifiedCourseData();
-
+  // Recoil values and state hooks - Simplified after refactoring
+  const authToken = useRecoilValue(authTokenState);
+  const allCourseInfo = useRecoilValue(allCourseInfoState);
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
   );
-  // Recoil states
   const cisIdList = useRecoilValue(cisIdListSelector);
   const [, setIsFutureSemesterSelected] = useRecoilState(
     isFutureSemesterSelected
   );
-  const currentRealSemesterName = useCurrentSemester(); // Get current semester name (real life)
   const [referenceSemesterState, setReferenceSemesterState] =
     useRecoilState(referenceSemester);
-  const selectionOptions = useRecoilValue(selectionOptionsState);
-  // mobile view toggle of selected course / left view
+  const [, setSelectedTabState] = useRecoilState(selectedTabAtom);
+  const [, setSelectedCourseCourseInfo] = useRecoilState(
+    selectedCourseCourseInfo
+  );
+  const [localSelectedBySemester] = useRecoilState(
+    localSelectedCoursesSemKeyState
+  );
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
+  // Calculate semester identifiers
   let cisId = null;
   let index = null;
   if (selectedSemesterState) {
     cisId = selectedSemesterState.cisId;
     index = selectedSemesterState.index;
-    // if a future semester is selected, handle here
+
+    // Handle future semester selection
     if (!allCourseInfo[index]) {
       if (index === cisIdList.length) {
         index = 2;
@@ -167,23 +129,16 @@ export default function EventListContainer({ selectedSemesterState }) {
     }
   }
 
-  const [, setSelectedTabState] = useRecoilState(selectedTabAtom);
-  const [, setSelectedCourseCourseInfo] = useRecoilState(
-    selectedCourseCourseInfo
-  );
-  const [, setLocalSelectedCourses] = useRecoilState(localSelectedCoursesState);
-  const [localSelectedBySemester, setLocalSelectedCoursesSemKey] =
-    useRecoilState(localSelectedCoursesSemKeyState);
+  // NEW: Use the refactored data manager hook
+  const { completeCourseInfo, filteredCourses, isLoading } =
+    useEventListDataManager({
+      authToken,
+      selectedSemesterState,
+      index,
+      cisId,
+    });
 
-  // useEffect to see if localSelectedBySemester changes
-  useEffect(() => {
-    console.log(
-      "DEBUG: localSelectedBySemester changed",
-      localSelectedBySemester
-    );
-  }, [localSelectedBySemester]);
-
-  // Instead of duplicating the logic, we use our new hook
+  // Course selection hook (unchanged)
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
     setSelectedCourseIds,
@@ -192,434 +147,13 @@ export default function EventListContainer({ selectedSemesterState }) {
     authToken,
   });
 
-  // Initialize unified semester data for the current semester
+  // Debug effect for localSelectedBySemester (unchanged)
   useEffect(() => {
-    if (selectedSemesterState?.shortName) {
-      initializeUnifiedSemester(selectedSemesterState.shortName);
-    }
-  }, [selectedSemesterState?.shortName, initializeUnifiedSemester]);
-
-  const [currentStudyPlan, setCurrentStudyPlan] = useState(null);
-  useEffect(() => {
-    // Fetch the study plan if we have an authToken and a selected semester
-    const fetchStudyPlanData = async () => {
-      if (!authToken || !selectedSemesterState) {
-        console.error("No auth token or selected semester");
-        return;
-      }
-
-      try {
-        setStudyPlan((prev) => ({ ...prev, isLoading: true }));
-        const studyPlansData = await getStudyPlan(authToken);
-
-        // Use new helper to find matching plan
-        const currentSemesterId = selectedSemesterState.cisId;
-        const semesterName = selectedSemesterState.shortName;
-
-        // this works for both semesterId and shortName, --> in the Future we should only use shortName
-        const foundStudyPlan = findStudyPlanBySemester(
-          studyPlansData,
-          currentSemesterId,
-          semesterName,
-          currentRealSemesterName
-        );
-
-        console.warn("studyPlan found:", foundStudyPlan);
-
-        if (foundStudyPlan) {
-          // Set global state first
-          setSelectedCourseIds(foundStudyPlan.courses);
-          setCurrentStudyPlanId(foundStudyPlan.id);
-          setCurrentStudyPlanIdState(foundStudyPlan.id);
-          setCurrentStudyPlan(foundStudyPlan);
-
-          // Then immediately set local selected courses while we have the data in scope
-          // Only update if we have course info for this semester
-          if (allCourseInfo[index] && allCourseInfo[index].length > 0) {
-            // Update index-based atom
-            setLocalSelectedCourses((prevCourses) => {
-              const updatedCourses = { ...prevCourses };
-              updatedCourses[index] = foundStudyPlan.courses
-                .map((courseIdentifier) => {
-                  return allCourseInfo[index].find(
-                    (course) =>
-                      course.courseNumber === courseIdentifier ||
-                      course.id === courseIdentifier
-                  );
-                })
-                .filter(Boolean);
-              return updatedCourses;
-            });
-
-            // Update semester key-based atom
-            setLocalSelectedCoursesSemKey((prevCourses) => {
-              const updatedCourses = { ...prevCourses };
-              const semKey = selectedSemesterState.shortName;
-              updatedCourses[semKey] = foundStudyPlan.courses
-                .map((courseIdentifier) => {
-                  const course = allCourseInfo[index].find(
-                    (c) =>
-                      c.courseNumber === courseIdentifier ||
-                      c.id === courseIdentifier
-                  );
-                  if (!course) return null;
-                  return {
-                    id: course.id,
-                    shortName: course.shortName,
-                    classification: course.classification,
-                    credits: course.credits,
-                    big_type: course.big_type,
-                    calendarEntry: course.calendarEntry || [],
-                    courseNumber: course.courseNumber,
-                  };
-                })
-                .filter(Boolean);
-              return updatedCourses;
-            });
-
-            // Also update unified selected courses
-            const selectedCourses = foundStudyPlan.courses
-              .map((courseIdentifier) => {
-                const course = allCourseInfo[index].find(
-                  (c) =>
-                    c.courseNumber === courseIdentifier ||
-                    c.id === courseIdentifier
-                );
-                return course || null;
-              })
-              .filter(Boolean);
-            updateUnifiedSelectedCourses(
-              selectedSemesterState.shortName,
-              selectedCourses
-            );
-
-            // Mark as set for this semester
-            setHasSetLocalSelectedCourses(true);
-          }
-
-          setStudyPlan({
-            currentPlan: foundStudyPlan,
-            allPlans: studyPlansData,
-            isLoading: false,
-            error: null,
-          });
-        } else {
-          // for new study plans we want to use just the shortName as identifier
-          // If no study plan is found we create a new plan using the selected semester shortName in the backend
-
-          console.warn("initializing new semester study plan:", semesterName);
-          // // initialize a new semester in the study plan backend
-          if (!semesterName) {
-            console.error(
-              "No semester name provided for initialization of new semester study plan"
-            );
-            return;
-          }
-          const newStudyPlan = await initializeSemester(
-            semesterName,
-            authToken
-          );
-          console.warn("new study plan:", newStudyPlan);
-          // after initializing we fetch again the study plan data and the newly created plan is set
-          fetchStudyPlanData(); // Re-fetch the study plan data to get the new plan
-        }
-      } catch (error) {
-        console.error("Error fetching study plan data:", error);
-        setStudyPlan((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: error.message || "Failed to fetch study plan",
-        }));
-        errorHandlingService.handleError(error);
-      }
-    };
-    fetchStudyPlanData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemesterState]);
-
-  // track if local selected courses are set
-  const [hasSetLocalSelectedCourses, setHasSetLocalSelectedCourses] =
-    useState(false);
-
-  useEffect(() => {
-    setHasSetLocalSelectedCourses(false);
-  }, [selectedSemesterState.shortName]);
-
-  // Once we have all course info and the study plan, set up local selected courses
-  useEffect(() => {
-    if (
-      allCourseInfo[index] &&
-      allCourseInfo[index].length > 0 &&
-      !hasSetLocalSelectedCourses &&
-      currentStudyPlan &&
-      index != null &&
-      allCourseInfo[index].length === completeCourseInfo.length
-    ) {
-      if (currentStudyPlan) {
-        setLocalSelectedCourses((prevCourses) => {
-          const updatedCourses = { ...prevCourses };
-          updatedCourses[index] = currentStudyPlan.courses
-            .map((courseIdentifier) => {
-              // Try to find by courseNumber first (new approach), then by id (legacy approach)
-              return completeCourseInfo.find(
-                (course) =>
-                  course.courseNumber === courseIdentifier ||
-                  course.id === courseIdentifier
-              );
-            })
-            .filter(Boolean);
-          return updatedCourses;
-        });
-
-        setLocalSelectedCoursesSemKey((prevCourses) => {
-          const updatedCourses = { ...prevCourses };
-          const semKey = selectedSemesterState.shortName;
-          updatedCourses[semKey] = currentStudyPlan.courses
-            .map((courseIdentifier) => {
-              // Try to find by courseNumber first (new approach), then by id (legacy approach)
-              const course = completeCourseInfo.find(
-                (c) =>
-                  c.courseNumber === courseIdentifier ||
-                  c.id === courseIdentifier
-              );
-              if (!course) return null;
-              return {
-                id: course.id,
-                shortName: course.shortName,
-                classification: course.classification,
-                credits: course.credits,
-                big_type: course.big_type,
-                calendarEntry: course.calendarEntry || [],
-                courseNumber: course.courseNumber, // Add courseNumber to the saved course data
-              };
-            })
-            .filter(Boolean);
-          return updatedCourses;
-        });
-
-        // Also update unified selected courses
-        const selectedCourses = currentStudyPlan.courses
-          .map((courseIdentifier) => {
-            const course = completeCourseInfo.find(
-              (c) =>
-                c.courseNumber === courseIdentifier || c.id === courseIdentifier
-            );
-            return course || null;
-          })
-          .filter(Boolean);
-        updateUnifiedSelectedCourses(
-          selectedSemesterState.shortName,
-          selectedCourses
-        );
-      }
-      setHasSetLocalSelectedCourses(true);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    currentStudyPlan,
-    index,
-    selectedSemesterState.shortName,
-    hasSetLocalSelectedCourses,
-    completeCourseInfo, // to force update when course info is fetched
-  ]);
-
-  // loading flags
-  const [isEnrolledCoursesLoading, setIsEnrolledCoursesLoading] =
-    useState(true);
-  const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
-  const [isCourseRatingsLoading, setIsCourseRatingsLoading] = useState(true);
-
-  // fetch enrolled courses
-  useEffect(() => {
-    const fetchEnrolledCourses = async () => {
-      if (
-        index != null &&
-        enrolledCourses &&
-        (!enrolledCourses[index] || enrolledCourses[index].length === 0)
-      ) {
-        setIsEnrolledCoursesLoading(true);
-        try {
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${selectedSemesterState.id}`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
-          updateEnrolledCourses(response.data, index);
-
-          // Also update unified enrolled courses
-          if (selectedSemesterState?.shortName) {
-            updateUnifiedEnrolledCourses(
-              selectedSemesterState.shortName,
-              response.data
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching event list:", error);
-          errorHandlingService.handleError(error);
-        } finally {
-          setIsEnrolledCoursesLoading(false);
-        }
-      } else {
-        setIsEnrolledCoursesLoading(false);
-      }
-    };
-    if (authToken && selectedSemesterState && index != null) {
-      fetchEnrolledCourses();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemesterState, index]);
-
-  // fetch course data
-  useEffect(() => {
-    const fetchCourseData = async () => {
-      if (
-        index != null &&
-        (!courseInfos[index] || courseInfos[index].length === 0)
-      ) {
-        setIsCourseDataLoading(true);
-        try {
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
-          updateCourseInfo(response.data, index);
-
-          // Also update unified available courses
-          if (selectedSemesterState?.shortName) {
-            updateUnifiedAvailableCourses(
-              selectedSemesterState.shortName,
-              response.data
-            );
-          }
-        } catch (error) {
-          console.error("Error fetching data:", error);
-          errorHandlingService.handleError(error);
-        } finally {
-          setIsCourseDataLoading(false);
-        }
-      } else {
-        setIsCourseDataLoading(false);
-      }
-    };
-    if (authToken && cisId && index != null) {
-      fetchCourseData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, cisId, index]);
-
-  // fetch course ratings
-  useEffect(() => {
-    const fetchCourseRatings = async () => {
-      if (authToken && !shsgCourseRatings) {
-        setIsCourseRatingsLoading(true);
-        try {
-          const response = await axios({
-            method: "get",
-            maxBodyLength: Infinity,
-            url: "https://api.shsg.ch/course-ratings",
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "DE",
-              "API-Version": "1",
-              Authorization: "Bearer " + authToken,
-            },
-          });
-          setShsgCourseRatings(response.data);
-
-          // Also update unified course ratings for ALL semesters
-          // Since ratings are global data that applies to all semesters
-          updateUnifiedCourseRatingsForAllSemesters(response.data);
-        } catch (error) {
-          console.error("Error fetching course ratings:", error);
-          errorHandlingService.handleError(error);
-        } finally {
-          setIsCourseRatingsLoading(false);
-        }
-      } else {
-        setIsCourseRatingsLoading(false);
-      }
-    };
-    fetchCourseRatings();
-    //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken]);
-
-  // update isLoading
-  useEffect(() => {
-    if (
-      !isEnrolledCoursesLoading &&
-      !isCourseDataLoading &&
-      !isCourseRatingsLoading
-    ) {
-      setIsLoading(false);
-    } else {
-      setIsLoading(true);
-    }
-  }, [isEnrolledCoursesLoading, isCourseDataLoading, isCourseRatingsLoading]);
-
-  // update completeCourseInfo
-  useEffect(() => {
-    if (allCourseInfo && allCourseInfo[index]) {
-      if (allCourseInfo[index].length > 0) {
-        setCompleteCourseInfo(allCourseInfo[index]);
-      }
-    }
-  }, [allCourseInfo, index]);
-
-  // update filteredCourses
-  useEffect(() => {
-    if (filteredCoursesState && index != null) {
-      setFilteredCourses(filteredCoursesState[index]);
-    }
-  }, [filteredCoursesState, index]);
-
-  // Integrate unified filtered courses system alongside legacy system
-  useEffect(() => {
-    // Only run if we have the necessary data
-    if (selectedSemesterState?.shortName && completeCourseInfo?.length > 0) {
-      try {
-        // Initialize the semester if needed
-        initializeUnifiedSemester(selectedSemesterState.shortName);
-
-        // Update available courses first (these are the courses to be filtered)
-        updateUnifiedAvailableCourses(
-          selectedSemesterState.shortName,
-          completeCourseInfo
-        );
-
-        // Update filtered courses using the selection options and selected course IDs
-        updateUnifiedFilteredCourses(
-          selectedSemesterState.shortName,
-          selectionOptions,
-          selectedCourseIds || []
-        );
-
-        console.log(
-          `🔄 Updated unified filtered courses for ${selectedSemesterState.shortName}`
-        );
-      } catch (error) {
-        console.error("Error updating unified filtered courses:", error);
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedSemesterState?.shortName,
-    completeCourseInfo,
-    selectionOptions,
-    selectedCourseIds,
-  ]);
+    console.log(
+      "DEBUG: localSelectedBySemester changed",
+      localSelectedBySemester
+    );
+  }, [localSelectedBySemester]);
 
   // row renderer
   const Row = ({ index, style }) => {
