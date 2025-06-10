@@ -43,7 +43,7 @@ export default function Calendar() {
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
-    if (finalEvents) {
+    if (finalEvents && finalEvents.length > 0) {
       setIsLoading(false);
 
       // Sort events by start date
@@ -51,22 +51,34 @@ export default function Calendar() {
         (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
       );
 
-      // Ignore outliers: use the 5th and 95th percentile events as boundaries if enough events exist
-      let firstIdx = 0;
-      let lastIdx = sortedEvents.length - 1;
-      if (sortedEvents.length > 10) {
-        firstIdx = Math.floor(sortedEvents.length * 0.05);
-        lastIdx = Math.ceil(sortedEvents.length * 0.95) - 1;
+      // Ensure we have valid events with start dates
+      const validEvents = sortedEvents.filter((event) => event && event.start);
+
+      if (validEvents.length === 0) {
+        console.warn("No valid events with start dates found");
+        return;
       }
 
-      const firstDate = sortedEvents[firstIdx].start;
-      const lastDate = sortedEvents[lastIdx].start;
+      // Ignore outliers: use the 5th and 95th percentile events as boundaries if enough events exist
+      let firstIdx = 0;
+      let lastIdx = validEvents.length - 1;
+      if (validEvents.length > 10) {
+        firstIdx = Math.floor(validEvents.length * 0.05);
+        lastIdx = Math.ceil(validEvents.length * 0.95) - 1;
+      }
+
+      // Ensure indices are within bounds
+      firstIdx = Math.max(0, Math.min(firstIdx, validEvents.length - 1));
+      lastIdx = Math.max(0, Math.min(lastIdx, validEvents.length - 1));
+
+      const firstDate = validEvents[firstIdx].start;
+      const lastDate = validEvents[lastIdx].start;
 
       setFirstEventDate(new Date(firstDate));
       setLastEventDate(new Date(lastDate));
 
       // If future semester, set initial date to first event (ignoring outliers)
-      if (isFutureSemesterSelectedState && finalEvents.length > 0) {
+      if (isFutureSemesterSelectedState && validEvents.length > 0) {
         setInitialDate(new Date(firstDate));
       }
 

@@ -73,7 +73,9 @@ export const coursesTakenForRatingState = atom({
         const ratableSemesters = semesterInfo.data
           .filter(semester => isSemesterRatable(semester.shortName, currentSemester))
           .reduce((acc, semester) => {
-            acc[semester.shortName] = semester.timeSegmentId;
+            if (semester && semester.shortName) { // Ensure semester and semester.shortName are defined
+              acc[semester.shortName] = semester.timeSegmentId; // If timeSegmentId is missing, undefined will be assigned, which is acceptable.
+            }
             return acc;
           }, {});
 
