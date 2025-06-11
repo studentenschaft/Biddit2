@@ -7,7 +7,6 @@ import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
 
 /**
  * Shared hook for adding or removing a course in local and backend states.
@@ -36,9 +35,6 @@ export function useCourseSelection({
   const currentStudyPlanId = useRecoilValue(currentStudyPlanIdState);
   // Recoil: classification to big_type map for categorizing
   const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
-
-  // New unified course data hook
-  const { updateSelectedCoursesForSemester } = useUnifiedCourseData();
 
   /**
    * Adds or removes the course from local state and from the backend.

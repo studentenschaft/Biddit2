@@ -7,7 +7,7 @@
  * - Implements virtual scrolling for performance
  * - Filters courses based on user selection (DUAL SYSTEM: Legacy + Unified)
  * - Handles course enrollment status
- * - allows for adding courses to the user's schedule (TODO)
+ * - allows for adding courses to the user's schedule
  *
  * MIGRATION STATUS:
  * ✅ REFACTORED: Split data fetching into organized helper hooks
