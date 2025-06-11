@@ -1,6 +1,5 @@
 import { selector, selectorFamily } from "recoil";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
-import { selectedSemesterAtom } from "./selectedSemesterAtom";
 
 /**
  * Selector to get all course data for a specific semester
@@ -12,7 +11,7 @@ export const semesterCourseDataSelector = selectorFamily({
     ({ get }) => {
       const allCourseData = get(unifiedCourseDataState);
       return (
-        allCourseData[semesterShortName] || {
+        allCourseData.semesters[semesterShortName] || {
           enrolled: [],
           available: [],
           selected: [],
@@ -21,6 +20,50 @@ export const semesterCourseDataSelector = selectorFamily({
         }
       );
     },
+});
+
+/**
+ * Selector to get the currently selected semester
+ */
+export const selectedSemesterSelector = selector({
+  key: "selectedSemesterSelector",
+  get: ({ get }) => {
+    const courseData = get(unifiedCourseDataState);
+    return courseData.selectedSemester;
+  },
+});
+
+/**
+ * Selector to get future semester status
+ */
+export const isFutureSemesterSelector = selector({
+  key: "isFutureSemesterSelector",
+  get: ({ get }) => {
+    const courseData = get(unifiedCourseDataState);
+    return courseData.isFutureSemester;
+  },
+});
+
+/**
+ * Selector to get reference semester for future projections
+ */
+export const referenceSemesterSelector = selector({
+  key: "referenceSemesterSelector",
+  get: ({ get }) => {
+    const courseData = get(unifiedCourseDataState);
+    return courseData.referenceSemester;
+  },
+});
+
+/**
+ * Selector to get latest valid term
+ */
+export const latestValidTermSelector = selector({
+  key: "latestValidTermSelector",
+  get: ({ get }) => {
+    const courseData = get(unifiedCourseDataState);
+    return courseData.latestValidTerm;
+  },
 });
 
 /**
@@ -69,7 +112,7 @@ export const selectedCoursesSelector = selectorFamily({
 export const currentSemesterAllCoursesSelector = selector({
   key: "currentSemesterAllCoursesSelector",
   get: ({ get }) => {
-    const selectedSemester = get(selectedSemesterAtom);
+    const selectedSemester = get(selectedSemesterSelector);
     if (!selectedSemester) return [];
 
     const enrolled = get(enrolledCoursesSelector(selectedSemester));
@@ -113,9 +156,9 @@ export const legacyCourseInfoSelector = selector({
 
     // Map semester shortNames to legacy numeric keys
     // This is a temporary solution during migration
-    const semesterKeys = Object.keys(allCourseData).sort();
+    const semesterKeys = Object.keys(allCourseData.semesters).sort();
     semesterKeys.forEach((semesterKey, index) => {
-      const semesterData = allCourseData[semesterKey];
+      const semesterData = allCourseData.semesters[semesterKey];
       const allCourses = [
         ...(semesterData.enrolled || []),
         ...(semesterData.selected || []),
@@ -144,6 +187,6 @@ export const allSemesterCoursesSelector = selector({
   key: "allSemesterCoursesSelector",
   get: ({ get }) => {
     const allCourseData = get(unifiedCourseDataState);
-    return allCourseData;
+    return allCourseData.semesters;
   },
 });

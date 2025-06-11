@@ -16,6 +16,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUpdateEnrolledCoursesAtom } from "../helpers/useUpdateEnrolledCourses";
 import { referenceSemesterAtom } from "../recoil/referenceSemesterAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 
 /**
  * Custom hook to handle term selection logic including:
@@ -44,12 +45,18 @@ export function useTermSelection() {
   const initialSelectionMadeRef = useRef(false);
   // Helpers
   const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
-
   // New unified course data hook
   const {
     updateEnrolledCourses: updateUnifiedEnrolledCourses,
     initializeSemester: initializeUnifiedSemester,
   } = useUnifiedCourseData();
+
+  // New unified semester state hook
+  const {
+    setSelectedSemester: setUnifiedSelectedSemester,
+    setLatestValidTerm: setUnifiedLatestValidTerm,
+    setFutureSemesterStatus: setUnifiedFutureSemesterStatus,
+  } = useUnifiedSemesterState();
 
   // For future semesters
   const courseInfo = useRecoilValue(courseInfoState);
@@ -151,21 +158,21 @@ export function useTermSelection() {
             {
               headers: {
                 "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
+                "X-RequestedLanguage": "DE",
                 "API-Version": "1",
                 Authorization: `Bearer ${authToken}`,
               },
             }
           );
           setLatestValidTerm(primaryTermShortName);
+          // Also update unified state
+          setUnifiedLatestValidTerm(primaryTermShortName);
 
           // If we got data or it's an empty array (which is valid), use it
           updateEnrolledCourses(response.data, 1);
 
           // Also update unified course data
-          updateUnifiedEnrolledCourses(primaryTermShortName, response.data);
-
-          // Only try backup term if the first one returned an empty array
+          updateUnifiedEnrolledCourses(primaryTermShortName, response.data); // Only try backup term if the first one returned an empty array
           if (response.data.length === 0 && backupTermId) {
             try {
               const backupResponse = await axios.get(
@@ -173,13 +180,15 @@ export function useTermSelection() {
                 {
                   headers: {
                     "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                    "X-RequestedLanguage": "EN",
+                    "X-RequestedLanguage": "DE",
                     "API-Version": "1",
                     Authorization: `Bearer ${authToken}`,
                   },
                 }
               );
               setLatestValidTerm(backupTermShortName);
+              // Also update unified state
+              setUnifiedLatestValidTerm(backupTermShortName);
               updateEnrolledCourses(backupResponse.data, 2);
 
               // Also update unified course data
@@ -210,13 +219,15 @@ export function useTermSelection() {
                 {
                   headers: {
                     "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                    "X-RequestedLanguage": "EN",
+                    "X-RequestedLanguage": "DE",
                     "API-Version": "1",
                     Authorization: `Bearer ${authToken}`,
                   },
                 }
               );
               setLatestValidTerm(backupTermShortName);
+              // Also update unified state
+              setUnifiedLatestValidTerm(backupTermShortName);
               updateEnrolledCourses(backupResponse.data, 2);
 
               // Also update unified course data
@@ -270,6 +281,9 @@ export function useTermSelection() {
       setSelectedSemester(latestValidTerm);
       setSelectedSemesterState(latestValidTerm);
 
+      // Also update unified state
+      setUnifiedSelectedSemester(latestValidTerm, termIdList, latestValidTerm);
+
       const validTermIndex = termIdList?.findIndex(
         (term) => term.shortName === latestValidTerm
       );
@@ -281,14 +295,7 @@ export function useTermSelection() {
 
       setIsLoading(false);
     }
-  }, [
-    selectedSem,
-    latestValidTerm,
-    fetchAttempted,
-    setSelectedSemesterState,
-    termIdList,
-    setSelectedIndex,
-  ]);
+  }, [selectedSem, latestValidTerm, fetchAttempted, termIdList]);
 
   // Add this new effect to update reference semester when selected semester changes
   useEffect(() => {
@@ -303,7 +310,6 @@ export function useTermSelection() {
         // You can compare dates, check a flag, or use your existing method
         selectedTermIdx >
         termIdList.findIndex((term) => term.shortName === latestValidTerm);
-
       if (isFutureSemester) {
         // Use the reference semester for future semester projections
         const referenceTermShortName =
@@ -312,18 +318,16 @@ export function useTermSelection() {
             : termIdList[1].shortName;
 
         setReferenceSemester(referenceTermShortName);
+        // Also update unified state
+        setUnifiedFutureSemesterStatus(true, referenceTermShortName);
       } else {
         // For current/past semesters, reference is itself
         setReferenceSemester(selectedSem);
+        // Also update unified state
+        setUnifiedFutureSemesterStatus(false, null);
       }
     }
-  }, [
-    selectedSem,
-    termIdList,
-    latestValidTerm,
-    courseInfo,
-    setReferenceSemester,
-  ]);
+  }, [selectedSem, termIdList, latestValidTerm, courseInfo]);
 
   // Get sorted terms for the dropdown
   const sortedTermShortNames = termIdList?.length
@@ -331,7 +335,6 @@ export function useTermSelection() {
         sortTerms([a, b])[0] === a ? -1 : 1
       )
     : ["loading semester data..."];
-
   // Handle term selection
   const handleTermSelect = (termValue) => {
     setSelectedSemester(termValue);
@@ -340,6 +343,9 @@ export function useTermSelection() {
     );
     setSelectedIndex(selectedIdx);
     setSelectedSemesterState(termValue);
+
+    // Also update unified state with future semester detection
+    setUnifiedSelectedSemester(termValue, termIdList, latestValidTerm);
   };
 
   return {

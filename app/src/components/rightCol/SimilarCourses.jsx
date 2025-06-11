@@ -14,6 +14,11 @@ import {
   isFutureSemesterSelected,
   referenceSemester,
 } from "../recoil/isFutureSemesterSelected";
+// Import unified selectors for graceful transition
+import {
+  isFutureSemesterSelector,
+  referenceSemesterSelector,
+} from "../recoil/unifiedCourseDataSelectors";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
@@ -33,8 +38,21 @@ export default function SimilarCourses({ selectedCourse }) {
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]);
   const [similarCourses, setSimilarCourses] = useState([]);
-  const isFutureSemesterSelectedSate = useRecoilValue(isFutureSemesterSelected);
-  const referenceSemesterState = useRecoilValue(referenceSemester);
+
+  // Try unified state first, fallback to legacy
+  const isFutureSemesterUnified = useRecoilValue(isFutureSemesterSelector);
+  const isFutureSemesterLegacy = useRecoilValue(isFutureSemesterSelected);
+  const isFutureSemesterSelectedSate =
+    isFutureSemesterUnified !== undefined
+      ? isFutureSemesterUnified
+      : isFutureSemesterLegacy;
+
+  // Try unified state first, fallback to legacy for reference semester
+  const referenceSemesterUnified = useRecoilValue(referenceSemesterSelector);
+  const referenceSemesterLegacy = useRecoilValue(referenceSemester);
+  const referenceSemesterState =
+    referenceSemesterUnified || referenceSemesterLegacy;
+
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
 

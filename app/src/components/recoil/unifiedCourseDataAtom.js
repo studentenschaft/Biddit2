@@ -6,21 +6,33 @@ import { atom } from "recoil";
  *
  * Structure:
  * {
- *   "HS24": {
- *     enrolled: [], // Courses the user is enrolled in
- *     available: [], // All available courses for this semester
- *     selected: [], // Courses the user has selected/wishlisted
- *     filtered: [], // Filtered courses based on current filter criteria
- *     ratings: {}, // Course ratings by courseNumber
- *     lastFetched: null // When this data was last fetched
+ *   semesters: {
+ *     "HS24": {
+ *       enrolled: [], // Courses the user is enrolled in
+ *       available: [], // All available courses for this semester
+ *       selected: [], // Courses the user has selected/wishlisted
+ *       filtered: [], // Filtered courses based on current filter criteria
+ *       ratings: {}, // Course ratings by courseNumber
+ *       lastFetched: null // When this data was last fetched
+ *     },
+ *     "FS25": { ... },
+ *     // etc.
  *   },
- *   "FS25": { ... },
- *   // etc.
+ *   selectedSemester: null, // Currently selected semester shortName
+ *   isFutureSemester: false, // Whether selected semester is in the future
+ *   referenceSemester: null, // Reference semester for future projections
+ *   latestValidTerm: null, // Latest term with actual course data
  * }
  */
 export const unifiedCourseDataState = atom({
   key: "unifiedCourseDataState",
-  default: {},
+  default: {
+    semesters: {},
+    selectedSemester: null,
+    isFutureSemester: false,
+    referenceSemester: null,
+    latestValidTerm: null,
+  },
 });
 
 /**
