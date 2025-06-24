@@ -33,7 +33,8 @@ export default function SmartSearch() {
       semester: selectedSemesterState,
       type: "available",
     })
-  );
+  ); // TEMPORARILY DISABLED UNTIL STABLE
+  // eslint-disable-next-line no-unused-vars
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]);
   const [similarCourses, setSimilarCourses] = useState([]);
@@ -55,6 +56,8 @@ export default function SmartSearch() {
     useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
+  // TEMPORARILY DISABLED UNTIL STABLE
+  // eslint-disable-next-line no-unused-vars
   const [isLoadingLong, setIsLoadingLong] = useState(false);
 
   const [program, setProgram] = useState(null);
@@ -132,8 +135,16 @@ export default function SmartSearch() {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
-
+  // UPSERT FUNCTIONALITY DISABLED - NOT STABLE YET
+  // This feature is temporarily disabled until we have a stable version
+  // eslint-disable-next-line no-unused-vars
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
+    console.log(
+      "Upsert functionality is currently disabled for stability reasons"
+    );
+    return; // Early return - function disabled
+
+    /* COMMENTED OUT UNTIL STABLE
     setIsLoadingLong(true);
 
     try {
@@ -160,6 +171,7 @@ export default function SmartSearch() {
       console.error("Error adding courses:", error);
       errorHandlingService.handleError(error);
     }
+    */
   }
 
   // fetch similar courses using search input
@@ -191,25 +203,52 @@ export default function SmartSearch() {
 
         setSimilarCourses(response.data);
         console.log("Similar courses:", response.data);
-        setIsLoading(false);
-
-        // Only attempt upsert once to prevent infinite recursion
+        setIsLoading(false); // UPSERT DISABLED - Show message instead of attempting upsert
         if (
           response.data.ids &&
           response.data.ids[0] &&
           response.data.ids[0].length === 0 &&
           !attemptedUpsert
         ) {
+          console.log(
+            "No similar courses found. Upsert functionality is currently disabled."
+          );
+          setSimilarCourses({
+            ids: [[]],
+            distances: [[]],
+            metadatas: [[]],
+            message:
+              "No similar courses found in database. Course embedding feature is temporarily disabled for stability.",
+          });
+          return;
+
+          /* COMMENTED OUT UNTIL STABLE
           setIsLoadingLong(true);
           await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
           setIsLoadingLong(false);
           // Pass true to indicate we've already attempted an upsert
           fetchSimilarCourses(category, true);
+          */
         }
       } catch (error) {
         console.error("Error querying database:", error);
         if (error.response && error.response.status === 404) {
-          console.log("No courses found, attempting upsert");
+          console.log(
+            "No courses found (404 error). Upsert functionality is currently disabled."
+          );
+          if (!attemptedUpsert) {
+            setSimilarCourses({
+              ids: [[]],
+              distances: [[]],
+              metadatas: [[]],
+              message:
+                "No courses found in database. Course embedding feature is temporarily disabled for stability.",
+            });
+          } else {
+            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+          }
+
+          /* COMMENTED OUT UNTIL STABLE
           if (!attemptedUpsert) {
             setIsLoadingLong(true);
             await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
@@ -218,6 +257,7 @@ export default function SmartSearch() {
           } else {
             setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
           }
+          */
         } else {
           errorHandlingService.handleError(error);
         }
@@ -589,7 +629,29 @@ export default function SmartSearch() {
         </div>
       ) : searchInput && similarCourses.ids && !isLoading ? (
         <div className="text-center mt-4">
-          <p>No similar courses found</p>
+          {/* Show message if upsert was needed but disabled */}
+          {similarCourses.message ? (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-center">
+                <svg
+                  className="w-5 h-5 text-yellow-400 mr-2"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <p className="text-sm text-yellow-800">
+                  {similarCourses.message}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p>No similar courses found</p>
+          )}
         </div>
       ) : null}
     </>
