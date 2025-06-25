@@ -1,21 +1,11 @@
 // import PropTypes from "prop-types";
-import { useEffect, useState, useMemo } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useState, useMemo } from "react";
+import { useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
 
-import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
-import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
+// Import unified selectors for graceful transition
 import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
-import { cisIdListSelector } from "../recoil/cisIdListSelector";
-import {
-  isFutureSemesterSelected,
-  referenceSemester,
-} from "../recoil/isFutureSemesterSelected";
-import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
-import {
-  semesterCourseDataSelector,
-  currentSemesterAllCoursesSelector,
-} from "../recoil/unifiedCourseDataSelectors";
+import { semesterCoursesSelector } from "../recoil/courseSelectors";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
@@ -24,124 +14,52 @@ import { selectedCourseCourseInfo } from "../recoil/selectedCourseCourseInfo";
 
 import { Heatmap } from "./Heatmap";
 
+//TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
+
 export default function SemesterSummary() {
   const setSelectedCourse = useSetRecoilState(selectedCourseCourseInfo);
   const setSelectedTab = useSetRecoilState(selectedTabAtom);
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
-
-  const [selectedSemesterIndex] = useRecoilState(selectedSemesterIndexAtom);
-  const [selectedSemesterShortName] = useRecoilState(selectedSemesterAtom);
   const [hoveredCourse, setHoveredCourse] = useState(null);
-  const cisIdList = useRecoilValue(cisIdListSelector);
-  const isFutureSem = useRecoilValue(isFutureSemesterSelected);
-  const refSemester = useRecoilValue(referenceSemester);
-  const allCourseInfo = useRecoilValue(allCourseInfoState);
-  // Add access to semester-keyed saved courses
-  const localSelectedBySemester = useRecoilValue(
-    localSelectedCoursesSemKeyState
+
+  // Use new unified course data system
+  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
+
+  // Get enrolled courses from unified system
+  const enrolledCourses = useRecoilValue(
+    semesterCoursesSelector({
+      semester: selectedSemesterState,
+      type: "enrolled",
+    })
   );
 
-  // Try to use unified data if available, fallback to old system
-  const unifiedSemesterData = useRecoilValue(
-    semesterCourseDataSelector(selectedSemesterShortName || "")
+  // Get selected courses from unified system
+  const selectedCourses = useRecoilValue(
+    semesterCoursesSelector({
+      semester: selectedSemesterState,
+      type: "selected",
+    })
   );
-  const hasUnifiedData =
-    unifiedSemesterData &&
-    (unifiedSemesterData.enrolled.length > 0 ||
-      unifiedSemesterData.available.length > 0);
-  // Find the appropriate semester data based on semester short name instead of index
+
+  // Get current courses using unified data
   const currCourses = useMemo(() => {
-    // Try unified data first if available
-    if (hasUnifiedData && selectedSemesterShortName) {
-      const enrolledCourses = unifiedSemesterData.enrolled || [];
-      const selectedCourses = unifiedSemesterData.selected || [];
-      return [...enrolledCourses, ...selectedCourses];
-    }
-
-    // Fallback to old system
-    // Default case: Empty array when no data is available
-    if (!allCourseInfo || Object.keys(allCourseInfo).length === 0) {
-      return [];
-    }
-
-    // Get details about the selected semester
-    const selectedSemesterDetails = cisIdList[selectedSemesterIndex];
-
-    if (!selectedSemesterDetails) {
-      return [];
-    }
-
-    // For future semesters, use the semester-keyed saved courses directly
-    if (isFutureSem && selectedSemesterShortName) {
-      // Check if we have saved courses for this specific future semester
-      const semesterSavedCourses =
-        localSelectedBySemester[selectedSemesterShortName];
-      //console.log(`DEBUG SemesterSummary: Step 5A - Checking saved courses for future semester ${selectedSemesterShortName}:`,
-      //semesterSavedCourses ? `Found ${semesterSavedCourses.length} courses` : "No courses found");
-
-      if (semesterSavedCourses && semesterSavedCourses.length > 0) {
-        //console.log(`DEBUG SemesterSummary: Step 5B - Using ${semesterSavedCourses.length} saved courses for future semester ${selectedSemesterShortName}`);
-        return semesterSavedCourses;
-      }
-    }
-
-    // Normal case: Directly access data for current semester using the index
-    if (allCourseInfo[selectedSemesterIndex + 1] && !isFutureSem) {
-      //console.log(`DEBUG SemesterSummary: Step 6 - Using current semester data at index ${selectedSemesterIndex + 1}`);
-      return allCourseInfo[selectedSemesterIndex + 1].filter(
-        (course) => course.enrolled || course.selected
-      );
-    }
-
-    // Fallback for future semesters: Use reference semester as a backup method
-    if (isFutureSem && refSemester) {
-      // Try to get saved courses for the reference semester
-      const refSemesterSavedCourses =
-        localSelectedBySemester[refSemester.shortName];
-      //console.log(`DEBUG SemesterSummary: Step 7A - Checking reference semester ${refSemester.shortName} saved courses:`,
-      //refSemesterSavedCourses ? `Found ${refSemesterSavedCourses.length} courses` : "No courses found");
-
-      // If we have saved courses for reference semester, map them to future semester
-      if (refSemesterSavedCourses && refSemesterSavedCourses.length > 0) {
-        //console.log(`DEBUG SemesterSummary: Step 7B - Using ${refSemesterSavedCourses.length} saved courses from reference semester ${refSemester.shortName}`);
-        return refSemesterSavedCourses;
-      }
-
-      // Find the reference semester index in cisIdList as fallback
-      const refIndex = cisIdList.findIndex(
-        (item) => item.shortName === refSemester.shortName
+    // Use unified data from the new system
+    if (selectedSemesterState) {
+      // Merge and deduplicate courses
+      const allCourses = [...enrolledCourses, ...selectedCourses];
+      const uniqueCourses = allCourses.filter(
+        (course, index, arr) =>
+          arr.findIndex(
+            (c) => c.id === course.id || c.courseNumber === course.courseNumber
+          ) === index
       );
 
-      //console.log(`DEBUG SemesterSummary: Step 7C - Reference semester index: ${refIndex}`);
-
-      if (refIndex >= 0 && allCourseInfo[refIndex + 1]) {
-        //console.log(`DEBUG SemesterSummary: Step 7D - Using reference semester index ${refIndex} (${refSemester.shortName}) data`);
-        return allCourseInfo[refIndex + 1].filter((course) => course.selected);
-      }
+      return uniqueCourses;
     }
 
-    // Fallback: Try to find the most recent past semester with data
-
-    // First try current semester (index 1), then previous semester (index 2)
-    if (allCourseInfo[1]?.length > 0) {
-      return allCourseInfo[1].filter((course) => course.selected);
-    } else if (allCourseInfo[2]?.length > 0) {
-      return allCourseInfo[2].filter((course) => course.selected);
-    }
-    // If all else fails, return empty array
     return [];
-  }, [
-    allCourseInfo,
-    selectedSemesterIndex,
-    selectedSemesterShortName,
-    cisIdList,
-    isFutureSem,
-    refSemester,
-    localSelectedBySemester,
-    hasUnifiedData,
-    unifiedSemesterData,
-  ]);
+  }, [selectedSemesterState, enrolledCourses, selectedCourses]);
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
