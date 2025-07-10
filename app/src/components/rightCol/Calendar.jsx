@@ -10,7 +10,7 @@ import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/solid";
 // Other
 import "./calendar.css";
 import { useRecoilValue } from "recoil";
-import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
+import { calendarEntriesWithMetaSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
@@ -21,7 +21,7 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 
 // Implementation of calendar widget
 export default function Calendar() {
-  const finalEvents = useRecoilValue(calendarEntriesSelector);
+  const calendarData = useRecoilValue(calendarEntriesWithMetaSelector);
   const latestValidTerm = useRecoilValue(latestValidTermAtom);
   const [isLoading, setIsLoading] = React.useState(true);
   const [calendarKey, setCalendarKey] = React.useState(0);
@@ -34,8 +34,11 @@ export default function Calendar() {
     isFutureSemesterSelected
   );
 
+  // Extract data from the enhanced selector
+  const { events: finalEvents, emptyReason } = calendarData;
+
+  console.log("Calendar Data:", calendarData);
   console.log("Final Events:", finalEvents);
-  console.log("Calender Entries selector:", calendarEntriesSelector);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
@@ -43,9 +46,10 @@ export default function Calendar() {
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
-    if (finalEvents && finalEvents.length > 0) {
-      setIsLoading(false);
+    // Always set loading to false since we have valid data from the selector
+    setIsLoading(false);
 
+    if (finalEvents && finalEvents.length > 0) {
       // Sort events by start date
       const sortedEvents = [...finalEvents].sort(
         (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
@@ -209,9 +213,22 @@ export default function Calendar() {
         </div>
       ) : finalEvents.length === 0 ? (
         <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500 text-lg">
-            No courses available for this semester
-          </p>
+          <div className="text-center">
+            <p className="text-gray-500 text-lg mb-2">
+              {emptyReason === "no_selected_courses"
+                ? "No courses selected or enrolled"
+                : emptyReason === "no_courses"
+                ? "No courses available for this semester"
+                : emptyReason === "invalid_semester"
+                ? "Invalid semester selected"
+                : "No calendar entries available"}
+            </p>
+            {emptyReason === "no_selected_courses" && (
+              <p className="text-gray-400 text-sm">
+                Please select or enroll in courses to view your schedule
+              </p>
+            )}
+          </div>
         </div>
       ) : (
         <div className="flex w-full h-full">

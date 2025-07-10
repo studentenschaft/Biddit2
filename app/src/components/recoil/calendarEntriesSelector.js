@@ -184,3 +184,70 @@ export const calendarEntriesSelector = selector({
     return calendarEntries;
   },
 });
+
+// Enhanced selector that includes metadata about the state
+export const calendarEntriesWithMetaSelector = selector({
+  key: "calendarEntriesWithMetaSelector",
+  get: ({ get }) => {
+    const selectedSemesterIndex = get(selectedSemesterIndexAtom);
+    const cisIdList = get(cisIdListSelector);
+    const semShortName = cisIdList[selectedSemesterIndex]?.shortName || "";
+
+    // Check if we have valid semester data
+    if (selectedSemesterIndex == null || !semShortName) {
+      return {
+        events: [],
+        isEmpty: true,
+        isLoading: false,
+        emptyReason: "invalid_semester",
+      };
+    }
+
+    const allCourses = get(allCourseInfoState);
+    const futureSemesterSelected = get(isFutureSemesterSelected);
+    const referenceSemester = get(referenceSemesterAtom);
+
+    let adjustedSemester = selectedSemesterIndex;
+    if (futureSemesterSelected && referenceSemester != null) {
+      if (typeof referenceSemester === "number") {
+        adjustedSemester = referenceSemester;
+      } else {
+        const referenceIndex = cisIdList.findIndex(
+          (sem) => sem.shortName === referenceSemester.shortName
+        );
+        if (referenceIndex !== -1) {
+          adjustedSemester = referenceIndex;
+        }
+      }
+    }
+
+    // Check if courses data is available
+    const semesterCourses = allCourses[adjustedSemester + 1] || [];
+
+    // Check if any courses are enrolled or selected
+    const currentCourses = semesterCourses.filter(
+      (course) => course.enrolled || course.selected
+    );
+
+    // If no courses are selected/enrolled, return appropriate state
+    if (currentCourses.length === 0) {
+      return {
+        events: [],
+        isEmpty: true,
+        isLoading: false,
+        emptyReason:
+          semesterCourses.length === 0 ? "no_courses" : "no_selected_courses",
+      };
+    }
+
+    // Get the actual calendar entries
+    const calendarEntries = get(calendarEntriesSelector);
+
+    return {
+      events: calendarEntries,
+      isEmpty: calendarEntries.length === 0,
+      isLoading: false,
+      emptyReason: calendarEntries.length === 0 ? "no_calendar_entries" : null,
+    };
+  },
+});
