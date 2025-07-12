@@ -34,19 +34,95 @@ export default function SelectSemester() {
 
   // Determine the selected semester ID for the event list container
   const selectedSemId = (() => {
-    if (!selectedSem || selectedSem === "loading semester data...") return null;
+    console.log(
+      "🔍 [SEMESTER ID] Determining selected semester ID for:",
+      selectedSem
+    );
+
+    if (!selectedSem || selectedSem === "loading semester data...") {
+      console.log("❌ [SEMESTER ID] No valid semester selected");
+      return null;
+    }
 
     const matchingTerms =
       termIdList?.filter((term) => term.shortName === selectedSem) || [];
 
-    if (matchingTerms.length > 1) {
-      if (selectedSem === latestValidTerm) {
-        const validTerm = matchingTerms.find((term) => term.isCurrent);
-        if (validTerm) return validTerm;
+    console.log(
+      "📋 [SEMESTER ID] Found",
+      matchingTerms.length,
+      "matching terms for",
+      selectedSem
+    );
+
+    if (matchingTerms.length > 0) {
+      // Term exists in original termIdList
+      if (matchingTerms.length > 1) {
+        if (selectedSem === latestValidTerm) {
+          const validTerm = matchingTerms.find((term) => term.isCurrent);
+          if (validTerm) {
+            console.log(
+              "✅ [SEMESTER ID] Using current term:",
+              validTerm.shortName,
+              "ID:",
+              validTerm.id
+            );
+            return validTerm;
+          }
+        }
+      }
+
+      const finalTerm = matchingTerms[0];
+      console.log(
+        "✅ [SEMESTER ID] Using term:",
+        finalTerm.shortName,
+        "ID:",
+        finalTerm.id
+      );
+      return finalTerm;
+    } else {
+      // This is a future semester we added - need to use reference term
+      console.log(
+        "🔮 [SEMESTER ID] Selected term is future semester, finding reference term"
+      );
+
+      const selectedYear = parseInt(selectedSem.slice(2));
+      const selectedSeason = selectedSem.slice(0, 2);
+      const referenceTermShortName = selectedSeason + (selectedYear - 1);
+
+      console.log(
+        "🎯 [SEMESTER ID] Looking for reference term:",
+        referenceTermShortName
+      );
+
+      const referenceTerms =
+        termIdList?.filter(
+          (term) => term.shortName === referenceTermShortName
+        ) || [];
+
+      if (referenceTerms.length > 0) {
+        const referenceTerm = referenceTerms[0];
+        console.log(
+          "✅ [SEMESTER ID] Using reference term:",
+          referenceTerm.shortName,
+          "ID:",
+          referenceTerm.id,
+          "for future semester:",
+          selectedSem
+        );
+
+        // Return a modified term object that indicates it's being used for projection
+        return {
+          ...referenceTerm,
+          shortName: selectedSem, // Keep the selected semester name for display
+          isProjection: true, // Flag to indicate this is a projection
+        };
+      } else {
+        console.log(
+          "❌ [SEMESTER ID] No reference term found for future semester"
+        );
+        return null;
       }
     }
-
-    return matchingTerms[0] || null;
   })();
 
   // Handle loading state with skeleton UI
