@@ -300,48 +300,265 @@ export function useTermSelection() {
   // Add this new effect to update reference semester when selected semester changes
   useEffect(() => {
     if (termIdList?.length && selectedSem !== "loading semester data...") {
+      console.log(
+        "🔄 [REFERENCE SEMESTER] Updating reference for selected semester:",
+        selectedSem
+      );
+
       const selectedTermIdx = termIdList.findIndex(
         (term) => term.shortName === selectedSem
       );
 
-      // Check if selected semester is in the future
-      const isFutureSemester =
-        /* determine if this is a future semester */
-        // You can compare dates, check a flag, or use your existing method
-        selectedTermIdx >
-        termIdList.findIndex((term) => term.shortName === latestValidTerm);
+      const latestValidTermIdx = termIdList.findIndex(
+        (term) => term.shortName === latestValidTerm
+      );
+
+      // Sort the terms to get proper chronological order
+      const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
+      const selectedTermSortedIdx = sortedTerms.indexOf(selectedSem);
+      const latestValidTermSortedIdx = sortedTerms.indexOf(latestValidTerm);
+
+      // Check if selected semester is in the future (chronologically after latest valid term)
+      const isFutureSemester = selectedTermSortedIdx > latestValidTermSortedIdx;
+
+      console.log(
+        "📍 [REFERENCE SEMESTER] Selected index:",
+        selectedTermIdx,
+        "Latest valid index:",
+        latestValidTermIdx
+      );
+      console.log(
+        "📅 [REFERENCE SEMESTER] Chronological order - Selected position:",
+        selectedTermSortedIdx,
+        "Latest valid position:",
+        latestValidTermSortedIdx
+      );
+      console.log(
+        "🔮 [REFERENCE SEMESTER] Is future semester:",
+        isFutureSemester
+      );
+
       if (isFutureSemester) {
-        // Use the reference semester for future semester projections
-        const referenceTermShortName =
-          courseInfo[1]?.length > 10 && termIdList[0]
-            ? termIdList[0].shortName
-            : termIdList[1].shortName;
+        // For future semesters, we need to find the appropriate reference semester
+        // This should be the semester immediately before the selected one, or the latest valid term
+        let referenceTermShortName;
+
+        if (selectedTermSortedIdx > 0) {
+          // Use the semester immediately before the selected one
+          referenceTermShortName = sortedTerms[selectedTermSortedIdx - 1];
+        } else {
+          // Fallback to latest valid term
+          referenceTermShortName = latestValidTerm;
+        }
+
+        // Additional logic: if we're selecting FS26, use FS25 as reference
+        // if we're selecting HS26, use HS25 as reference, etc.
+        const selectedYear = parseInt(selectedSem.slice(2));
+        const selectedSeason = selectedSem.slice(0, 2);
+        const potentialReferenceTermShortName =
+          selectedSeason + (selectedYear - 1);
+
+        const potentialReferenceExists = termIdList.some(
+          (term) => term.shortName === potentialReferenceTermShortName
+        );
+
+        if (potentialReferenceExists) {
+          referenceTermShortName = potentialReferenceTermShortName;
+          console.log(
+            "🎯 [REFERENCE SEMESTER] Using year-previous reference term:",
+            referenceTermShortName,
+            "for future semester:",
+            selectedSem
+          );
+        } else {
+          console.log(
+            "⚠️ [REFERENCE SEMESTER] Year-previous reference term not found, using chronological previous:",
+            referenceTermShortName
+          );
+        }
 
         setReferenceSemester(referenceTermShortName);
         // Also update unified state
         setUnifiedFutureSemesterStatus(true, referenceTermShortName);
       } else {
         // For current/past semesters, reference is itself
+        console.log(
+          "✅ [REFERENCE SEMESTER] Using selected semester as reference (current/past):",
+          selectedSem
+        );
         setReferenceSemester(selectedSem);
         // Also update unified state
         setUnifiedFutureSemesterStatus(false, null);
       }
     }
+    //eslint-disable-next-line
   }, [selectedSem, termIdList, latestValidTerm, courseInfo]);
 
   // Get sorted terms for the dropdown
   const sortedTermShortNames = termIdList?.length
-    ? [...new Set(termIdList.map((term) => term.shortName))].sort((a, b) =>
-        sortTerms([a, b])[0] === a ? -1 : 1
-      )
+    ? (() => {
+        // Debug: Log the raw termIdList to see what we're working with
+        console.log(
+          "🔍 [DROPDOWN] Raw termIdList:",
+          termIdList.map((t) => `${t.shortName} (ID: ${t.id})`)
+        );
+
+        // Log detailed term information to understand duplicates
+        console.log("🔍 [DROPDOWN] Full term details:");
+        termIdList.forEach((term, index) => {
+          console.log(
+            `  ${index}: ${term.shortName} | ID: ${term.id} | Current: ${term.isCurrent}`
+          );
+        });
+
+        // Get unique terms by shortName, but prefer terms with unique IDs (real terms over projections)
+        const uniqueTermsMap = new Map();
+        const usedIds = new Set();
+
+        // First pass: Add terms with unique IDs (real terms)
+        termIdList.forEach((term) => {
+          if (!usedIds.has(term.id)) {
+            uniqueTermsMap.set(term.shortName, term);
+            usedIds.add(term.id);
+            console.log(
+              `✅ [DROPDOWN] Adding real term: ${term.shortName} (ID: ${term.id})`
+            );
+          }
+        });
+
+        // Second pass: Add terms with duplicate IDs only if shortName is not already present
+        termIdList.forEach((term) => {
+          if (usedIds.has(term.id) && !uniqueTermsMap.has(term.shortName)) {
+            uniqueTermsMap.set(term.shortName, term);
+            console.log(
+              `➕ [DROPDOWN] Adding projected term: ${term.shortName} (ID: ${term.id}, projection)`
+            );
+          }
+        });
+
+        const uniqueTerms = Array.from(uniqueTermsMap.keys());
+        console.log(
+          "🔍 [DROPDOWN] Unique terms after deduplication:",
+          uniqueTerms
+        );
+
+        // Now add missing chronological terms that should exist
+        const sortedExistingTerms = sortTerms(uniqueTerms);
+        console.log(
+          "📅 [DROPDOWN] Existing terms in chronological order:",
+          sortedExistingTerms
+        );
+
+        const termsToAdd = [];
+
+        // For each existing term, check if the next logical term exists
+        sortedExistingTerms.forEach((term, index) => {
+          if (index < sortedExistingTerms.length - 1) {
+            const currentYear = parseInt(term.slice(2));
+            const currentSeason = term.slice(0, 2);
+            const nextTerm = sortedExistingTerms[index + 1];
+
+            // Check if there's a gap in the chronological sequence
+            let expectedNextTerm;
+            if (currentSeason === "FS") {
+              expectedNextTerm = `HS${String(currentYear).padStart(2, "0")}`;
+            } else if (currentSeason === "HS") {
+              expectedNextTerm = `FS${String(currentYear + 1).padStart(
+                2,
+                "0"
+              )}`;
+            }
+
+            if (
+              expectedNextTerm &&
+              expectedNextTerm !== nextTerm &&
+              !uniqueTerms.includes(expectedNextTerm)
+            ) {
+              termsToAdd.push(expectedNextTerm);
+              console.log(
+                `➕ [DROPDOWN] Adding missing chronological term: ${expectedNextTerm} (between ${term} and ${nextTerm})`
+              );
+            }
+          }
+        });
+
+        // Also add one term after the last existing term
+        if (sortedExistingTerms.length > 0) {
+          const lastTerm = sortedExistingTerms[sortedExistingTerms.length - 1];
+          const lastYear = parseInt(lastTerm.slice(2));
+          const lastSeason = lastTerm.slice(0, 2);
+
+          let nextLogicalTerm;
+          if (lastSeason === "FS") {
+            nextLogicalTerm = `HS${String(lastYear).padStart(2, "0")}`;
+          } else if (lastSeason === "HS") {
+            nextLogicalTerm = `FS${String(lastYear + 1).padStart(2, "0")}`;
+          }
+
+          if (nextLogicalTerm && !uniqueTerms.includes(nextLogicalTerm)) {
+            termsToAdd.push(nextLogicalTerm);
+            console.log(
+              `➕ [DROPDOWN] Adding next logical term after ${lastTerm}: ${nextLogicalTerm}`
+            );
+          }
+        }
+
+        const allTerms = [...uniqueTerms, ...termsToAdd];
+        console.log(
+          "📋 [DROPDOWN] All terms including added future terms:",
+          allTerms
+        );
+
+        // Sort them chronologically
+        const sorted = sortTerms(allTerms);
+        console.log("📋 [DROPDOWN] Final sorted terms:", sorted);
+        return sorted;
+      })()
     : ["loading semester data..."];
+
+  // Log dropdown contents
+  console.log(
+    "📋 [DROPDOWN] Available terms for selection:",
+    sortedTermShortNames
+  );
+
   // Handle term selection
   const handleTermSelect = (termValue) => {
+    console.log("👆 [USER SELECTION] User selected term:", termValue);
     setSelectedSemester(termValue);
+
+    // Find the selected term in the original termIdList
     const selectedIdx = termIdList.findIndex(
       (term) => term.shortName === termValue
     );
-    setSelectedIndex(selectedIdx);
+
+    console.log("📍 [USER SELECTION] Setting index to:", selectedIdx);
+
+    if (selectedIdx !== -1) {
+      // Term exists in original list
+      setSelectedIndex(selectedIdx);
+      console.log("✅ [USER SELECTION] Found existing term in termIdList");
+    } else {
+      // This is a future term we added, need to handle it specially
+      console.log(
+        "🔮 [USER SELECTION] Selected term is a future semester not in original termIdList"
+      );
+
+      // For future semesters, we need to set up reference data
+      const selectedYear = parseInt(termValue.slice(2));
+      const selectedSeason = termValue.slice(0, 2);
+      const referenceTermShortName = selectedSeason + (selectedYear - 1);
+
+      console.log(
+        "🎯 [USER SELECTION] Setting reference semester for future term:",
+        referenceTermShortName
+      );
+      setReferenceSemester(referenceTermShortName);
+
+      // Set index to -1 to indicate this is a future term
+      setSelectedIndex(-1);
+    }
+
     setSelectedSemesterState(termValue);
 
     // Also update unified state with future semester detection

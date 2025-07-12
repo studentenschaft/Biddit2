@@ -191,7 +191,8 @@ export function useUnifiedCourseData() {
         },
       };
     });
-  };  /**
+  };
+  /**
    * Update course ratings for a semester
    */
   const updateCourseRatings = (semesterShortName, ratings) => {
@@ -228,10 +229,7 @@ export function useUnifiedCourseData() {
    * Since ratings are global data that applies to all semesters
    */
   const updateCourseRatingsForAllSemesters = (ratings) => {
-    console.log(
-      `🔄 updateCourseRatingsForAllSemesters called with`,
-      ratings
-    );
+    console.log(`🔄 updateCourseRatingsForAllSemesters called with`, ratings);
 
     // Process ratings into a consistent map format
     let ratingsMap = {};

@@ -8,7 +8,6 @@ import { localSelectedCoursesState } from "../recoil/localSelectedCoursesAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
 import { filteredCoursesSelector } from "../recoil/filteredCoursesSelector";
-import UnifiedDataDebug from "./UnifiedDataDebug";
 
 /**
  * Migration component to help transition from old state management to unified system
@@ -1389,9 +1388,6 @@ export default function MigrationController() {
               {/* Debug Tab */}
               {activeTab === "debug" && (
                 <div className="space-y-6">
-                  {/* Structure Debug */}
-                  <UnifiedDataDebug />
-
                   <div className="flex flex-wrap gap-4">
                     <button
                       onClick={() => setShowOldState(!showOldState)}
