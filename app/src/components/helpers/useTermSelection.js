@@ -102,7 +102,9 @@ export function useTermSelection() {
         }
       })();
     }
-  }, [authToken, setCisIdList, cisIdListAtom]);
+    //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
+    // eslint-disable-next-line
+  }, [authToken, cisIdListAtom]);
 
   // Initialize unified semester data when terms are available
   useEffect(() => {
@@ -248,6 +250,7 @@ export function useTermSelection() {
         }
       })();
     }
+    //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
     // eslint-disable-next-line
   }, [authToken, termIdList, cisIdListAtom, enrolledCourses, fetchAttempted]);
 
@@ -267,7 +270,9 @@ export function useTermSelection() {
         setLatestValidTermProjection(termIdList[1].shortName);
       }
     }
-  }, [courseInfo, termIdList, setLatestValidTermProjection]);
+    //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
+    // eslint-disable-next-line
+  }, [courseInfo, termIdList]);
 
   // 4. Initialize semester selection once latestValidTerm is set
   useEffect(() => {
@@ -295,6 +300,8 @@ export function useTermSelection() {
 
       setIsLoading(false);
     }
+    //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
+    // eslint-disable-next-line
   }, [selectedSem, latestValidTerm, fetchAttempted, termIdList]);
 
   // Add this new effect to update reference semester when selected semester changes
@@ -391,8 +398,9 @@ export function useTermSelection() {
         setUnifiedFutureSemesterStatus(false, null);
       }
     }
+    //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
     //eslint-disable-next-line
-  }, [selectedSem, termIdList, latestValidTerm, courseInfo]);
+  }, [selectedSem, termIdList, latestValidTerm]);
 
   // Get sorted terms for the dropdown
   const sortedTermShortNames = termIdList?.length
