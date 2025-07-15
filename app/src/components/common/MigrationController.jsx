@@ -16,16 +16,10 @@ import { filteredCoursesSelector } from "../recoil/filteredCoursesSelector";
 export default function MigrationController() {
   const { getMigrationSummary, isMigrationNeeded } = useMigrationManager();
 
-  // Helper function to get semester keys (excluding global state properties)
+  // Helper function to get semester keys from the unified data structure
   const getSemesterKeys = (data) => {
-    if (!data) return [];
-    return Object.keys(data).filter(
-      (key) =>
-        key !== "selectedSemester" &&
-        key !== "isFutureSemester" &&
-        key !== "referenceSemester" &&
-        key !== "latestValidTerm"
-    );
+    if (!data || !data.semesters) return [];
+    return Object.keys(data.semesters);
   };
 
   // Get all the current state values for visualization
@@ -74,8 +68,8 @@ export default function MigrationController() {
 
     const hasUnifiedData = semesterKeys.some(
       (semesterKey) =>
-        unifiedCourseData[semesterKey]?.filtered &&
-        unifiedCourseData[semesterKey].filtered.length > 0
+        unifiedCourseData.semesters[semesterKey]?.filtered &&
+        unifiedCourseData.semesters[semesterKey].filtered.length > 0
     );
 
     if (!hasUnifiedData) {
@@ -84,8 +78,6 @@ export default function MigrationController() {
         results: {},
         globalState: {
           selectedSemester: unifiedCourseData.selectedSemester,
-          isFutureSemester: unifiedCourseData.isFutureSemester,
-          referenceSemester: unifiedCourseData.referenceSemester,
           latestValidTerm: unifiedCourseData.latestValidTerm,
         },
         reason: "Unified system exists but has no filtered course data yet",
@@ -100,13 +92,11 @@ export default function MigrationController() {
     // Extract global state information
     const globalState = {
       selectedSemester: unifiedCourseData.selectedSemester,
-      isFutureSemester: unifiedCourseData.isFutureSemester,
-      referenceSemester: unifiedCourseData.referenceSemester,
       latestValidTerm: unifiedCourseData.latestValidTerm,
     };
     for (const semester of allSemesters) {
       const oldFiltered = filteredCoursesOld[semester] || [];
-      const newFiltered = unifiedCourseData[semester]?.filtered || [];
+      const newFiltered = unifiedCourseData.semesters[semester]?.filtered || [];
 
       // Basic counts
       const oldCount = oldFiltered.length;
@@ -261,20 +251,23 @@ export default function MigrationController() {
   useEffect(() => {
     // Monitor unified course data structure changes
     const logUnifiedDataChanges = () => {
-      // Filter out non-semester properties
+      // Get semester keys from the semesters object
       const semesterKeys = getSemesterKeys(unifiedCourseData);
 
       console.log("🔄 Unified Course Data Updated:", {
         timestamp: new Date().toISOString(),
-        hasData: !!unifiedCourseData,
+        hasData: !!unifiedCourseData && !!unifiedCourseData.semesters,
         semesterCount: semesterKeys.length,
         selectedSemester: unifiedCourseData?.selectedSemester,
-        isFutureSemester: unifiedCourseData?.isFutureSemester,
-        referenceSemester: unifiedCourseData?.referenceSemester,
         latestValidTerm: unifiedCourseData?.latestValidTerm,
         semestersWithFilteredData: semesterKeys
-          .filter((sem) => unifiedCourseData[sem]?.filtered?.length > 0)
-          .map((sem) => `${sem}(${unifiedCourseData[sem].filtered.length})`),
+          .filter(
+            (sem) => unifiedCourseData.semesters[sem]?.filtered?.length > 0
+          )
+          .map(
+            (sem) =>
+              `${sem}(${unifiedCourseData.semesters[sem].filtered.length})`
+          ),
       });
     };
 
@@ -283,8 +276,8 @@ export default function MigrationController() {
     const semesterCount = semesterKeys.length;
     const hasFilteredData = semesterKeys.some(
       (semesterKey) =>
-        unifiedCourseData[semesterKey]?.filtered &&
-        unifiedCourseData[semesterKey].filtered.length > 0
+        unifiedCourseData.semesters[semesterKey]?.filtered &&
+        unifiedCourseData.semesters[semesterKey].filtered.length > 0
     );
 
     if (semesterCount > 0 && hasFilteredData) {
@@ -311,8 +304,8 @@ export default function MigrationController() {
     console.log("🔍 Filtered Courses (Old):", filteredCoursesOld);
     console.log("⚖️ Order Comparison Results:", orderComparison);
     console.log("⭐ Course Ratings:", shsgCourseRatings);
+    //eslint-disable-next-line
   }, [
-    getMigrationSummary,
     unifiedCourseData,
     courseInfo,
     enrolledCourses,
@@ -604,29 +597,24 @@ export default function MigrationController() {
                                 </div>
                               </div>
                               <div className="text-center">
-                                <div
-                                  className={`text-lg font-bold ${
-                                    orderComparison.globalState
-                                      ?.isFutureSemester
-                                      ? "text-orange-600"
-                                      : "text-green-600"
-                                  }`}
-                                >
-                                  {orderComparison.globalState?.isFutureSemester
-                                    ? "Yes"
-                                    : "No"}
+                                <div className="text-lg font-bold text-blue-600">
+                                  {orderComparison.globalState
+                                    ?.latestValidTerm || "None"}
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  Is Future Semester
+                                  Latest Valid Term
                                 </div>
                               </div>
                               <div className="text-center">
                                 <div className="text-lg font-bold text-purple-600">
-                                  {orderComparison.globalState
-                                    ?.referenceSemester || "None"}
+                                  {
+                                    Object.keys(
+                                      unifiedCourseData?.semesters || {}
+                                    ).length
+                                  }
                                 </div>
                                 <div className="text-xs text-gray-500">
-                                  Reference Semester
+                                  Available Semesters
                                 </div>
                               </div>
                               <div className="text-center">
@@ -823,9 +811,10 @@ export default function MigrationController() {
                               {
                                 getSemesterKeys(unifiedCourseData).filter(
                                   (semesterKey) =>
-                                    unifiedCourseData[semesterKey]?.filtered &&
-                                    unifiedCourseData[semesterKey].filtered
-                                      .length > 0
+                                    unifiedCourseData.semesters[semesterKey]
+                                      ?.filtered &&
+                                    unifiedCourseData.semesters[semesterKey]
+                                      .filtered.length > 0
                                 ).length
                               }
                             </div>
@@ -1268,23 +1257,19 @@ export default function MigrationController() {
                               </span>
                             </div>
                             <div>
-                              Is Future:{" "}
-                              <span
-                                className={`font-semibold ${
-                                  unifiedCourseData?.isFutureSemester
-                                    ? "text-orange-600"
-                                    : "text-green-600"
-                                }`}
-                              >
-                                {unifiedCourseData?.isFutureSemester
-                                  ? "Yes"
-                                  : "No"}
+                              Selected Semester:{" "}
+                              <span className="font-semibold text-blue-600">
+                                {unifiedCourseData?.selectedSemester || "None"}
                               </span>
                             </div>
                             <div>
-                              Reference Semester:{" "}
-                              <span className="font-semibold text-purple-600">
-                                {unifiedCourseData?.referenceSemester || "None"}
+                              Available Semesters:{" "}
+                              <span className="font-semibold text-green-600">
+                                {
+                                  Object.keys(
+                                    unifiedCourseData?.semesters || {}
+                                  ).length
+                                }
                               </span>
                             </div>
                             <div>
@@ -1307,7 +1292,8 @@ export default function MigrationController() {
                           {getSemesterKeys(unifiedCourseData).length > 0 ? (
                             getSemesterKeys(unifiedCourseData).map(
                               (semester) => {
-                                const data = unifiedCourseData[semester];
+                                const data =
+                                  unifiedCourseData.semesters[semester];
                                 return (
                                   <div
                                     key={semester}

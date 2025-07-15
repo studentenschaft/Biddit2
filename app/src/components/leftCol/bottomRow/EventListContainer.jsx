@@ -25,7 +25,7 @@
 
 import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { useEffect, Suspense } from "react";
+import { Suspense } from "react";
 import { authTokenState } from "../../recoil/authAtom";
 import { allCourseInfoState } from "../../recoil/allCourseInfosSelector";
 import { FixedSizeList } from "react-window";
@@ -53,7 +53,7 @@ import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 
 //recoil selected course
 import { selectedCourseCourseInfo } from "../../recoil/selectedCourseCourseInfo";
-import { localSelectedCoursesSemKeyState } from "../../recoil/localSelectedCoursesSemKeyAtom";
+
 // mobile view toggle of selected course / left view
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
@@ -104,9 +104,7 @@ export default function EventListContainer({ selectedSemesterState }) {
   const [, setSelectedCourseCourseInfo] = useRecoilState(
     selectedCourseCourseInfo
   );
-  const [localSelectedBySemester] = useRecoilState(
-    localSelectedCoursesSemKeyState
-  );
+
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
   // Calculate semester identifiers
@@ -162,14 +160,6 @@ export default function EventListContainer({ selectedSemesterState }) {
     index,
     authToken,
   });
-
-  // Debug effect for localSelectedBySemester (unchanged)
-  useEffect(() => {
-    console.log(
-      "DEBUG: localSelectedBySemester changed",
-      localSelectedBySemester
-    );
-  }, [localSelectedBySemester]);
 
   // row renderer
   const Row = ({ index, style }) => {

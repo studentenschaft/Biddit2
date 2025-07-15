@@ -88,9 +88,29 @@ export const useEventListDataManager = ({
       console.log(
         `🔄 Initializing unified semester data for: ${selectedSemesterState.shortName}`
       );
-      initializeUnifiedSemester(selectedSemesterState.shortName);
+
+      // Check if we have cisId from props
+      if (cisId) {
+        // Initialize with cisId and future semester status
+        initializeUnifiedSemester(selectedSemesterState.shortName, {
+          cisId: cisId,
+          // For future semesters, the cisId will be from the reference semester
+          isFutureSemester: selectedSemesterState.isFutureSemester || false,
+          referenceSemester: selectedSemesterState.referenceSemester || null,
+        });
+      } else {
+        // Regular initialization
+        initializeUnifiedSemester(selectedSemesterState.shortName);
+      }
     }
-  }, [selectedSemesterState?.shortName, initializeUnifiedSemester]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedSemesterState?.shortName,
+    cisId,
+    // Use optional chaining for these properties as they might not exist
+    selectedSemesterState?.isFutureSemester,
+    selectedSemesterState?.referenceSemester,
+  ]);
 
   // Update completeCourseInfo when allCourseInfo changes
   useEffect(() => {

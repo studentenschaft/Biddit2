@@ -15,13 +15,16 @@ export const semesterDataSelector = selectorFamily({
     ({ get }) => {
       const courseData = get(unifiedCourseDataState);
       return (
-        courseData[semesterKey] || {
+        (courseData.semesters && courseData.semesters[semesterKey]) || {
           enrolled: [],
           available: [],
           selected: [],
           filtered: [],
           ratings: {},
           lastFetched: null,
+          isFutureSemester: false,
+          referenceSemester: null,
+          cisId: null,
         }
       );
     },
@@ -48,7 +51,8 @@ export const availableSemestersSelector = selector({
   key: "availableSemestersSelector",
   get: ({ get }) => {
     const courseData = get(unifiedCourseDataState);
-    return Object.keys(courseData);
+    // Return semester keys from the nested semesters object
+    return courseData.semesters ? Object.keys(courseData.semesters) : [];
   },
 });
 
@@ -129,7 +133,15 @@ export const allCoursesSelector = selector({
     const courseData = get(unifiedCourseDataState);
     const allCourses = [];
 
-    Object.entries(courseData).forEach(([semester, data]) => {
+    // Check if semesters property exists
+    if (!courseData.semesters) {
+      console.warn(
+        "[DEPRECATED] courseData.semesters is missing in allCoursesSelector"
+      );
+      return [];
+    }
+
+    Object.entries(courseData.semesters).forEach(([semester, data]) => {
       // Combine all course arrays and add semester info
       [
         ...data.enrolled,
@@ -161,5 +173,59 @@ export const allCoursesSelector = selector({
             c.semester === course.semester
         )
     );
+  },
+});
+
+/**
+ * Selector to check if the currently selected semester is a future semester
+ */
+export const isFutureSemesterSelector = selector({
+  key: "isFutureSemesterSelector",
+  get: ({ get }) => {
+    const unifiedData = get(unifiedCourseDataState);
+    const selectedSemester = unifiedData.selectedSemester;
+
+    // Check both places for compatibility during migration
+    // First check at the semester level (correct structure)
+    if (selectedSemester && unifiedData.semesters[selectedSemester]) {
+      return unifiedData.semesters[selectedSemester].isFutureSemester || false;
+    }
+
+    // Fallback to legacy structure if needed (will be removed later)
+    if ("isFutureSemester" in unifiedData) {
+      console.warn(
+        "[DEPRECATED] Reading isFutureSemester from top level, should be at semester level"
+      );
+      return unifiedData.isFutureSemester || false;
+    }
+
+    return false;
+  },
+});
+
+/**
+ * Selector to get the reference semester for the currently selected semester
+ */
+export const referenceSemesterSelector = selector({
+  key: "referenceSemesterSelector",
+  get: ({ get }) => {
+    const unifiedData = get(unifiedCourseDataState);
+    const selectedSemester = unifiedData.selectedSemester;
+
+    // Check both places for compatibility during migration
+    // First check at the semester level (correct structure)
+    if (selectedSemester && unifiedData.semesters[selectedSemester]) {
+      return unifiedData.semesters[selectedSemester].referenceSemester || null;
+    }
+
+    // Fallback to legacy structure if needed (will be removed later)
+    if ("referenceSemester" in unifiedData) {
+      console.warn(
+        "[DEPRECATED] Reading referenceSemester from top level, should be at semester level"
+      );
+      return unifiedData.referenceSemester;
+    }
+
+    return null;
   },
 });

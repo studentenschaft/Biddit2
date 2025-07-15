@@ -26,8 +26,8 @@ import { atom } from "recoil";
  * }
  */
 
-//TODO: FIX wrong structure nesting!
-//TODO: FIX: wrong set future semester flags and current semester
+// FIXED: Structure now correctly stores isFutureSemester and referenceSemester at semester level
+// FIXED: Each semester has proper flags for future status and reference semester
 export const unifiedCourseDataState = atom({
   key: "unifiedCourseDataState",
   default: {

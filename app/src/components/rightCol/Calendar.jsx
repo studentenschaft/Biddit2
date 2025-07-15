@@ -36,6 +36,7 @@ export default function Calendar() {
 
   console.log("Final Events:", finalEvents);
   console.log("Calender Entries selector:", calendarEntriesSelector);
+  console.log("Latest Valid Term:", latestValidTerm);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);

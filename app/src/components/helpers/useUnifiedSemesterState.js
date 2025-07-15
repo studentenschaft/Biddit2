@@ -17,27 +17,70 @@ export function useUnifiedSemesterState() {
     latestValidTerm
   ) => {
     setCourseData((prev) => {
-      const selectedTermIdx = termIdList?.findIndex(
-        (term) => term.shortName === semesterShortName
+      // Safety checks for termIdList
+      if (
+        !termIdList ||
+        !Array.isArray(termIdList) ||
+        termIdList.length === 0
+      ) {
+        console.warn("[UnifiedSemesterState] Invalid termIdList provided");
+        return {
+          ...prev,
+          selectedSemester: semesterShortName,
+        };
+      }
+
+      const selectedTermIdx = termIdList.findIndex(
+        (term) => term && term.shortName === semesterShortName
       );
-      const latestValidTermIdx = termIdList?.findIndex(
-        (term) => term.shortName === latestValidTerm
+      const latestValidTermIdx = termIdList.findIndex(
+        (term) => term && term.shortName === latestValidTerm
       );
 
-      const isFuture = selectedTermIdx > latestValidTermIdx;
+      // Handle the case where the terms aren't found in the list
+      const isFuture =
+        selectedTermIdx > -1 && latestValidTermIdx > -1
+          ? selectedTermIdx > latestValidTermIdx
+          : false;
 
-      let referenceSemester = null;
+      let referenceSemesterName = null;
       if (isFuture && termIdList?.length) {
         // Determine reference semester for future projections
         // Use the term with more course data or fallback to most recent
-        referenceSemester = latestValidTerm || termIdList[0]?.shortName;
+        referenceSemesterName = latestValidTerm || termIdList[0]?.shortName;
       }
 
+      // Ensure the semester exists in the data structure
+      const semesterData = prev.semesters[semesterShortName] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters,
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
       return {
-        ...prev,
+        ...cleanPrev,
         selectedSemester: semesterShortName,
-        isFutureSemester: isFuture,
-        referenceSemester: isFuture ? referenceSemester : null,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...semesterData,
+            isFutureSemester: isFuture,
+            referenceSemester: isFuture ? referenceSemesterName : null,
+          },
+        },
       };
     });
   };
@@ -46,21 +89,61 @@ export function useUnifiedSemesterState() {
    * Set the latest valid term (term with actual course data)
    */
   const setLatestValidTerm = (termShortName) => {
-    setCourseData((prev) => ({
-      ...prev,
-      latestValidTerm: termShortName,
-    }));
+    setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters,
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      return {
+        ...cleanPrev,
+        latestValidTerm: termShortName,
+      };
+    });
   };
 
   /**
-   * Manually set future semester status and reference
+   * Manually set future semester status and reference for the currently selected semester
    */
   const setFutureSemesterStatus = (isFuture, referenceSemester = null) => {
-    setCourseData((prev) => ({
-      ...prev,
-      isFutureSemester: isFuture,
-      referenceSemester: isFuture ? referenceSemester : null,
-    }));
+    setCourseData((prev) => {
+      const selectedSem = prev.selectedSemester;
+      if (!selectedSem) return prev;
+
+      // Ensure the semester exists in the data structure
+      const semesterData = prev.semesters[selectedSem] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters,
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      return {
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [selectedSem]: {
+            ...semesterData,
+            isFutureSemester: isFuture,
+            referenceSemester: isFuture ? referenceSemester : null,
+          },
+        },
+      };
+    });
   };
 
   /**
@@ -72,10 +155,17 @@ export function useUnifiedSemesterState() {
         return prev; // Already initialized
       }
 
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters,
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
       return {
-        ...prev,
+        ...cleanPrev,
         semesters: {
-          ...prev.semesters,
+          ...cleanPrev.semesters,
           [semesterShortName]: {
             enrolled: [],
             available: [],
@@ -83,6 +173,9 @@ export function useUnifiedSemesterState() {
             filtered: [],
             ratings: {},
             lastFetched: null,
+            isFutureSemester: false,
+            referenceSemester: null,
+            cisId: null,
           },
         },
       };
@@ -93,17 +186,39 @@ export function useUnifiedSemesterState() {
    * Update course data for a specific semester and type
    */
   const updateSemesterCourses = (semesterShortName, type, courses) => {
-    setCourseData((prev) => ({
-      ...prev,
-      semesters: {
-        ...prev.semesters,
-        [semesterShortName]: {
-          ...prev.semesters[semesterShortName],
-          [type]: courses,
-          lastFetched: new Date().toISOString(),
+    setCourseData((prev) => {
+      // Make sure the semester exists
+      const existingSemester = prev.semesters[semesterShortName] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters,
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      return {
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            [type]: courses,
+            lastFetched: new Date().toISOString(),
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   return {

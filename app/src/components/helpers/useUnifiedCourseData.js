@@ -21,7 +21,7 @@ export function useUnifiedCourseData() {
     // This prevents race conditions during rapid state updates
     if (
       initializedSemesters.has(semesterShortName) ||
-      courseData[semesterShortName]
+      (courseData.semesters && courseData.semesters[semesterShortName])
     ) {
       console.log(
         `📋 Semester ${semesterShortName} already initialized or exists in state`
@@ -32,26 +32,40 @@ export function useUnifiedCourseData() {
     console.log(`🚀 Initializing semester ${semesterShortName}`);
     setCourseData((prev) => {
       // Double-check inside the state updater to prevent race conditions
-      if (prev[semesterShortName]) {
+      if (prev.semesters && prev.semesters[semesterShortName]) {
         console.log(
           `📋 Semester ${semesterShortName} was already initialized during state update`
         );
         return prev; // Already exists, don't reset it
       }
+
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
       const newData = {
-        ...prev,
-        [semesterShortName]: {
-          enrolled: [],
-          available: [],
-          selected: [],
-          filtered: [],
-          ratings: {},
-          lastFetched: null,
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            enrolled: [],
+            available: [],
+            selected: [],
+            filtered: [],
+            ratings: {},
+            lastFetched: null,
+            isFutureSemester: false,
+            referenceSemester: null,
+            cisId: null,
+          },
         },
       };
       console.log(
         `✅ Initialized semester ${semesterShortName}:`,
-        newData[semesterShortName]
+        newData.semesters[semesterShortName]
       );
       return newData;
     });
@@ -67,22 +81,47 @@ export function useUnifiedCourseData() {
     );
 
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
     setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      // Ensure the semester exists in the structure
+      const existingSemester = (cleanPrev.semesters &&
+        cleanPrev.semesters[semesterShortName]) || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
       const newData = {
-        ...prev,
-        [semesterShortName]: {
-          ...prev[semesterShortName],
-          enrolled: courses,
-          lastFetched: new Date().toISOString(),
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            enrolled: courses,
+            lastFetched: new Date().toISOString(),
+          },
         },
       };
+
       console.log(
         `✅ Updated enrolled courses for ${semesterShortName}:`,
-        newData[semesterShortName]
+        newData.semesters[semesterShortName]
       );
       return newData;
     });
@@ -96,22 +135,46 @@ export function useUnifiedCourseData() {
     );
 
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
     setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      // Ensure the semester exists in the structure
+      const existingSemester = (cleanPrev.semesters &&
+        cleanPrev.semesters[semesterShortName]) || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
       const newData = {
-        ...prev,
-        [semesterShortName]: {
-          ...prev[semesterShortName],
-          available: courses,
-          lastFetched: new Date().toISOString(),
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            available: courses,
+            lastFetched: new Date().toISOString(),
+          },
         },
       };
       console.log(
         `✅ Updated available courses for ${semesterShortName}:`,
-        newData[semesterShortName]
+        newData.semesters[semesterShortName]
       );
       return newData;
     });
@@ -125,22 +188,46 @@ export function useUnifiedCourseData() {
     );
 
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
     setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      // Ensure the semester exists in the structure
+      const existingSemester = (cleanPrev.semesters &&
+        cleanPrev.semesters[semesterShortName]) || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
       const newData = {
-        ...prev,
-        [semesterShortName]: {
-          ...prev[semesterShortName],
-          selected: courses,
-          lastFetched: new Date().toISOString(),
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            selected: courses,
+            lastFetched: new Date().toISOString(),
+          },
         },
       };
       console.log(
         `✅ Updated selected courses for ${semesterShortName}:`,
-        newData[semesterShortName]
+        newData.semesters[semesterShortName]
       );
       return newData;
     });
@@ -150,12 +237,20 @@ export function useUnifiedCourseData() {
    */
   const addSelectedCourse = (semesterShortName, course) => {
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
     setCourseData((prev) => {
-      const currentSelected = prev[semesterShortName]?.selected || [];
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      const currentSelected =
+        cleanPrev.semesters[semesterShortName]?.selected || [];
 
       // Check if course already exists
       const exists = currentSelected.some(
@@ -164,11 +259,27 @@ export function useUnifiedCourseData() {
 
       if (exists) return prev;
 
+      // Ensure the semester exists in the structure
+      const existingSemester = cleanPrev.semesters[semesterShortName] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
       return {
-        ...prev,
-        [semesterShortName]: {
-          ...prev[semesterShortName],
-          selected: [...currentSelected, course],
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            selected: [...currentSelected, course],
+          },
         },
       };
     });
@@ -179,15 +290,39 @@ export function useUnifiedCourseData() {
    */
   const removeSelectedCourse = (semesterShortName, courseId) => {
     setCourseData((prev) => {
-      const currentSelected = prev[semesterShortName]?.selected || [];
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      const currentSelected =
+        cleanPrev.semesters[semesterShortName]?.selected || [];
+
+      // Ensure the semester exists in the structure
+      const existingSemester = cleanPrev.semesters[semesterShortName] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
 
       return {
-        ...prev,
-        [semesterShortName]: {
-          ...prev[semesterShortName],
-          selected: currentSelected.filter(
-            (c) => c.id !== courseId && c.courseNumber !== courseId
-          ),
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            selected: currentSelected.filter(
+              (c) => c.id !== courseId && c.courseNumber !== courseId
+            ),
+          },
         },
       };
     });
@@ -197,7 +332,7 @@ export function useUnifiedCourseData() {
    */
   const updateCourseRatings = (semesterShortName, ratings) => {
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
@@ -215,14 +350,39 @@ export function useUnifiedCourseData() {
       ratingsMap = ratings;
     }
 
-    setCourseData((prev) => ({
-      ...prev,
-      [semesterShortName]: {
-        ...prev[semesterShortName],
-        // Replace existing ratings completely to avoid duplicates
-        ratings: ratingsMap,
-      },
-    }));
+    setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      // Ensure the semester exists in the structure
+      const existingSemester = cleanPrev.semesters[semesterShortName] || {
+        enrolled: [],
+        available: [],
+        selected: [],
+        filtered: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
+      };
+
+      return {
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            // Replace existing ratings completely to avoid duplicates
+            ratings: ratingsMap,
+          },
+        },
+      };
+    });
   };
   /**
    * Update course ratings for ALL semesters at once
@@ -252,21 +412,33 @@ export function useUnifiedCourseData() {
     );
 
     setCourseData((prev) => {
-      const updatedData = { ...prev };
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      const updatedSemesters = { ...cleanPrev.semesters };
 
       // Update ratings for all existing semesters
-      Object.keys(updatedData).forEach((semesterShortName) => {
-        updatedData[semesterShortName] = {
-          ...updatedData[semesterShortName],
+      Object.keys(updatedSemesters).forEach((semesterShortName) => {
+        updatedSemesters[semesterShortName] = {
+          ...updatedSemesters[semesterShortName],
           // Replace existing ratings completely to avoid duplicates
           ratings: ratingsMap,
         };
       });
 
       console.log(
-        `✅ Updated ratings for ${Object.keys(updatedData).length} semesters`
+        `✅ Updated ratings for ${
+          Object.keys(updatedSemesters).length
+        } semesters`
       );
-      return updatedData;
+      return {
+        ...cleanPrev,
+        semesters: updatedSemesters,
+      };
     });
   };
 
@@ -285,13 +457,20 @@ export function useUnifiedCourseData() {
     );
 
     // Only initialize if semester doesn't exist
-    if (!courseData[semesterShortName]) {
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
     }
 
     setCourseData((prev) => {
-      const semesterData = prev[semesterShortName];
-      if (!semesterData) return prev;
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      const semesterData = cleanPrev.semesters[semesterShortName];
+      if (!semesterData) return cleanPrev;
 
       // Get available courses to filter
       const coursesToFilter = semesterData.available || [];
@@ -301,10 +480,13 @@ export function useUnifiedCourseData() {
           `📋 No available courses to filter for ${semesterShortName}`
         );
         return {
-          ...prev,
-          [semesterShortName]: {
-            ...semesterData,
-            filtered: [],
+          ...cleanPrev,
+          semesters: {
+            ...cleanPrev.semesters,
+            [semesterShortName]: {
+              ...semesterData,
+              filtered: [],
+            },
           },
         };
       }
@@ -321,10 +503,13 @@ export function useUnifiedCourseData() {
       );
 
       const newData = {
-        ...prev,
-        [semesterShortName]: {
-          ...semesterData,
-          filtered: sortedFiltered,
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...semesterData,
+            filtered: sortedFiltered,
+          },
         },
       };
 
@@ -423,11 +608,18 @@ export function useUnifiedCourseData() {
     );
 
     setCourseData((prev) => {
-      const updatedData = { ...prev };
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      const updatedSemesters = { ...cleanPrev.semesters };
 
       // Update filtered courses for all existing semesters
-      Object.keys(updatedData).forEach((semesterShortName) => {
-        const semesterData = updatedData[semesterShortName];
+      Object.keys(updatedSemesters).forEach((semesterShortName) => {
+        const semesterData = updatedSemesters[semesterShortName];
         const coursesToFilter = semesterData.available || [];
 
         if (coursesToFilter.length > 0) {
@@ -442,12 +634,12 @@ export function useUnifiedCourseData() {
             selectedCourseIds
           );
 
-          updatedData[semesterShortName] = {
+          updatedSemesters[semesterShortName] = {
             ...semesterData,
             filtered: sortedFiltered,
           };
         } else {
-          updatedData[semesterShortName] = {
+          updatedSemesters[semesterShortName] = {
             ...semesterData,
             filtered: [],
           };
@@ -456,10 +648,13 @@ export function useUnifiedCourseData() {
 
       console.log(
         `✅ Updated filtered courses for ${
-          Object.keys(updatedData).length
+          Object.keys(updatedSemesters).length
         } semesters`
       );
-      return updatedData;
+      return {
+        ...cleanPrev,
+        semesters: updatedSemesters,
+      };
     });
   };
   /**
@@ -467,13 +662,16 @@ export function useUnifiedCourseData() {
    */
   const getSemesterData = (semesterShortName) => {
     return (
-      courseData[semesterShortName] || {
+      (courseData.semesters && courseData.semesters[semesterShortName]) || {
         enrolled: [],
         available: [],
         selected: [],
         filtered: [],
         ratings: {},
         lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        cisId: null,
       }
     );
   };

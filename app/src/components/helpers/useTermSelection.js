@@ -135,21 +135,65 @@ export function useTermSelection() {
       // First check for terms marked as current in the API
       const currentTerms = termIdList.filter((term) => term.isCurrent);
 
+      console.log(
+        "🔍 [TERM SELECTION] Terms marked as current by API:",
+        currentTerms.map((t) => `${t.shortName} (ID: ${t.id})`)
+      );
+
       if (currentTerms.length > 0) {
         // If we have terms marked as current, use the first one
         primaryTermId = currentTerms[0].id;
         primaryTermShortName = currentTerms[0].shortName;
+        console.log(
+          "✅ [TERM SELECTION] Using API-marked current term as primary:",
+          primaryTermShortName,
+          `(ID: ${primaryTermId})`
+        );
 
         // Backup is the second current term or the first term, whichever exists
-        backupTermId = currentTerms[1]?.id || termIdList[0].id;
-        backupTermShortName =
-          currentTerms[1]?.shortName || termIdList[0].shortName;
+        if (currentTerms.length > 1) {
+          backupTermId = currentTerms[1].id;
+          backupTermShortName = currentTerms[1].shortName;
+          console.log(
+            "📎 [TERM SELECTION] Using second API-marked current term as backup:",
+            backupTermShortName,
+            `(ID: ${backupTermId})`
+          );
+        } else {
+          // If there's only one current term, use the first term in the list as backup
+          backupTermId =
+            termIdList[0].id !== primaryTermId
+              ? termIdList[0].id
+              : termIdList[1]?.id;
+          backupTermShortName =
+            termIdList[0].shortName !== primaryTermShortName
+              ? termIdList[0].shortName
+              : termIdList[1]?.shortName;
+          console.log(
+            "📎 [TERM SELECTION] Using fallback term as backup:",
+            backupTermShortName,
+            `(ID: ${backupTermId})`
+          );
+        }
       } else {
         // Otherwise fall back to the first two terms by index
+        console.log(
+          "⚠️ [TERM SELECTION] No terms marked as current by API, falling back to list order"
+        );
         primaryTermId = termIdList[0].id;
         primaryTermShortName = termIdList[0].shortName;
         backupTermId = termIdList[1]?.id;
         backupTermShortName = termIdList[1]?.shortName;
+        console.log(
+          "📎 [TERM SELECTION] Using first term in list as primary:",
+          primaryTermShortName,
+          `(ID: ${primaryTermId})`
+        );
+        console.log(
+          "📎 [TERM SELECTION] Using second term in list as backup:",
+          backupTermShortName,
+          `(ID: ${backupTermId})`
+        );
       }
 
       // Make a single request first
@@ -166,16 +210,28 @@ export function useTermSelection() {
               },
             }
           );
+          // Always set the latest valid term to the primary term (API-marked current term if available)
           setLatestValidTerm(primaryTermShortName);
           // Also update unified state
           setUnifiedLatestValidTerm(primaryTermShortName);
+          console.log(
+            "🌟 [TERM SELECTION] Latest valid term set to:",
+            primaryTermShortName
+          );
 
           // If we got data or it's an empty array (which is valid), use it
           updateEnrolledCourses(response.data, 1);
 
           // Also update unified course data
-          updateUnifiedEnrolledCourses(primaryTermShortName, response.data); // Only try backup term if the first one returned an empty array
+          updateUnifiedEnrolledCourses(primaryTermShortName, response.data);
+
+          // Only try backup term if the primary term returned an empty array
+          // This still prioritizes the API-marked current term even if it has no courses
           if (response.data.length === 0 && backupTermId) {
+            console.log(
+              "⚠️ [TERM SELECTION] Primary term has no courses, checking backup term:",
+              backupTermShortName
+            );
             try {
               const backupResponse = await axios.get(
                 `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
@@ -188,9 +244,23 @@ export function useTermSelection() {
                   },
                 }
               );
-              setLatestValidTerm(backupTermShortName);
-              // Also update unified state
-              setUnifiedLatestValidTerm(backupTermShortName);
+              // Only change to backup term if it has courses
+              if (backupResponse.data.length > 0) {
+                console.log(
+                  "✅ [TERM SELECTION] Backup term has courses, using it instead"
+                );
+                setLatestValidTerm(backupTermShortName);
+                // Also update unified state
+                setUnifiedLatestValidTerm(backupTermShortName);
+                console.log(
+                  "🌟 [TERM SELECTION] Latest valid term updated to backup term:",
+                  backupTermShortName
+                );
+              } else {
+                console.log(
+                  "ℹ️ [TERM SELECTION] Backup term also has no courses, keeping primary term"
+                );
+              }
               updateEnrolledCourses(backupResponse.data, 2);
 
               // Also update unified course data
@@ -216,6 +286,10 @@ export function useTermSelection() {
           // Only try backup if primary failed
           if (backupTermId) {
             try {
+              console.log(
+                "🔄 [TERM SELECTION] Primary term failed, trying backup term:",
+                backupTermShortName
+              );
               const backupResponse = await axios.get(
                 `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
                 {
@@ -227,9 +301,17 @@ export function useTermSelection() {
                   },
                 }
               );
+              console.log(
+                "⚠️ [TERM SELECTION] Primary term failed, using backup term:",
+                backupTermShortName
+              );
               setLatestValidTerm(backupTermShortName);
               // Also update unified state
               setUnifiedLatestValidTerm(backupTermShortName);
+              console.log(
+                "🌟 [TERM SELECTION] Latest valid term set to backup term:",
+                backupTermShortName
+              );
               updateEnrolledCourses(backupResponse.data, 2);
 
               // Also update unified course data
@@ -399,7 +481,7 @@ export function useTermSelection() {
       }
     }
     //NEVER INCLUDE SETTERS in THE DEPENDENCY ARRAY
-    //eslint-disable-next-line
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSem, termIdList, latestValidTerm]);
 
   // Get sorted terms for the dropdown
