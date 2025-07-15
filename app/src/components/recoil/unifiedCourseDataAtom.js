@@ -14,23 +14,25 @@ import { atom } from "recoil";
  *       filtered: [], // Filtered courses based on current filter criteria
  *       ratings: {}, // Course ratings by courseNumber
  *       lastFetched: null // When this data was last fetched
+ *       isFutureSemester: false, // Whether semester is in the future
+ *       referenceSemester: null, // Reference semester for future projections
+ *       cisId: null // CIS ID for the semester
  *     },
  *     "FS25": { ... },
  *     // etc.
  *   },
  *   selectedSemester: null, // Currently selected semester shortName
- *   isFutureSemester: false, // Whether selected semester is in the future
- *   referenceSemester: null, // Reference semester for future projections
  *   latestValidTerm: null, // Latest term with actual course data
  * }
  */
+
+//TODO: FIX wrong structure nesting!
+//TODO: FIX: wrong set future semester flags and current semester
 export const unifiedCourseDataState = atom({
   key: "unifiedCourseDataState",
   default: {
     semesters: {},
     selectedSemester: null,
-    isFutureSemester: false,
-    referenceSemester: null,
     latestValidTerm: null,
   },
 });

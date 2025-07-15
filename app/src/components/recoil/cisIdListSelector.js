@@ -46,7 +46,7 @@ export const cisIdListSelector = selector({
                 shortName: modifiedShortName,
                 id: nextEntry.timeSegmentId,
                 cisId: nextEntry.id,
-                isCurrent: nextEntry.isCurrent,
+                isCurrent: false, // Projected terms are never current
                 isProjected: true, // flag to allow filtering of pure data.
               });
             }
