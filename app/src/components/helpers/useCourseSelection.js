@@ -46,6 +46,16 @@ export function useCourseSelection({
       return;
     }
 
+    // 🔍 DEBUG: Course selection action
+    console.log("🎯 Course Selection Action:", {
+      action: "addOrRemoveCourse",
+      courseId: course.id,
+      courseName: course.shortName || course.name,
+      semester: selectedSemesterShortName,
+      index: index,
+      timestamp: new Date().toISOString()
+    });
+
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {
       if (typeof prevCourses === "object" && prevCourses !== null) {

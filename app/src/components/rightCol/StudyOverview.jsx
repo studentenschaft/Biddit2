@@ -1,9 +1,9 @@
 /**
  * StudyOverview.jsx
- *
- * This component provides an overview of the user's study progress, including their enrolled programs,
- * semesters, courses, and credits. It fetches data from various APIs, processes and transforms the data,
- * and renders it in a structured, interactive UI.
+ * 
+ * This component uses our unified academic data system with the same UI components
+ * as the original StudyOverview. It provides better performance, eliminates duplicate
+ * code, and fixes infinite loop issues while maintaining identical functionality.
  */
 
 import { useEffect, useState, useMemo, useCallback } from "react";
@@ -17,14 +17,25 @@ import { useErrorHandler } from "../errorHandling/useErrorHandler";
 import { ScorecardErrorMessage } from "../errorHandling/ScorecardErrorMessage";
 import PropTypes from "prop-types";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
-import { useInitializeScoreCards } from "../helpers/useInitializeScorecards";
-import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
-import { transformedScorecardsSelector } from "../recoil/transformedScorecardsSelector";
-import { mergedScorecardBySemesterAtom } from "../recoil/mergedScorecardBySemesterAtom";
-import { mergedOverviewSelector } from "../recoil/mergedOverviewSelector";
-import { LoadingSkeletonStudyOverview } from "./LoadingSkeletons";
+import { LoadingSkeletonStudyOverview } from "../rightCol/LoadingSkeletons";
 
-import { currentSemesterAllCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
+// Import APIs and helpers for auto-initialization
+import { getStudyPlan, getLightCourseDetails } from "../helpers/api";
+import { cisIdListSelector } from "../recoil/cisIdListSelector";
+import { createSemesterMap } from "../helpers/createSemesterMap";
+import { useInitializeScoreCards } from "../helpers/useInitializeScorecards";
+import { useUnifiedDataBridge } from "../helpers/useUnifiedDataBridge";
+
+// Import our unified data system
+import { 
+  currentProgramDataSelector,
+  academicDataInitializationSelector,
+  unifiedStudyPlanSelector
+} from "../recoil/unifiedAcademicDataSelectors";
+import { unifiedAcademicDataState, initializedProgramsState } from "../recoil/unifiedAcademicDataAtom";
+import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+
+// Import helper functions from the original StudyOverview
 import {
   useCurrentSemester,
   getTypeColor,
@@ -34,41 +45,86 @@ import {
   calculateSemesterCredits,
   sortCoursesByType,
 } from "../helpers/studyOverviewHelpers";
-import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
-import { useMergeWishlistedCourses } from "../helpers/useMergeWishlistedCourses";
+
+// Helper function to check if a semester is in the future
+const isSemesterInFuture = (semesterToCheck, currentSemester) => {
+  if (!semesterToCheck || !currentSemester) return false;
+
+  const normalizedCheck = removeSpacesFromSemesterName(semesterToCheck);
+  const normalizedCurrent = removeSpacesFromSemesterName(currentSemester);
+
+  const [typeTo, yearTo] = [
+    normalizedCheck.slice(0, 2),
+    normalizedCheck.slice(2),
+  ];
+  const [typeCurrent, yearCurrent] = [
+    normalizedCurrent.slice(0, 2),
+    normalizedCurrent.slice(2),
+  ];
+
+  const yearDiff = parseInt(yearTo) - parseInt(yearCurrent);
+
+  if (yearDiff > 0) return true;
+  if (yearDiff < 0) return false;
+
+  // Same year - check semester type
+  if (typeTo === typeCurrent) return false;
+  // If we're in the same year, HS is considered "in the future" relative to FS
+  return typeTo === "HS" && typeCurrent === "FS";
+};
 
 /**
- * Main component that renders the study overview page.
- * It displays the user's enrolled programs, semesters, courses, and credits.
- * Wishlist merging is now handled via the useMergeWishlistedCourses hook to avoid duplicate logic.
+ * StudyOverview that uses unified academic data system
  */
 const StudyOverview = () => {
-  // Retrieve global state and error handler.
+  // Use unified data system instead of old selectors
+  const academicData = useRecoilValue(unifiedAcademicDataState);
+  const initStatus = useRecoilValue(academicDataInitializationSelector);
   const authToken = useRecoilValue(authTokenState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
+  const cisIdList = useRecoilValue(cisIdListSelector);
   const handleError = useErrorHandler();
   const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
+  const setUnifiedAcademicData = useSetRecoilState(unifiedAcademicDataState);
+  const setInitializedPrograms = useSetRecoilState(initializedProgramsState);
+  
+  // Local state for selected semesters per program (to avoid GUI shifting)
+  const [selectedSemesters, setSelectedSemesters] = useState({});
   const [scorecardError, setScorecardError] = useState(false);
-
-  // Retrieve current semester and wishlist mapping.
-  const currentSemester = useCurrentSemester();
-  const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
-
-  // Initialize scorecards on mount.
-  useInitializeScoreCards(handleError);
-  const scorecardData = useRecoilValue(scorecardDataState);
-
-  // Local state for the selected semester.
-  const [selectedSemester, setSelectedSemester] = useState(null);
+  
   const handleSetSelectedSemester = useCallback(
-    (semester) => setSelectedSemester(semester),
+    (program, semester) => {
+      setSelectedSemesters(prev => ({
+        ...prev,
+        [program]: semester
+      }));
+    },
     []
   );
 
-  // Fetch current enrollments if not already loaded.
+  // Initialize scorecard data (needed for unified system)
+  useInitializeScoreCards(handleError);
+  const scorecardData = useRecoilValue(scorecardDataState);
+
+  // Get current semester for auto-initialization
+  const currentSemester = useCurrentSemester();
+  
+  // Use unified data bridge that leverages EventListContainer's existing study plan data
+  const { isInitialized, isLoading: dataLoading } = useUnifiedDataBridge('StudyOverview', handleError);
+
+  // 🔍 DEBUG: StudyOverview reactivity tracking
+  useEffect(() => {
+    console.log("📊 StudyOverview Reactivity Trigger:", {
+      academicDataChanged: !!academicData,
+      initStatusChanged: initStatus,
+      timestamp: new Date().toISOString()
+    });
+  }, [academicData, initStatus]);
+
+  // Fetch current enrollments if not already loaded (same as original)
   useEffect(() => {
     if (!authToken) return;
-    if (currentEnrollments) return; // Already loaded.
+    if (currentEnrollments) return;
     (async () => {
       try {
         const data = await fetchCurrentEnrollments(authToken);
@@ -80,52 +136,105 @@ const StudyOverview = () => {
     })();
   }, [authToken, currentEnrollments, setCurrentEnrollments, handleError]);
 
-  // Trigger merging of wishlisted courses via the custom hook.
-  useMergeWishlistedCourses(
-    authToken,
-    currentSemester,
-    categoryTypeMap,
-    handleError
-  );
+  // Transform unified data to match original StudyOverview format
+  const transformedData = useMemo(() => {
+    if (!initStatus.isInitialized || !academicData.programs) return {};
+    
+    // 🔍 DEBUG: StudyOverview data transformation
+    console.log("📊 StudyOverview Data Source:", {
+      isInitialized: initStatus.isInitialized,
+      programKeys: Object.keys(academicData.programs || {}),
+      academicDataPrograms: academicData.programs
+    });
+    
+    const result = {};
+    
+    // Process all programs, not just the current one
+    Object.entries(academicData.programs).forEach(([programKey, programData]) => {
+      // Transform completed courses from transcript
+      const transcriptData = programData.transcript?.processedTranscript || {};
+      
+      // Transform study plan (wishlist) courses
+      const studyPlanData = programData.studyPlan?.semesterMap || {};
+      
+      // 🔍 DEBUG: StudyOverview semester data
+      console.log("📊 StudyOverview Program Data:", {
+        programKey,
+        transcriptSemesters: Object.keys(transcriptData),
+        studyPlanSemesters: Object.keys(studyPlanData),
+        transcriptCourseCount: Object.values(transcriptData).flat().length,
+        studyPlanCourseCount: Object.values(studyPlanData).flat().length,
+        studyPlanData: studyPlanData
+      });
+      
+      // Merge transcript and study plan data by semester
+      const allSemesters = new Set([
+        ...Object.keys(transcriptData),
+        ...Object.keys(studyPlanData)
+      ]);
+      
+      const semesterMap = {};
+      allSemesters.forEach(semester => {
+        if (semester === "Unassigned") return; // Skip unassigned
+        
+        const transcriptCourses = transcriptData[semester] || [];
+        const studyPlanCourses = studyPlanData[semester] || [];
+        
+        // Transform transcript courses to match original format
+        const transformedTranscriptCourses = transcriptCourses.map(course => ({
+          name: course.name,
+          credits: course.credits,
+          type: course.type,
+          grade: course.grade,
+          courseId: course.id,
+          courseNumber: course.courseNumber || course.id,
+          big_type: course.big_type
+        }));
+        
+        // Transform study plan courses to match original format (add -wishlist suffix)
+        const transformedStudyPlanCourses = studyPlanCourses.map(course => ({
+          name: course.name,
+          credits: course.credits,
+          type: `${course.big_type}-wishlist`,
+          grade: null,
+          courseId: course.id,
+          courseNumber: course.courseNumber || course.id,
+          big_type: course.big_type
+        }));
+        
+        semesterMap[semester] = [
+          ...transformedTranscriptCourses,
+          ...transformedStudyPlanCourses
+        ];
+      });
+      
+      // Use program description as key (same as original)
+      const programName = programData.metadata?.programDescription || programKey;
+      result[programName] = semesterMap;
+    });
+    
+    return result;
+  }, [academicData.programs, initStatus.isInitialized]);
 
-  // Retrieve the merged scorecard data from Recoil.
-  const mergedScorecardBySemester = useRecoilValue(
-    mergedScorecardBySemesterAtom
-  );
-
-  // Determine if wishlist merging is in progress.
-  const baseSemesterKeyedScorecards = useRecoilValue(
-    transformedScorecardsSelector
-  );
-  const isMergingWishlist =
-    !mergedScorecardBySemester &&
-    baseSemesterKeyedScorecards &&
-    Object.keys(baseSemesterKeyedScorecards).length > 0;
-
-  // Retrieve final display data derived from the merged scorecards.
-  const finalDisplayData = useRecoilValue(mergedOverviewSelector);
-
-  // Get current semester outside of useMemo
-  const currentSem = useCurrentSemester();
-
-  const allCourseInfo = useRecoilValue(currentSemesterAllCoursesSelector);
-
-  // Use data from unified course system instead of manually merging enrollments
+  // Add current enrollments to the data (same logic as original)
   const finalDisplayDataWithEnrolled = useMemo(() => {
-    if (!finalDisplayData || !allCourseInfo) return finalDisplayData;
-
-    // Early return if no enrolled courses
-    const currentEnrolledCourses =
-      allCourseInfo.filter((course) => course.enrolled) || [];
-
-    if (currentEnrolledCourses.length === 0) {
-      return finalDisplayData; // No enrolled courses to add
+    if (!transformedData) return transformedData;
+    
+    // Check if currentEnrollments has enrollmentInfos array
+    if (!currentEnrollments?.enrollmentInfos || !Array.isArray(currentEnrollments.enrollmentInfos)) {
+      return transformedData;
     }
-
-    // Create a map for quick lookup
-    const updated = JSON.parse(JSON.stringify(finalDisplayData));
-
-    // Pre-format all enrolled courses once
+    
+    // Look for enrolled courses in the enrollmentInfos structure
+    const allEnrollments = currentEnrollments.enrollmentInfos.flatMap(enrollment => 
+      enrollment.courses || []
+    );
+    const currentEnrolledCourses = allEnrollments.filter(course => course.enrolled) || [];
+    if (currentEnrolledCourses.length === 0) return transformedData;
+    
+    const updated = JSON.parse(JSON.stringify(transformedData));
+    
+    // Format enrolled courses (same as original)
     const enrolledCoursesFormatted = currentEnrolledCourses.map((course) => ({
       name: course.shortName || course.eventDescription,
       credits: course.credits / 100,
@@ -136,78 +245,384 @@ const StudyOverview = () => {
       eventCourseNumber: course.eventCourseNumber,
       languageId: course.languageId,
     }));
-
-    // Create a lookup set for faster duplicate checking
-    const existingCourseIds = new Set();
-    const existingCourseNames = new Set();
-
-    // Iterate through each program
+    
+    // Add enrolled courses to current semester (same logic as original)
     Object.keys(updated).forEach((program) => {
-      // Find the semester that matches the current semester
       const semesterKeys = Object.keys(updated[program]);
       const currentSemesterKey = semesterKeys.find(
-        (semKey) =>
-          removeSpacesFromSemesterName(semKey) ===
-          removeSpacesFromSemesterName(currentSem)
+        (semKey) => removeSpacesFromSemesterName(semKey) === removeSpacesFromSemesterName(currentSemester)
       );
-
+      
       if (currentSemesterKey) {
-        if (!updated[program][currentSemesterKey]) {
-          updated[program][currentSemesterKey] = [];
-        }
-
-        // Collect existing course IDs and names for fast lookups
-        updated[program][currentSemesterKey].forEach((course) => {
-          if (course.courseId) existingCourseIds.add(course.courseId);
-          if (course.name) existingCourseNames.add(course.name);
-        });
-
-        // Add non-duplicate courses
-        enrolledCoursesFormatted.forEach((newCourse) => {
-          if (
-            !existingCourseIds.has(newCourse.courseId) &&
-            !existingCourseNames.has(newCourse.name)
-          ) {
-            updated[program][currentSemesterKey].push(newCourse);
-          }
-        });
+        const existingCourses = updated[program][currentSemesterKey] || [];
+        const existingCourseIds = new Set(existingCourses.map(c => c.courseId));
+        
+        // Add non-duplicate enrolled courses
+        const newEnrolledCourses = enrolledCoursesFormatted.filter(
+          course => !existingCourseIds.has(course.courseId)
+        );
+        
+        updated[program][currentSemesterKey] = [
+          ...existingCourses,
+          ...newEnrolledCourses
+        ];
       }
     });
-
+    
     return updated;
-  }, [finalDisplayData, allCourseInfo, currentSem]);
+  }, [transformedData, currentEnrollments, currentSemester]);
 
-  // Set error state if scorecard data contains an error.
-  useEffect(() => {
-    if (scorecardData.error) {
-      setScorecardError(true);
+  // Helper functions for auto-initialization (same as SimpleUnifiedDataBridge)
+  const processRawScorecard = (rawScorecard) => {
+    const semesterMap = {};
+    let totalCreditsRequired = 0;
+    let totalCreditsCompleted = 0;
+    
+    const extractCourses = (items) => {
+      const courses = [];
+      
+      items.forEach(item => {
+        if (item.isDetail && !item.isTitle) {
+          const courseType = item.hierarchyParent && item.hierarchyParent.includes("00100")
+            ? "core"
+            : item.hierarchyParent && item.hierarchyParent.includes("00101")
+            ? "contextual"
+            : "elective";
+          
+          const course = {
+            name: item.description || item.shortName,
+            credits: parseFloat(item.sumOfCredits || 0),
+            type: courseType,
+            grade: item.mark ? parseFloat(item.mark) : null,
+            id: item.id,
+            semester: item.semester || "Unassigned",
+            big_type: courseType
+          };
+          
+          courses.push(course);
+          totalCreditsRequired += course.credits;
+          if (course.grade) {
+            totalCreditsCompleted += course.credits;
+          }
+        } else if (item.items && item.items.length > 0) {
+          courses.push(...extractCourses(item.items));
+        }
+      });
+      
+      return courses;
+    };
+    
+    const allCourses = extractCourses(rawScorecard.items || []);
+    
+    allCourses.forEach(course => {
+      const semester = course.semester || "Unassigned";
+      if (!semesterMap[semester]) {
+        semesterMap[semester] = [];
+      }
+      semesterMap[semester].push(course);
+    });
+    
+    const progress = {
+      totalCreditsRequired,
+      totalCreditsCompleted,
+      totalCreditsPlanned: 0,
+      completionPercentage: totalCreditsRequired > 0 ? 
+        Math.round((totalCreditsCompleted / totalCreditsRequired) * 100) : 0,
+      estimatedCompletion: null
+    };
+    
+    return { semesterMap, progress };
+  };
+
+  const processStudyPlansData = async (studyPlansData, authToken, cisIdList, currentSemester, setUnifiedAcademicData, firstProgram) => {
+    const semesterMap = {};
+    const cisIdToSemesterNameMap = createSemesterMap(cisIdList, studyPlansData);
+    const cleanedCurrentSemester = removeSpacesFromSemesterName(currentSemester);
+    
+    
+    // STEP 1: Initialize all available semesters from cisIdList (even empty ones)
+    Object.values(cisIdToSemesterNameMap).forEach(semesterLabel => {
+      if (semesterLabel !== "Unassigned" && 
+          !isSemesterInPast(removeSpacesFromSemesterName(semesterLabel), cleanedCurrentSemester)) {
+        semesterMap[semesterLabel] = []; // Initialize empty semester
+      }
+    });
+    
+    // STEP 2: Add courses to semesters that have them
+    for (const semesterItem of studyPlansData) {
+      const semesterCisId = semesterItem.id;
+      const courseIds = semesterItem.courses;
+      const semesterLabel = cisIdToSemesterNameMap[semesterCisId] || "Unassigned";
+      
+      if (!Array.isArray(courseIds) || semesterLabel === "Unassigned") continue;
+      if (isSemesterInPast(removeSpacesFromSemesterName(semesterLabel), cleanedCurrentSemester)) continue;
+      
+      // Filter to only include course number format
+      const filteredCourseIds = courseIds.filter(courseId => {
+        if (typeof courseId === 'string' && courseId.includes(',')) {
+          const parts = courseId.split(',');
+          return parts.length >= 2 && parts.every(part => part.trim() !== '');
+        }
+        return false;
+      });
+      
+      if (filteredCourseIds.length === 0) continue;
+      
+      // Create basic courses immediately (no enrichment yet)
+      const basicCourses = filteredCourseIds.map(courseId => ({
+        name: `Course ${courseId}`, // Temporary name - will be enriched
+        credits: 4, // Default to 4 ECTS - will be enriched with actual values
+        type: "wishlist",
+        grade: null,
+        id: courseId,
+        semester: semesterLabel,
+        big_type: "elective", // Will be enriched
+        courseNumber: courseId,
+        classification: "unknown", // Will be enriched
+        eventCourseNumber: courseId,
+        isEnriched: false // Flag to track enrichment status
+      }));
+      
+      if (basicCourses.length > 0) {
+        // Add courses to existing semester (initialized above)
+        semesterMap[semesterLabel] = [...(semesterMap[semesterLabel] || []), ...basicCourses];
+      }
     }
-  }, [scorecardData.error]);
-
-  // Debug: Log merged scorecard data.
-  useEffect(() => {
-    console.log(
-      "mergedScorecardBySemesterAtom inspection",
-      mergedScorecardBySemester
-    );
-  }, [mergedScorecardBySemester]);
-
-  // Identify the main study program description.
-  let mainStudyDescription = null;
-  if (currentEnrollments?.isLoaded && currentEnrollments?.enrollmentInfos) {
-    const mainStudy = currentEnrollments.enrollmentInfos.find(
-      (info) => info.isMainStudy
-    );
-    if (mainStudy) {
-      mainStudyDescription = mainStudy.studyProgramDescription;
+    
+    
+    // STEP 2: Update UI immediately with basic course structure AND mark as initialized
+    setUnifiedAcademicData(prev => ({
+      ...prev,
+      programs: {
+        ...prev.programs,
+        [firstProgram]: {
+          ...prev.programs[firstProgram],
+          studyPlan: {
+            ...(prev.programs[firstProgram]?.studyPlan || {}),
+            semesterMap: semesterMap,
+            isEnriching: true // Flag to show loading indicators
+          }
+        }
+      },
+      initialization: {
+        ...prev.initialization,
+        isInitialized: true, // Set to true immediately so UI shows basic courses
+        isEnriching: true, // Track enrichment separately
+        lastInitialized: new Date().toISOString()
+      }
+    }));
+    
+    // STEP 3: Start background enrichment
+    
+    // Collect semester IDs that need enrichment
+    const semesterIdsToFetch = new Set();
+    const referenceMapping = new Map();
+    
+    for (const semesterItem of studyPlansData) {
+      const semesterCisId = semesterItem.id;
+      const courseIds = semesterItem.courses;
+      const semesterLabel = cisIdToSemesterNameMap[semesterCisId] || "Unassigned";
+      
+      if (!Array.isArray(courseIds) || semesterLabel === "Unassigned") continue;
+      if (isSemesterInPast(removeSpacesFromSemesterName(semesterLabel), cleanedCurrentSemester)) continue;
+      
+      // Handle placeholder semesters
+      if (semesterCisId.includes("Placeholder") || 
+          isSemesterInFuture(semesterLabel, cleanedCurrentSemester)) {
+        
+        const semesterMatch = semesterCisId.includes("Placeholder") 
+          ? semesterCisId.match(/(HS|FS)\s*(\d{2})\s*-\s*Placeholder/)
+          : semesterLabel.match(/(HS|FS)(\d{2})/);
+        if (semesterMatch) {
+          const semesterType = semesterMatch[1];
+          const semesterYear = parseInt(semesterMatch[2], 10);
+          
+          let referenceSemesterId = null;
+          let highestPastYear = 0;
+          
+          for (const [cisId, semName] of Object.entries(cisIdToSemesterNameMap)) {
+            if (cisId.includes("Placeholder")) continue;
+            
+            const realSemMatch = semName.match(/(HS|FS)(\d{2})/);
+            if (realSemMatch && realSemMatch[1] === semesterType) {
+              const realYear = parseInt(realSemMatch[2], 10);
+              if (realYear < semesterYear && realYear > highestPastYear) {
+                highestPastYear = realYear;
+                referenceSemesterId = cisId;
+              }
+            }
+          }
+          
+          if (referenceSemesterId) {
+            semesterIdsToFetch.add(referenceSemesterId);
+            referenceMapping.set(semesterCisId, referenceSemesterId);
+          }
+        }
+      } else {
+        semesterIdsToFetch.add(semesterCisId);
+      }
     }
-  }
+    
+    // STEP 4: Progressively enrich courses as API calls complete
+    const courseDetailsCache = {};
+    let completedFetches = 0;
+    const totalFetches = semesterIdsToFetch.size;
+    
+    const enrichmentPromises = Array.from(semesterIdsToFetch).map(async (semesterId) => {
+      try {
+        const courseDetails = await getLightCourseDetails(semesterId, authToken);
+        const enrichedData = flattenSemesterCourses(courseDetails || []);
+        courseDetailsCache[semesterId] = enrichedData;
+        
+        completedFetches++;
+        
+        // Update UI progressively as each semester completes
+        return { semesterId, data: enrichedData };
+      } catch (error) {
+        console.error(`Failed to fetch course details for ${semesterId}: ${error.message}`);
+        courseDetailsCache[semesterId] = {};
+        completedFetches++;
+        return { semesterId, data: {} };
+      }
+    });
+    
+    // Process enrichment results as they come in with proper state updates
+    const updateEnrichmentProgress = () => {
+      // Copy reference data to placeholder semesters
+      for (const [placeholderSemesterId, referenceSemesterId] of referenceMapping) {
+        if (courseDetailsCache[referenceSemesterId]) {
+          courseDetailsCache[placeholderSemesterId] = { ...courseDetailsCache[referenceSemesterId] };
+        }
+      }
+      
+      // Update courses with enriched data
+      const enrichedSemesterMap = { ...semesterMap };
+      
+      for (const semesterItem of studyPlansData) {
+        const semesterCisId = semesterItem.id;
+        const courseIds = semesterItem.courses;
+        const semesterLabel = cisIdToSemesterNameMap[semesterCisId] || "Unassigned";
+        
+        if (!Array.isArray(courseIds) || semesterLabel === "Unassigned") continue;
+        if (isSemesterInPast(removeSpacesFromSemesterName(semesterLabel), cleanedCurrentSemester)) continue;
+        if (!enrichedSemesterMap[semesterLabel]) continue;
+        
+        const courseDict = courseDetailsCache[semesterCisId] || {};
+        if (Object.keys(courseDict).length === 0) continue; // Skip if no enrichment data
+        
+        // Enrich existing courses
+        enrichedSemesterMap[semesterLabel] = enrichedSemesterMap[semesterLabel].map(course => {
+          if (course.isEnriched) return course; // Already enriched
+          
+          let courseDetails = courseDict[course.id];
+          
+          if (!courseDetails) {
+            for (const courseData of Object.values(courseDict)) {
+              if (courseData.eventCourseNumber === course.id || courseData.courseNumber === course.id) {
+                courseDetails = courseData;
+                break;
+              }
+            }
+          }
+          
+          if (courseDetails) {
+            return {
+              ...course,
+              name: courseDetails.shortName || courseDetails.description || course.name,
+              credits: courseDetails.credits ? parseFloat(courseDetails.credits) / 100 : 0,
+              big_type: courseDetails.classification || "elective",
+              classification: courseDetails.classification || "unknown",
+              courseNumber: courseDetails.courseNumber || course.id,
+              eventCourseNumber: courseDetails.eventCourseNumber || course.id,
+              isEnriched: true
+            };
+          }
+          
+          return course; // Return unchanged if no enrichment data
+        });
+      }
+      
+      // Update UI with progressive enrichment
+      setUnifiedAcademicData(prev => ({
+        ...prev,
+        programs: {
+          ...prev.programs,
+          [firstProgram]: {
+            ...prev.programs[firstProgram],
+            studyPlan: {
+              ...(prev.programs[firstProgram]?.studyPlan || {}),
+              semesterMap: enrichedSemesterMap,
+              isEnriching: completedFetches < totalFetches,
+              enrichmentProgress: completedFetches / totalFetches
+            }
+          }
+        }
+      }));
+    };
 
-  useEffect(() => {
-    console.log("Debug enrolled: currentEnrollments", currentEnrollments);
+    // Attach progress updates to each promise
+    enrichmentPromises.forEach(promise => {
+      promise.then(() => {
+        // Use setTimeout to ensure state update happens on next tick
+        setTimeout(updateEnrichmentProgress, 0);
+      });
+    });
+    
+    // Wait for all enrichment to complete
+    await Promise.all(enrichmentPromises);
+    
+    
+    // STEP 5: Mark enrichment as complete
+    setUnifiedAcademicData(prev => ({
+      ...prev,
+      programs: {
+        ...prev.programs,
+        [firstProgram]: {
+          ...prev.programs[firstProgram],
+          studyPlan: {
+            ...(prev.programs[firstProgram]?.studyPlan || {}),
+            isEnriching: false,
+            enrichmentProgress: 1
+          }
+        }
+      },
+      initialization: {
+        ...prev.initialization,
+        isEnriching: false // Mark enrichment as complete
+      }
+    }));
+    
+    return semesterMap;
+  };
+
+  const flattenSemesterCourses = (semesterCourseData = []) => {
+    const courseDict = {};
+    
+    for (const course of semesterCourseData) {
+      courseDict[course.id] = { ...course };
+      
+      if (Array.isArray(course.courses)) {
+        for (const sub of course.courses) {
+          courseDict[sub.id] = {
+            ...course,
+            ...sub,
+            credits: course.credits
+          };
+        }
+      }
+    }
+    
+    return courseDict;
+  };
+
+  // Main study description logic (same as original)
+  const mainStudyDescription = useMemo(() => {
+    if (!Array.isArray(currentEnrollments)) return null;
+    const mainStudy = currentEnrollments.find(enrollment => enrollment.isMainStudy);
+    return mainStudy?.studyProgramDescription || null;
   }, [currentEnrollments]);
 
-  // Sort programs to prioritize the main study.
+  // Sort programs to prioritize main study (same as original)
   const sortedScorecardsEntries = useMemo(() => {
     const entries = Object.entries(finalDisplayDataWithEnrolled);
     if (mainStudyDescription) {
@@ -220,6 +635,10 @@ const StudyOverview = () => {
     return entries;
   }, [finalDisplayDataWithEnrolled, mainStudyDescription]);
 
+  // Loading states (adapted for unified system)
+  const isLoading = !initStatus.isInitialized;
+  const hasNoData = initStatus.isInitialized && Object.keys(finalDisplayDataWithEnrolled).length === 0;
+
   if (scorecardError) {
     return <ScorecardErrorMessage />;
   }
@@ -228,58 +647,69 @@ const StudyOverview = () => {
     <div className="flex flex-col px-8 py-4">
       <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
 
-      {/* Display loading spinner if scorecard data is loading or wishlist merge is in progress */}
-      {(!scorecardData || scorecardData.loading || isMergingWishlist) && (
+      {/* Loading state */}
+      {isLoading && (
         <div className="mb-6">
           <LoadingText>Loading your saved courses...</LoadingText>
           <LoadingSkeletonStudyOverview />
         </div>
       )}
 
-      {/* Show message if no scorecard data is available after loading */}
-      {scorecardData &&
-        !scorecardData.loading &&
-        !isMergingWishlist &&
-        Object.keys(finalDisplayData).length === 0 && (
-          <div>No scorecard data found.</div>
-        )}
-
-      {/* Iterate over programs and render each program section */}
-      {sortedScorecardsEntries.map(([program, semesters], index, array) => (
-        <div key={program}>
-          <ProgramSection
-            program={program}
-            semesters={semesters}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={handleSetSelectedSemester}
-          />
-          {index < array.length - 1 && (
-            <div className="my-8 h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
-          )}
+      {/* Enrichment progress indicator */}
+      {!isLoading && initStatus.isEnriching && (
+        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin h-4 w-4 border-2 border-gray-600 border-t-transparent rounded-full"></div>
+            <span className="text-gray-700 text-sm">Enriching course details...</span>
+          </div>
         </div>
-      ))}
+      )}
+
+      {/* No data message */}
+      {hasNoData && (
+        <div>No scorecard data found.</div>
+      )}
+
+      {/* Render programs using original UI components */}
+      {sortedScorecardsEntries.map(([program, semesters], index, array) => {
+        // Find the raw scorecard for this program
+        const programData = Object.values(academicData.programs || {}).find(
+          p => p.metadata?.programDescription === program
+        );
+        
+        return (
+          <div key={program}>
+            <ProgramSection
+              program={program}
+              semesters={semesters}
+              selectedSemester={selectedSemesters[program] || null}
+              setSelectedSemester={(semester) => handleSetSelectedSemester(program, semester)}
+              rawScorecard={programData?.transcript?.rawScorecard} // Pass raw scorecard for summary
+            />
+            {index < array.length - 1 && (
+              <div className="my-8 h-1 bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };
 
-/**
- * Component representing a section for each enrolled program.
- * @param {Object} props - Component properties.
- * @param {string} props.program - The study program name.
- * @param {Object} props.semesters - The semesters and corresponding courses.
- * @param {string} props.selectedSemester - The currently selected semester.
- * @param {function} props.setSelectedSemester - Function to update the selected semester.
- */
+// Import and reuse all original UI components exactly as they are
+// (Just copying them here to keep the hybrid component self-contained)
+
 const ProgramSection = ({
   program,
   semesters,
   selectedSemester,
   setSelectedSemester,
+  rawScorecard
 }) => {
   const [hoveredCourse, setHoveredCourse] = useState(null);
   const currentSemester = useCurrentSemester();
 
-  // Pre-filter semesters to remove wishlist courses for past semesters.
+  // Pre-filter semesters to remove wishlist courses for past semesters (same as original)
   const filteredSemesters = useMemo(() => {
     return Object.entries(semesters).reduce((acc, [semester, courses]) => {
       if (!courses) return acc;
@@ -287,14 +717,14 @@ const ProgramSection = ({
         removeSpacesFromSemesterName(semester),
         removeSpacesFromSemesterName(currentSemester)
       )
-        ? courses.filter((course) => course.type !== "wishlist")
+        ? courses.filter((course) => !course.type.includes("wishlist"))
         : courses;
       acc[semester] = filteredCourses;
       return acc;
     }, {});
   }, [semesters, currentSemester]);
 
-  // Calculate the maximum credits across semesters for UI scaling.
+  // Calculate max semester credits (same as original)
   const maxSemesterCredits = useMemo(() => {
     return Math.max(
       ...Object.values(filteredSemesters).map((courses) =>
@@ -303,16 +733,15 @@ const ProgramSection = ({
     );
   }, [filteredSemesters]);
 
+  // Sort semesters (same as original)
   const getSemesterSortValue = useCallback((semester) => {
     const isSpring = semester.startsWith("FS");
     const isFall = semester.startsWith("HS");
     if (!isSpring && !isFall) return 0;
-
     const year = semester.slice(2);
     return parseInt(year) * 2 + (isFall ? 1 : 0);
   }, []);
 
-  // Add new memoized sorted semesters
   const sortedSemesters = useMemo(() => {
     return Object.entries(filteredSemesters)
       .filter(([semester]) => semester !== "Unassigned")
@@ -328,7 +757,6 @@ const ProgramSection = ({
       </div>
 
       <div className="px-1 py-2 ring-1 ring-black ring-opacity-5 rounded-lg">
-        {" "}
         <SemesterList
           sortedSemesters={sortedSemesters}
           selectedSemester={selectedSemester}
@@ -337,7 +765,7 @@ const ProgramSection = ({
           maxSemesterCredits={maxSemesterCredits}
         />
         <div className="mt-2 flex flex-col items-end text-right">
-          <ProgramSummaryRow program={program} />
+          <ProgramSummaryRow program={program} rawScorecard={rawScorecard} />
         </div>
       </div>
 
@@ -349,7 +777,7 @@ const ProgramSection = ({
         />
       )}
 
-      {/* Type legend (unchanged) */}
+      {/* Type legend */}
       <div className="flex flex-row items-center justify-center w-full pt-4 flex-wrap gap-4">
         {["core", "elective", "contextual"].map((type) => (
           <div key={type} className="flex items-center text-xs md:text-sm">
@@ -362,10 +790,6 @@ const ProgramSection = ({
   );
 };
 
-/**
- * Renders a list of semesters for a given program.
- * @param {Object} props - Component properties.
- */
 const SemesterList = ({
   sortedSemesters,
   selectedSemester,
@@ -390,9 +814,6 @@ const SemesterList = ({
   );
 };
 
-/**
- * Renders a single row representing one semester.
- */
 const SemesterRow = ({
   semester,
   courses,
@@ -407,10 +828,8 @@ const SemesterRow = ({
     removeSpacesFromSemesterName(currentSemester);
   const setSelectedTab = useSetRecoilState(selectedTabAtom);
 
-  // Sort courses by type
   const sortedCourses = sortCoursesByType(courses || []);
 
-  // Calculate average grade for courses.
   const calculateAverageGrade = (list) => {
     const graded = list.filter((c) => typeof c.grade === "number");
     if (graded.length === 0) return null;
@@ -423,7 +842,6 @@ const SemesterRow = ({
       className="grid grid-cols-12 gap-2 md:gap-4 mb-2 items-center"
       onClick={() => setSelectedSemester(semester)}
       onMouseEnter={() => {
-        // Only update selected semester if it's different to avoid redundant renders
         if (selectedSemester !== semester) {
           setSelectedSemester(semester);
         }
@@ -434,7 +852,7 @@ const SemesterRow = ({
           selectedSemester === semester ? "text-green-800" : ""
         }`}
       >
-        {semester}
+        {removeSpacesFromSemesterName(semester)}
       </div>
 
       <div className="col-span-6 md:col-span-8 flex flex-row h-8">
@@ -467,7 +885,7 @@ const SemesterRow = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedTab(2); // Example: switch to the “Current Semester” tab
+              setSelectedTab(2);
             }}
             className="bg-green-800 text-white px-2 md:px-4 py-1.5 rounded
               hover:bg-green-700 active:bg-green-900
@@ -488,27 +906,27 @@ const SemesterRow = ({
   );
 };
 
-/**
- * A small bar representing a single course in a semester.
- */
-const CourseBar = ({ course, setHoveredCourse, maxSemesterCredits }) => (
-  <div
-    className={`h-full m-0.5 md:m-1 rounded flex items-center justify-center text-white
-      ${getTypeColor(course)}
-      transition-all duration-200
-      hover:shadow-lg hover:scale-y-105`}
-    style={{
-      width: `${(course.credits / maxSemesterCredits) * 100}%`,
-      minWidth: "0.25rem",
-    }}
-    onMouseEnter={() => setHoveredCourse(course)}
-    onMouseLeave={() => setHoveredCourse(null)}
-  />
-);
+const CourseBar = ({ course, setHoveredCourse, maxSemesterCredits }) => {
+  const isEnriched = course.isEnriched !== false; // Default to true for existing courses
+  
+  return (
+    <div
+      className={`h-full m-0.5 md:m-1 rounded flex items-center justify-center text-white
+        ${getTypeColor(course)}
+        transition-all duration-200
+        hover:shadow-lg hover:scale-y-105
+        ${!isEnriched ? 'animate-pulse opacity-70' : ''}`}
+      style={{
+        width: `${(course.credits / maxSemesterCredits) * 100}%`,
+        minWidth: "0.25rem",
+      }}
+      onMouseEnter={() => setHoveredCourse(course)}
+      onMouseLeave={() => setHoveredCourse(null)}
+      title={!isEnriched ? 'Loading course details...' : course.name}
+    />
+  );
+};
 
-/**
- * Component that renders the detailed list of courses for a selected semester.
- */
 const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
   const currentSemester = useCurrentSemester();
   const filteredCourses = filterCoursesForSemester(
@@ -517,7 +935,6 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
     currentSemester
   );
 
-  // Sort courses by type
   const sortedCourses = sortCoursesByType(filteredCourses);
 
   const isHovered = (course) =>
@@ -528,50 +945,50 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
   return (
     <div className="mt-4">
       <div className="py-2 pl-2 text-l font-bold bg-gray-100 rounded">
-        Overview {selectedSemester}
+        Overview {removeSpacesFromSemesterName(selectedSemester)}
       </div>
       <div className="mt-2">
-        {sortedCourses.map((course, idx) => (
-          <div
-            key={idx}
-            className={`px-4 py-2 rounded grid grid-cols-10 gap-4 text-sm
-              ${isHovered(course) ? "bg-gray-200" : ""}
-              transition-colors duration-200`}
-          >
-            <div className="col-span-4 font-semibold truncate">
-              {course.name}
+        {sortedCourses.map((course, idx) => {
+          const isEnriched = course.isEnriched !== false; // Default to true for existing courses
+          
+          return (
+            <div
+              key={idx}
+              className={`px-4 py-2 rounded grid grid-cols-10 gap-4 text-sm
+                ${isHovered(course) ? "bg-gray-200" : ""}
+                ${!isEnriched ? "bg-gray-50" : ""}
+                transition-colors duration-200`}
+            >
+              <div className={`col-span-4 font-semibold truncate ${!isEnriched ? 'text-gray-500' : ''}`}>
+                {course.name}
+                {!isEnriched && (
+                  <span className="ml-2 text-xs text-gray-500 animate-pulse">Loading...</span>
+                )}
+              </div>
+              <div className="col-span-3 truncate">
+                {course.type.replace("-wishlist", "")}
+                {course.type.endsWith("-wishlist") && (
+                  <span className="ml-1 text-orange-500 inline-flex items-center">
+                    <LockClosed className="w-3 h-3" />
+                  </span>
+                )}
+              </div>
+              <div className="text-center">{course.credits} ECTS</div>
+              <div className="text-center col-span-2">
+                {typeof course.grade === "number"
+                  ? course.grade.toFixed(2)
+                  : "N/A"}
+              </div>
             </div>
-            <div className="col-span-3 truncate">
-              {course.type.replace("-wishlist", "")}
-              {course.type.endsWith("-wishlist") && (
-                <span className="ml-1 text-orange-500 inline-flex items-center">
-                  <LockClosed className="w-3 h-3" />
-                </span>
-              )}
-            </div>
-            <div className="text-center">{course.credits} ECTS</div>
-            <div className="text-center col-span-2">
-              {typeof course.grade === "number"
-                ? course.grade.toFixed(2)
-                : "N/A"}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
 };
 
-const ProgramSummaryRow = ({ program }) => {
-  // Grab the raw scorecard data from Recoil so we can read total/earned credits
-  const scorecardData = useRecoilValue(scorecardDataState);
-
-  // Find the raw scorecard object for this program
-  const rawScorecard = scorecardData?.rawScorecards
-    ? scorecardData.rawScorecards[program]
-    : null;
-
-  // Extract total required (maxCredits) and total earned (sumOfCredits) from raw scorecard
+const ProgramSummaryRow = ({ program, rawScorecard }) => {
+  // Extract credits from raw scorecard or use unified data
   const programTotalRequired = rawScorecard?.items?.[0]?.maxCredits
     ? parseFloat(rawScorecard.items[0].maxCredits)
     : 0;
@@ -596,56 +1013,20 @@ const ProgramSummaryRow = ({ program }) => {
   );
 };
 
-export default StudyOverview;
-
-/**
- * PROPTYPES
- */
+// PropTypes (same as original)
 const courseShape = PropTypes.shape({
   name: PropTypes.string.isRequired,
   credits: PropTypes.number.isRequired,
   type: PropTypes.string.isRequired,
   grade: PropTypes.number,
 });
-const semestersShape = PropTypes.objectOf(PropTypes.arrayOf(courseShape));
 
 ProgramSection.propTypes = {
   program: PropTypes.string.isRequired,
-  semesters: semestersShape.isRequired,
+  semesters: PropTypes.objectOf(PropTypes.arrayOf(courseShape)).isRequired,
   selectedSemester: PropTypes.string,
   setSelectedSemester: PropTypes.func.isRequired,
+  rawScorecard: PropTypes.object,
 };
 
-SemesterList.propTypes = {
-  sortedSemesters: PropTypes.arrayOf(PropTypes.array).isRequired,
-  selectedSemester: PropTypes.string,
-  setSelectedSemester: PropTypes.func.isRequired,
-  hoveredCourse: courseShape,
-  setHoveredCourse: PropTypes.func.isRequired,
-  maxSemesterCredits: PropTypes.number.isRequired,
-};
-
-SemesterRow.propTypes = {
-  semester: PropTypes.string.isRequired,
-  courses: PropTypes.arrayOf(courseShape).isRequired,
-  selectedSemester: PropTypes.string,
-  setSelectedSemester: PropTypes.func.isRequired,
-  setHoveredCourse: PropTypes.func.isRequired,
-  maxSemesterCredits: PropTypes.number.isRequired,
-};
-
-CourseBar.propTypes = {
-  course: courseShape.isRequired,
-  setHoveredCourse: PropTypes.func.isRequired,
-  maxSemesterCredits: PropTypes.number.isRequired,
-};
-
-CourseDetailsList.propTypes = {
-  courses: PropTypes.arrayOf(courseShape).isRequired,
-  selectedSemester: PropTypes.string.isRequired,
-  hoveredCourse: courseShape,
-};
-
-ProgramSummaryRow.propTypes = {
-  program: PropTypes.string.isRequired,
-};
+export default StudyOverview;

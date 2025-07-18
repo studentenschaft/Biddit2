@@ -201,10 +201,19 @@ export const useStudyPlanData = ({
   ) => {
     const coursesToFind = courseInfo[semesterIndex] || [];
 
+    // Filter to only include course number format (same as StudyOverview)
+    const filteredCourseIds = studyPlan.courses.filter(courseId => {
+      if (typeof courseId === 'string' && courseId.includes(',')) {
+        const parts = courseId.split(',');
+        return parts.length >= 2 && parts.every(part => part.trim() !== '');
+      }
+      return false; // Exclude UUIDs and other legacy formats
+    });
+
     // Update index-based atom (legacy system)
     setLocalSelectedCourses((prevCourses) => {
       const updatedCourses = { ...prevCourses };
-      updatedCourses[semesterIndex] = studyPlan.courses
+      updatedCourses[semesterIndex] = filteredCourseIds
         .map((courseIdentifier) => {
           return coursesToFind.find(
             (course) =>
@@ -220,7 +229,7 @@ export const useStudyPlanData = ({
     setLocalSelectedCoursesSemKey((prevCourses) => {
       const updatedCourses = { ...prevCourses };
       const semKey = selectedSemester.shortName;
-      updatedCourses[semKey] = studyPlan.courses
+      updatedCourses[semKey] = filteredCourseIds
         .map((courseIdentifier) => {
           const course = coursesToFind.find(
             (c) =>
@@ -242,7 +251,7 @@ export const useStudyPlanData = ({
     });
 
     // Update unified selected courses
-    const selectedCourses = studyPlan.courses
+    const selectedCourses = filteredCourseIds
       .map((courseIdentifier) => {
         const course = coursesToFind.find(
           (c) =>

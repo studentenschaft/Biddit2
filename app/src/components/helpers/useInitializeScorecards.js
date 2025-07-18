@@ -4,13 +4,11 @@ import { scorecardDataState } from '../recoil/scorecardsAllRawAtom';
 import { authTokenState } from '../recoil/authAtom';
 import { currentEnrollmentsState } from '../recoil/currentEnrollmentsAtom';
 import { fetchScoreCardDetails } from '../recoil/ApiScorecardDetails';
-import { devModeState } from '../testing/devModeAtom';
 
 export const useInitializeScoreCards = (handleError) => {
   const setScoreCardData = useSetRecoilState(scorecardDataState);
   const authToken = useRecoilValue(authTokenState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
-  const devMode = useRecoilValue(devModeState);
 
   const existingData = useRecoilValue(scorecardDataState);
 
@@ -34,9 +32,7 @@ export const useInitializeScoreCards = (handleError) => {
                 const rawScorecard = await fetchScoreCardDetails(
                 authToken,
                 enrollment.studyRegulationId,
-                attempt,
-                devMode,
-                enrollment.studyProgramShortName
+                attempt
                 );
 
                 if (!rawScorecard.success) {
@@ -84,5 +80,5 @@ export const useInitializeScoreCards = (handleError) => {
     if (authToken && currentEnrollments?.enrollmentInfos) {
       fetchAllScorecards();
     }
-  }, [authToken, currentEnrollments, devMode, handleError, setScoreCardData]);
+  }, [authToken, currentEnrollments, handleError, setScoreCardData]);
 };

@@ -3,19 +3,25 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useSetRecoilState, useRecoilValue, useRecoilState } from 'recoil';
 import { authTokenState } from '../recoil/authAtom';
 import { currentEnrollmentsState } from '../recoil/currentEnrollmentsAtom';
-import { mainProgramScorecardSelector } from '../recoil/mainProgramScorecardSelector';
-import { mergedScorecardDataSelector } from '../recoil/mergedScorecardDataSelector';
-import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
-import { fetchCurrentEnrollments } from '../recoil/ApiCurrentEnrollments';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import GradeTranscript from './GradeTranscript';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonTranscript } from './LoadingSkeletons';
-import { useMergeWishlistedCourses } from "../helpers/useMergeWishlistedCourses";
-import { useCurrentSemester } from "../helpers/studyOverviewHelpers";
-import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
+
+// Import unified data system
+import { 
+  academicDataInitializationSelector,
+  currentProgramDataSelector,
+  mainProgramStudyPlanSelector
+} from '../recoil/unifiedAcademicDataSelectors';
+import { unifiedAcademicDataState, initializedProgramsState } from '../recoil/unifiedAcademicDataAtom';
+import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
+import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
+import { useUnifiedDataBridge } from '../helpers/useUnifiedDataBridge';
+import { scorecardDataState } from '../recoil/scorecardsAllRawAtom';
+
 
 // Import study plan state and API delete function to support clearing saved courses
 import { studyPlanAtom } from '../recoil/studyPlanAtom';
@@ -24,89 +30,95 @@ import { deleteCourse } from '../helpers/api';
 /**
  * Transcript component displays the student's grade transcript and merges in any wishlisted courses.
  * It also provides a button at the bottom to clear all saved courses from the backend.
+ * 
+ * This component uses our unified academic data system for better performance and consistency.
  */
 const Transcript = () => {
   // Error handling hook to manage and report errors.
   const handleError = useErrorHandler();
   const [scorecardError, setScorecardError] = useState(false);
 
-  // Retrieve the official transcript data from Recoil state.
-  const mainProgramData = useRecoilValue(mainProgramScorecardSelector);
-  // Initialize scorecards when the component mounts.
-  useInitializeScoreCards(handleError);
-
-  // State to manage loading status for enrollment data.
-  const [isLoading, setIsLoading] = useState(true);
+  // Use unified data system
+  const academicData = useRecoilValue(unifiedAcademicDataState);
+  const initStatus = useRecoilValue(academicDataInitializationSelector);
+  const currentProgramData = useRecoilValue(currentProgramDataSelector);
+  const mainProgramStudyPlan = useRecoilValue(mainProgramStudyPlanSelector);
+  const scorecardData = useRecoilValue(scorecardDataState);
+  const sourceStudyPlan = useRecoilValue(studyPlanAtom); // For debugging bridge data source
+  
   const authToken = useRecoilValue(authTokenState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
-  const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
-
-  // Retrieve merged scorecard data which includes enriched data from wishlisted courses.
-  const mergedScorecards = useRecoilValue(mergedScorecardDataSelector);
-
-  // Retrieve additional wishlist-related data.
-  const currentSemester = useCurrentSemester();
-  const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
-  // Trigger side effects related to merging wishlisted courses.
-  useMergeWishlistedCourses(authToken, currentSemester, categoryTypeMap, handleError);
-
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(selectedCourseIdsAtom);
+  
+  // Get current semester for UI
+  const currentSemester = useCurrentSemester();
+  
+  // Initialize scorecard data (needed for unified system)
+  useInitializeScoreCards(handleError);
+  
+  // Use unified data bridge that leverages EventListContainer's existing study plan data
+  useUnifiedDataBridge('Transcript', handleError);
+  
 
   /**
-   * Compute wishlist courses directly within the Transcript component.
-   * This logic extracts courses from the merged scorecard data where the course type ends with "-wishlist"
-   * and annotates them with their corresponding semester label.
+   * Get wishlist courses from unified academic data system.
+   * Uses the same data source as StudyOverview for consistency.
+   * This includes both study-plans API data AND local selections.
    */
   const wishlistCourses = useMemo(() => {
-    if (!mergedScorecards || !currentEnrollments) {
-      console.debug("Wishlist courses: Dependencies not ready");
+    if (!mainProgramStudyPlan || Object.keys(mainProgramStudyPlan).length === 0) {
       return [];
     }
-    // Identify the main study enrollment.
-    const mainStudy = currentEnrollments.enrollmentInfos?.find(
-      (enrollment) => enrollment.isMainStudy
-    );
-    if (!mainStudy) {
-      console.debug("Wishlist courses: No main study found");
-      return [];
-    }
-    // Use the main study's program description as the key to access program-specific data.
-    const programKey = mainStudy.studyProgramDescription;
-    const semesterKeyedData = mergedScorecards[programKey];
-    if (!semesterKeyedData) {
-      console.warn("Wishlist courses: No program data found for key:", programKey);
-      return [];
-    }
-    // Collect wishlist courses from each semester and annotate with the semester label.
+    
+    // 🔍 DEBUG: Transcript wishlist data
+    console.log("📜 Transcript Wishlist Source:", {
+      mainProgramStudyPlanKeys: Object.keys(mainProgramStudyPlan),
+      mainProgramStudyPlan: mainProgramStudyPlan,
+      totalCoursesInStudyPlan: Object.values(mainProgramStudyPlan).flat().length
+    });
+    
+    // Collect wishlist courses from unified study plan data (same as StudyOverview)
     let wishlist = [];
-    Object.entries(semesterKeyedData).forEach(([semesterLabel, courses]) => {
+    
+    Object.entries(mainProgramStudyPlan).forEach(([semesterLabel, courses]) => {
+      if (!Array.isArray(courses)) {
+        return;
+      }
+      
       courses.forEach((course) => {
-        if (course.type && course.type.endsWith("-wishlist")) {
-          wishlist.push({
+        // Include ALL courses from study plan (they should all be wishlist)
+        // AND courses without grades (these are planned/wishlist courses)
+        if (course.type?.endsWith('-wishlist') || !course.grade) {
+          const wishlistCourse = {
             ...course,
             semester: semesterLabel,
-          });
+            type: course.type || `${course.big_type || 'elective'}-wishlist`,
+          };
+          
+          wishlist.push(wishlistCourse);
         }
       });
     });
-    console.log("Wishlist courses computed:", wishlist);
+    
     return wishlist;
-  }, [mergedScorecards, currentEnrollments]);
+  }, [mainProgramStudyPlan]);
 
   /**
    * Helper: Build a mapping from a cleaned wishlist course type to an array of courses.
    * For example, a course with type "math-wishlist" will be mapped under "math".
    */
   const buildWishlistMapping = useCallback((wishlistCourses) => {
-    return wishlistCourses.reduce((acc, course) => {
-      // Remove the '-wishlist' suffix (if present) and trim whitespace.
-      const cleanType = course.type.replace(/-wishlist$/i, "").trim();
-      if (!acc[cleanType]) {
-        acc[cleanType] = [];
+    const mapping = wishlistCourses.reduce((acc, course) => {
+      // Use big_type instead of type for category matching (e.g., "elective", "core", "contextual")
+      const categoryType = course.big_type || 'elective';
+      if (!acc[categoryType]) {
+        acc[categoryType] = [];
       }
-      acc[cleanType].push(course);
+      acc[categoryType].push(course);
       return acc;
     }, {});
+    
+    return mapping;
   }, []);
 
   /**
@@ -114,18 +126,20 @@ const Transcript = () => {
    * The transcript is deep cloned to avoid direct mutations.
    */
   const mergeWishlistIntoTranscript = useCallback((transcript, wishlistCourses) => {
-    // Deep clone the transcript (assuming it is JSON-serializable).
+    // Deep clone the transcript (assuming it is JSON-serializable)
     const mutableTranscript = JSON.parse(JSON.stringify(transcript));
     const wishlistMap = buildWishlistMapping(wishlistCourses);
 
-    // Recursive function to traverse transcript items.
+    // Recursive function to traverse transcript items
     function traverse(items) {
       if (!Array.isArray(items)) return;
+      
       items.forEach((item) => {
-        // Check if the item is a category (title).
+        // Check if the item is a category (title)
         if (item.isTitle) {
           const categoryName = (item.shortName || item.description || "").trim();
-          // For each wishlist category, check if it belongs in this transcript section.
+          
+          // For each wishlist category, check if it belongs in this transcript section
           Object.keys(wishlistMap).forEach((key) => {
             const normalizedCategoryName = categoryName.trim().toLowerCase();
             const normalizedKey = key.trim().toLowerCase();
@@ -134,11 +148,12 @@ const Transcript = () => {
               normalizedCategoryName === normalizedKey ||
               normalizedCategoryName === normalizedKey + "s"
             ) {
-              // Ensure the category has an items array.
+              // Ensure the category has an items array
               if (!item.items) {
                 item.items = [];
               }
-              // Append each wishlisted course as a new course item.
+              
+              // Append each wishlisted course as a new course item
               wishlistMap[key].forEach((course) => {
                 const newCourseItem = {
                   achievementLanguage: "EN",
@@ -151,19 +166,20 @@ const Transcript = () => {
                   scoreCardMask: 322,
                   semester: course.semester,
                   studyPlanMainFocus: null,
-                  sumOfCredits: course.credits.toString(),
+                  sumOfCredits: course.credits?.toString() || "0.00",
                   fulfillmentTypeId: 0,
                   description: course.name,
                   id: course.id,
                   shortName: course.name,
                   isWishlist: true,
                 };
+                
                 item.items.push(newCourseItem);
               });
             }
           });
         }
-        // Recursively process nested items.
+        // Recursively process nested items
         if (item.items && item.items.length > 0) {
           traverse(item.items);
         }
@@ -171,38 +187,25 @@ const Transcript = () => {
     }
 
     traverse(mutableTranscript.items);
+    
     return mutableTranscript;
   }, [buildWishlistMapping]);
 
-  // Compute the merged transcript using useMemo to avoid unnecessary recalculations.
+
+  // Get main program transcript data from unified system
+  const mainProgramTranscript = useMemo(() => {
+    return currentProgramData?.transcript?.rawScorecard || null;
+  }, [currentProgramData]);
+
+  // Compute the merged transcript using useMemo to avoid unnecessary recalculations
   const mergedTranscript = useMemo(() => {
-    if (mainProgramData && wishlistCourses) {
-      return mergeWishlistIntoTranscript(mainProgramData, wishlistCourses);
+    if (mainProgramTranscript && wishlistCourses.length > 0) {
+      return mergeWishlistIntoTranscript(mainProgramTranscript, wishlistCourses);
     }
+    
     return null;
-  }, [mainProgramData, wishlistCourses, mergeWishlistIntoTranscript]);
+  }, [mainProgramTranscript, wishlistCourses, mergeWishlistIntoTranscript]);
 
-  // Fetch current enrollment data when the auth token changes.
-  useEffect(() => {
-    if (!authToken) return;
-
-    const fetchEnrollments = async () => {
-      setIsLoading(true);
-      try {
-        const currentEnrollmentsData = await fetchCurrentEnrollments(authToken);
-        setCurrentEnrollments(currentEnrollmentsData);
-      } catch (error) {
-        console.error('Error fetching enrollments:', error);
-        // Set error state to render an error message.
-        setScorecardError(true);
-        handleError(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEnrollments();
-  }, [authToken, setCurrentEnrollments, handleError]);
 
   // Import study plan from Recoil to support clearing saved courses.
   const [studyPlan, setStudyPlan] = useRecoilState(studyPlanAtom);
@@ -246,13 +249,15 @@ const Transcript = () => {
     return <ScorecardErrorMessage />;
   }
 
-  // Display a loading state while enrollment or transcript data is not available.
-  if (isLoading || !currentEnrollments || !mainProgramData) {
+  // Display a loading state while unified data is not available
+  const isLoading = !initStatus.isInitialized || !currentProgramData || !mainProgramTranscript;
+  
+  if (isLoading) {
     return (
       <div className="p-4">
         <h1 className="text-2xl font-bold mb-4">Transcript / Scorecard</h1>
         <div className="w-full space-y-4 animate-pulse">
-          <LoadingText>Loading enrollment data...</LoadingText>
+          <LoadingText>Loading transcript data...</LoadingText>
           <LoadingSkeletonTranscript />
         </div>
       </div>
@@ -263,12 +268,12 @@ const Transcript = () => {
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Transcript / Scorecard</h1>
       <GradeTranscript 
-    scorecardDetails={mergedTranscript || mainProgramData}
-    semesterShortName={currentSemester}   // or the appropriate semester value
-    authToken={authToken}
-    selectedCourseIds={selectedCourseIds}        // ensure this comes from your Recoil state
-    setSelectedCourseIds={setSelectedCourseIds}    // likewise from Recoil
-/>
+        scorecardDetails={mergedTranscript || mainProgramTranscript}
+        semesterShortName={currentSemester}
+        authToken={authToken}
+        selectedCourseIds={selectedCourseIds}
+        setSelectedCourseIds={setSelectedCourseIds}
+      />
       {/* Button to clear all saved courses from the backend */}
       <div className="mt-6 text-center">
         <button
