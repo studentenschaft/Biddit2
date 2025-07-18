@@ -60,6 +60,7 @@ export const calculateCreditsAndGrades = (items, getCustomGrade = null) => {
     const mark = parseFloat(item.mark || item.grade);
     const isCampusCredits = item.description === "Campus Credits";
     const isPracticeCredits = item.description === "Practice Credits";
+    const isPassedCourse = item.gradeText && item.gradeText.toLowerCase().includes('p');
 
     // Get custom grade if available.
     const customGrade = getCustomGrade ? getCustomGrade(item.shortName) : null;
@@ -69,15 +70,15 @@ export const calculateCreditsAndGrades = (items, getCustomGrade = null) => {
     return {
       totalCredits: credits,
       gradeSum:
-        (!isNaN(mark) && !isCampusCredits && !isPracticeCredits) ? mark * credits : 0,
+        (!isNaN(mark) && !isCampusCredits && !isPracticeCredits && !isPassedCourse) ? mark * credits : 0,
       filteredCredits:
-        (!isNaN(mark) && !isCampusCredits && !isPracticeCredits) ? credits : 0,
+        (!isNaN(mark) && !isCampusCredits && !isPracticeCredits && !isPassedCourse) ? credits : 0,
       customGradeSum:
-        (!isNaN(gradeForCustomCalc) && !isCampusCredits && !isPracticeCredits)
+        (!isNaN(gradeForCustomCalc) && !isCampusCredits && !isPracticeCredits && !isPassedCourse)
           ? gradeForCustomCalc * credits
           : 0,
       customEctsSum:
-        (!isNaN(gradeForCustomCalc) && !isCampusCredits && !isPracticeCredits)
+        (!isNaN(gradeForCustomCalc) && !isCampusCredits && !isPracticeCredits && !isPassedCourse)
           ? credits
           : 0,
     };

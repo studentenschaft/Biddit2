@@ -8,8 +8,19 @@ import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
 
+// Helper function to normalize credits from API format to display format
+const normalizeCredits = (credits) => {
+  if (!credits) return 4; // Default to 4 ECTS
+  if (typeof credits === 'number' && credits > 99) {
+    return credits / 100; // Convert 400 -> 4, 200 -> 2, etc.
+  }
+  return credits;
+};
+
 /**
  * Shared hook for adding or removing a course in local and backend states.
+ * Handles bidirectional synchronization between EventListContainer and StudyOverview/Transcript.
+ * 
  * @param {Object} props - an object containing:
  *   selectedCourseIds: the array of currently selected course IDs (in local state)
  *   setSelectedCourseIds: the setter for selectedCourseIds
@@ -46,15 +57,6 @@ export function useCourseSelection({
       return;
     }
 
-    // 🔍 DEBUG: Course selection action
-    console.log("🎯 Course Selection Action:", {
-      action: "addOrRemoveCourse",
-      courseId: course.id,
-      courseName: course.shortName || course.name,
-      semester: selectedSemesterShortName,
-      index: index,
-      timestamp: new Date().toISOString()
-    });
 
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {
@@ -93,15 +95,15 @@ export function useCourseSelection({
         const updatedCourses = { ...prevCourses };
         // Use the normalized semester key instead of the raw one
         const semKey = normalizedSemesterKey;
-        // minimal course object
+        // Create minimal course object with normalized credits
         const minimalCourse = {
           id: course.id,
           shortName: course.shortName,
           classification: course.classification,
-          credits: course.credits,
+          credits: normalizeCredits(course.credits), // Convert API format (400) to display format (4)
           big_type: categoryTypeMap[course.classification] || "",
           calendarEntry: course.calendarEntry || [],
-          courseNumber: course.courseNumber || course.coursesNumber || "", // Fix to prefer courseNumber
+          courseNumber: course.courseNumber || course.coursesNumber || "",
         };
 
         const courseIndex = updatedCourses[semKey]?.findIndex(
@@ -130,7 +132,7 @@ export function useCourseSelection({
             id: course.id,
             shortName: course.shortName,
             classification: course.classification,
-            credits: course.credits,
+            credits: normalizeCredits(course.credits),
             big_type: categoryTypeMap[course.classification] || "",
             calendarEntry: course.calendarEntry || [],
             courseNumber: course.courseNumber || course.coursesNumber || "", // Fix to use either courseNumber or coursesNumber

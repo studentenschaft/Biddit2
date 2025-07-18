@@ -94,6 +94,7 @@ export default function EventListContainer({ selectedSemesterState }) {
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
   );
+  
   const cisIdList = useRecoilValue(cisIdListSelector);
   const [, setIsFutureSemesterSelected] = useRecoilState(
     isFutureSemesterSelected

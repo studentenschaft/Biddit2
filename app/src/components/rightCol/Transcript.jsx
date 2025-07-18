@@ -21,6 +21,9 @@ import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
 import { useUnifiedDataBridge } from '../helpers/useUnifiedDataBridge';
 import { scorecardDataState } from '../recoil/scorecardsAllRawAtom';
+import { allCourseInfoState } from '../recoil/allCourseInfosSelector';
+import { localSelectedCoursesSemKeyState } from '../recoil/localSelectedCoursesSemKeyAtom';
+import { cisIdListSelector } from '../recoil/cisIdListSelector';
 
 
 // Import study plan state and API delete function to support clearing saved courses
@@ -49,9 +52,19 @@ const Transcript = () => {
   const authToken = useRecoilValue(authTokenState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(selectedCourseIdsAtom);
+  const allCourseInfo = useRecoilValue(allCourseInfoState); // For filtering available courses
+  const localSelectedCourses = useRecoilValue(localSelectedCoursesSemKeyState); // For live updates
+  const cisIdList = useRecoilValue(cisIdListSelector); // For semester index calculation
   
   // Get current semester for UI
   const currentSemester = useCurrentSemester();
+  
+  // Calculate semester index for GradeTranscript component
+  const currentSemesterIndex = useMemo(() => {
+    if (!cisIdList || !currentSemester) return 0;
+    const index = cisIdList.findIndex(item => item.shortName === currentSemester);
+    return index >= 0 ? index : 0;
+  }, [cisIdList, currentSemester]);
   
   // Initialize scorecard data (needed for unified system)
   useInitializeScoreCards(handleError);
@@ -64,18 +77,40 @@ const Transcript = () => {
    * Get wishlist courses from unified academic data system.
    * Uses the same data source as StudyOverview for consistency.
    * This includes both study-plans API data AND local selections.
+   * NEW: Filter to only show courses available in current semester (consistent with EventListContainer)
    */
   const wishlistCourses = useMemo(() => {
     if (!mainProgramStudyPlan || Object.keys(mainProgramStudyPlan).length === 0) {
       return [];
     }
     
-    // 🔍 DEBUG: Transcript wishlist data
-    console.log("📜 Transcript Wishlist Source:", {
-      mainProgramStudyPlanKeys: Object.keys(mainProgramStudyPlan),
-      mainProgramStudyPlan: mainProgramStudyPlan,
-      totalCoursesInStudyPlan: Object.values(mainProgramStudyPlan).flat().length
-    });
+    // Build comprehensive course database from all available semesters for filtering and enrichment
+    const courseDatabase = new Map(); // courseNumber -> course details
+    const availableCourseNumbers = new Set();
+    
+    if (allCourseInfo) {
+      Object.values(allCourseInfo).forEach(semesterCourses => {
+        if (Array.isArray(semesterCourses)) {
+          semesterCourses.forEach(course => {
+            if (course.courseNumber) {
+              availableCourseNumbers.add(course.courseNumber);
+              
+              // Store course details for enrichment (prefer more complete data)
+              if (!courseDatabase.has(course.courseNumber) || 
+                  (course.shortName && course.shortName !== course.courseNumber)) {
+                courseDatabase.set(course.courseNumber, {
+                  name: course.shortName || course.name || course.courseNumber,
+                  credits: course.credits ? parseFloat(course.credits) / 100 : 0,
+                  classification: course.classification || "elective",
+                  description: course.description || course.shortName || course.name
+                });
+              }
+            }
+          });
+        }
+      });
+    }
+    
     
     // Collect wishlist courses from unified study plan data (same as StudyOverview)
     let wishlist = [];
@@ -89,28 +124,43 @@ const Transcript = () => {
         // Include ALL courses from study plan (they should all be wishlist)
         // AND courses without grades (these are planned/wishlist courses)
         if (course.type?.endsWith('-wishlist') || !course.grade) {
-          const wishlistCourse = {
-            ...course,
-            semester: semesterLabel,
-            type: course.type || `${course.big_type || 'elective'}-wishlist`,
-          };
-          
-          wishlist.push(wishlistCourse);
+          // Filter to only include courses available in current semester
+          if (availableCourseNumbers.has(course.id) || availableCourseNumbers.has(course.courseNumber)) {
+            // Enrich course with details from database if available
+            const courseNumber = course.courseNumber || course.id;
+            const enrichmentData = courseDatabase.get(courseNumber);
+            
+            const wishlistCourse = {
+              ...course,
+              semester: semesterLabel,
+              type: course.type || `${course.big_type || 'elective'}-wishlist`,
+            };
+            
+            // Apply enrichment if available and course needs it
+            if (enrichmentData && (course.name === courseNumber || course.name?.startsWith('Course '))) {
+              wishlistCourse.name = enrichmentData.name;
+              wishlistCourse.credits = enrichmentData.credits || course.credits;
+              wishlistCourse.classification = enrichmentData.classification || course.classification;
+              wishlistCourse.description = enrichmentData.description || course.description;
+            }
+            
+            wishlist.push(wishlistCourse);
+          }
         }
       });
     });
     
     return wishlist;
-  }, [mainProgramStudyPlan]);
+  }, [mainProgramStudyPlan, allCourseInfo, localSelectedCourses]); // localSelectedCourses needed for live updates from EventListContainer
 
   /**
-   * Helper: Build a mapping from a cleaned wishlist course type to an array of courses.
-   * For example, a course with type "math-wishlist" will be mapped under "math".
+   * Helper: Build a mapping from course classification to an array of courses.
+   * Uses the same approach as SemesterSummary - directly using course.classification.
    */
   const buildWishlistMapping = useCallback((wishlistCourses) => {
     const mapping = wishlistCourses.reduce((acc, course) => {
-      // Use big_type instead of type for category matching (e.g., "elective", "core", "contextual")
-      const categoryType = course.big_type || 'elective';
+      // Use classification directly, same as SemesterSummary
+      const categoryType = course.classification || 'elective';
       if (!acc[categoryType]) {
         acc[categoryType] = [];
       }
@@ -118,6 +168,8 @@ const Transcript = () => {
       return acc;
     }, {});
     
+    console.log('🔍 Transcript: Wishlist mapping by classification:', mapping);
+    console.log('🔍 Transcript: Available classification keys:', Object.keys(mapping));
     return mapping;
   }, []);
 
@@ -144,10 +196,19 @@ const Transcript = () => {
             const normalizedCategoryName = categoryName.trim().toLowerCase();
             const normalizedKey = key.trim().toLowerCase();
 
-            if (
-              normalizedCategoryName === normalizedKey ||
-              normalizedCategoryName === normalizedKey + "s"
-            ) {
+            // Use exact matching like SemesterSummary - course.classification should match transcript section name
+            const isExactMatch = normalizedCategoryName === normalizedKey;
+            
+            // Also allow plural forms and common variations
+            const isVariationMatch = 
+              normalizedCategoryName === normalizedKey + "s" ||
+              normalizedCategoryName === normalizedKey.replace(/s$/, "") ||
+              (normalizedKey === "elective" && normalizedCategoryName === "electives") ||
+              (normalizedKey === "electives" && normalizedCategoryName === "elective");
+
+            if (isExactMatch || isVariationMatch) {
+              console.log(`🎯 Transcript: Matching "${key}" courses to "${categoryName}" section`);
+              
               // Ensure the category has an items array
               if (!item.items) {
                 item.items = [];
@@ -172,7 +233,18 @@ const Transcript = () => {
                   id: course.id,
                   shortName: course.name,
                   isWishlist: true,
+                  // IMPORTANT: Add fields required by useCourseSelection for proper removal
+                  courseNumber: course.courseNumber || course.id,
+                  classification: course.classification || key,
+                  credits: typeof course.credits === 'number' ? course.credits : parseFloat(course.credits) || 0,
                 };
+                
+                console.log(`📝 Transcript: Created course item for removal:`, {
+                  id: newCourseItem.id,
+                  courseNumber: newCourseItem.courseNumber,
+                  classification: newCourseItem.classification,
+                  name: newCourseItem.shortName
+                });
                 
                 item.items.push(newCourseItem);
               });
@@ -270,6 +342,7 @@ const Transcript = () => {
       <GradeTranscript 
         scorecardDetails={mergedTranscript || mainProgramTranscript}
         semesterShortName={currentSemester}
+        semesterIndex={currentSemesterIndex}
         authToken={authToken}
         selectedCourseIds={selectedCourseIds}
         setSelectedCourseIds={setSelectedCourseIds}

@@ -11,7 +11,7 @@
  * 4. Updates unifiedAcademicDataState with enriched data
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
 import { authTokenState } from '../recoil/authAtom';
 import { scorecardDataState } from '../recoil/scorecardsAllRawAtom';
@@ -24,6 +24,7 @@ import { getLightCourseDetails } from '../helpers/api';
 import { useCurrentSemester, removeSpacesFromSemesterName, isSemesterInPast } from './studyOverviewHelpers';
 import { createSemesterMap } from './createSemesterMap';
 import { cisIdListSelector } from '../recoil/cisIdListSelector';
+import { localSelectedCoursesSemKeyState } from '../recoil/localSelectedCoursesSemKeyAtom';
 
 // Helper function to check if a semester is in the future
 const isSemesterInFuture = (semesterToCheck, currentSemester) => {
@@ -47,6 +48,15 @@ const isSemesterInFuture = (semesterToCheck, currentSemester) => {
   if (yearDiff < 0) return false;
 
   return typeTo === "HS" && typeCurrent === "FS";
+};
+
+// Helper function to normalize credits from API format to display format
+const normalizeCredits = (credits) => {
+  if (!credits) return 4; // Default to 4 ECTS
+  if (typeof credits === 'number' && credits > 99) {
+    return credits / 100; // Convert 400 -> 4, 200 -> 2, etc.
+  }
+  return credits;
 };
 
 // Helper function to flatten semester courses
@@ -83,23 +93,28 @@ const processRawScorecard = (rawScorecard) => {
       if (item.isDetail && !item.isTitle) {
         const courseType = item.hierarchyParent && item.hierarchyParent.includes("00100")
           ? "core"
+          : item.hierarchyParent && item.hierarchyParent.includes("00101200")
+          ? "area of concentration"
           : item.hierarchyParent && item.hierarchyParent.includes("00101")
           ? "contextual"
           : "elective";
         
         const course = {
-          name: item.description || item.shortName,
+          name: item.description || item.shortName || `Course ${item.id}`,
           credits: parseFloat(item.sumOfCredits || 0),
           type: courseType,
           grade: item.mark ? parseFloat(item.mark) : null,
+          gradeText: item.gradeText || null, // Preserve gradeText for "passed" courses
           id: item.id,
-          semester: item.semester || "Unassigned",
+          semester: item.semester ? removeSpacesFromSemesterName(item.semester) : "Unassigned",
           big_type: courseType
         };
         
+        
         courses.push(course);
         totalCreditsRequired += course.credits;
-        if (course.grade) {
+        // Count as completed if it has a numeric grade OR if it's marked as passed
+        if (course.grade || (course.gradeText && course.gradeText.toLowerCase().includes('p'))) {
           totalCreditsCompleted += course.credits;
         }
       } else if (item.items && item.items.length > 0) {
@@ -118,6 +133,7 @@ const processRawScorecard = (rawScorecard) => {
       semesterMap[semester] = [];
     }
     semesterMap[semester].push(course);
+    
   });
   
   const progress = {
@@ -162,6 +178,7 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
   const academicData = useRecoilValue(unifiedAcademicDataState);
   const currentSemester = useCurrentSemester();
   const cisIdList = useRecoilValue(cisIdListSelector);
+  const localSelectedCourses = useRecoilValue(localSelectedCoursesSemKeyState); // For live updates
   
   const setUnifiedAcademicData = useSetRecoilState(unifiedAcademicDataState);
   const setInitializedPrograms = useSetRecoilState(initializedProgramsState);
@@ -225,16 +242,6 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
         return false;
       });
 
-      // 🔍 DEBUG: Course filtering in useUnifiedDataBridge
-      console.log("🌉 useUnifiedDataBridge Course Filtering:", {
-        semesterLabel,
-        semesterCisId,
-        totalCourseIds: courseIds?.length || 0,
-        filteredCourseIds: filteredCourseIds.length,
-        allCourseIds: courseIds,
-        filteredIds: filteredCourseIds,
-        rejectedIds: courseIds?.filter(id => !filteredCourseIds.includes(id)) || []
-      });
       
       if (filteredCourseIds.length === 0) continue;
       
@@ -388,16 +395,6 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
     return enrichedSemesterMap;
   }, [componentName]);
 
-  // 🔍 DEBUG: Reactivity tracking
-  useEffect(() => {
-    console.log("🔄 useUnifiedDataBridge Reactivity Trigger:", {
-      componentName,
-      studyPlanChanged: JSON.stringify(studyPlan),
-      initStatusChanged: initStatus,
-      academicDataChanged: !!academicData,
-      timestamp: new Date().toISOString()
-    });
-  }, [studyPlan, initStatus, academicData, componentName]);
 
   // Main effect - Bridge existing study plan data to unified format
   useEffect(() => {
@@ -457,15 +454,6 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
           // Determine if we need full enrichment based on component type or upgrade need
           const needsFullEnrichment = componentName === 'StudyOverview' || needsUpgrade;
           
-          // 🔍 DEBUG: Study plan transformation
-          console.log("🔄 useUnifiedDataBridge Transform:", {
-            componentName,
-            needsUpgrade,
-            needsFullEnrichment,
-            studyPlanAllPlansCount: studyPlan?.allPlans?.length || 0,
-            studyPlanCurrentPlan: studyPlan?.currentPlan,
-            studyPlanData: studyPlan
-          });
           
           const enrichedSemesterMap = await transformStudyPlanToUnified(
             studyPlan,
@@ -476,13 +464,6 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
           );
           programs[firstProgram].studyPlan.semesterMap = enrichedSemesterMap;
           
-          // 🔍 DEBUG: Transformation result
-          console.log("✅ useUnifiedDataBridge Transform Result:", {
-            componentName,
-            firstProgram,
-            enrichedSemesterMapKeys: Object.keys(enrichedSemesterMap),
-            enrichedSemesterMapData: enrichedSemesterMap
-          });
         }
         
         // Step 3: Update unified academic data
@@ -507,6 +488,83 @@ export const useUnifiedDataBridge = (componentName = 'Unknown', handleError) => 
 
     bridgeData();
   }, [authToken, scorecardData?.isLoaded, studyPlan, initStatus.isInitialized, academicData, setUnifiedAcademicData, setInitializedPrograms, handleError, componentName, currentSemester, cisIdList, transformStudyPlanToUnified]);
+
+  // Live updates effect - Update unified data when local course selections change
+  // This ensures bidirectional synchronization between EventListContainer and StudyOverview/Transcript
+  const lastUpdateRef = useRef(null);
+  
+  useEffect(() => {
+    // Skip if not initialized yet
+    if (!initStatus.isInitialized || !academicData.programs) {
+      return;
+    }
+    
+    // Create a hash of current local selections to detect changes
+    const currentHash = JSON.stringify(localSelectedCourses);
+    
+    // Skip if no actual changes (prevents infinite loops)
+    if (lastUpdateRef.current === currentHash) {
+      return;
+    }
+    
+    // Update the hash reference
+    lastUpdateRef.current = currentHash;
+    
+    // Update unified academic data with current local selections
+    setUnifiedAcademicData(prev => {
+      const programs = { ...prev.programs };
+      const firstProgram = Object.keys(programs)[0];
+      
+      if (firstProgram && programs[firstProgram]) {
+        // Update study plan with current local selections
+        const currentStudyPlan = programs[firstProgram].studyPlan?.semesterMap || {};
+        const updatedStudyPlan = { ...currentStudyPlan };
+        
+        // Process each semester in local selections
+        Object.entries(localSelectedCourses).forEach(([semesterKey, courses]) => {
+          if (Array.isArray(courses)) {
+            // Convert local selection format to unified format
+            const unifiedCourses = courses.map(course => ({
+              name: course.shortName || course.name || `Course ${course.id}`,
+              credits: normalizeCredits(course.credits),
+              type: `${course.big_type || 'elective'}-wishlist`,
+              grade: null,
+              id: course.id,
+              semester: semesterKey,
+              big_type: course.big_type || 'elective',
+              courseNumber: course.courseNumber || course.id,
+              classification: course.classification || 'elective',
+              eventCourseNumber: course.eventCourseNumber || course.id,
+              isEnriched: true
+            }));
+            
+            // Update the semester with new courses (preserve existing transcript courses)
+            const existingTranscriptCourses = (updatedStudyPlan[semesterKey] || [])
+              .filter(course => course.grade && course.grade > 0);
+            
+            updatedStudyPlan[semesterKey] = [
+              ...existingTranscriptCourses,
+              ...unifiedCourses
+            ];
+          }
+        });
+        
+        programs[firstProgram] = {
+          ...programs[firstProgram],
+          studyPlan: {
+            ...programs[firstProgram].studyPlan,
+            semesterMap: updatedStudyPlan,
+            lastUpdated: new Date().toISOString()
+          }
+        };
+      }
+      
+      return {
+        ...prev,
+        programs
+      };
+    });
+  }, [localSelectedCourses, initStatus.isInitialized, academicData.programs, setUnifiedAcademicData, componentName]);
 
   return {
     isInitialized: initStatus.isInitialized,

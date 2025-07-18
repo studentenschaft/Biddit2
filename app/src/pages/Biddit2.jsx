@@ -1,7 +1,6 @@
 import { Suspense, useState } from "react";
 import "react-tabs/style/react-tabs.css";
 import { SelectSemester } from "../components/leftCol/topRow/SelectOptions";
-import DevModeBanner from "../components/testing/DevModeBanner";
 import { SideNav } from "../components/leftCol/sideNav/SideNav";
 import { MigrationController } from "../components/common/MigrationController";
 
@@ -97,8 +96,6 @@ export default function Biddit2() {
           />
         </Suspense>
       </div>{" "}
-      {/* DevModeBanner */}
-      <DevModeBanner />
       {/* Migration Controller */}
       {showMigrationController && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -18,6 +18,7 @@ import { ScorecardErrorMessage } from "../errorHandling/ScorecardErrorMessage";
 import PropTypes from "prop-types";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
 import { LoadingSkeletonStudyOverview } from "../rightCol/LoadingSkeletons";
+import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
 
 // Import APIs and helpers for auto-initialization
 import { getStudyPlan, getLightCourseDetails } from "../helpers/api";
@@ -83,6 +84,7 @@ const StudyOverview = () => {
   const authToken = useRecoilValue(authTokenState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const cisIdList = useRecoilValue(cisIdListSelector);
+  const allCourseInfo = useRecoilValue(allCourseInfoState); // For filtering available courses
   const handleError = useErrorHandler();
   const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
   const setUnifiedAcademicData = useSetRecoilState(unifiedAcademicDataState);
@@ -112,14 +114,86 @@ const StudyOverview = () => {
   // Use unified data bridge that leverages EventListContainer's existing study plan data
   const { isInitialized, isLoading: dataLoading } = useUnifiedDataBridge('StudyOverview', handleError);
 
-  // 🔍 DEBUG: StudyOverview reactivity tracking
-  useEffect(() => {
-    console.log("📊 StudyOverview Reactivity Trigger:", {
-      academicDataChanged: !!academicData,
-      initStatusChanged: initStatus,
-      timestamp: new Date().toISOString()
+  // Create a helper function to filter courses based on availability and enrich with course details
+  const filterAndEnrichCoursesForAvailability = useCallback((courses, currentSemester) => {
+    if (!allCourseInfo || !currentSemester) return courses;
+    
+    // Build comprehensive course database from all available semesters
+    const courseDatabase = new Map(); // courseNumber -> course details
+    const availableCourseNumbers = new Set();
+    
+    // Check all semester indices for available courses and build database
+    Object.values(allCourseInfo).forEach(semesterCourses => {
+      if (Array.isArray(semesterCourses)) {
+        semesterCourses.forEach(course => {
+          if (course.courseNumber) {
+            availableCourseNumbers.add(course.courseNumber);
+            
+            // Store course details for enrichment (prefer more complete data)
+            if (!courseDatabase.has(course.courseNumber) || 
+                (course.shortName && course.shortName !== course.courseNumber)) {
+              courseDatabase.set(course.courseNumber, {
+                name: course.shortName || course.name || course.courseNumber,
+                credits: course.credits ? parseFloat(course.credits) / 100 : 0,
+                classification: course.classification || "elective",
+                description: course.description || course.shortName || course.name
+              });
+            }
+          }
+        });
+      }
     });
-  }, [academicData, initStatus]);
+    
+    // Filter and enrich courses
+    return courses.filter(course => {
+      // Keep transcript courses (already completed, have grades OR passed status)
+      if (course.grade && course.grade > 0) {
+        return true;
+      }
+      
+      // Keep courses with passed status (gradeText like "p.")
+      if (course.gradeText && course.gradeText.toLowerCase().includes('p')) {
+        return true;
+      }
+      
+      // Keep Campus Credits and Practice Credits even if grades are null
+      if (course.name === "Campus Credits" || course.name === "Practice Credits") {
+        return true;
+      }
+      
+      // Keep transcript courses that appear in scorecard even if grades are null
+      // These are courses that exist in the official transcript but don't have grades yet
+      if (course.type === "area of concentration" || course.type === "contextual" || course.type === "elective") {
+        // If it's not a wishlist course (doesn't have the -wishlist suffix), keep it
+        if (!course.type?.endsWith('-wishlist')) {
+          return true;
+        }
+      }
+      
+      // For wishlist courses, only keep if available in current semester
+      if (course.type?.endsWith('-wishlist') || !course.grade) {
+        return availableCourseNumbers.has(course.courseId) || availableCourseNumbers.has(course.courseNumber);
+      }
+      
+      return true;
+    }).map(course => {
+      // Enrich course with details from database if available
+      const courseNumber = course.courseNumber || course.courseId;
+      const enrichmentData = courseDatabase.get(courseNumber);
+      
+      if (enrichmentData && (course.name === courseNumber || course.name?.startsWith('Course '))) {
+        return {
+          ...course,
+          name: enrichmentData.name,
+          credits: enrichmentData.credits || course.credits,
+          classification: enrichmentData.classification || course.classification,
+          description: enrichmentData.description || course.description
+        };
+      }
+      
+      return course;
+    });
+  }, [allCourseInfo]);
 
   // Fetch current enrollments if not already loaded (same as original)
   useEffect(() => {
@@ -140,13 +214,6 @@ const StudyOverview = () => {
   const transformedData = useMemo(() => {
     if (!initStatus.isInitialized || !academicData.programs) return {};
     
-    // 🔍 DEBUG: StudyOverview data transformation
-    console.log("📊 StudyOverview Data Source:", {
-      isInitialized: initStatus.isInitialized,
-      programKeys: Object.keys(academicData.programs || {}),
-      academicDataPrograms: academicData.programs
-    });
-    
     const result = {};
     
     // Process all programs, not just the current one
@@ -156,16 +223,6 @@ const StudyOverview = () => {
       
       // Transform study plan (wishlist) courses
       const studyPlanData = programData.studyPlan?.semesterMap || {};
-      
-      // 🔍 DEBUG: StudyOverview semester data
-      console.log("📊 StudyOverview Program Data:", {
-        programKey,
-        transcriptSemesters: Object.keys(transcriptData),
-        studyPlanSemesters: Object.keys(studyPlanData),
-        transcriptCourseCount: Object.values(transcriptData).flat().length,
-        studyPlanCourseCount: Object.values(studyPlanData).flat().length,
-        studyPlanData: studyPlanData
-      });
       
       // Merge transcript and study plan data by semester
       const allSemesters = new Set([
@@ -202,10 +259,16 @@ const StudyOverview = () => {
           big_type: course.big_type
         }));
         
-        semesterMap[semester] = [
+        // Combine transcript and study plan courses
+        const allCoursesForSemester = [
           ...transformedTranscriptCourses,
           ...transformedStudyPlanCourses
         ];
+        
+        // Filter courses to only show those available in current semester and enrich with course details
+        const filteredCourses = filterAndEnrichCoursesForAvailability(allCoursesForSemester, semester);
+        
+        semesterMap[semester] = filteredCourses;
       });
       
       // Use program description as key (same as original)
@@ -214,7 +277,7 @@ const StudyOverview = () => {
     });
     
     return result;
-  }, [academicData.programs, initStatus.isInitialized]);
+  }, [academicData.programs, initStatus.isInitialized, filterAndEnrichCoursesForAvailability]);
 
   // Add current enrollments to the data (same logic as original)
   const finalDisplayDataWithEnrolled = useMemo(() => {
@@ -281,28 +344,48 @@ const StudyOverview = () => {
     const extractCourses = (items) => {
       const courses = [];
       
+      // Debug: Log all items being processed
+      console.log("🔍 StudyOverview extractCourses - Processing items:", items);
+      console.log("🔍 StudyOverview extractCourses - Item count:", items?.length || 0);
+      
       items.forEach(item => {
         if (item.isDetail && !item.isTitle) {
           const courseType = item.hierarchyParent && item.hierarchyParent.includes("00100")
             ? "core"
+            : item.hierarchyParent && item.hierarchyParent.includes("00101200")
+            ? "area of concentration"
             : item.hierarchyParent && item.hierarchyParent.includes("00101")
             ? "contextual"
             : "elective";
           
           const course = {
-            name: item.description || item.shortName,
+            name: item.description || item.shortName || `Course ${item.id}`,
             credits: parseFloat(item.sumOfCredits || 0),
             type: courseType,
             grade: item.mark ? parseFloat(item.mark) : null,
+            gradeText: item.gradeText || null, // Preserve gradeText for "passed" courses
             id: item.id,
-            semester: item.semester || "Unassigned",
+            semester: item.semester ? removeSpacesFromSemesterName(item.semester) : "Unassigned",
             big_type: courseType
           };
           
           courses.push(course);
           totalCreditsRequired += course.credits;
-          if (course.grade) {
+          // Count as completed if it has a numeric grade OR if it's marked as passed
+          if (course.grade || (course.gradeText && course.gradeText.toLowerCase().includes('p'))) {
             totalCreditsCompleted += course.credits;
+          }
+          
+          // Debug: Log processed courses
+          if (course.name && course.name.includes("Area of Concentration")) {
+            console.log("🔍 Processing Area of Concentration course:", {
+              name: course.name,
+              semester: course.semester,
+              type: course.type,
+              grade: course.grade,
+              gradeText: course.gradeText,
+              credits: course.credits
+            });
           }
         } else if (item.items && item.items.length > 0) {
           courses.push(...extractCourses(item.items));
@@ -312,6 +395,10 @@ const StudyOverview = () => {
       return courses;
     };
     
+    // Debug: Log raw scorecard being processed
+    console.log("🔍 StudyOverview processRawScorecard - rawScorecard:", rawScorecard);
+    console.log("🔍 StudyOverview processRawScorecard - rawScorecard.items:", rawScorecard.items);
+    
     const allCourses = extractCourses(rawScorecard.items || []);
     
     allCourses.forEach(course => {
@@ -320,7 +407,18 @@ const StudyOverview = () => {
         semesterMap[semester] = [];
       }
       semesterMap[semester].push(course);
+      
+      // Debug: Log semester assignment
+      if (course.name && course.name.includes("Area of Concentration")) {
+        console.log("🔍 Adding Area of Concentration to semester map:", {
+          semester: semester,
+          course: course
+        });
+      }
     });
+    
+    // Debug: Log final semester map
+    console.log("🔍 Final semester map:", semesterMap);
     
     const progress = {
       totalCreditsRequired,

@@ -23,9 +23,6 @@ export function useUnifiedCourseData() {
       initializedSemesters.has(semesterShortName) ||
       (courseData.semesters && courseData.semesters[semesterShortName])
     ) {
-      console.log(
-        `📋 Semester ${semesterShortName} already initialized or exists in state`
-      );
       return; // Already initialized
     }
 
@@ -33,9 +30,6 @@ export function useUnifiedCourseData() {
     setCourseData((prev) => {
       // Double-check inside the state updater to prevent race conditions
       if (prev.semesters && prev.semesters[semesterShortName]) {
-        console.log(
-          `📋 Semester ${semesterShortName} was already initialized during state update`
-        );
         return prev; // Already exists, don't reset it
       }
 
@@ -76,9 +70,6 @@ export function useUnifiedCourseData() {
    * Update enrolled courses for a semester
    */
   const updateEnrolledCourses = (semesterShortName, courses) => {
-    console.log(
-      `🔄 updateEnrolledCourses called for ${semesterShortName} with ${courses.length} courses`
-    );
 
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
@@ -130,9 +121,6 @@ export function useUnifiedCourseData() {
    * Update available courses for a semester
    */
   const updateAvailableCourses = (semesterShortName, courses) => {
-    console.log(
-      `🔄 updateAvailableCourses called for ${semesterShortName} with ${courses.length} courses`
-    );
 
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
@@ -183,9 +171,6 @@ export function useUnifiedCourseData() {
    * Update selected/wishlisted courses for a semester
    */
   const updateSelectedCourses = (semesterShortName, courses) => {
-    console.log(
-      `🔄 updateSelectedCourses called for ${semesterShortName} with ${courses.length} courses`
-    );
 
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
@@ -389,7 +374,6 @@ export function useUnifiedCourseData() {
    * Since ratings are global data that applies to all semesters
    */
   const updateCourseRatingsForAllSemesters = (ratings) => {
-    console.log(`🔄 updateCourseRatingsForAllSemesters called with`, ratings);
 
     // Process ratings into a consistent map format
     let ratingsMap = {};
@@ -404,12 +388,6 @@ export function useUnifiedCourseData() {
       // If ratings is already an object, use it directly
       ratingsMap = ratings;
     }
-
-    console.log(
-      `🔄 Processed ratings map:`,
-      ratingsMap,
-      `(${Object.keys(ratingsMap).length} ratings)`
-    );
 
     setCourseData((prev) => {
       // Create a clean copy that only includes the properties we want
@@ -451,10 +429,6 @@ export function useUnifiedCourseData() {
     filterOptions = {},
     selectedCourseIds = []
   ) => {
-    console.log(
-      `🔄 updateFilteredCourses called for ${semesterShortName} with filter options:`,
-      filterOptions
-    );
 
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
@@ -476,9 +450,6 @@ export function useUnifiedCourseData() {
       const coursesToFilter = semesterData.available || [];
 
       if (coursesToFilter.length === 0) {
-        console.log(
-          `📋 No available courses to filter for ${semesterShortName}`
-        );
         return {
           ...cleanPrev,
           semesters: {
@@ -602,11 +573,6 @@ export function useUnifiedCourseData() {
     filterOptions = {},
     selectedCourseIds = []
   ) => {
-    console.log(
-      `🔄 updateFilteredCoursesForAllSemesters called with filter options:`,
-      filterOptions
-    );
-
     setCourseData((prev) => {
       // Create a clean copy that only includes the properties we want
       const cleanPrev = {
