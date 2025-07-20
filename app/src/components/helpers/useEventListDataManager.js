@@ -26,6 +26,7 @@ import { useRecoilValue } from "recoil";
 import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
 import { selectionOptionsState } from "../recoil/selectionOptionsAtom";
 import { selectedCourseIdsAtom } from "../recoil/selectedCourseIdsAtom";
+import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { useStudyPlanData } from "./useStudyPlanData";
 import { useEnrolledCoursesData } from "./useEnrolledCoursesData";
@@ -52,6 +53,7 @@ export const useEventListDataManager = ({
   const allCourseInfo = useRecoilValue(allCourseInfoState);
   const selectionOptions = useRecoilValue(selectionOptionsState);
   const selectedCourseIds = useRecoilValue(selectedCourseIdsAtom);
+  const localSelectedCoursesSemKey = useRecoilValue(localSelectedCoursesSemKeyState);
   // Local state
   const [completeCourseInfo, setCompleteCourseInfo] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,6 +62,7 @@ export const useEventListDataManager = ({
   const {
     initializeSemester: initializeUnifiedSemester,
     updateAvailableCourses: updateUnifiedAvailableCourses,
+    updateSelectedCourses: updateUnifiedSelectedCourses,
     updateFilteredCourses: updateUnifiedFilteredCourses,
   } = useUnifiedCourseData();
 
@@ -162,6 +165,22 @@ export const useEventListDataManager = ({
     selectionOptions,
     selectedCourseIds,
   ]);
+
+  // Sync localSelectedCoursesSemKey changes to unified course data system
+  useEffect(() => {
+    if (selectedSemesterState?.shortName && localSelectedCoursesSemKey) {
+      const semesterKey = selectedSemesterState.shortName;
+      const selectedCoursesForSemester = localSelectedCoursesSemKey[semesterKey] || [];
+      
+      console.log(
+        `🔄 Syncing selected courses for ${semesterKey}: ${selectedCoursesForSemester.length} courses`
+      );
+      
+      // Update the unified selected courses
+      updateUnifiedSelectedCourses(semesterKey, selectedCoursesForSemester);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSemesterState?.shortName, localSelectedCoursesSemKey]);
 
   // Update overall loading state
   useEffect(() => {

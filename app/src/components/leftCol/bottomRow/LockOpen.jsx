@@ -3,7 +3,7 @@
 import PropTypes from "prop-types";
 import { useRecoilValue, useRecoilState } from "recoil";
 import { authTokenState } from "../../recoil/authAtom";
-import { selectedSemesterIndexAtom } from "../../recoil/selectedSemesterAtom";
+import { selectedSemesterIndexAtom, selectedSemesterAtom } from "../../recoil/selectedSemesterAtom";
 
 import { useCourseSelection } from "../../helpers/useCourseSelection";
 
@@ -16,6 +16,7 @@ export default function LockOpen({ clg, event }) {
   // Recoil states (NO LOCAL STATE)
   const authToken = useRecoilValue(authTokenState);
   const index = useRecoilValue(selectedSemesterIndexAtom) + 1;
+  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
 
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
@@ -24,7 +25,7 @@ export default function LockOpen({ clg, event }) {
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
     setSelectedCourseIds,
-    selectedSemesterShortName: "",
+    selectedSemesterShortName: selectedSemesterState?.shortName || selectedSemesterState || "",
     index,
     authToken,
   });
