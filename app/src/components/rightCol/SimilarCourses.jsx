@@ -2,11 +2,11 @@ import { useRecoilValue } from "recoil";
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
 // Updated imports to use unified course data selectors
-import { 
+import {
   availableCoursesSelector,
   currentSemesterSelector,
   selectedSemesterSelector,
-  semesterMetadataSelector
+  semesterMetadataSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 // import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments"; // Keeping for potential fallback
@@ -21,26 +21,29 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
-  
+
   // Use unified course data selectors instead of old atoms
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
   const currentSemesterShortName = useRecoilValue(currentSemesterSelector);
-  
+
   // Get current semester courses and metadata
   const coursesCurrentSemester = useRecoilValue(
-    availableCoursesSelector(currentSemesterShortName || selectedSemesterShortName)
+    availableCoursesSelector(
+      currentSemesterShortName || selectedSemesterShortName
+    )
   );
   const semesterMetadata = useRecoilValue(
     semesterMetadataSelector(selectedSemesterShortName)
   );
-  
+
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]); // Keep for potential future use when upsert is re-enabled
   const [similarCourses, setSimilarCourses] = useState([]);
-  
+
   // Use metadata from unified system instead of separate atoms
-  const isFutureSemesterSelectedState = semesterMetadata?.isFutureSemester || false;
+  const isFutureSemesterSelectedState =
+    semesterMetadata?.isFutureSemester || false;
   const referenceSemesterState = semesterMetadata?.referenceSemester;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
@@ -174,76 +177,86 @@ export default function SimilarCourses({ selectedCourse }) {
         //   .trim(); // Trim leading and trailing spaces
 
         const response = await axios.get(
-      // // might be better to clean up the course descriptions before upsert, database reset advised when applied
-      // // Clean up the course description
-      // const cleanedCourseDescription = selectedCourse.courseContent
-      //   .replace(/<[^>]+>/g, "") // Remove HTML tags
-      //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
-      //   .trim(); // Trim leading and trailing spaces
+          "https://api.shsg.ch/similar-courses/query",
+          {
+            params: {
+              courseDescription: selectedCourse.courseContent,
+              numberOfResults: 10,
+              category: category,
+              program: programRef.current,
+              semester: referenceSemesterLocalState
+                ? referenceSemesterLocalState
+                : selectedSemesterShortName,
+            },
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
 
-      const response = await axios.get(
-        "https://api.shsg.ch/similar-courses/query",
-        {
-          params: {
-            courseDescription: selectedCourse.courseContent,
-            numberOfResults: 10,
-            category: category,
-            program: currentProgram,
-            semester: referenceSemesterLocalState
-              ? referenceSemesterLocalState
-              : selectedSemesterShortName,
-          },
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+        setSimilarCourses(response.data);
+        console.log("Similar courses:", response.data);
+        setIsLoading(false);
 
-      setSimilarCourses(response.data);
-      console.log("Similar courses:", response.data);
-      setIsLoading(false);
-
-      // Only attempt upsert once to prevent infinite recursion
-      if (
-        response.data.ids &&
-        response.data.ids[0] &&
-        response.data.ids[0].length === 0 &&
-        !attemptedUpsert
-      ) {
-        // DISABLED: Upsert mechanism commented out until tested by Quality Control
-        console.log("No similar courses found - upsert mechanism disabled for quality control testing");
-        /*
+        // Only attempt upsert once to prevent infinite recursion
+        if (
+          response.data.ids &&
+          response.data.ids[0] &&
+          response.data.ids[0].length === 0 &&
+          !attemptedUpsert
+        ) {
+          // DISABLED: Upsert mechanism commented out until tested by Quality Control
+          console.log(
+            "No similar courses found - upsert mechanism disabled for quality control testing"
+          );
+          /*
         setIsLoadingLong(true);
         await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
         setIsLoadingLong(false);
         // Pass true to indicate we've already attempted an upsert
         fetchSimilarCourses(selectedCourse, category, true);
         */
-      }
-    } catch (error) {
-      console.error("Error querying database:", error);
-      if (error.response && error.response.status === 404) {
-        console.log("No courses found, attempting upsert");
-        if (!attemptedUpsert) {
-          // DISABLED: Upsert mechanism commented out until tested by Quality Control
-          console.log("Upsert mechanism disabled for quality control testing");
-          /*
+        }
+      } catch (error) {
+        console.error("Error querying database:", error);
+        if (error.response && error.response.status === 404) {
+          console.log("No courses found, attempting upsert");
+          if (!attemptedUpsert) {
+            // DISABLED: Upsert mechanism commented out until tested by Quality Control
+            console.log(
+              "Upsert mechanism disabled for quality control testing"
+            );
+            /*
           setIsLoadingLong(true);
           await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
           setIsLoadingLong(false);
           fetchSimilarCourses(selectedCourse, category, true);
           */
-          // For now, just set empty results
-          setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+            // For now, just set empty results
+            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+          } else {
+            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+          }
         } else {
-          setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+          errorHandlingService.handleError(error);
         }
-      } else {
-        errorHandlingService.handleError(error);
+        setIsLoading(false);
       }
-      setIsLoading(false);
+    } else {
+      console.log("Program not yet loaded");
+      setTimeout(() => {
+        fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
+      }, 1000);
     }
-  }       (course) =>
+  }
+
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [creditsFilter, setCreditsFilter] = useState("all");
+
+  const filteredCourses = similarCourses.ids
+    ? similarCourses.ids[0].filter((id) => {
+        const course = coursesCurrentSemester.find(
+          (course) =>
             course.courses[0].courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
