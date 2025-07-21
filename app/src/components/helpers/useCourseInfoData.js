@@ -58,7 +58,7 @@ export const useCourseInfoData = ({ authToken, selectedSemester }) => {
         );
 
         const response = await axios.get(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.cisId}/?fields=id,shortName,credits,classification,courses`,
+          `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.cisId}`,
           {
             headers: {
               "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
