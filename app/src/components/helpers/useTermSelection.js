@@ -58,6 +58,59 @@ export function useTermSelection() {
     });
   };
 
+  // Generate future semesters helper function
+  const generateFutureSemesters = (latestSemester, allApiTerms, count = 2) => {
+    if (!latestSemester || !allApiTerms) return [];
+
+    const futureSemesters = [];
+    const [season, yearStr] = [
+      latestSemester.slice(0, 2),
+      latestSemester.slice(2),
+    ];
+    let currentYear = parseInt(yearStr, 10);
+    let currentSeason = season;
+
+    for (let i = 0; i < count; i++) {
+      // Calculate next semester
+      if (currentSeason === "FS") {
+        currentSeason = "HS";
+      } else {
+        currentSeason = "FS";
+        currentYear += 1;
+      }
+
+      const futureShortName = `${currentSeason}${currentYear
+        .toString()
+        .slice(-2)}`;
+
+      // Find reference semester: same season from previous year
+      const referenceSemesterName = `${currentSeason}${(currentYear - 1)
+        .toString()
+        .slice(-2)}`;
+
+      // Look for the reference semester in API data
+      const referenceTerm = allApiTerms.find(
+        (term) => term.shortName === referenceSemesterName
+      );
+
+      // Use reference semester's cisId if found, otherwise use latest semester's cisId
+      const referenceCisId =
+        referenceTerm?.cisId || allApiTerms[allApiTerms.length - 1]?.cisId;
+
+      futureSemesters.push({
+        cisId: referenceCisId, // Use the reference semester's cisId
+        id: `future-${futureShortName}`, // Generate a unique ID for future semesters
+        shortName: futureShortName,
+        referenceSemester: referenceSemesterName, // Track which semester this references
+        isCurrent: false,
+        isProjected: true,
+        isFuture: true, // Mark as artificially generated future semester
+      });
+    }
+
+    return futureSemesters;
+  };
+
   // 1. Load cisIdList data
   useEffect(() => {
     if (authToken && !cisIdListAtom) {
@@ -165,25 +218,71 @@ export function useTermSelection() {
 
           // Build the final termListObject with proper ordering and metadata
           const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
-          const builtTermListObject = sortedTerms
+
+          // Calculate how many artificial future semesters we need to generate
+          // We want to ensure we always have at least 2 future semesters beyond the latest valid term
+          const futureSemestersNeeded = Math.max(
+            0,
+            2 -
+              (sortedTerms.length -
+                sortedTerms.indexOf(latestValidTerm || sortedTerms[0]) -
+                1)
+          );
+
+          let artificialFutureSemesters = [];
+          if (futureSemestersNeeded > 0) {
+            // Find the latest semester from API data to use as reference for artificial ones
+            const latestApiSemester = sortedTerms[sortedTerms.length - 1];
+
+            // Generate artificial future semesters only if needed
+            // Pass the full termIdList so the function can find proper reference semesters
+            artificialFutureSemesters = generateFutureSemesters(
+              latestApiSemester,
+              termIdList,
+              futureSemestersNeeded
+            );
+
+            // Initialize artificial future semesters in unified data
+            artificialFutureSemesters.forEach((futureSemester) => {
+              initializeUnifiedSemester(futureSemester.shortName, {
+                id: futureSemester.id,
+                cisId: futureSemester.cisId,
+                isCurrent: false,
+                isProjected: true, // Mark as artificially generated
+                isFuture: true,
+                referenceSemester: futureSemester.referenceSemester, // Store reference semester info
+              });
+            });
+          }
+
+          // Combine API terms with artificial future semesters and sort again
+          const allTerms = [...termIdList, ...artificialFutureSemesters];
+          const allSortedTerms = sortTerms(allTerms.map((t) => t.shortName));
+
+          const builtTermListObject = allSortedTerms
             .map((shortName) => {
-              const termData = termIdList.find(
-                (t) => t.shortName === shortName
-              );
+              const termData = allTerms.find((t) => t.shortName === shortName);
               if (!termData) return null;
 
-              // Determine if this is a projected future semester
-              const isProjected = latestValidTerm
-                ? sortedTerms.indexOf(shortName) >
-                  sortedTerms.indexOf(latestValidTerm)
+              // Find the current semester as marked by the API
+              const currentSemester =
+                currentTerms.length > 0 ? currentTerms[0].shortName : null;
+
+              // Determine if this is a future semester (newer than current semester)
+              const isFuture = currentSemester
+                ? allSortedTerms.indexOf(shortName) >
+                  allSortedTerms.indexOf(currentSemester)
                 : false;
 
+              // isProjected = artificially generated (not from API)
+              // isFuture = newer than current semester (could be real API data or artificial)
               return {
-                cisId: termData.cisId, // actual CIS ID for CourseInformationSheets API
-                id: termData.id, // timeSegmentId for MyCourses API
+                cisId: termData.cisId, // real CIS ID for API terms, reference cisId for artificial ones
+                id: termData.id, // real timeSegmentId for API terms, generated ID for artificial ones
                 shortName: termData.shortName,
                 isCurrent: termData.isCurrent || false,
-                isProjected: isProjected,
+                isProjected: termData.isFuture || false, // Only artificial semesters are "projected"
+                isFuture: isFuture, // Any semester newer than current semester
               };
             })
             .filter(Boolean);

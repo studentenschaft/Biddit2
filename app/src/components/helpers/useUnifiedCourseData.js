@@ -24,6 +24,105 @@ const DEFAULT_SEMESTER_STRUCTURE = {
 };
 
 /**
+ * Helper function to create detailed summary logs for unified course data
+ */
+const logUnifiedCourseDataSummary = (
+  semesterShortName,
+  operationType,
+  data
+) => {
+  const semesterData = data.semesters[semesterShortName];
+  if (!semesterData) return;
+
+  console.group(
+    `📊 [UNIFIED COURSE DATA] ${operationType} - ${semesterShortName}`
+  );
+
+  // Semester metadata
+  console.log(`🏫 Semester Metadata:`, {
+    cisId: semesterData.cisId,
+    isCurrent: semesterData.isCurrent,
+    isProjected: semesterData.isProjected,
+    isFutureSemester: semesterData.isFutureSemester,
+    referenceSemester: semesterData.referenceSemester,
+    lastFetched: semesterData.lastFetched,
+  });
+
+  // Course counts
+  console.log(`📚 Course Counts:`, {
+    enrolled: semesterData.enrolled?.length || 0,
+    available: semesterData.available?.length || 0,
+    selected: semesterData.selected?.length || 0,
+    filtered: semesterData.filtered?.length || 0,
+    studyPlan: semesterData.studyPlan?.length || 0,
+    ratings: Object.keys(semesterData.ratings || {}).length,
+  });
+
+  // Detailed course data (limited to prevent console spam)
+  if (semesterData.enrolled?.length > 0) {
+    console.log(
+      `✅ Enrolled Courses (${semesterData.enrolled.length}):`,
+      semesterData.enrolled.slice(0, 3).map((c) => ({
+        id: c.id,
+        courseNumber: c.courseNumber,
+        title: c.title || c.courses?.[0]?.title,
+      }))
+    );
+  }
+
+  if (semesterData.selected?.length > 0) {
+    console.log(
+      `⭐ Selected Courses (${semesterData.selected.length}):`,
+      semesterData.selected.slice(0, 3).map((c) => ({
+        id: c.id,
+        courseNumber: c.courseNumber,
+        title: c.title || c.courses?.[0]?.title,
+      }))
+    );
+  }
+
+  if (semesterData.available?.length > 0) {
+    console.log(
+      `🔍 Available Courses (${semesterData.available.length}):`,
+      `First 3: ${semesterData.available
+        .slice(0, 3)
+        .map((c) => c.courseNumber || c.id)
+        .join(", ")}`
+    );
+  }
+
+  console.groupEnd();
+};
+
+/**
+ * Helper function to log overall unified data state
+ */
+const logUnifiedDataOverview = (data) => {
+  console.group(`🌍 [UNIFIED COURSE DATA] Global Overview`);
+
+  console.log(`🎯 Global State:`, {
+    selectedSemester: data.selectedSemester,
+    latestValidTerm: data.latestValidTerm,
+    totalSemesters: Object.keys(data.semesters || {}).length,
+  });
+
+  console.log(
+    `📅 All Semesters:`,
+    Object.keys(data.semesters || {}).map((semester) => ({
+      semester,
+      enrolled: data.semesters[semester]?.enrolled?.length || 0,
+      available: data.semesters[semester]?.available?.length || 0,
+      selected: data.semesters[semester]?.selected?.length || 0,
+      isCurrent: data.semesters[semester]?.isCurrent || false,
+      isProjected: data.semesters[semester]?.isProjected || false,
+      isFutureSemester: data.semesters[semester]?.isFutureSemester || false,
+    }))
+  );
+
+  console.groupEnd();
+};
+
+/**
  * Helper function to create a new semester with proper defaults
  */
 const createSemesterStructure = (metadata = {}) => ({
@@ -81,10 +180,12 @@ export function useUnifiedCourseData() {
           [semesterShortName]: createSemesterStructure(metadata),
         },
       };
+
       console.log(
         `✅ Initialized semester ${semesterShortName}:`,
         newData.semesters[semesterShortName]
       );
+      logUnifiedCourseDataSummary(semesterShortName, "INITIALIZE", newData);
       return newData;
     });
 
@@ -128,6 +229,11 @@ export function useUnifiedCourseData() {
         `✅ Updated enrolled courses for ${semesterShortName}:`,
         newData.semesters[semesterShortName]
       );
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "UPDATE_ENROLLED",
+        newData
+      );
       return newData;
     });
   };
@@ -167,6 +273,11 @@ export function useUnifiedCourseData() {
       console.log(
         `✅ Updated available courses for ${semesterShortName}:`,
         newData.semesters[semesterShortName]
+      );
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "UPDATE_AVAILABLE",
+        newData
       );
       return newData;
     });
@@ -208,6 +319,11 @@ export function useUnifiedCourseData() {
         `✅ Updated selected courses for ${semesterShortName}:`,
         newData.semesters[semesterShortName]
       );
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "UPDATE_SELECTED",
+        newData
+      );
       return newData;
     });
   };
@@ -247,7 +363,7 @@ export function useUnifiedCourseData() {
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
-      return {
+      const newData = {
         ...cleanPrev,
         semesters: {
           ...cleanPrev.semesters,
@@ -257,6 +373,18 @@ export function useUnifiedCourseData() {
           },
         },
       };
+
+      console.log(`➕ Added course to ${semesterShortName}:`, {
+        courseId: course.id,
+        courseNumber: course.courseNumber,
+        title: course.title || course.courses?.[0]?.title,
+      });
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "ADD_SELECTED_COURSE",
+        newData
+      );
+      return newData;
     });
   };
 
@@ -279,7 +407,7 @@ export function useUnifiedCourseData() {
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
-      return {
+      const newData = {
         ...cleanPrev,
         semesters: {
           ...cleanPrev.semesters,
@@ -294,6 +422,14 @@ export function useUnifiedCourseData() {
           },
         },
       };
+
+      console.log(`➖ Removed course from ${semesterShortName}:`, { courseId });
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "REMOVE_SELECTED_COURSE",
+        newData
+      );
+      return newData;
     });
   };
 
@@ -333,6 +469,11 @@ export function useUnifiedCourseData() {
       console.log(
         `✅ Updated study plan for ${semesterShortName}:`,
         newData.semesters[semesterShortName].studyPlan
+      );
+      logUnifiedCourseDataSummary(
+        semesterShortName,
+        "UPDATE_STUDY_PLAN",
+        newData
       );
       return newData;
     });
@@ -441,10 +582,7 @@ export function useUnifiedCourseData() {
    * Update filtered courses for a semester based on filter criteria
    * This applies the same filtering logic as filteredCoursesSelector but stores results in unified state
    */
-  const updateFilteredCourses = (
-    semesterShortName,
-    filterOptions = {}
-  ) => {
+  const updateFilteredCourses = (semesterShortName, filterOptions = {}) => {
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
@@ -481,7 +619,7 @@ export function useUnifiedCourseData() {
       }
 
       console.log(
-        `🔍 [DEBUG] Filtering ${coursesToFilter.length} available courses for ${semesterShortName} with options:`,
+        `🔍 Filtering ${coursesToFilter.length} available courses for ${semesterShortName} with options:`,
         filterOptions
       );
 
@@ -493,75 +631,23 @@ export function useUnifiedCourseData() {
       // Attach ratings and status FIRST, then sort
       const ratingsMap = semesterData.ratings || {};
       const enrolledCourses = semesterData.enrolled || [];
-      const selectedCourses = semesterData.selected || [];
-      
+
       // Get study plan course numbers directly from semester data
       const studyPlanData = semesterData.studyPlan || [];
-      console.log(`🔍 [DEBUG] Raw study plan data:`, studyPlanData);
-      
+
       // Extract course numbers from study plan data
       // Study plan data can be either strings like "7,048,1.00" or objects with courseNumber property
-      const selectedCourseIds = studyPlanData.map(course => {
-        if (typeof course === 'string') {
-          return course; // Direct string like "7,048,1.00"
-        } else if (course.courseNumber) {
-          return course.courseNumber; // Object with courseNumber property
-        } else {
-          return course; // Fallback to course itself
-        }
-      }).filter(Boolean);
-
-      console.log(`🔍 [DEBUG] Processing ${filtered.length} available courses`);
-      console.log(`🔍 [DEBUG] Enrolled courses: ${enrolledCourses.length}`);
-      console.log(`🔍 [DEBUG] Selected courses: ${selectedCourses.length}`);
-      console.log(`🔍 [DEBUG] Study plan data length: ${studyPlanData.length}`);
-      console.log(
-        `🔍 [DEBUG] Study plan course numbers: ${selectedCourseIds.length}`,
-        selectedCourseIds.slice(0, 5)
-      );
-
-      // Log sample enrolled courses to see structure
-      if (enrolledCourses.length > 0) {
-        console.log(`🔍 [DEBUG] Sample enrolled course:`, enrolledCourses[0]);
-      }
-      if (selectedCourses.length > 0) {
-        console.log(`🔍 [DEBUG] Sample selected course:`, selectedCourses[0]);
-      }
-      if (filtered.length > 0) {
-        console.log(`🔍 [DEBUG] Sample available course:`, filtered[0]);
-        console.log(
-          `🔍 [DEBUG] Sample available course.courses[0].courseNumber:`,
-          filtered[0].courses?.[0]?.courseNumber
-        );
-      }
-
-      // Show all study plan course numbers for debugging
-      if (selectedCourseIds.length > 0) {
-        console.log(
-          `✅ [DEBUG] ALL study plan course numbers from unified state:`,
-          selectedCourseIds
-        );
-        console.log(`🔍 [DEBUG] Study plan data types:`, selectedCourseIds.map(id => `"${id}" (${typeof id})`));
-      } else {
-        console.log(
-          `⚠️ [DEBUG] NO study plan course numbers found in unified state!`
-        );
-        console.log(`🔍 [DEBUG] Raw studyPlanData:`, studyPlanData);
-        console.log(`🔍 [DEBUG] Raw studyPlanData length:`, studyPlanData.length);
-        console.log(`🔍 [DEBUG] Raw studyPlanData content:`, JSON.stringify(studyPlanData, null, 2));
-      }
-
-      // Show first few available course numbers for comparison
-      const sampleAvailableCourseNumbers = filtered
-        .slice(0, 10)
-        .map((c) => c.courses?.[0]?.courseNumber)
+      const selectedCourseIds = studyPlanData
+        .map((course) => {
+          if (typeof course === "string") {
+            return course; // Direct string like "7,048,1.00"
+          } else if (course.courseNumber) {
+            return course.courseNumber; // Object with courseNumber property
+          } else {
+            return course; // Fallback to course itself
+          }
+        })
         .filter(Boolean);
-      if (sampleAvailableCourseNumbers.length > 0) {
-        console.log(
-          `🔍 [DEBUG] Sample available course numbers:`,
-          sampleAvailableCourseNumbers
-        );
-      }
 
       const coursesWithRatings = filtered.map((course) => {
         // Try different ways to match ratings to courses
@@ -606,16 +692,10 @@ export function useUnifiedCourseData() {
         // Check if this available course is also an enrolled course
         // Match enrolled.eventCourseNumber with available.courses[0].courseNumber
         const isEnrolled = enrolledCourses.some((enrolledCourse) => {
-          const matches =
+          return (
             enrolledCourse.eventCourseNumber ===
-            course.courses?.[0]?.courseNumber;
-
-          if (matches) {
-            console.log(
-              `🔍 [DEBUG] ENROLLED MATCH: Available course ${course.shortName} (${course.courses?.[0]?.courseNumber}) matches enrolled course ${enrolledCourse.shortName} (${enrolledCourse.eventCourseNumber})`
-            );
-          }
-          return matches;
+            course.courses?.[0]?.courseNumber
+          );
         });
 
         // Check if this course is selected from study plan
@@ -624,56 +704,6 @@ export function useUnifiedCourseData() {
         const courseNumber = course.courses?.[0]?.courseNumber;
         const isSelected =
           courseNumber && selectedCourseIds.includes(courseNumber);
-
-        // Enhanced debug logging for the first few courses to understand the data structure
-        if (selectedCourseIds.length > 0 && course.courses?.[0]?.courseNumber) {
-          // Show detailed comparison for first few courses
-          const courseIndex = filtered.indexOf(course);
-          if (courseIndex < 10) { // Only for first 10 courses to avoid spam
-            console.log(`🔍 [DEBUG] Course ${courseIndex + 1}: ${course.shortName}`);
-            console.log(`  - Available course number: "${course.courses[0].courseNumber}"`);
-            console.log(`  - Study plan course numbers: [${selectedCourseIds.map(id => `"${id}"`).join(", ")}]`);
-            console.log(`  - Is exact match: ${selectedCourseIds.includes(course.courses[0].courseNumber)}`);
-            console.log(`  - Final isSelected: ${isSelected}`);
-            
-            // Also try other potential matches
-            const altMatches = [
-              course.id,
-              course.courseNumber,
-              course.shortName,
-              course.title
-            ].filter(prop => prop && selectedCourseIds.includes(prop));
-            
-            if (altMatches.length > 0) {
-              console.log(`  - Alternative matches found: [${altMatches.join(", ")}]`);
-            }
-          }
-          
-          if (isSelected) {
-            console.log(
-              `✅ [DEBUG] STUDY PLAN MATCH: ${course.shortName} (${courseNumber}) is in study plan`
-            );
-          }
-        }
-
-        // Debug logging for selected status
-        if (isSelected) {
-          console.log(
-            `✅ [DEBUG] Course ${course.shortName} (${course.courses?.[0]?.courseNumber}) marked as SELECTED from study plan`
-          );
-        }
-
-        // Debug logging for enrolled status
-        if (isEnrolled) {
-          console.log(
-            `🔍 [DEBUG] Course ${course.shortName} marked as ENROLLED`
-          );
-        }
-        if (isSelected) {
-          console.log(
-            `🔍 [DEBUG] Course ${course.shortName} marked as SELECTED`
-          );
-        }
 
         return {
           ...course,
@@ -789,9 +819,7 @@ export function useUnifiedCourseData() {
    * Useful when filter criteria changes globally
    * Now handles study plan data directly instead of using legacy selectedCourseIds atom
    */
-  const updateFilteredCoursesForAllSemesters = (
-    filterOptions = {}
-  ) => {
+  const updateFilteredCoursesForAllSemesters = (filterOptions = {}) => {
     setCourseData((prev) => {
       // Create a clean copy that only includes the properties we want
       const cleanPrev = {
@@ -836,14 +864,19 @@ export function useUnifiedCourseData() {
 
             // Enrollment check
             const isEnrolled = enrolledCourses.some((enrolledCourse) => {
-              return enrolledCourse.eventCourseNumber === course.courses?.[0]?.courseNumber;
+              return (
+                enrolledCourse.eventCourseNumber ===
+                course.courses?.[0]?.courseNumber
+              );
             });
 
             // Study plan selection check
             const courseNumber = course.courses?.[0]?.courseNumber;
-            const isSelected = courseNumber && studyPlanCourses.some((studyPlanCourse) => {
-              return studyPlanCourse.courseNumber === courseNumber;
-            });
+            const isSelected =
+              courseNumber &&
+              studyPlanCourses.some((studyPlanCourse) => {
+                return studyPlanCourse.courseNumber === courseNumber;
+              });
 
             return {
               ...course,
@@ -917,6 +950,13 @@ export function useUnifiedCourseData() {
     return ageMinutes > maxAgeMinutes;
   };
 
+  /**
+   * Log a detailed summary of the current unified course data state
+   */
+  const logUnifiedDataState = () => {
+    logUnifiedDataOverview(courseData);
+  };
+
   return {
     courseData,
     initializedSemesters,
@@ -939,5 +979,6 @@ export function useUnifiedCourseData() {
     updateFilteredCoursesForAllSemesters, // New function for global filtered courses
     getSemesterData,
     needsRefresh,
+    logUnifiedDataState, // Debug function to log current state
   };
 }

@@ -121,14 +121,23 @@ export default function EventListContainer({
 
     const isSelected = isEventOrNestedCourseSelected(event, selectedCourseIds);
 
-    // For projected semesters, we should not show any enrolled courses
+    // For projected semesters, we should not show any enrolled courses as locked
     const isEnrolled = event.enrolled && !selectedSemester?.isProjected;
+
+    // For projected semesters, check if course was previously enrolled (for visual indication)
+    const wasPreviouslyEnrolled =
+      event.enrolled && selectedSemester?.isProjected;
 
     return (
       <div
         key={index}
         className="flex w-full h-full overflow-visible pb-2.5"
         style={style}
+        title={
+          wasPreviouslyEnrolled
+            ? "This course was enrolled in a previous semester and probably should not be taken again unless retaking"
+            : ""
+        }
       >
         {/* Course Info */}
         <div
@@ -137,17 +146,29 @@ export default function EventListContainer({
             setSelectedTabState(0);
             setIsLeftViewVisibleState(false);
           }}
-          className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition duration-500 ease-in-out bg-white text-gray-800`}
+          className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition duration-500 ease-in-out ${
+            wasPreviouslyEnrolled
+              ? "bg-gray-100 text-gray-500"
+              : "bg-white text-gray-800"
+          }`}
         >
           <div className="pb-2 font-semibold">
             <p className="truncate">
               {event.shortName ? event.shortName : "Loading..."}
             </p>
           </div>
-          <div className={`text-xs grid grid-cols-12 text-gray-700`}>
+          <div
+            className={`text-xs grid grid-cols-12 ${
+              wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-700"
+            }`}
+          >
             {event && event.avgRating && (
               <p className="flex col-span-2 ">
-                <StarIcon width={12} color="#006625" /> {event.avgRating}
+                <StarIcon
+                  width={12}
+                  color={wasPreviouslyEnrolled ? "#9CA3AF" : "#006625"}
+                />{" "}
+                {event.avgRating}
               </p>
             )}
             <p className="hidden col-span-2 truncate md:block">
@@ -164,7 +185,11 @@ export default function EventListContainer({
           id="select_course"
           onClick={() => addOrRemoveCourse(event)}
           disabled={isEnrolled}
-          className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out bg-white ${
+          className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
+            wasPreviouslyEnrolled
+              ? "bg-gray-100 border-gray-300 text-gray-400"
+              : "bg-white"
+          } ${
             event.overlapping
               ? "border-warning text-warning cursor-pointer hover:shadow-md"
               : isEnrolled
@@ -183,7 +208,11 @@ export default function EventListContainer({
               setSelectedCourseIds={setSelectedCourseIds}
             />
           ) : (
-            <PlusIcon className="w-6 h-6 text-gray-800 " />
+            <PlusIcon
+              className={`w-6 h-6 ${
+                wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-800"
+              }`}
+            />
           )}
         </button>
       </div>
@@ -258,6 +287,7 @@ EventListContainer.propTypes = {
       shortName: PropTypes.string.isRequired,
       isCurrent: PropTypes.bool.isRequired,
       isProjected: PropTypes.bool.isRequired,
+      isFuture: PropTypes.bool, // Optional property for artificially generated future semesters
     })
   ).isRequired,
   selectedSemesterShortName: PropTypes.string.isRequired,

@@ -38,8 +38,10 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
  */
 export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
   // Unified course data hook - no more legacy atoms
-  const { updateSelectedCourses: updateUnifiedSelectedCourses, updateStudyPlan } =
-    useUnifiedCourseData();
+  const {
+    updateSelectedCourses: updateUnifiedSelectedCourses,
+    updateStudyPlan,
+  } = useUnifiedCourseData();
 
   // Set selected course IDs for the EventListContainer to use
   const setSelectedCourseIds = useSetRecoilState(selectedCourseIdsAtom);
@@ -75,12 +77,18 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
         const studyPlansData = response.data;
 
         console.log("🔍 [DEBUG] Study plans raw data:", studyPlansData);
-        console.log(`🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`);
+        console.log(
+          `🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`
+        );
 
         // Get courses directly for the current semester using shortName (e.g., "HS25", "FS26")
-        const currentSemesterCourses = studyPlansData[selectedSemester.shortName] || [];
-        
-        console.log(`🔍 [DEBUG] Found ${currentSemesterCourses.length} courses for ${selectedSemester.shortName}:`, currentSemesterCourses);
+        const currentSemesterCourses =
+          studyPlansData[selectedSemester.shortName] || [];
+
+        console.log(
+          `🔍 [DEBUG] Found ${currentSemesterCourses.length} courses for ${selectedSemester.shortName}:`,
+          currentSemesterCourses
+        );
 
         if (currentSemesterCourses.length > 0) {
           console.log(
@@ -93,7 +101,7 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
           // Update BOTH the study plan raw data AND the unified selected courses
           // Store raw study plan data for filtering logic (these are the string course numbers)
           updateStudyPlan(selectedSemester.shortName, currentSemesterCourses);
-          
+
           // Update unified selected courses (legacy selected field)
           updateUnifiedSelectedCourses(
             selectedSemester.shortName,
