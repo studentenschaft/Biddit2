@@ -20,10 +20,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useRecoilValue } from "recoil";
 import axios from "axios";
-import { courseInfoState } from "../recoil/courseInfoAtom";
-import { useUpdateCourseInfoAtom } from "./useUpdateCourseInfo";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -32,20 +29,12 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.authToken - Authentication token
- * @param {string} params.cisId - Course Information System ID for the semester
- * @param {number} params.index - Semester index for legacy system
- * @param {Object} params.selectedSemesterState - Current selected semester state
+ * @param {Object} params.selectedSemester - Current selected semester from termListObject
+ *   Structure: {cisId, shortName, isCurrent, isProjected}
  * @returns {Object} Course info state and loading status
  */
-export const useCourseInfoData = ({
-  authToken,
-  cisId,
-  index,
-  selectedSemesterState,
-}) => {
-  // Recoil state and hooks
-  const courseInfos = useRecoilValue(courseInfoState);
-  const updateCourseInfo = useUpdateCourseInfoAtom();
+export const useCourseInfoData = ({ authToken, selectedSemester }) => {
+  // Unified course data hook - no more legacy atoms
   const { updateAvailableCourses: updateUnifiedAvailableCourses } =
     useUnifiedCourseData();
 
@@ -55,62 +44,63 @@ export const useCourseInfoData = ({
   // Fetch course data effect
   useEffect(() => {
     const fetchCourseData = async () => {
-      // Check if we need to fetch course data
-      if (
-        index != null &&
-        (!courseInfos[index] || courseInfos[index].length === 0)
-      ) {
-        setIsCourseDataLoading(true);
+      // Only fetch if we have required data
+      if (!selectedSemester?.cisId || !selectedSemester?.shortName) {
+        setIsCourseDataLoading(false);
+        return;
+      }
 
-        try {
-          console.log(
-            `🔄 Fetching course data for semester: ${selectedSemesterState?.shortName}, CIS ID: ${cisId}`
-          );
+      setIsCourseDataLoading(true);
 
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
+      try {
+        console.log(
+          `🔄 [SIMPLIFIED] Fetching course data for semester: ${selectedSemester.shortName}, CIS ID: ${selectedSemester.cisId}`
+        );
 
-          console.log(
-            `✅ Successfully fetched ${response.data.length} course information sheets`
-          );
-
-          // Update legacy course info state (by index)
-          updateCourseInfo(response.data, index);
-
-          // Update unified available courses state (by semester short name)
-          if (selectedSemesterState?.shortName) {
-            updateUnifiedAvailableCourses(
-              selectedSemesterState.shortName,
-              response.data
-            );
+        const response = await axios.get(
+          `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.cisId}/?fields=id,shortName,credits,classification,courses`,
+          {
+            headers: {
+              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+              "X-RequestedLanguage": "EN",
+              "API-Version": "1",
+              Authorization: `Bearer ${authToken}`,
+            },
           }
-        } catch (error) {
-          console.error("❌ Error fetching course data:", error);
-          errorHandlingService.handleError(error);
-        } finally {
-          setIsCourseDataLoading(false);
+        );
+
+        console.log(
+          `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} course information sheets for ${selectedSemester.shortName}`
+        );
+
+        // Debug: Log the response if we get 0 courses
+        if (response.data.length === 0) {
+          console.warn(
+            `⚠️ [DEBUG] No courses returned for semester ${selectedSemester.shortName} (CIS ID: ${selectedSemester.cisId}). This might be normal for future semesters.`
+          );
         }
-      } else {
-        // Course data already exists, no need to fetch
+
+        // Update ONLY unified available courses state (no more legacy atoms)
+        updateUnifiedAvailableCourses(
+          selectedSemester.shortName,
+          response.data
+        );
+      } catch (error) {
+        console.error("❌ Error fetching course data:", error);
+        errorHandlingService.handleError(error);
+      } finally {
         setIsCourseDataLoading(false);
       }
     };
 
     // Only fetch if we have the required parameters
-    if (authToken && cisId && index != null) {
+    if (authToken && selectedSemester?.cisId) {
       fetchCourseData();
+    } else {
+      setIsCourseDataLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, cisId, index]);
+  }, [authToken, selectedSemester?.cisId, selectedSemester?.shortName]);
 
   return {
     isCourseDataLoading,

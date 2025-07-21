@@ -20,10 +20,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useRecoilValue } from "recoil";
 import axios from "axios";
-import { enrolledCoursesState } from "../recoil/enrolledCoursesAtom";
-import { useUpdateEnrolledCoursesAtom } from "./useUpdateEnrolledCourses";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -32,18 +29,12 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.authToken - Authentication token
- * @param {Object} params.selectedSemesterState - Current selected semester state
- * @param {number} params.index - Semester index for legacy system
+ * @param {Object} params.selectedSemester - Current selected semester from termListObject
+ *   Structure: {cisId, shortName, isCurrent, isProjected}
  * @returns {Object} Enrolled courses state and loading status
  */
-export const useEnrolledCoursesData = ({
-  authToken,
-  selectedSemesterState,
-  index,
-}) => {
-  // Recoil state and hooks
-  const enrolledCourses = useRecoilValue(enrolledCoursesState);
-  const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
+export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
+  // Unified course data hook - no more legacy atoms
   const { updateEnrolledCourses: updateUnifiedEnrolledCourses } =
     useUnifiedCourseData();
 
@@ -54,63 +45,59 @@ export const useEnrolledCoursesData = ({
   // Fetch enrolled courses effect
   useEffect(() => {
     const fetchEnrolledCourses = async () => {
-      // Check if we need to fetch enrolled courses
-      if (
-        index != null &&
-        enrolledCourses &&
-        (!enrolledCourses[index] || enrolledCourses[index].length === 0)
-      ) {
-        setIsEnrolledCoursesLoading(true);
+      // Only fetch if we have required data
+      if (!selectedSemester?.id || !selectedSemester?.shortName) {
+        setIsEnrolledCoursesLoading(false);
+        return;
+      }
 
-        try {
-          console.log(
-            `🔄 Fetching enrolled courses for semester: ${selectedSemesterState.shortName}`
-          );
+      setIsEnrolledCoursesLoading(true);
 
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${selectedSemesterState.id}`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
+      try {
+        console.log(
+          `🔄 [SIMPLIFIED] Fetching enrolled courses for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
+        );
 
-          console.log(
-            `✅ Successfully fetched ${response.data.length} enrolled courses`
-          );
-
-          // Update legacy enrolled courses state (by index)
-          updateEnrolledCourses(response.data, index);
-
-          // Update unified enrolled courses state (by semester short name)
-          if (selectedSemesterState?.shortName) {
-            updateUnifiedEnrolledCourses(
-              selectedSemesterState.shortName,
-              response.data
-            );
+        const response = await axios.get(
+          `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${selectedSemester.id}`,
+          {
+            headers: {
+              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+              "X-RequestedLanguage": "EN",
+              "API-Version": "1",
+              Authorization: `Bearer ${authToken}`,
+            },
           }
-        } catch (error) {
-          console.error("❌ Error fetching enrolled courses:", error);
-          errorHandlingService.handleError(error);
-        } finally {
-          setIsEnrolledCoursesLoading(false);
+        );
+
+        console.log(
+          `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} enrolled courses`
+        );
+        console.log("🔍 [DEBUG] Enrolled courses structure:", response.data);
+
+        // Log a sample course if available
+        if (response.data.length > 0) {
+          console.log("🔍 [DEBUG] Sample enrolled course:", response.data[0]);
         }
-      } else {
-        // Enrolled courses already exist, no need to fetch
+
+        // Update ONLY unified enrolled courses state (no more legacy atoms)
+        updateUnifiedEnrolledCourses(selectedSemester.shortName, response.data);
+      } catch (error) {
+        console.error("❌ Error fetching enrolled courses:", error);
+        errorHandlingService.handleError(error);
+      } finally {
         setIsEnrolledCoursesLoading(false);
       }
     };
 
     // Only fetch if we have the required parameters
-    if (authToken && selectedSemesterState && index != null) {
+    if (authToken && selectedSemester?.id) {
       fetchEnrolledCourses();
+    } else {
+      setIsEnrolledCoursesLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemesterState, index]);
+  }, [authToken, selectedSemester?.id, selectedSemester?.shortName]);
 
   return {
     isEnrolledCoursesLoading,

@@ -190,3 +190,77 @@ export const allSemesterCoursesSelector = selector({
     return allCourseData.semesters;
   },
 });
+
+/**
+ * Selector to check if a semester is marked as current
+ */
+export const semesterIsCurrentSelector = selectorFamily({
+  key: "semesterIsCurrentSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const semesterData = get(semesterCourseDataSelector(semesterShortName));
+      return semesterData.isCurrent || false;
+    },
+});
+
+/**
+ * Selector to check if a semester is projected
+ */
+export const semesterIsProjectedSelector = selectorFamily({
+  key: "semesterIsProjectedSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const semesterData = get(semesterCourseDataSelector(semesterShortName));
+      return semesterData.isProjected || false;
+    },
+});
+
+/**
+ * Selector to get semester metadata (isCurrent, isProjected, isFutureSemester, etc.)
+ */
+export const semesterMetadataSelector = selectorFamily({
+  key: "semesterMetadataSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const semesterData = get(semesterCourseDataSelector(semesterShortName));
+      return {
+        isCurrent: semesterData.isCurrent || false,
+        isProjected: semesterData.isProjected || false,
+        isFutureSemester: semesterData.isFutureSemester || false,
+        referenceSemester: semesterData.referenceSemester || null,
+        cisId: semesterData.cisId || null,
+        lastFetched: semesterData.lastFetched || null,
+      };
+    },
+});
+
+/**
+ * Selector to get courses for a specific semester by type (enrolled, available, selected, filtered)
+ * This is the main selector used by EventListContainer
+ */
+export const semesterCoursesSelector = selectorFamily({
+  key: "semesterCoursesSelector",
+  get:
+    ({ semester, type = "available" }) =>
+    ({ get }) => {
+      const semesterData = get(semesterCourseDataSelector(semester));
+
+      // Handle different course types
+      switch (type) {
+        case "enrolled":
+          return semesterData.enrolled || [];
+        case "available":
+          return semesterData.available || [];
+        case "selected":
+          return semesterData.selected || [];
+        case "filtered":
+          // Return the actual filtered courses from the semester data
+          return semesterData.filtered || [];
+        default:
+          return semesterData.available || [];
+      }
+    },
+});

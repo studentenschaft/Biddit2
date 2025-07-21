@@ -1,195 +1,168 @@
 /**
- * useEventListDataManager Hook
+ * useEventListDataManager Hook - SIMPLIFIED VERSION
  *
- * Master hook that orchestrates all data fetching and state management for EventListContainer.
- * This hook consolidates and coordinates all the individual data hooks to provide a single
- * interface for the main component.
+ * Simplified hook that manages data fetching for EventListContainer.
+ * This version removes legacy atom dependencies and focuses only on unified course data.
  *
- * Responsibilities:
- * - Coordinate study plan, enrolled courses, course info, and ratings data
- * - Manage overall loading states
- * - Handle unified course data integration
- * - Manage local state updates (completeCourseInfo, filteredCourses)
- * - Bridge legacy and unified systems during migration
+ * REMOVED DEPENDENCIES:
+ * - localSelectedCoursesSemKeyState (replaced with unified selected courses)
+ * - allCourseInfoState (replaced with unified available courses)
+ * - Legacy index-based systems (replaced with semantic semester names)
+ * - useUpdateEnrolledCoursesAtom (replaced with unified course data)
  *
- * Flow:
- * 1. Initialize unified semester data
- * 2. Fetch study plan data
- * 3. Fetch enrolled courses, course info, and ratings in parallel
- * 4. Update local states when data is available
- * 5. Integrate with unified filtered courses system
- * 6. Manage overall loading state
+ * NEW SIMPLIFIED FLOW:
+ * 1. Receive termListObject from useTermSelection (contains {cisId, shortName, isCurrent, isProjected})
+ * 2. Fetch and update ONLY unifiedCourseDataAtom
+ * 3. Use selectors to get filtered courses for display
+ * 4. Remove intermediate state management
  */
 
 import { useState, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
 import { selectionOptionsState } from "../recoil/selectionOptionsAtom";
 import { selectedCourseIdsAtom } from "../recoil/selectedCourseIdsAtom";
-import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
-import { useStudyPlanData } from "./useStudyPlanData";
 import { useEnrolledCoursesData } from "./useEnrolledCoursesData";
 import { useCourseInfoData } from "./useCourseInfoData";
 import { useCourseRatingsData } from "./useCourseRatingsData";
+import { useStudyPlanDataSimplified } from "./useStudyPlanDataSimplified";
 
 /**
- * Master hook for managing all EventListContainer data
+ * Simplified hook for managing EventListContainer data
  *
  * @param {Object} params - Hook parameters
  * @param {string} params.authToken - Authentication token
- * @param {Object} params.selectedSemesterState - Current selected semester state
- * @param {number} params.index - Semester index for legacy system
- * @param {string} params.cisId - Course Information System ID for the semester
- * @returns {Object} All data states and loading status
+ * @param {Object} params.selectedSemester - Current selected semester from termListObject
+ *   Structure: {cisId, shortName, isCurrent, isProjected}
+ * @returns {Object} Simplified data states and loading status
  */
-export const useEventListDataManager = ({
-  authToken,
-  selectedSemesterState,
-  index,
-  cisId,
-}) => {
-  // Recoil state
-  const allCourseInfo = useRecoilValue(allCourseInfoState);
+export const useEventListDataManager = ({ authToken, selectedSemester }) => {
+  // Recoil state - simplified, only what's needed
   const selectionOptions = useRecoilValue(selectionOptionsState);
   const selectedCourseIds = useRecoilValue(selectedCourseIdsAtom);
-  const localSelectedCoursesSemKey = useRecoilValue(localSelectedCoursesSemKeyState);
-  // Local state
-  const [completeCourseInfo, setCompleteCourseInfo] = useState([]);
+
+  // Local state - simplified
   const [isLoading, setIsLoading] = useState(true);
 
-  // Unified course data hook
+  // Unified course data hook - this is now our single source of truth
   const {
     initializeSemester: initializeUnifiedSemester,
-    updateAvailableCourses: updateUnifiedAvailableCourses,
-    updateSelectedCourses: updateUnifiedSelectedCourses,
     updateFilteredCourses: updateUnifiedFilteredCourses,
   } = useUnifiedCourseData();
 
-  // Individual data hooks
-  const studyPlanData = useStudyPlanData({
-    authToken,
-    selectedSemesterState,
-    index,
-  });
+  // Individual data hooks - these now update unified data directly
   const { isEnrolledCoursesLoading } = useEnrolledCoursesData({
     authToken,
-    selectedSemesterState,
-    index,
+    selectedSemester,
   });
+
   const { isCourseDataLoading } = useCourseInfoData({
     authToken,
-    cisId,
-    index,
-    selectedSemesterState,
+    selectedSemester,
   });
+
+  const { isStudyPlanLoading } = useStudyPlanDataSimplified({
+    authToken,
+    selectedSemester,
+  });
+
   const { isCourseRatingsLoading } = useCourseRatingsData({ authToken });
 
   // Initialize unified semester data for the current semester
   useEffect(() => {
-    if (selectedSemesterState?.shortName) {
+    if (selectedSemester?.shortName) {
       console.log(
-        `🔄 Initializing unified semester data for: ${selectedSemesterState.shortName}`
+        `🔄 [SIMPLIFIED] Initializing unified semester data for: ${selectedSemester.shortName}`
       );
 
-      // Check if we have cisId from props
-      if (cisId) {
-        // Initialize with cisId and future semester status
-        initializeUnifiedSemester(selectedSemesterState.shortName, {
-          cisId: cisId,
-          // For future semesters, the cisId will be from the reference semester
-          isFutureSemester: selectedSemesterState.isFutureSemester || false,
-          referenceSemester: selectedSemesterState.referenceSemester || null,
-        });
-      } else {
-        // Regular initialization
-        initializeUnifiedSemester(selectedSemesterState.shortName);
-      }
+      // Initialize with all metadata from termListObject
+      initializeUnifiedSemester(selectedSemester.shortName, {
+        cisId: selectedSemester.cisId,
+        isCurrent: selectedSemester.isCurrent,
+        isProjected: selectedSemester.isProjected,
+        isFutureSemester: selectedSemester.isProjected, // isProjected implies future semester
+        referenceSemester: selectedSemester.isProjected
+          ? // For projected semesters, we'll need to determine reference semester
+            // This can be done by finding the latest valid term from unified state
+            null
+          : null,
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    selectedSemesterState?.shortName,
-    cisId,
-    // Use optional chaining for these properties as they might not exist
-    selectedSemesterState?.isFutureSemester,
-    selectedSemesterState?.referenceSemester,
+    selectedSemester?.shortName,
+    selectedSemester?.cisId,
+    selectedSemester?.isCurrent,
+    selectedSemester?.isProjected,
   ]);
 
-  // Update completeCourseInfo when allCourseInfo changes
+  // Update filtered courses when selection options or selected courses change
+  // AND when available courses are loaded
   useEffect(() => {
-    if (allCourseInfo && allCourseInfo[index]) {
-      if (allCourseInfo[index].length > 0) {
-        console.log(
-          `📊 Updating complete course info for index ${index}: ${allCourseInfo[index].length} courses`
-        );
-        setCompleteCourseInfo(allCourseInfo[index]);
-      }
-    }
-  }, [allCourseInfo, index]);
-  // Integrate unified filtered courses system alongside legacy system
-  useEffect(() => {
-    // Only run if we have the necessary data
-    if (selectedSemesterState?.shortName && completeCourseInfo?.length > 0) {
-      try {
-        console.log(
-          `🔄 Updating unified course data for ${selectedSemesterState.shortName}`
-        );
+    if (selectedSemester?.shortName) {
+      console.log(
+        `🔄 [SIMPLIFIED] Updating filtered courses for ${selectedSemester.shortName}`
+      );
+      console.log(
+        `🔍 [DEBUG] selectedCourseIds in useEventListDataManager:`,
+        selectedCourseIds
+      );
 
-        // Initialize the semester if needed
-        initializeUnifiedSemester(selectedSemesterState.shortName);
-
-        // Update available courses first (these are the courses to be filtered)
-        updateUnifiedAvailableCourses(
-          selectedSemesterState.shortName,
-          completeCourseInfo
-        );
-
-        // Update filtered courses using the selection options and selected course IDs
-        updateUnifiedFilteredCourses(
-          selectedSemesterState.shortName,
-          selectionOptions,
-          selectedCourseIds || []
-        );
-
-        console.log(
-          `✅ Updated unified filtered courses for ${selectedSemesterState.shortName}`
-        );
-      } catch (error) {
-        console.error("❌ Error updating unified filtered courses:", error);
-      }
+      // Update filtered courses using unified system
+      // Pass empty objects as defaults to ensure filtering happens even without selection options
+      updateUnifiedFilteredCourses(
+        selectedSemester.shortName,
+        selectionOptions || {},
+        selectedCourseIds || []
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    selectedSemesterState?.shortName,
-    completeCourseInfo,
+    selectedSemester?.shortName,
     selectionOptions,
     selectedCourseIds,
+    isCourseDataLoading, // Re-run when course data finishes loading
+    isStudyPlanLoading, // Re-run when study plan finishes loading
   ]);
 
-  // Sync localSelectedCoursesSemKey changes to unified course data system
+  // Specific effect to update filtered courses when data loading completes
   useEffect(() => {
-    if (selectedSemesterState?.shortName && localSelectedCoursesSemKey) {
-      const semesterKey = selectedSemesterState.shortName;
-      const selectedCoursesForSemester = localSelectedCoursesSemKey[semesterKey] || [];
-      
+    if (
+      selectedSemester?.shortName &&
+      !isCourseDataLoading &&
+      !isEnrolledCoursesLoading &&
+      !isStudyPlanLoading
+    ) {
       console.log(
-        `🔄 Syncing selected courses for ${semesterKey}: ${selectedCoursesForSemester.length} courses`
+        `🔄 [SIMPLIFIED] Data loading complete - refreshing filtered courses for ${selectedSemester.shortName}`
       );
-      
-      // Update the unified selected courses
-      updateUnifiedSelectedCourses(semesterKey, selectedCoursesForSemester);
+
+      // Force update filtered courses after all data is loaded
+      updateUnifiedFilteredCourses(
+        selectedSemester.shortName,
+        selectionOptions || {},
+        selectedCourseIds || []
+      );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSemesterState?.shortName, localSelectedCoursesSemKey]);
+  }, [
+    selectedSemester?.shortName,
+    isCourseDataLoading,
+    isEnrolledCoursesLoading,
+    isStudyPlanLoading,
+  ]);
 
   // Update overall loading state
   useEffect(() => {
     const newIsLoading =
-      isEnrolledCoursesLoading || isCourseDataLoading || isCourseRatingsLoading;
+      isEnrolledCoursesLoading ||
+      isCourseDataLoading ||
+      isStudyPlanLoading ||
+      isCourseRatingsLoading;
 
     if (newIsLoading !== isLoading) {
       console.log(
-        `⏳ Overall loading state changed: ${
+        `⏳ [SIMPLIFIED] Overall loading state changed: ${
           newIsLoading ? "Loading..." : "Complete"
         }`
       );
@@ -198,24 +171,19 @@ export const useEventListDataManager = ({
   }, [
     isEnrolledCoursesLoading,
     isCourseDataLoading,
+    isStudyPlanLoading,
     isCourseRatingsLoading,
     isLoading,
   ]);
-  return {
-    // Data states
-    completeCourseInfo,
-    // NOTE: filteredCourses now comes directly from courseSelectors in components
 
-    // Loading states
+  return {
+    // Simplified return - only essential loading state
+    // Course data now comes directly from unified selectors in components
     isLoading,
     isEnrolledCoursesLoading,
     isCourseDataLoading,
+    isStudyPlanLoading,
     isCourseRatingsLoading,
-
-    // Study plan data
-    currentStudyPlan: studyPlanData.currentStudyPlan,
-    hasSetLocalSelectedCourses: studyPlanData.hasSetLocalSelectedCourses,
-    setHasSetLocalSelectedCourses: studyPlanData.setHasSetLocalSelectedCourses,
   };
 };
 

@@ -2,6 +2,8 @@ import { useRecoilValue } from "recoil";
 import { useState } from "react";
 import Select from "react-select";
 import { useTermSelection } from "../../helpers/useTermSelection";
+import { useUnifiedSemesterState } from "../../helpers/useUnifiedSemesterState";
+import { selectedSemesterSelector } from "../../recoil/unifiedCourseDataSelectors";
 import { SelectClassification } from "./SelectClassification";
 import { SelectEcts } from "./SelectEcts";
 import { SelectLanguage } from "./SelectLanguage";
@@ -10,20 +12,16 @@ import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
-import { isFutureSemesterSelected } from "../../recoil/isFutureSemesterSelected";
 
 export default function SelectSemester() {
-  // Get all term selection logic from our custom hook
-  const {
-    isLoading,
-    selectedSem,
-    latestValidTerm,
-    sortedTermShortNames,
-    handleTermSelect,
-    termIdList,
-  } = useTermSelection();
+  // SIMPLIFIED: Get termListObject from new useTermSelection hook
+  const { isLoading, termListObject } = useTermSelection();
 
-  const isFutureSemester = useRecoilValue(isFutureSemesterSelected);
+  // Get current selected semester from unified state
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
+
+  // Unified semester state hook for setting selected semester
+  const { setSelectedSemester } = useUnifiedSemesterState();
 
   // UI state
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -32,22 +30,25 @@ export default function SelectSemester() {
     setIsCollapsed((prev) => !prev);
   };
 
-  // Determine the selected semester ID for the event list container
-  const selectedSemId = (() => {
-    if (!selectedSem || selectedSem === "loading semester data...") return null;
+  // Handle semester selection - SIMPLIFIED
+  const handleTermSelect = (selectedShortName) => {
+    // Update unified state with the new selected semester
+    // termListObject contains latestValidTerm info, so we can pass it
+    const latestValidTerm =
+      termListObject?.find((term) => term.isCurrent)?.shortName ||
+      termListObject?.[0]?.shortName;
+    setSelectedSemester(selectedShortName, termListObject, latestValidTerm);
+  };
 
-    const matchingTerms =
-      termIdList?.filter((term) => term.shortName === selectedSem) || [];
+  // Check if selected semester is projected (future)
+  const selectedSemesterData = termListObject?.find(
+    (term) => term.shortName === selectedSemesterShortName
+  );
+  const isFutureSemester = selectedSemesterData?.isProjected || false;
 
-    if (matchingTerms.length > 1) {
-      if (selectedSem === latestValidTerm) {
-        const validTerm = matchingTerms.find((term) => term.isCurrent);
-        if (validTerm) return validTerm;
-      }
-    }
-
-    return matchingTerms[0] || null;
-  })();
+  // SIMPLIFIED: Create sorted term names from termListObject
+  const sortedTermShortNames =
+    termListObject?.map((term) => term.shortName) || [];
 
   // Handle loading state with skeleton UI
   if (isLoading) {
@@ -73,7 +74,10 @@ export default function SelectSemester() {
         className="text-sm"
         name="semester"
         id="semester"
-        value={{ value: selectedSem, label: selectedSem }}
+        value={{
+          value: selectedSemesterShortName || "",
+          label: selectedSemesterShortName || "Select Semester",
+        }}
         onChange={(option) => handleTermSelect(option.value)}
         options={sortedTermShortNames.map((term) => ({
           value: term,
@@ -118,7 +122,11 @@ export default function SelectSemester() {
       )}
 
       <ErrorBoundary>
-        <EventListContainer selectedSemesterState={selectedSemId} />
+        {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
+        <EventListContainer
+          termListObject={termListObject || []}
+          selectedSemesterShortName={selectedSemesterShortName || ""}
+        />
       </ErrorBoundary>
     </>
   );

@@ -13,10 +13,12 @@ import { atom } from "recoil";
  *       selected: [], // Courses the user has selected/wishlisted
  *       filtered: [], // Filtered courses based on current filter criteria
  *       ratings: {}, // Course ratings by courseNumber
- *       lastFetched: null // When this data was last fetched
+ *       lastFetched: null, // When this data was last fetched
  *       isFutureSemester: false, // Whether semester is in the future
  *       referenceSemester: null, // Reference semester for future projections
- *       cisId: null // CIS ID for the semester
+ *       cisId: null, // CIS ID for the semester
+ *       isCurrent: false, // Whether this semester is marked as current by API
+ *       isProjected: false // Whether this is a projected future semester
  *     },
  *     "FS25": { ... },
  *     // etc.
