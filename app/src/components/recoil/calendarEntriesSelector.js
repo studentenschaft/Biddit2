@@ -65,11 +65,13 @@ export const calendarEntriesSelector = selector({
     try {
       // Get courses from unified system for current semester
       // Get available courses that have been filtered (includes selected/enrolled flags)
-      const filteredCourses = get(semesterCoursesSelector({
-        semester: semShortName,
-        type: "filtered"
-      }));
-      
+      const filteredCourses = get(
+        semesterCoursesSelector({
+          semester: semShortName,
+          type: "filtered",
+        })
+      );
+
       if (filteredCourses && filteredCourses.length > 0) {
         // Filter for enrolled or selected courses from unified system
         currentCourses = filteredCourses.filter(

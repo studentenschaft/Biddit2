@@ -11,7 +11,7 @@ import { useUnifiedCourseData } from "./useUnifiedCourseData";
 // Helper function to normalize credits from API format to display format
 const normalizeCredits = (credits) => {
   if (!credits) return 4; // Default to 4 ECTS
-  if (typeof credits === 'number' && credits > 99) {
+  if (typeof credits === "number" && credits > 99) {
     return credits / 100; // Convert 400 -> 4, 200 -> 2, etc.
   }
   return credits;
@@ -21,7 +21,7 @@ const normalizeCredits = (credits) => {
  * Shared hook for adding or removing a course in local and backend states.
  * Handles bidirectional synchronization between EventListContainer and StudyOverview/Transcript.
  * UPDATED: Now works with unified course data system
- * 
+ *
  * @param {Object} props - an object containing:
  *   selectedCourseIds: the array of currently selected course IDs (in local state)
  *   setSelectedCourseIds: the setter for selectedCourseIds (optional - can be null)
@@ -58,7 +58,6 @@ export function useCourseSelection({
       console.error("No auth token available");
       return;
     }
-
 
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {
@@ -150,7 +149,8 @@ export function useCourseSelection({
         selectedCourseIds.includes(course.courses?.[0]?.courseNumber);
 
       // Extract the correct course number for API calls
-      const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+      const courseNumber =
+        course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
       // Use selectedSemesterShortName as studyPlanId
       const studyPlanId = selectedSemesterShortName;
 
@@ -167,8 +167,10 @@ export function useCourseSelection({
 
         // Delete from backend using correct parameters
         await deleteCourse(studyPlanId, courseNumber, authToken);
-        console.log(`Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`);
-        
+        console.log(
+          `Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
+        );
+
         // Übergangslösung: To ensure old id-based courses get removed as well
         if (course.id && course.id !== courseNumber) {
           await deleteCourse(studyPlanId, course.id, authToken);
@@ -185,7 +187,9 @@ export function useCourseSelection({
 
         // Save to backend using correct parameters
         await saveCourse(studyPlanId, courseNumber, authToken);
-        console.log(`Course ${courseNumber} saved to backend (studyPlan: ${studyPlanId})`);
+        console.log(
+          `Course ${courseNumber} saved to backend (studyPlan: ${studyPlanId})`
+        );
       }
     } catch (error) {
       console.error("Error updating course:", error);

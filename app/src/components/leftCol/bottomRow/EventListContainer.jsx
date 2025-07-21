@@ -30,7 +30,10 @@ import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
 
 // Unified course selectors - PRIMARY DATA SOURCE
-import { semesterCoursesSelector, selectedCoursesSelector } from "../../recoil/unifiedCourseDataSelectors";
+import {
+  semesterCoursesSelector,
+  selectedCoursesSelector,
+} from "../../recoil/unifiedCourseDataSelectors";
 
 // Icons
 import { PlusIcon } from "@heroicons/react/outline";
@@ -71,9 +74,8 @@ export default function EventListContainer({
   );
 
   // Get selected course IDs from unified state
-  const selectedCourseIds = useRecoilValue(
-    selectedCoursesSelector(selectedSemesterShortName)
-  ) || [];
+  const selectedCourseIds =
+    useRecoilValue(selectedCoursesSelector(selectedSemesterShortName)) || [];
 
   // Use simplified data manager
   const { isLoading } = useEventListDataManager(

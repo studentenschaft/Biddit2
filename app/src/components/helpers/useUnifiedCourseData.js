@@ -208,17 +208,19 @@ export function useUnifiedCourseData() {
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
       // Extract course IDs from enrolled courses
-      const enrolledIds = courses.map((course) => {
-        // Use course.courses[0].courseNumber as primary identifier
-        return (
-          course.courses?.[0]?.courseNumber ||
-          course.eventCourseNumber ||
-          course.courseNumber ||
-          course.id ||
-          course.number ||
-          course._id
-        );
-      }).filter(Boolean); // Remove any undefined/null values
+      const enrolledIds = courses
+        .map((course) => {
+          // Use course.courses[0].courseNumber as primary identifier
+          return (
+            course.courses?.[0]?.courseNumber ||
+            course.eventCourseNumber ||
+            course.courseNumber ||
+            course.id ||
+            course.number ||
+            course._id
+          );
+        })
+        .filter(Boolean); // Remove any undefined/null values
 
       const newData = {
         ...cleanPrev,
@@ -313,8 +315,8 @@ export function useUnifiedCourseData() {
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
       // Ensure courseIds is an array and filter out falsy values
-      const selectedIds = Array.isArray(courseIds) 
-        ? courseIds.filter(Boolean) 
+      const selectedIds = Array.isArray(courseIds)
+        ? courseIds.filter(Boolean)
         : [];
 
       const newData = {
@@ -362,11 +364,12 @@ export function useUnifiedCourseData() {
         cleanPrev.semesters[semesterShortName]?.selectedIds || [];
 
       // Extract course ID from the course object
-      const courseId = course.courses?.[0]?.courseNumber || 
-                       course.courseNumber || 
-                       course.id || 
-                       course.number || 
-                       course._id;
+      const courseId =
+        course.courses?.[0]?.courseNumber ||
+        course.courseNumber ||
+        course.id ||
+        course.number ||
+        course._id;
 
       if (!courseId) {
         console.warn("No valid course ID found for course:", course);
@@ -385,15 +388,18 @@ export function useUnifiedCourseData() {
       const newSelectedIds = [...currentSelectedIds, courseId];
 
       // Update the filtered courses immediately to reflect the new selection and re-sort
-      const updatedFilteredCourses = (existingSemester.filtered || []).map(filteredCourse => {
-        const filteredCourseId = filteredCourse.courses?.[0]?.courseNumber || 
-                                 filteredCourse.courseNumber || 
-                                 filteredCourse.id;
-        if (filteredCourseId === courseId) {
-          return { ...filteredCourse, selected: true };
+      const updatedFilteredCourses = (existingSemester.filtered || []).map(
+        (filteredCourse) => {
+          const filteredCourseId =
+            filteredCourse.courses?.[0]?.courseNumber ||
+            filteredCourse.courseNumber ||
+            filteredCourse.id;
+          if (filteredCourseId === courseId) {
+            return { ...filteredCourse, selected: true };
+          }
+          return filteredCourse;
         }
-        return filteredCourse;
-      });
+      );
 
       // Re-sort courses: enrolled first, then selected, then everything else
       const sortedFilteredCourses = updatedFilteredCourses.sort((a, b) => {
@@ -453,18 +459,21 @@ export function useUnifiedCourseData() {
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
-      const newSelectedIds = currentSelectedIds.filter(id => id !== courseId);
+      const newSelectedIds = currentSelectedIds.filter((id) => id !== courseId);
 
       // Update the filtered courses immediately to reflect the removed selection and re-sort
-      const updatedFilteredCourses = (existingSemester.filtered || []).map(filteredCourse => {
-        const filteredCourseId = filteredCourse.courses?.[0]?.courseNumber || 
-                                 filteredCourse.courseNumber || 
-                                 filteredCourse.id;
-        if (filteredCourseId === courseId) {
-          return { ...filteredCourse, selected: false };
+      const updatedFilteredCourses = (existingSemester.filtered || []).map(
+        (filteredCourse) => {
+          const filteredCourseId =
+            filteredCourse.courses?.[0]?.courseNumber ||
+            filteredCourse.courseNumber ||
+            filteredCourse.id;
+          if (filteredCourseId === courseId) {
+            return { ...filteredCourse, selected: false };
+          }
+          return filteredCourse;
         }
-        return filteredCourse;
-      });
+      );
 
       // Re-sort courses: enrolled first, then selected, then everything else
       const sortedFilteredCourses = updatedFilteredCourses.sort((a, b) => {
@@ -706,8 +715,10 @@ export function useUnifiedCourseData() {
       const selectedIds = semesterData.selectedIds || [];
 
       console.log(
-        `🔍 [FILTERING] Using enrolled IDs (${enrolledIds.length}):`, enrolledIds.slice(0, 5),
-        `and selected IDs (${selectedIds.length}):`, selectedIds.slice(0, 5)
+        `🔍 [FILTERING] Using enrolled IDs (${enrolledIds.length}):`,
+        enrolledIds.slice(0, 5),
+        `and selected IDs (${selectedIds.length}):`,
+        selectedIds.slice(0, 5)
       );
 
       const coursesWithRatings = filtered.map((course) => {
@@ -751,7 +762,8 @@ export function useUnifiedCourseData() {
         }
 
         // Check if this course is enrolled using enrolledIds
-        const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+        const courseNumber =
+          course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
         const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
 
         // Check if this course is selected using selectedIds
@@ -915,11 +927,16 @@ export function useUnifiedCourseData() {
             }
 
             // Check if this course is enrolled using enrolledIds
-            const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
-            const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
+            const courseNumber =
+              course.courses?.[0]?.courseNumber ||
+              course.courseNumber ||
+              course.id;
+            const isEnrolled =
+              courseNumber && enrolledIds.includes(courseNumber);
 
             // Check if this course is selected using selectedIds
-            const isSelected = courseNumber && selectedIds.includes(courseNumber);
+            const isSelected =
+              courseNumber && selectedIds.includes(courseNumber);
 
             return {
               ...course,
