@@ -12,6 +12,7 @@ import { atom } from "recoil";
  *       available: [], // All available courses for this semester
  *       selected: [], // Courses the user has selected/wishlisted
  *       filtered: [], // Filtered courses based on current filter criteria
+ *       studyPlan: [], // Raw study plan data from SHSG API for this semester
  *       ratings: {}, // Course ratings by courseNumber
  *       lastFetched: null, // When this data was last fetched
  *       isFutureSemester: false, // Whether semester is in the future

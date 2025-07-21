@@ -1,5 +1,6 @@
 /**
- * useStudyPlanDataSimplified Hook - SIMPLIFIED VERSION
+ * useStudyPlanDataSi/**
+ * Simplified hook for managing study plan dataPLIFIED VERSION
  *
  * Manages study plan fetching and updates selected courses in unified data.
  * This simplified version removes legacy atom dependencies and focuses only on unified course data.
@@ -26,21 +27,6 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
  * Find study plan by semester ID
- * @param {Array} studyPlansArray - Array of study plans
- * @param {string} semesterId - Semester ID to search for
- * @returns {Object|null} - Found study plan or null
- */
-const findStudyPlanBySemesterId = (studyPlansArray, semesterId) => {
-  if (!studyPlansArray || !semesterId) return null;
-
-  for (const studyPlan of studyPlansArray) {
-    if (studyPlan.id === semesterId) {
-      return studyPlan;
-    }
-  }
-  return null;
-};
-
 /**
  * Simplified hook for managing study plan data
  *
@@ -52,7 +38,7 @@ const findStudyPlanBySemesterId = (studyPlansArray, semesterId) => {
  */
 export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
   // Unified course data hook - no more legacy atoms
-  const { updateSelectedCourses: updateUnifiedSelectedCourses } =
+  const { updateSelectedCourses: updateUnifiedSelectedCourses, updateStudyPlan } =
     useUnifiedCourseData();
 
   // Set selected course IDs for the EventListContainer to use
@@ -89,86 +75,26 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
         const studyPlansData = response.data;
 
         console.log("🔍 [DEBUG] Study plans raw data:", studyPlansData);
+        console.log(`🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`);
 
-        // Convert the object into an array of study plan objects
-        const studyPlansArray = Object.keys(studyPlansData).map((key) => ({
-          id: key,
-          courses: studyPlansData[key],
-        }));
+        // Get courses directly for the current semester using shortName (e.g., "HS25", "FS26")
+        const currentSemesterCourses = studyPlansData[selectedSemester.shortName] || [];
+        
+        console.log(`🔍 [DEBUG] Found ${currentSemesterCourses.length} courses for ${selectedSemester.shortName}:`, currentSemesterCourses);
 
-        console.log(
-          `✅ [SIMPLIFIED] Successfully fetched ${studyPlansArray.length} study plans`
-        );
-        console.log("🔍 [DEBUG] Study plans array:", studyPlansArray);
-
-        // Find study plan for current semester
-        const currentStudyPlan = findStudyPlanBySemesterId(
-          studyPlansArray,
-          selectedSemester.id
-        );
-
-        console.log("🔍 [DEBUG] Current study plan:", currentStudyPlan);
-
-        if (currentStudyPlan && currentStudyPlan.courses) {
+        if (currentSemesterCourses.length > 0) {
           console.log(
-            `✅ [SIMPLIFIED] Found study plan for ${selectedSemester.shortName} with ${currentStudyPlan.courses.length} selected courses`
-          );
-          console.log(
-            "🔍 [DEBUG] Study plan courses structure:",
-            currentStudyPlan.courses
+            `✅ [SIMPLIFIED] Found study plan for ${selectedSemester.shortName} with ${currentSemesterCourses.length} selected courses`
           );
 
-          // Try different ways to extract course numbers
-          let extractedCourseNumbers = [];
+          // The course numbers are already in the correct format (strings like "7,048,1.00")
+          const extractedCourseNumbers = currentSemesterCourses;
 
-          // Method 1: Direct courseNumber property
-          const method1 = currentStudyPlan.courses
-            .map((course) => course.courseNumber)
-            .filter(Boolean);
-          console.log("🔍 [DEBUG] Method 1 - Direct courseNumber:", method1);
-
-          // Method 2: Nested courses.courseNumber
-          const method2 = currentStudyPlan.courses
-            .map((course) => course.courses?.courseNumber)
-            .filter(Boolean);
-          console.log("🔍 [DEBUG] Method 2 - courses.courseNumber:", method2);
-
-          // Method 3: Nested courses array with courseNumber
-          const method3 = currentStudyPlan.courses
-            .flatMap((course) => course.courses || [])
-            .map((nestedCourse) => nestedCourse.courseNumber)
-            .filter(Boolean);
-          console.log(
-            "🔍 [DEBUG] Method 3 - Flattened courses.courseNumber:",
-            method3
-          );
-
-          // Method 4: Just use the course objects as they are
-          console.log(
-            "🔍 [DEBUG] Method 4 - Raw course objects:",
-            currentStudyPlan.courses
-          );
-
-          // Use the method that gives us results
-          if (method1.length > 0) {
-            extractedCourseNumbers = method1;
-            console.log("✅ [DEBUG] Using Method 1:", extractedCourseNumbers);
-          } else if (method2.length > 0) {
-            extractedCourseNumbers = method2;
-            console.log("✅ [DEBUG] Using Method 2:", extractedCourseNumbers);
-          } else if (method3.length > 0) {
-            extractedCourseNumbers = method3;
-            console.log("✅ [DEBUG] Using Method 3:", extractedCourseNumbers);
-          } else {
-            // Fallback: use the raw courses array and let the unified data handler figure it out
-            extractedCourseNumbers = currentStudyPlan.courses;
-            console.log(
-              "✅ [DEBUG] Using Method 4 (raw objects):",
-              extractedCourseNumbers
-            );
-          }
-
-          // Update ONLY unified selected courses (no more legacy atoms)
+          // Update BOTH the study plan raw data AND the unified selected courses
+          // Store raw study plan data for filtering logic (these are the string course numbers)
+          updateStudyPlan(selectedSemester.shortName, currentSemesterCourses);
+          
+          // Update unified selected courses (legacy selected field)
           updateUnifiedSelectedCourses(
             selectedSemester.shortName,
             extractedCourseNumbers
@@ -185,14 +111,16 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
             `⚠️ [SIMPLIFIED] No study plan found for semester ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
           );
 
-          // Initialize with empty selected courses
+          // Initialize with empty study plan and selected courses
+          updateStudyPlan(selectedSemester.shortName, []);
           updateUnifiedSelectedCourses(selectedSemester.shortName, []);
         }
       } catch (error) {
         console.error("❌ Error fetching study plan:", error);
         errorHandlingService.handleError(error);
 
-        // Initialize with empty selected courses on error
+        // Initialize with empty study plan and selected courses on error
+        updateStudyPlan(selectedSemester.shortName, []);
         updateUnifiedSelectedCourses(selectedSemester.shortName, []);
       } finally {
         setIsStudyPlanLoading(false);

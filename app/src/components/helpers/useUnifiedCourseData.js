@@ -13,6 +13,7 @@ const DEFAULT_SEMESTER_STRUCTURE = {
   available: [],
   selected: [],
   filtered: [],
+  studyPlan: [], // Study plan courses for this semester
   ratings: {},
   lastFetched: null,
   isFutureSemester: false,
@@ -297,6 +298,47 @@ export function useUnifiedCourseData() {
   };
 
   /**
+   * Update study plan courses for a semester
+   */
+  const updateStudyPlan = (semesterShortName, studyPlanCourses) => {
+    // Only initialize if semester doesn't exist
+    if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
+      initializeSemester(semesterShortName);
+    }
+
+    setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+      };
+
+      // Ensure the semester exists in the structure
+      const existingSemester =
+        cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
+
+      const newData = {
+        ...cleanPrev,
+        semesters: {
+          ...cleanPrev.semesters,
+          [semesterShortName]: {
+            ...existingSemester,
+            studyPlan: studyPlanCourses,
+            lastFetched: new Date().toISOString(),
+          },
+        },
+      };
+
+      console.log(
+        `✅ Updated study plan for ${semesterShortName}:`,
+        newData.semesters[semesterShortName].studyPlan
+      );
+      return newData;
+    });
+  };
+
+  /**
    * Update course ratings for a semester
    */
   const updateCourseRatings = (semesterShortName, ratings) => {
@@ -401,8 +443,7 @@ export function useUnifiedCourseData() {
    */
   const updateFilteredCourses = (
     semesterShortName,
-    filterOptions = {},
-    selectedCourseIds = []
+    filterOptions = {}
   ) => {
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
@@ -453,12 +494,29 @@ export function useUnifiedCourseData() {
       const ratingsMap = semesterData.ratings || {};
       const enrolledCourses = semesterData.enrolled || [];
       const selectedCourses = semesterData.selected || [];
+      
+      // Get study plan course numbers directly from semester data
+      const studyPlanData = semesterData.studyPlan || [];
+      console.log(`🔍 [DEBUG] Raw study plan data:`, studyPlanData);
+      
+      // Extract course numbers from study plan data
+      // Study plan data can be either strings like "7,048,1.00" or objects with courseNumber property
+      const selectedCourseIds = studyPlanData.map(course => {
+        if (typeof course === 'string') {
+          return course; // Direct string like "7,048,1.00"
+        } else if (course.courseNumber) {
+          return course.courseNumber; // Object with courseNumber property
+        } else {
+          return course; // Fallback to course itself
+        }
+      }).filter(Boolean);
 
       console.log(`🔍 [DEBUG] Processing ${filtered.length} available courses`);
       console.log(`🔍 [DEBUG] Enrolled courses: ${enrolledCourses.length}`);
       console.log(`🔍 [DEBUG] Selected courses: ${selectedCourses.length}`);
+      console.log(`🔍 [DEBUG] Study plan data length: ${studyPlanData.length}`);
       console.log(
-        `🔍 [DEBUG] SelectedCourseIds: ${selectedCourseIds.length}`,
+        `🔍 [DEBUG] Study plan course numbers: ${selectedCourseIds.length}`,
         selectedCourseIds.slice(0, 5)
       );
 
@@ -480,13 +538,17 @@ export function useUnifiedCourseData() {
       // Show all study plan course numbers for debugging
       if (selectedCourseIds.length > 0) {
         console.log(
-          `🔍 [DEBUG] ALL study plan course numbers:`,
+          `✅ [DEBUG] ALL study plan course numbers from unified state:`,
           selectedCourseIds
         );
+        console.log(`🔍 [DEBUG] Study plan data types:`, selectedCourseIds.map(id => `"${id}" (${typeof id})`));
       } else {
         console.log(
-          `⚠️ [DEBUG] NO study plan course numbers found in selectedCourseIds!`
+          `⚠️ [DEBUG] NO study plan course numbers found in unified state!`
         );
+        console.log(`🔍 [DEBUG] Raw studyPlanData:`, studyPlanData);
+        console.log(`🔍 [DEBUG] Raw studyPlanData length:`, studyPlanData.length);
+        console.log(`🔍 [DEBUG] Raw studyPlanData content:`, JSON.stringify(studyPlanData, null, 2));
       }
 
       // Show first few available course numbers for comparison
@@ -563,40 +625,34 @@ export function useUnifiedCourseData() {
         const isSelected =
           courseNumber && selectedCourseIds.includes(courseNumber);
 
-        // Debug specific matches
-        if (courseNumber && selectedCourseIds.length > 0) {
-          const isMatch = selectedCourseIds.includes(courseNumber);
-          if (isMatch) {
-            console.log(
-              `✅ [DEBUG] MATCH FOUND: ${course.shortName} (${courseNumber}) is in study plan`
-            );
-          }
-          // Log first few to check logic
-          if (Math.random() < 0.05) {
-            // 5% sampling
-            console.log(
-              `🔍 [DEBUG] Check: "${courseNumber}" in [${selectedCourseIds
-                .slice(0, 3)
-                .join(", ")}...] = ${isMatch}`
-            );
-          }
-        }
-
-        // Enhanced debug logging for selection matching
+        // Enhanced debug logging for the first few courses to understand the data structure
         if (selectedCourseIds.length > 0 && course.courses?.[0]?.courseNumber) {
-          // Log every 10th course to avoid spam, or log if it's a match
-          if (Math.random() < 0.1 || isSelected) {
-            console.log(`🔍 [DEBUG] Selection check for ${course.shortName}:`);
+          // Show detailed comparison for first few courses
+          const courseIndex = filtered.indexOf(course);
+          if (courseIndex < 10) { // Only for first 10 courses to avoid spam
+            console.log(`🔍 [DEBUG] Course ${courseIndex + 1}: ${course.shortName}`);
+            console.log(`  - Available course number: "${course.courses[0].courseNumber}"`);
+            console.log(`  - Study plan course numbers: [${selectedCourseIds.map(id => `"${id}"`).join(", ")}]`);
+            console.log(`  - Is exact match: ${selectedCourseIds.includes(course.courses[0].courseNumber)}`);
+            console.log(`  - Final isSelected: ${isSelected}`);
+            
+            // Also try other potential matches
+            const altMatches = [
+              course.id,
+              course.courseNumber,
+              course.shortName,
+              course.title
+            ].filter(prop => prop && selectedCourseIds.includes(prop));
+            
+            if (altMatches.length > 0) {
+              console.log(`  - Alternative matches found: [${altMatches.join(", ")}]`);
+            }
+          }
+          
+          if (isSelected) {
             console.log(
-              `  - Available course number: "${course.courses[0].courseNumber}"`
+              `✅ [DEBUG] STUDY PLAN MATCH: ${course.shortName} (${courseNumber}) is in study plan`
             );
-            console.log(
-              `  - Study plan course numbers: [${selectedCourseIds
-                .slice(0, 3)
-                .map((id) => `"${id}"`)
-                .join(", ")}...]`
-            );
-            console.log(`  - Is match: ${isSelected}`);
           }
         }
 
@@ -729,32 +785,12 @@ export function useUnifiedCourseData() {
   };
 
   /**
-   * Helper function to sort and mark selected courses (same as in filteredCoursesSelector)
-   */
-  const sortAndMarkSelectedCourses = (courses, selectedCourseIds) => {
-    return courses.sort((a, b) => {
-      const aSelected =
-        selectedCourseIds.includes(a.id) ||
-        selectedCourseIds.includes(a.courseNumber) ||
-        selectedCourseIds.includes(a.courses?.[0]?.courseNumber);
-      const bSelected =
-        selectedCourseIds.includes(b.id) ||
-        selectedCourseIds.includes(b.courseNumber) ||
-        selectedCourseIds.includes(b.courses?.[0]?.courseNumber);
-
-      if (aSelected && !bSelected) return -1;
-      if (!aSelected && bSelected) return 1;
-      return 0;
-    });
-  };
-
-  /**
    * Update filtered courses for ALL semesters at once
    * Useful when filter criteria changes globally
+   * Now handles study plan data directly instead of using legacy selectedCourseIds atom
    */
   const updateFilteredCoursesForAllSemesters = (
-    filterOptions = {},
-    selectedCourseIds = []
+    filterOptions = {}
   ) => {
     setCourseData((prev) => {
       // Create a clean copy that only includes the properties we want
@@ -777,11 +813,61 @@ export function useUnifiedCourseData() {
             return applyFilterCriteria(course, filterOptions);
           });
 
-          // Sort and mark selected courses
-          const sortedFiltered = sortAndMarkSelectedCourses(
-            filtered,
-            selectedCourseIds
-          );
+          // Apply the same enrollment/selection logic as in updateFilteredCourses
+          const ratingsMap = semesterData.ratings || {};
+          const enrolledCourses = semesterData.enrolled || [];
+          const studyPlanCourses = semesterData.studyPlan || [];
+
+          const coursesWithStatus = filtered.map((course) => {
+            // Rating attachment logic (same as main function)
+            let rating = null;
+            if (ratingsMap[course.id]) {
+              rating = ratingsMap[course.id];
+            } else if (course.courseNumber && ratingsMap[course.courseNumber]) {
+              rating = ratingsMap[course.courseNumber];
+            } else if (
+              course.courses?.[0]?.courseNumber &&
+              ratingsMap[course.courses[0].courseNumber]
+            ) {
+              rating = ratingsMap[course.courses[0].courseNumber];
+            } else if (ratingsMap[course.shortName]) {
+              rating = ratingsMap[course.shortName];
+            }
+
+            // Enrollment check
+            const isEnrolled = enrolledCourses.some((enrolledCourse) => {
+              return enrolledCourse.eventCourseNumber === course.courses?.[0]?.courseNumber;
+            });
+
+            // Study plan selection check
+            const courseNumber = course.courses?.[0]?.courseNumber;
+            const isSelected = courseNumber && studyPlanCourses.some((studyPlanCourse) => {
+              return studyPlanCourse.courseNumber === courseNumber;
+            });
+
+            return {
+              ...course,
+              avgRating: rating || course.avgRating,
+              enrolled: isEnrolled,
+              selected: isSelected,
+            };
+          });
+
+          // Sort courses: enrolled first, then selected, then everything else
+          const sortedFiltered = coursesWithStatus.sort((a, b) => {
+            // Priority 1: Enrolled courses first
+            if (a.enrolled && !b.enrolled) return -1;
+            if (!a.enrolled && b.enrolled) return 1;
+
+            // Priority 2: Among non-enrolled, selected courses come first
+            if (!a.enrolled && !b.enrolled) {
+              if (a.selected && !b.selected) return -1;
+              if (!a.selected && b.selected) return 1;
+            }
+
+            // If same status, maintain original order
+            return 0;
+          });
 
           updatedSemesters[semesterShortName] = {
             ...semesterData,
@@ -844,6 +930,7 @@ export function useUnifiedCourseData() {
     updateSelectedCoursesForSemester: updateSelectedCourses, // Alias for consistency
     addSelectedCourse,
     removeSelectedCourse,
+    updateStudyPlan, // New function for study plan data
     updateCourseRatings,
     updateCourseRatingsForSemester: updateCourseRatings, // Alias for consistency
     updateCourseRatingsForAllSemesters, // New function for global ratings

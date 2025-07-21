@@ -18,9 +18,6 @@
  */
 
 import { useState, useEffect } from "react";
-import { useRecoilValue } from "recoil";
-import { selectionOptionsState } from "../recoil/selectionOptionsAtom";
-import { selectedCourseIdsAtom } from "../recoil/selectedCourseIdsAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { useEnrolledCoursesData } from "./useEnrolledCoursesData";
 import { useCourseInfoData } from "./useCourseInfoData";
@@ -30,16 +27,19 @@ import { useStudyPlanDataSimplified } from "./useStudyPlanDataSimplified";
 /**
  * Simplified hook for managing EventListContainer data
  *
- * @param {Object} params - Hook parameters
- * @param {string} params.authToken - Authentication token
- * @param {Object} params.selectedSemester - Current selected semester from termListObject
+ * @param {Object} selectedSemester - Current selected semester from termListObject
  *   Structure: {cisId, shortName, isCurrent, isProjected}
+ * @param {Object} selectionOptions - Selection options for filtering courses
+ * @param {string} authToken - Authentication token for API calls
  * @returns {Object} Simplified data states and loading status
  */
-export const useEventListDataManager = ({ authToken, selectedSemester }) => {
-  // Recoil state - simplified, only what's needed
-  const selectionOptions = useRecoilValue(selectionOptionsState);
-  const selectedCourseIds = useRecoilValue(selectedCourseIdsAtom);
+export function useEventListDataManager(
+  selectedSemester,
+  selectionOptions,
+  authToken
+) {
+  // Recoil state - simplified, only what's needed for filters
+  // selectionOptions is now passed as parameter
 
   // Local state - simplified
   const [isLoading, setIsLoading] = useState(true);
@@ -96,31 +96,25 @@ export const useEventListDataManager = ({ authToken, selectedSemester }) => {
     selectedSemester?.isProjected,
   ]);
 
-  // Update filtered courses when selection options or selected courses change
+  // Update filtered courses when selection options change
   // AND when available courses are loaded
   useEffect(() => {
     if (selectedSemester?.shortName) {
       console.log(
         `🔄 [SIMPLIFIED] Updating filtered courses for ${selectedSemester.shortName}`
       );
-      console.log(
-        `🔍 [DEBUG] selectedCourseIds in useEventListDataManager:`,
-        selectedCourseIds
-      );
 
       // Update filtered courses using unified system
       // Pass empty objects as defaults to ensure filtering happens even without selection options
       updateUnifiedFilteredCourses(
         selectedSemester.shortName,
-        selectionOptions || {},
-        selectedCourseIds || []
+        selectionOptions || {}
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedSemester?.shortName,
     selectionOptions,
-    selectedCourseIds,
     isCourseDataLoading, // Re-run when course data finishes loading
     isStudyPlanLoading, // Re-run when study plan finishes loading
   ]);
@@ -140,8 +134,7 @@ export const useEventListDataManager = ({ authToken, selectedSemester }) => {
       // Force update filtered courses after all data is loaded
       updateUnifiedFilteredCourses(
         selectedSemester.shortName,
-        selectionOptions || {},
-        selectedCourseIds || []
+        selectionOptions || {}
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -185,6 +178,6 @@ export const useEventListDataManager = ({ authToken, selectedSemester }) => {
     isStudyPlanLoading,
     isCourseRatingsLoading,
   };
-};
+}
 
 export default useEventListDataManager;

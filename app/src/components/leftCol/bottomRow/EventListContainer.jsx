@@ -20,6 +20,7 @@ import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Suspense } from "react";
 import { authTokenState } from "../../recoil/authAtom";
+import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
@@ -69,6 +70,7 @@ export default function EventListContainer({
 }) {
   // Simplified recoil state
   const authToken = useRecoilValue(authTokenState);
+  const selectionOptions = useRecoilValue(selectionOptionsState);
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
     selectedCourseIdsAtom
   );
@@ -84,10 +86,11 @@ export default function EventListContainer({
   );
 
   // Use simplified data manager
-  const { isLoading } = useEventListDataManager({
-    authToken,
+  const { isLoading } = useEventListDataManager(
     selectedSemester,
-  });
+    selectionOptions,
+    authToken
+  );
 
   // Get filtered courses directly from unified selectors
   const filteredCourses =
