@@ -14,7 +14,7 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
-import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
+import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
@@ -22,7 +22,7 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
-  const latestValidTerm = useRecoilValue(latestValidTermAtom);
+  const currentSemester = useRecoilValue(currentSemesterSelector);
   const [isLoading, setIsLoading] = React.useState(true);
   const [calendarKey, setCalendarKey] = React.useState(0);
   const calendarRef = React.useRef();
@@ -36,11 +36,14 @@ export default function Calendar() {
 
   console.log("Final Events:", finalEvents);
   console.log("Calender Entries selector:", calendarEntriesSelector);
-  console.log("Latest Valid Term:", latestValidTerm);
+  console.log("Current Semester:", currentSemester);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
+
+  // Show loading if currentSemester is not yet available
+  const shouldShowLoading = !currentSemester || isLoading;
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
@@ -86,7 +89,7 @@ export default function Calendar() {
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
     }
-  }, [finalEvents, latestValidTerm, isFutureSemesterSelectedState]);
+  }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -204,7 +207,7 @@ export default function Calendar() {
         </div>
       )}
 
-      {isLoading ? (
+      {shouldShowLoading ? (
         <div className="flex items-center justify-center h-full">
           <LoadingText>Loading calendar entries...</LoadingText>
         </div>

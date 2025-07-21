@@ -11,14 +11,14 @@ import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesS
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
-import { selectedCourseCourseInfo } from "../recoil/selectedCourseCourseInfo";
+import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 
 import { Heatmap } from "./Heatmap";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
 export default function SemesterSummary() {
-  const setSelectedCourse = useSetRecoilState(selectedCourseCourseInfo);
+  const { updateSelectedCourseInfo } = useUnifiedCourseData();
   const setSelectedTab = useSetRecoilState(selectedTabAtom);
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
@@ -26,9 +26,11 @@ export default function SemesterSummary() {
 
   // Use new unified course data system
   const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
-  
+
   // Also listen to direct local changes for immediate updates
-  const localSelectedCoursesSemKey = useRecoilValue(localSelectedCoursesSemKeyState);
+  const localSelectedCoursesSemKey = useRecoilValue(
+    localSelectedCoursesSemKeyState
+  );
 
   // Get enrolled courses from unified system
   const enrolledCourses = useRecoilValue(
@@ -45,7 +47,6 @@ export default function SemesterSummary() {
       type: "selected",
     })
   );
-
 
   // Get current courses using unified data
   const currCourses = useMemo(() => {
@@ -64,7 +65,12 @@ export default function SemesterSummary() {
     }
 
     return [];
-  }, [selectedSemesterState, enrolledCourses, selectedCourses, localSelectedCoursesSemKey]);
+  }, [
+    selectedSemesterState,
+    enrolledCourses,
+    selectedCourses,
+    localSelectedCoursesSemKey,
+  ]);
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
@@ -76,7 +82,7 @@ export default function SemesterSummary() {
 
   function courseSelector(fullEvent) {
     if (fullEvent) {
-      setSelectedCourse(fullEvent);
+      updateSelectedCourseInfo(fullEvent);
       setSelectedTab(0);
     }
   }

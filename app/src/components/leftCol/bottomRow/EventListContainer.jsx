@@ -28,6 +28,7 @@ import LoadingText from "../../common/LoadingText";
 // Simplified data management hooks
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
+import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 
 // Unified course selectors - PRIMARY DATA SOURCE
 import {
@@ -45,7 +46,6 @@ import { LockOpen } from "./LockOpen";
 
 // Recoil state
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
-import { selectedCourseCourseInfo } from "../../recoil/selectedCourseCourseInfo";
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
 // Helper function - moved here for simplicity
@@ -63,10 +63,10 @@ export default function EventListContainer({
   const authToken = useRecoilValue(authTokenState);
   const selectionOptions = useRecoilValue(selectionOptionsState);
   const [, setSelectedTabState] = useRecoilState(selectedTabAtom);
-  const [, setSelectedCourseCourseInfo] = useRecoilState(
-    selectedCourseCourseInfo
-  );
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
+
+  // Use unified course data for managing selected course info
+  const { updateSelectedCourseInfo } = useUnifiedCourseData();
 
   // Get selected semester object from termListObject
   const selectedSemester = termListObject?.find(
@@ -134,7 +134,7 @@ export default function EventListContainer({
         {/* Course Info */}
         <div
           onClick={() => {
-            setSelectedCourseCourseInfo(event);
+            updateSelectedCourseInfo(event);
             setSelectedTabState(0);
             setIsLeftViewVisibleState(false);
           }}

@@ -1,7 +1,5 @@
 import { useRecoilValue, useRecoilState } from "recoil";
-import { selectedCourseCourseInfo } from "../recoil/selectedCourseCourseInfo";
 import { ExternalLinkIcon } from "@heroicons/react/outline";
-import { cisIdListSelector } from "../recoil/cisIdListSelector";
 import { authTokenState } from "../recoil/authAtom";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -11,24 +9,23 @@ import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import SimilarCourses from "./SimilarCourses.jsx";
 
+// Unified course data
+import {
+  selectedCourseInfoSelector,
+  selectedCourseSemesterSelector,
+} from "../recoil/unifiedCourseDataSelectors";
+
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 export default function CourseInfo() {
-  const selectedCourse = useRecoilValue(selectedCourseCourseInfo);
-  const cisIdList = useRecoilValue(cisIdListSelector);
+  const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
+  const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
   const authToken = useRecoilValue(authTokenState);
   const [examinationIdState, setExaminationIdState] = useRecoilState(
     examinationTypesState
   );
   const [examInformationState, setExamInformation] = useState(null);
   const [containsCourseRatings, setContainsCourseRatings] = useState(false);
-
-  let semesterAbbreviation = null;
-  if (cisIdList && selectedCourse) {
-    semesterAbbreviation = cisIdList.find(
-      (item) => item.cisId === selectedCourse.semesterId
-    )?.shortName;
-  }
 
   // fetch achievement parts information (will be done every time a course is selected)
   async function fetchCourseInformation(selectedCourse, authToken) {

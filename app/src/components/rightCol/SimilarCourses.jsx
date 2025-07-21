@@ -1,66 +1,52 @@
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilValue } from "recoil";
 import { useState, useEffect, useRef } from "react";
 import PropTypes from "prop-types";
-import { semesterCoursesSelector } from "../recoil/courseSelectors";
-import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
-import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
+// Updated imports to use unified course data selectors
+import { 
+  availableCoursesSelector,
+  currentSemesterSelector,
+  selectedSemesterSelector,
+  semesterMetadataSelector
+} from "../recoil/unifiedCourseDataSelectors";
+import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
+// import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments"; // Keeping for potential fallback
 import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
-import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
-import {
-  isFutureSemesterSelected,
-  referenceSemester,
-} from "../recoil/isFutureSemesterSelected";
-// Import unified selectors for graceful transition
-import {
-  isFutureSemesterSelector,
-  referenceSemesterSelector,
-} from "../recoil/courseSelectors";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
-  const [, setScoreCardEnrollments] = useRecoilState(scorecardEnrollmentsState);
-
-  // Use new unified course data system
-  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
+  
+  // Use unified course data selectors instead of old atoms
+  const currentEnrollments = useRecoilValue(currentEnrollmentsState);
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
+  const currentSemesterShortName = useRecoilValue(currentSemesterSelector);
+  
+  // Get current semester courses and metadata
   const coursesCurrentSemester = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "available",
-    })
-  ); // TEMPORARILY DISABLED UNTIL STABLE
-  // eslint-disable-next-line no-unused-vars
+    availableCoursesSelector(currentSemesterShortName || selectedSemesterShortName)
+  );
+  const semesterMetadata = useRecoilValue(
+    semesterMetadataSelector(selectedSemesterShortName)
+  );
+  
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
-    useState([]);
+    useState([]); // Keep for potential future use when upsert is re-enabled
   const [similarCourses, setSimilarCourses] = useState([]);
-
-  // Try unified state first, fallback to legacy
-  const isFutureSemesterUnified = useRecoilValue(isFutureSemesterSelector);
-  const isFutureSemesterLegacy = useRecoilValue(isFutureSemesterSelected);
-  const isFutureSemesterSelectedSate =
-    isFutureSemesterUnified !== undefined
-      ? isFutureSemesterUnified
-      : isFutureSemesterLegacy;
-
-  // Try unified state first, fallback to legacy for reference semester
-  const referenceSemesterUnified = useRecoilValue(referenceSemesterSelector);
-  const referenceSemesterLegacy = useRecoilValue(referenceSemester);
-  const referenceSemesterState =
-    referenceSemesterUnified || referenceSemesterLegacy;
-
+  
+  // Use metadata from unified system instead of separate atoms
+  const isFutureSemesterSelectedState = semesterMetadata?.isFutureSemester || false;
+  const referenceSemesterState = semesterMetadata?.referenceSemester;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
 
   const [isLoading, setIsLoading] = useState(false);
-  // TEMPORARILY DISABLED UNTIL STABLE
-  // eslint-disable-next-line no-unused-vars
-  const [isLoadingLong, setIsLoadingLong] = useState(false);
+  const [isLoadingLong, setIsLoadingLong] = useState(false); // Keep for when upsert is re-enabled
 
   const [program, setProgram] = useState(null);
 
@@ -71,32 +57,18 @@ export default function SimilarCourses({ selectedCourse }) {
     programRef.current = program;
   }, [program]);
 
+  // Update program when current enrollments are available
   useEffect(() => {
-    if (authToken) {
-      const fetchEnrollments = async (retry = false) => {
-        try {
-          const data = await fetchScoreCardEnrollments(authToken);
-          setScoreCardEnrollments(data);
-          setProgram(data[0] ? data[0].description : null);
-        } catch (error) {
-          console.error("Error fetching scorecard enrollments:", error);
-          if (!retry) {
-            setTimeout(() => fetchEnrollments(true), 1000);
-          } else {
-            errorHandlingService.handleError(error);
-          }
-        }
-      };
-      fetchEnrollments();
+    if (currentEnrollments && currentEnrollments.length > 0) {
+      setProgram(currentEnrollments[0]?.description || null);
     }
-    //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken]);
+  }, [currentEnrollments]);
 
   // handle future semester selected
   // set true reference semester if future semester selected
   useEffect(() => {
     try {
-      if (isFutureSemesterSelectedSate) {
+      if (isFutureSemesterSelectedState) {
         setReferenceSemesterLocalState(referenceSemesterState?.shortName);
       } else {
         setReferenceSemesterLocalState(null);
@@ -108,26 +80,29 @@ export default function SimilarCourses({ selectedCourse }) {
       );
       errorHandlingService.handleError(error);
     }
-  }, [isFutureSemesterSelectedSate, referenceSemesterState]);
+  }, [isFutureSemesterSelectedState, referenceSemesterState]);
 
-  // Process course data for upsert
+  // set courses of current semester based on selected semester (use reference semester if future semester selected)
+  // Note: coursesCurrentSemester is now directly loaded from unified selector
+  // This effect is simplified since we get courses directly from availableCoursesSelector
+
   useEffect(() => {
     try {
       if (!coursesCurrentSemester) return;
       const relevantData = coursesCurrentSemester
         .map((course) => {
-          if (!course.courseNumber) {
-            console.warn("Missing course number for course:", course);
+          if (!course.courses[0]) {
+            console.warn("Missing course number for course:", course); // filter out missing courseNumbers, this was the case FS25 before bidding start
             return null;
           }
           return {
-            courseNumber: course.courseNumber,
+            courseNumber: course.courses[0].courseNumber,
             shortName: course.shortName,
             classification: course.classification,
             courseContent: course.courseContent,
           };
         })
-        .filter((course) => course !== null);
+        .filter((course) => course !== null); // filter out missing courseNumbers, this was the case FS25 before bidding start
       setRelevantCourseInfoForUpsert(relevantData);
     } catch (error) {
       console.error(
@@ -136,16 +111,10 @@ export default function SimilarCourses({ selectedCourse }) {
       );
       errorHandlingService.handleError(error);
     }
-  }, [coursesCurrentSemester]); // UPSERT FUNCTIONALITY DISABLED - NOT STABLE YET
-  // This feature is temporarily disabled until we have a stable version
-  // eslint-disable-next-line no-unused-vars
+  }, [coursesCurrentSemester]);
+  // DISABLED: Upsert mechanism commented out until tested by Quality Control
+  /*
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
-    console.log(
-      "Upsert functionality is currently disabled for stability reasons"
-    );
-    return; // Early return - function disabled
-
-    /* COMMENTED OUT UNTIL STABLE
     setIsLoadingLong(true);
 
     // might be better to clean up the course descriptions before upsert, database reset advised when applied (breaks filter out identical courses)
@@ -164,7 +133,7 @@ export default function SimilarCourses({ selectedCourse }) {
             courseNumber: course.courseNumber,
             semester: referenceSemesterLocalState
               ? referenceSemesterLocalState
-              : selectedSemesterState,
+              : selectedSemesterShortName,
             courseDescription: course.courseContent,
             category: course.classification,
             program: program,
@@ -180,8 +149,8 @@ export default function SimilarCourses({ selectedCourse }) {
       console.error("Error adding courses:", error);
       errorHandlingService.handleError(error);
     }
-    */
   }
+  */
   // if button is clicked, fetch similar courses
   async function fetchSimilarCourses(
     selectedCourse,
@@ -205,104 +174,82 @@ export default function SimilarCourses({ selectedCourse }) {
         //   .trim(); // Trim leading and trailing spaces
 
         const response = await axios.get(
-          "https://api.shsg.ch/similar-courses/query",
-          {
-            params: {
-              courseDescription: selectedCourse.courseContent,
-              numberOfResults: 10,
-              category: category,
-              program: programRef.current,
-              semester: referenceSemesterLocalState
-                ? referenceSemesterLocalState
-                : selectedSemesterState,
-            },
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
+      // // might be better to clean up the course descriptions before upsert, database reset advised when applied
+      // // Clean up the course description
+      // const cleanedCourseDescription = selectedCourse.courseContent
+      //   .replace(/<[^>]+>/g, "") // Remove HTML tags
+      //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
+      //   .trim(); // Trim leading and trailing spaces
 
-        setSimilarCourses(response.data);
-        console.log("Similar courses:", response.data);
-        setIsLoading(false); // UPSERT DISABLED - Show message instead of attempting upsert
-        if (
-          response.data.ids &&
-          response.data.ids[0] &&
-          response.data.ids[0].length === 0 &&
-          !attemptedUpsert
-        ) {
-          console.log(
-            "No similar courses found. Upsert functionality is currently disabled."
-          );
-          setSimilarCourses({
-            ids: [[]],
-            distances: [[]],
-            metadatas: [[]],
-            message:
-              "No similar courses found in database. Course embedding feature is temporarily disabled for stability.",
-          });
-          return;
+      const response = await axios.get(
+        "https://api.shsg.ch/similar-courses/query",
+        {
+          params: {
+            courseDescription: selectedCourse.courseContent,
+            numberOfResults: 10,
+            category: category,
+            program: currentProgram,
+            semester: referenceSemesterLocalState
+              ? referenceSemesterLocalState
+              : selectedSemesterShortName,
+          },
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
 
-          /* COMMENTED OUT UNTIL STABLE
+      setSimilarCourses(response.data);
+      console.log("Similar courses:", response.data);
+      setIsLoading(false);
+
+      // Only attempt upsert once to prevent infinite recursion
+      if (
+        response.data.ids &&
+        response.data.ids[0] &&
+        response.data.ids[0].length === 0 &&
+        !attemptedUpsert
+      ) {
+        // DISABLED: Upsert mechanism commented out until tested by Quality Control
+        console.log("No similar courses found - upsert mechanism disabled for quality control testing");
+        /*
+        setIsLoadingLong(true);
+        await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
+        setIsLoadingLong(false);
+        // Pass true to indicate we've already attempted an upsert
+        fetchSimilarCourses(selectedCourse, category, true);
+        */
+      }
+    } catch (error) {
+      console.error("Error querying database:", error);
+      if (error.response && error.response.status === 404) {
+        console.log("No courses found, attempting upsert");
+        if (!attemptedUpsert) {
+          // DISABLED: Upsert mechanism commented out until tested by Quality Control
+          console.log("Upsert mechanism disabled for quality control testing");
+          /*
           setIsLoadingLong(true);
           await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
           setIsLoadingLong(false);
-          // Pass true to indicate we've already attempted an upsert
           fetchSimilarCourses(selectedCourse, category, true);
           */
-        }
-      } catch (error) {
-        console.error("Error querying database:", error);
-        if (error.response && error.response.status === 404) {
-          console.log(
-            "No courses found (404 error). Upsert functionality is currently disabled."
-          );
-          if (!attemptedUpsert) {
-            setSimilarCourses({
-              ids: [[]],
-              distances: [[]],
-              metadatas: [[]],
-              message:
-                "No courses found in database. Course embedding feature is temporarily disabled for stability.",
-            });
-          } else {
-            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
-          }
-
-          /* COMMENTED OUT UNTIL STABLE
-          if (!attemptedUpsert) {
-            setIsLoadingLong(true);
-            await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-            setIsLoadingLong(false);
-            fetchSimilarCourses(selectedCourse, category, true);
-          } else {
-            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
-          }
-          */
+          // For now, just set empty results
+          setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
         } else {
-          errorHandlingService.handleError(error);
+          setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
         }
-        setIsLoading(false);
+      } else {
+        errorHandlingService.handleError(error);
       }
-    } else {
-      console.log("Program not yet loaded");
-      setTimeout(() => {
-        fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
-      }, 1000);
+      setIsLoading(false);
     }
-  }
-
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [creditsFilter, setCreditsFilter] = useState("all");
-  const filteredCourses = similarCourses.ids
-    ? similarCourses.ids[0].filter((id) => {
-        const course = coursesCurrentSemester.find(
-          (course) => course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+  }       (course) =>
+            course.courses[0].courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
 
         const categoryMatch =
-          categoryFilter === "all" || categoryFilter === course.classification;
+          categoryFilter === "all" || categoryFilter === course.classification; // Use local classification instead of API category
 
         const creditsMatch =
           creditsFilter === "all" ||
@@ -325,34 +272,52 @@ export default function SimilarCourses({ selectedCourse }) {
   const [lockedCourses, setLockedCourses] = useState([]);
   const [selectedCourses, setSelectedCourses] = useState([]);
   const [overlappingCourses, setOverlappingCourses] = useState([]);
+
   useEffect(() => {
+    //bugfix: 25.04.25 undefined is not an object (evaluating 'X.courses[0].courseNumber')
     if (!coursesCurrentSemester) return;
 
     const locked = coursesCurrentSemester
-      .filter((course) => course.enrolled && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter(
+        (course) =>
+          course.enrolled &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
+      .map((course) => course.courses[0].courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
-      .filter((course) => course.selected && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter(
+        (course) =>
+          course.selected &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
+      .map((course) => course.courses[0].courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
-      .filter((course) => course.overlapping && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter(
+        (course) =>
+          course.overlapping &&
+          course.courses?.length > 0 &&
+          course.courses[0]?.courseNumber
+      )
+      .map((course) => course.courses[0].courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
+
   function isLocked(course) {
-    return lockedCourses.includes(course.courseNumber);
+    return lockedCourses.includes(course.courses[0].courseNumber);
   }
 
   function isSelected(course) {
-    return selectedCourses.includes(course.courseNumber);
+    return selectedCourses.includes(course.courses[0].courseNumber);
   }
 
   function isOverlapping(course) {
-    return overlappingCourses.includes(course.courseNumber);
+    return overlappingCourses.includes(course.courses[0].courseNumber);
   }
 
   useEffect(() => {
@@ -417,14 +382,15 @@ export default function SimilarCourses({ selectedCourse }) {
           >
             <option className="focus:selection:bg-green-500" value="all">
               All
-            </option>{" "}
+            </option>
             {[
               ...new Set(
                 similarCourses.ids?.[0]
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+                        course.courses[0].courseNumber ===
+                        id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? course.classification : null;
                   })
@@ -452,14 +418,15 @@ export default function SimilarCourses({ selectedCourse }) {
             className="w-fit pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-700 focus:border-green-700 sm:text-sm rounded-md"
             onChange={(e) => setCreditsFilter(e.target.value)}
           >
-            <option value="all">All</option>{" "}
+            <option value="all">All</option>
             {[
               ...new Set(
                 similarCourses.ids?.[0]
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+                        course.courses[0].courseNumber ===
+                        id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? (course.credits / 100).toFixed(2) : null;
                   })
@@ -544,11 +511,11 @@ export default function SimilarCourses({ selectedCourse }) {
                 .map((id) => (
                   <tr key={id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {" "}
                       {(() => {
                         const course = coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+                            course.courses[0].courseNumber ===
+                            id.replace(/[A-Z]+\d+/g, "")
                         );
                         return course && isLocked(course) ? (
                           <LockClosed
@@ -569,15 +536,18 @@ export default function SimilarCourses({ selectedCourse }) {
                             onClick={() => {
                               const updatedSelectedCourses = isSelected(course)
                                 ? selectedCourses.filter(
-                                    (c) => c !== course.courseNumber
+                                    (c) => c !== course.courses[0].courseNumber
                                   )
-                                : [...selectedCourses, course.courseNumber];
+                                : [
+                                    ...selectedCourses,
+                                    course.courses[0].courseNumber,
+                                  ];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
                           />
                         );
                       })()}
-                    </td>{" "}
+                    </td>
                     <td
                       className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 overflow-hidden overflow-ellipsis"
                       style={{ maxWidth: "450px" }}
@@ -585,15 +555,18 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+                            course.courses[0].courseNumber ===
+                            id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).shortName || "N/A"}
                     </td>
+
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+                            course.courses[0].courseNumber ===
+                            id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).classification || "N/A"}
                     </td>
@@ -602,7 +575,7 @@ export default function SimilarCourses({ selectedCourse }) {
                         (
                           coursesCurrentSemester.find(
                             (course) =>
-                              course.courseNumber ===
+                              course.courses[0].courseNumber ===
                               id.replace(/[A-Z]+\d+/g, "")
                           ) || {}
                         ).credits / 100
@@ -618,29 +591,7 @@ export default function SimilarCourses({ selectedCourse }) {
         </div>
       ) : (
         <div className="text-center mt-4">
-          {/* Show message if upsert was needed but disabled */}
-          {similarCourses.message ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <div className="flex items-center">
-                <svg
-                  className="w-5 h-5 text-yellow-400 mr-2"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                    clipRule="evenodd"
-                  />
-                </svg>
-                <p className="text-sm text-yellow-800">
-                  {similarCourses.message}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <p></p>
-          )}
+          <p></p>
           {/* TODO: find a way to display this if response empty after fetch and upsert with refetch --> <p>No similar courses found</p> */}
         </div>
       )}

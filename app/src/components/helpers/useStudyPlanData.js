@@ -27,7 +27,7 @@ import { currentStudyPlanIdState } from "../recoil/currentStudyPlanIdAtom";
 import { studyPlanAtom } from "../recoil/studyPlanAtom";
 import { localSelectedCoursesState } from "../recoil/localSelectedCoursesAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
-import { allCourseInfoState } from "../recoil/allCourseInfosSelector";
+import { allSemesterCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
 import { getStudyPlan, initializeSemester } from "./api";
 import { findStudyPlanBySemester } from "./courseSelection";
 import { useCurrentSemester } from "./studyOverviewHelpers";
@@ -59,7 +59,7 @@ export const useStudyPlanData = ({
   const [, setLocalSelectedCoursesSemKey] = useRecoilState(
     localSelectedCoursesSemKeyState
   );
-  const allCourseInfo = useRecoilValue(allCourseInfoState);
+  const allCourseInfo = useRecoilValue(allSemesterCoursesSelector);
 
   // Local state
   const [currentStudyPlan, setCurrentStudyPlan] = useState(null);
@@ -202,10 +202,10 @@ export const useStudyPlanData = ({
     const coursesToFind = courseInfo[semesterIndex] || [];
 
     // Filter to only include course number format (same as StudyOverview)
-    const filteredCourseIds = studyPlan.courses.filter(courseId => {
-      if (typeof courseId === 'string' && courseId.includes(',')) {
-        const parts = courseId.split(',');
-        return parts.length >= 2 && parts.every(part => part.trim() !== '');
+    const filteredCourseIds = studyPlan.courses.filter((courseId) => {
+      if (typeof courseId === "string" && courseId.includes(",")) {
+        const parts = courseId.split(",");
+        return parts.length >= 2 && parts.every((part) => part.trim() !== "");
       }
       return false; // Exclude UUIDs and other legacy formats
     });

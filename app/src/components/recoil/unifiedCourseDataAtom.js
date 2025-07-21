@@ -37,6 +37,7 @@ export const unifiedCourseDataState = atom({
     semesters: {},
     selectedSemester: null,
     latestValidTerm: null,
+    selectedCourseInfo: null, // Currently selected course for CourseInfo display
   },
 });
 

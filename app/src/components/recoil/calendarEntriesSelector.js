@@ -1,11 +1,12 @@
 import { selector } from "recoil";
-import { selectedSemesterIndexAtom } from "./selectedSemesterAtom";
 import moment from "moment/moment";
-import { cisIdListSelector } from "./cisIdListSelector";
 
-import { allCourseInfoState } from "./allCourseInfosSelector";
 // Import unified course data
-import { semesterCoursesSelector } from "./unifiedCourseDataSelectors";
+import {
+  semesterCoursesSelector,
+  allSemesterCoursesSelector,
+  selectedSemesterSelector,
+} from "./unifiedCourseDataSelectors";
 
 // for future semesters handling
 import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
@@ -46,16 +47,14 @@ const buildOverlapIndex = (courses) => {
 export const calendarEntriesSelector = selector({
   key: "calendarEntriesSelector",
   get: ({ get }) => {
-    const selectedSemesterIndex = get(selectedSemesterIndexAtom);
-    const cisIdList = get(cisIdListSelector);
-    const semShortName = cisIdList[selectedSemesterIndex]?.shortName || "";
+    // Get the currently selected semester from unified state
+    const selectedSemester = get(selectedSemesterSelector);
+    const semShortName = selectedSemester;
 
-    // Bail out if the semester index or shortName is invalid
-    if (selectedSemesterIndex == null || !semShortName) {
-      console.error(
-        "CES: Invalid semester index or shortName; returning empty array",
-        selectedSemesterIndex,
-        semShortName
+    // Bail out if the semester shortName is invalid
+    if (!semShortName) {
+      console.warn(
+        "CES: No selected semester available; returning empty array"
       );
       return [];
     }
@@ -90,14 +89,14 @@ export const calendarEntriesSelector = selector({
         error.message
       );
 
-      // Fallback to legacy system
-      const allCourses = get(allCourseInfoState);
+      // Fallback to unified system with different approach
+      const allCourses = get(allSemesterCoursesSelector);
       const futureSemesterSelected = get(isFutureSemesterSelected);
       const referenceSemester = get(referenceSemesterAtom);
 
       console.log(
-        "CalendarEntriesSelector - selectedSemesterIndex:",
-        selectedSemesterIndex,
+        "CalendarEntriesSelector - selectedSemester:",
+        selectedSemester,
         "referenceSemester:",
         referenceSemester
       );
@@ -109,36 +108,27 @@ export const calendarEntriesSelector = selector({
         futureSemesterSelected
       );
 
-      let adjustedSemester = selectedSemesterIndex;
-      if (futureSemesterSelected && referenceSemester != null) {
-        // Check if referenceSemester is already a number, otherwise find the correct index
-        if (typeof referenceSemester === "number") {
-          adjustedSemester = referenceSemester;
-        } else {
-          // Find the index in cisIdList that corresponds to referenceSemester
-          console.log("referenceSemester:", referenceSemester);
-          console.log("cisIdList:", cisIdList);
-          const referenceIndex = cisIdList.findIndex(
-            (sem) => sem.shortName === referenceSemester.shortName
-          );
-          if (referenceIndex !== -1) {
-            adjustedSemester = referenceIndex;
-          }
-        }
+      // Use the reference semester if future semester is selected
+      let targetSemester = selectedSemester;
+      if (futureSemesterSelected && referenceSemester) {
+        targetSemester = referenceSemester.shortName || referenceSemester;
       }
 
       console.log(
-        "CalendarEntriesSelector - Using adjustedSemester:",
-        adjustedSemester,
-        "which maps to:",
-        allCourses[adjustedSemester + 1]
-          ? `${allCourses[adjustedSemester + 1].length} courses`
-          : "no courses"
+        "CalendarEntriesSelector - Using targetSemester:",
+        targetSemester
       );
 
-      currentCourses = (allCourses[adjustedSemester + 1] || []).filter(
-        (course) => course.enrolled || course.selected
-      );
+      // Get courses from the unified system for the target semester
+      if (allCourses && allCourses[targetSemester]) {
+        const semesterData = allCourses[targetSemester];
+        currentCourses = [
+          ...(semesterData.enrolled || []),
+          ...(semesterData.selected || []),
+        ].filter((course) => course.enrolled || course.selected);
+      } else {
+        currentCourses = [];
+      }
 
       console.debug(
         "CalendarEntriesSelector - currentCourses:",

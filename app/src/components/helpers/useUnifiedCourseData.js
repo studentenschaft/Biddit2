@@ -1032,6 +1032,39 @@ export function useUnifiedCourseData() {
     logUnifiedDataOverview(courseData);
   };
 
+  /**
+   * Update the selected course info (for CourseInfo display)
+   */
+  const updateSelectedCourseInfo = (courseInfo) => {
+    setCourseData((prev) => {
+      // Create a clean copy that only includes the properties we want
+      const cleanPrev = {
+        semesters: prev.semesters || {},
+        selectedSemester: prev.selectedSemester,
+        latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
+      };
+
+      const newData = {
+        ...cleanPrev,
+        selectedCourseInfo: courseInfo,
+      };
+
+      console.log(
+        `🎯 Updated selected course info:`,
+        courseInfo?.shortName || "cleared"
+      );
+      return newData;
+    });
+  };
+
+  /**
+   * Clear the selected course info
+   */
+  const clearSelectedCourseInfo = () => {
+    updateSelectedCourseInfo(null);
+  };
+
   return {
     courseData,
     initializedSemesters,
@@ -1052,6 +1085,8 @@ export function useUnifiedCourseData() {
     updateFilteredCourses, // New function for filtered courses
     updateFilteredCoursesForSemester: updateFilteredCourses, // Alias for consistency
     updateFilteredCoursesForAllSemesters, // New function for global filtered courses
+    updateSelectedCourseInfo, // New function for selected course info
+    clearSelectedCourseInfo, // New function to clear selected course info
     getSemesterData,
     needsRefresh,
     logUnifiedDataState, // Debug function to log current state
