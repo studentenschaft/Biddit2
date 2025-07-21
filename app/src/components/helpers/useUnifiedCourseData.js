@@ -7,12 +7,13 @@ import {
 /**
  * Default semester structure with all required fields
  * This ensures consistency across the entire application
+ * SIMPLIFIED: enrolledIds and selectedIds store only course IDs/numbers
  */
 const DEFAULT_SEMESTER_STRUCTURE = {
-  enrolled: [],
-  available: [],
-  selected: [],
-  filtered: [],
+  enrolledIds: [], // Course IDs/numbers for enrolled courses
+  available: [], // Full course objects for available courses
+  selectedIds: [], // Course IDs/numbers for selected courses
+  filtered: [], // Filtered courses with selected/enrolled flags attached
   studyPlan: [], // Study plan courses for this semester
   ratings: {},
   lastFetched: null,
@@ -50,34 +51,26 @@ const logUnifiedCourseDataSummary = (
 
   // Course counts
   console.log(`📚 Course Counts:`, {
-    enrolled: semesterData.enrolled?.length || 0,
+    enrolledIds: semesterData.enrolledIds?.length || 0,
     available: semesterData.available?.length || 0,
-    selected: semesterData.selected?.length || 0,
+    selectedIds: semesterData.selectedIds?.length || 0,
     filtered: semesterData.filtered?.length || 0,
     studyPlan: semesterData.studyPlan?.length || 0,
     ratings: Object.keys(semesterData.ratings || {}).length,
   });
 
   // Detailed course data (limited to prevent console spam)
-  if (semesterData.enrolled?.length > 0) {
+  if (semesterData.enrolledIds?.length > 0) {
     console.log(
-      `✅ Enrolled Courses (${semesterData.enrolled.length}):`,
-      semesterData.enrolled.slice(0, 3).map((c) => ({
-        id: c.id,
-        courseNumber: c.courseNumber,
-        title: c.title || c.courses?.[0]?.title,
-      }))
+      `✅ Enrolled Course IDs (${semesterData.enrolledIds.length}):`,
+      semesterData.enrolledIds.slice(0, 5)
     );
   }
 
-  if (semesterData.selected?.length > 0) {
+  if (semesterData.selectedIds?.length > 0) {
     console.log(
-      `⭐ Selected Courses (${semesterData.selected.length}):`,
-      semesterData.selected.slice(0, 3).map((c) => ({
-        id: c.id,
-        courseNumber: c.courseNumber,
-        title: c.title || c.courses?.[0]?.title,
-      }))
+      `⭐ Selected Course IDs (${semesterData.selectedIds.length}):`,
+      semesterData.selectedIds.slice(0, 5)
     );
   }
 
@@ -110,9 +103,9 @@ const logUnifiedDataOverview = (data) => {
     `📅 All Semesters:`,
     Object.keys(data.semesters || {}).map((semester) => ({
       semester,
-      enrolled: data.semesters[semester]?.enrolled?.length || 0,
+      enrolledIds: data.semesters[semester]?.enrolledIds?.length || 0,
       available: data.semesters[semester]?.available?.length || 0,
-      selected: data.semesters[semester]?.selected?.length || 0,
+      selectedIds: data.semesters[semester]?.selectedIds?.length || 0,
       isCurrent: data.semesters[semester]?.isCurrent || false,
       isProjected: data.semesters[semester]?.isProjected || false,
       isFutureSemester: data.semesters[semester]?.isFutureSemester || false,
@@ -193,7 +186,8 @@ export function useUnifiedCourseData() {
   };
 
   /**
-   * Update enrolled courses for a semester
+   * Update enrolled course IDs for a semester
+   * Now stores only course IDs/numbers instead of full course objects
    */
   const updateEnrolledCourses = (semesterShortName, courses) => {
     // Only initialize if semester doesn't exist
@@ -213,25 +207,38 @@ export function useUnifiedCourseData() {
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
+      // Extract course IDs from enrolled courses
+      const enrolledIds = courses.map((course) => {
+        // Use course.courses[0].courseNumber as primary identifier
+        return (
+          course.courses?.[0]?.courseNumber ||
+          course.eventCourseNumber ||
+          course.courseNumber ||
+          course.id ||
+          course.number ||
+          course._id
+        );
+      }).filter(Boolean); // Remove any undefined/null values
+
       const newData = {
         ...cleanPrev,
         semesters: {
           ...cleanPrev.semesters,
           [semesterShortName]: {
             ...existingSemester,
-            enrolled: courses,
+            enrolledIds: enrolledIds,
             lastFetched: new Date().toISOString(),
           },
         },
       };
 
       console.log(
-        `✅ Updated enrolled courses for ${semesterShortName}:`,
-        newData.semesters[semesterShortName]
+        `✅ Updated enrolled course IDs for ${semesterShortName}: ${enrolledIds.length} courses`,
+        enrolledIds.slice(0, 5)
       );
       logUnifiedCourseDataSummary(
         semesterShortName,
-        "UPDATE_ENROLLED",
+        "UPDATE_ENROLLED_IDS",
         newData
       );
       return newData;
@@ -284,9 +291,10 @@ export function useUnifiedCourseData() {
   };
 
   /**
-   * Update selected/wishlisted courses for a semester
+   * Update selected course IDs for a semester
+   * Now stores only course IDs/numbers instead of full course objects
    */
-  const updateSelectedCourses = (semesterShortName, courses) => {
+  const updateSelectedCourses = (semesterShortName, courseIds) => {
     // Only initialize if semester doesn't exist
     if (!courseData.semesters || !courseData.semesters[semesterShortName]) {
       initializeSemester(semesterShortName);
@@ -304,24 +312,29 @@ export function useUnifiedCourseData() {
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
 
+      // Ensure courseIds is an array and filter out falsy values
+      const selectedIds = Array.isArray(courseIds) 
+        ? courseIds.filter(Boolean) 
+        : [];
+
       const newData = {
         ...cleanPrev,
         semesters: {
           ...cleanPrev.semesters,
           [semesterShortName]: {
             ...existingSemester,
-            selected: courses,
+            selectedIds: selectedIds,
             lastFetched: new Date().toISOString(),
           },
         },
       };
       console.log(
-        `✅ Updated selected courses for ${semesterShortName}:`,
-        newData.semesters[semesterShortName]
+        `✅ Updated selected course IDs for ${semesterShortName}: ${selectedIds.length} courses`,
+        selectedIds.slice(0, 5)
       );
       logUnifiedCourseDataSummary(
         semesterShortName,
-        "UPDATE_SELECTED",
+        "UPDATE_SELECTED_IDS",
         newData
       );
       return newData;
@@ -329,7 +342,7 @@ export function useUnifiedCourseData() {
   };
 
   /**
-   * Add a course to selected courses for a semester
+   * Add a course ID to selected courses for a semester
    */
   const addSelectedCourse = (semesterShortName, course) => {
     // Only initialize if semester doesn't exist
@@ -345,23 +358,58 @@ export function useUnifiedCourseData() {
         latestValidTerm: prev.latestValidTerm,
       };
 
-      const currentSelected =
-        cleanPrev.semesters[semesterShortName]?.selected || [];
+      const currentSelectedIds =
+        cleanPrev.semesters[semesterShortName]?.selectedIds || [];
 
-      // Check if course already exists
-      const exists = currentSelected.some(
-        (c) =>
-          c.id === course.id ||
-          c.courseNumber === course.courseNumber ||
-          c.courses?.[0]?.courseNumber === course.courseNumber ||
-          c.courses?.[0]?.courseNumber === course.courses?.[0]?.courseNumber
-      );
+      // Extract course ID from the course object
+      const courseId = course.courses?.[0]?.courseNumber || 
+                       course.courseNumber || 
+                       course.id || 
+                       course.number || 
+                       course._id;
 
-      if (exists) return prev;
+      if (!courseId) {
+        console.warn("No valid course ID found for course:", course);
+        return prev;
+      }
+
+      // Check if course ID already exists
+      if (currentSelectedIds.includes(courseId)) {
+        return prev;
+      }
 
       // Ensure the semester exists in the structure
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
+
+      const newSelectedIds = [...currentSelectedIds, courseId];
+
+      // Update the filtered courses immediately to reflect the new selection and re-sort
+      const updatedFilteredCourses = (existingSemester.filtered || []).map(filteredCourse => {
+        const filteredCourseId = filteredCourse.courses?.[0]?.courseNumber || 
+                                 filteredCourse.courseNumber || 
+                                 filteredCourse.id;
+        if (filteredCourseId === courseId) {
+          return { ...filteredCourse, selected: true };
+        }
+        return filteredCourse;
+      });
+
+      // Re-sort courses: enrolled first, then selected, then everything else
+      const sortedFilteredCourses = updatedFilteredCourses.sort((a, b) => {
+        // Priority 1: Enrolled courses first
+        if (a.enrolled && !b.enrolled) return -1;
+        if (!a.enrolled && b.enrolled) return 1;
+
+        // Priority 2: Among non-enrolled, selected courses come first
+        if (!a.enrolled && !b.enrolled) {
+          if (a.selected && !b.selected) return -1;
+          if (!a.selected && b.selected) return 1;
+        }
+
+        // If same status, maintain original order
+        return 0;
+      });
 
       const newData = {
         ...cleanPrev,
@@ -369,27 +417,25 @@ export function useUnifiedCourseData() {
           ...cleanPrev.semesters,
           [semesterShortName]: {
             ...existingSemester,
-            selected: [...currentSelected, course],
+            selectedIds: newSelectedIds,
+            filtered: sortedFilteredCourses,
           },
         },
       };
 
-      console.log(`➕ Added course to ${semesterShortName}:`, {
-        courseId: course.id,
-        courseNumber: course.courseNumber,
-        title: course.title || course.courses?.[0]?.title,
-      });
+      console.log(`➕ Added course ID to ${semesterShortName}:`, courseId);
       logUnifiedCourseDataSummary(
         semesterShortName,
-        "ADD_SELECTED_COURSE",
+        "ADD_SELECTED_COURSE_ID",
         newData
       );
+
       return newData;
     });
   };
 
   /**
-   * Remove a course from selected courses for a semester
+   * Remove a course ID from selected courses for a semester
    */
   const removeSelectedCourse = (semesterShortName, courseId) => {
     setCourseData((prev) => {
@@ -400,12 +446,41 @@ export function useUnifiedCourseData() {
         latestValidTerm: prev.latestValidTerm,
       };
 
-      const currentSelected =
-        cleanPrev.semesters[semesterShortName]?.selected || [];
+      const currentSelectedIds =
+        cleanPrev.semesters[semesterShortName]?.selectedIds || [];
 
       // Ensure the semester exists in the structure
       const existingSemester =
         cleanPrev.semesters[semesterShortName] || DEFAULT_SEMESTER_STRUCTURE;
+
+      const newSelectedIds = currentSelectedIds.filter(id => id !== courseId);
+
+      // Update the filtered courses immediately to reflect the removed selection and re-sort
+      const updatedFilteredCourses = (existingSemester.filtered || []).map(filteredCourse => {
+        const filteredCourseId = filteredCourse.courses?.[0]?.courseNumber || 
+                                 filteredCourse.courseNumber || 
+                                 filteredCourse.id;
+        if (filteredCourseId === courseId) {
+          return { ...filteredCourse, selected: false };
+        }
+        return filteredCourse;
+      });
+
+      // Re-sort courses: enrolled first, then selected, then everything else
+      const sortedFilteredCourses = updatedFilteredCourses.sort((a, b) => {
+        // Priority 1: Enrolled courses first
+        if (a.enrolled && !b.enrolled) return -1;
+        if (!a.enrolled && b.enrolled) return 1;
+
+        // Priority 2: Among non-enrolled, selected courses come first
+        if (!a.enrolled && !b.enrolled) {
+          if (a.selected && !b.selected) return -1;
+          if (!a.selected && b.selected) return 1;
+        }
+
+        // If same status, maintain original order
+        return 0;
+      });
 
       const newData = {
         ...cleanPrev,
@@ -413,22 +488,19 @@ export function useUnifiedCourseData() {
           ...cleanPrev.semesters,
           [semesterShortName]: {
             ...existingSemester,
-            selected: currentSelected.filter(
-              (c) =>
-                c.id !== courseId &&
-                c.courseNumber !== courseId &&
-                c.courses?.[0]?.courseNumber !== courseId
-            ),
+            selectedIds: newSelectedIds,
+            filtered: sortedFilteredCourses,
           },
         },
       };
 
-      console.log(`➖ Removed course from ${semesterShortName}:`, { courseId });
+      console.log(`➖ Removed course ID from ${semesterShortName}:`, courseId);
       logUnifiedCourseDataSummary(
         semesterShortName,
-        "REMOVE_SELECTED_COURSE",
+        "REMOVE_SELECTED_COURSE_ID",
         newData
       );
+
       return newData;
     });
   };
@@ -630,24 +702,13 @@ export function useUnifiedCourseData() {
 
       // Attach ratings and status FIRST, then sort
       const ratingsMap = semesterData.ratings || {};
-      const enrolledCourses = semesterData.enrolled || [];
+      const enrolledIds = semesterData.enrolledIds || [];
+      const selectedIds = semesterData.selectedIds || [];
 
-      // Get study plan course numbers directly from semester data
-      const studyPlanData = semesterData.studyPlan || [];
-
-      // Extract course numbers from study plan data
-      // Study plan data can be either strings like "7,048,1.00" or objects with courseNumber property
-      const selectedCourseIds = studyPlanData
-        .map((course) => {
-          if (typeof course === "string") {
-            return course; // Direct string like "7,048,1.00"
-          } else if (course.courseNumber) {
-            return course.courseNumber; // Object with courseNumber property
-          } else {
-            return course; // Fallback to course itself
-          }
-        })
-        .filter(Boolean);
+      console.log(
+        `🔍 [FILTERING] Using enrolled IDs (${enrolledIds.length}):`, enrolledIds.slice(0, 5),
+        `and selected IDs (${selectedIds.length}):`, selectedIds.slice(0, 5)
+      );
 
       const coursesWithRatings = filtered.map((course) => {
         // Try different ways to match ratings to courses
@@ -689,21 +750,12 @@ export function useUnifiedCourseData() {
           }
         }
 
-        // Check if this available course is also an enrolled course
-        // Match enrolled.eventCourseNumber with available.courses[0].courseNumber
-        const isEnrolled = enrolledCourses.some((enrolledCourse) => {
-          return (
-            enrolledCourse.eventCourseNumber ===
-            course.courses?.[0]?.courseNumber
-          );
-        });
+        // Check if this course is enrolled using enrolledIds
+        const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+        const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
 
-        // Check if this course is selected from study plan
-        // Study plan provides course numbers like "7,048,1.00"
-        // Available courses have course.courses[0].courseNumber
-        const courseNumber = course.courses?.[0]?.courseNumber;
-        const isSelected =
-          courseNumber && selectedCourseIds.includes(courseNumber);
+        // Check if this course is selected using selectedIds
+        const isSelected = courseNumber && selectedIds.includes(courseNumber);
 
         return {
           ...course,
@@ -843,8 +895,8 @@ export function useUnifiedCourseData() {
 
           // Apply the same enrollment/selection logic as in updateFilteredCourses
           const ratingsMap = semesterData.ratings || {};
-          const enrolledCourses = semesterData.enrolled || [];
-          const studyPlanCourses = semesterData.studyPlan || [];
+          const enrolledIds = semesterData.enrolledIds || [];
+          const selectedIds = semesterData.selectedIds || [];
 
           const coursesWithStatus = filtered.map((course) => {
             // Rating attachment logic (same as main function)
@@ -862,21 +914,12 @@ export function useUnifiedCourseData() {
               rating = ratingsMap[course.shortName];
             }
 
-            // Enrollment check
-            const isEnrolled = enrolledCourses.some((enrolledCourse) => {
-              return (
-                enrolledCourse.eventCourseNumber ===
-                course.courses?.[0]?.courseNumber
-              );
-            });
+            // Check if this course is enrolled using enrolledIds
+            const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+            const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
 
-            // Study plan selection check
-            const courseNumber = course.courses?.[0]?.courseNumber;
-            const isSelected =
-              courseNumber &&
-              studyPlanCourses.some((studyPlanCourse) => {
-                return studyPlanCourse.courseNumber === courseNumber;
-              });
+            // Check if this course is selected using selectedIds
+            const isSelected = courseNumber && selectedIds.includes(courseNumber);
 
             return {
               ...course,

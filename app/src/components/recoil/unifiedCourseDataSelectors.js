@@ -12,11 +12,18 @@ export const semesterCourseDataSelector = selectorFamily({
       const allCourseData = get(unifiedCourseDataState);
       return (
         allCourseData.semesters[semesterShortName] || {
-          enrolled: [],
+          enrolledIds: [],
           available: [],
-          selected: [],
+          selectedIds: [],
+          filtered: [],
+          studyPlan: [],
           ratings: {},
           lastFetched: null,
+          isFutureSemester: false,
+          referenceSemester: null,
+          cisId: null,
+          isCurrent: false,
+          isProjected: false,
         }
       );
     },
@@ -34,28 +41,6 @@ export const selectedSemesterSelector = selector({
 });
 
 /**
- * Selector to get future semester status
- */
-export const isFutureSemesterSelector = selector({
-  key: "isFutureSemesterSelector",
-  get: ({ get }) => {
-    const courseData = get(unifiedCourseDataState);
-    return courseData.isFutureSemester;
-  },
-});
-
-/**
- * Selector to get reference semester for future projections
- */
-export const referenceSemesterSelector = selector({
-  key: "referenceSemesterSelector",
-  get: ({ get }) => {
-    const courseData = get(unifiedCourseDataState);
-    return courseData.referenceSemester;
-  },
-});
-
-/**
  * Selector to get latest valid term
  */
 export const latestValidTermSelector = selector({
@@ -67,7 +52,8 @@ export const latestValidTermSelector = selector({
 });
 
 /**
- * Selector to get enrolled courses for a specific semester
+ * Selector to get enrolled course IDs for a specific semester
+ * Returns IDs instead of full course objects
  */
 export const enrolledCoursesSelector = selectorFamily({
   key: "enrolledCoursesSelector",
@@ -75,7 +61,7 @@ export const enrolledCoursesSelector = selectorFamily({
     (semesterShortName) =>
     ({ get }) => {
       const semesterData = get(semesterCourseDataSelector(semesterShortName));
-      return semesterData.enrolled || [];
+      return semesterData.enrolledIds || [];
     },
 });
 
@@ -93,7 +79,8 @@ export const availableCoursesSelector = selectorFamily({
 });
 
 /**
- * Selector to get selected/wishlisted courses for a specific semester
+ * Selector to get selected course IDs for a specific semester
+ * Returns IDs instead of full course objects
  */
 export const selectedCoursesSelector = selectorFamily({
   key: "selectedCoursesSelector",
@@ -101,34 +88,8 @@ export const selectedCoursesSelector = selectorFamily({
     (semesterShortName) =>
     ({ get }) => {
       const semesterData = get(semesterCourseDataSelector(semesterShortName));
-      return semesterData.selected || [];
+      return semesterData.selectedIds || [];
     },
-});
-
-/**
- * Selector to get all courses (enrolled + selected) for the currently selected semester
- * This replaces allCourseInfoState usage in most components
- */
-export const currentSemesterAllCoursesSelector = selector({
-  key: "currentSemesterAllCoursesSelector",
-  get: ({ get }) => {
-    const selectedSemester = get(selectedSemesterSelector);
-    if (!selectedSemester) return [];
-
-    const enrolled = get(enrolledCoursesSelector(selectedSemester));
-    const selected = get(selectedCoursesSelector(selectedSemester));
-
-    // Merge and deduplicate courses
-    const allCourses = [...enrolled, ...selected];
-    const uniqueCourses = allCourses.filter(
-      (course, index, arr) =>
-        arr.findIndex(
-          (c) => c.id === course.id || c.courseNumber === course.courseNumber
-        ) === index
-    );
-
-    return uniqueCourses;
-  },
 });
 
 /**
@@ -142,41 +103,6 @@ export const semesterRatingsSelector = selectorFamily({
       const semesterData = get(semesterCourseDataSelector(semesterShortName));
       return semesterData.ratings || {};
     },
-});
-
-/**
- * Legacy compatibility selector - maps old numeric format to new semester-based format
- * This helps during migration period
- */
-export const legacyCourseInfoSelector = selector({
-  key: "legacyCourseInfoSelector",
-  get: ({ get }) => {
-    const allCourseData = get(unifiedCourseDataState);
-    const legacyFormat = {};
-
-    // Map semester shortNames to legacy numeric keys
-    // This is a temporary solution during migration
-    const semesterKeys = Object.keys(allCourseData.semesters).sort();
-    semesterKeys.forEach((semesterKey, index) => {
-      const semesterData = allCourseData.semesters[semesterKey];
-      const allCourses = [
-        ...(semesterData.enrolled || []),
-        ...(semesterData.selected || []),
-      ];
-
-      // Deduplicate
-      const uniqueCourses = allCourses.filter(
-        (course, idx, arr) =>
-          arr.findIndex(
-            (c) => c.id === course.id || c.courseNumber === course.courseNumber
-          ) === idx
-      );
-
-      legacyFormat[index + 1] = uniqueCourses;
-    });
-
-    return legacyFormat;
-  },
 });
 
 /**

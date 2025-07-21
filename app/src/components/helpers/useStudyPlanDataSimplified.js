@@ -19,14 +19,10 @@
  */
 
 import { useState, useEffect } from "react";
-import { useSetRecoilState } from "recoil";
 import axios from "axios";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
-import { selectedCourseIdsAtom } from "../recoil/selectedCourseIdsAtom";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-/**
- * Find study plan by semester ID
 /**
  * Simplified hook for managing study plan data
  *
@@ -42,9 +38,6 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
     updateSelectedCourses: updateUnifiedSelectedCourses,
     updateStudyPlan,
   } = useUnifiedCourseData();
-
-  // Set selected course IDs for the EventListContainer to use
-  const setSelectedCourseIds = useSetRecoilState(selectedCourseIdsAtom);
 
   // Local loading state
   const [isStudyPlanLoading, setIsStudyPlanLoading] = useState(true);
@@ -108,12 +101,10 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
             extractedCourseNumbers
           );
 
-          // Also update the selectedCourseIds atom for EventListContainer UI
           console.log(
-            "🔍 [DEBUG] Updating selectedCourseIds atom with:",
+            "✅ [SIMPLIFIED] Updated unified selected courses with:",
             extractedCourseNumbers
           );
-          setSelectedCourseIds(extractedCourseNumbers);
         } else {
           console.log(
             `⚠️ [SIMPLIFIED] No study plan found for semester ${selectedSemester.shortName} (ID: ${selectedSemester.id})`

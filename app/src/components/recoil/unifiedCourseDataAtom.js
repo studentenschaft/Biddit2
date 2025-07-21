@@ -4,15 +4,15 @@ import { atom } from "recoil";
  * Unified course data atom that stores all course information by semester shortName
  * This replaces the need for multiple course-related atoms with different formats
  *
- * Structure:
+ * SIMPLIFIED STRUCTURE:
  * {
  *   semesters: {
  *     "HS24": {
- *       enrolled: [], // Courses the user is enrolled in
- *       available: [], // All available courses for this semester
- *       selected: [], // Courses the user has selected/wishlisted
- *       filtered: [], // Filtered courses based on current filter criteria
- *       studyPlan: [], // Raw study plan data from SHSG API for this semester
+ *       enrolledIds: [], // Course IDs/numbers that the user is enrolled in
+ *       available: [], // All available courses for this semester (full course objects)
+ *       selectedIds: [], // Course IDs/numbers that the user has selected/wishlisted
+ *       filtered: [], // Filtered courses based on current filter criteria (includes selected/enrolled flags)
+ *       studyPlan: [], // Raw study plan data from SHSG API for this semester: Course IDs/numbers
  *       ratings: {}, // Course ratings by courseNumber
  *       lastFetched: null, // When this data was last fetched
  *       isFutureSemester: false, // Whether semester is in the future

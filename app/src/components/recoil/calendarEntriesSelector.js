@@ -5,7 +5,7 @@ import { cisIdListSelector } from "./cisIdListSelector";
 
 import { allCourseInfoState } from "./allCourseInfosSelector";
 // Import unified course data
-import { currentSemesterAllCoursesSelector } from "./unifiedCourseDataSelectors";
+import { semesterCoursesSelector } from "./unifiedCourseDataSelectors";
 
 // for future semesters handling
 import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
@@ -64,14 +64,19 @@ export const calendarEntriesSelector = selector({
     let currentCourses = [];
     try {
       // Get courses from unified system for current semester
-      const unifiedCourses = get(currentSemesterAllCoursesSelector);
-      if (unifiedCourses && unifiedCourses.length > 0) {
+      // Get available courses that have been filtered (includes selected/enrolled flags)
+      const filteredCourses = get(semesterCoursesSelector({
+        semester: semShortName,
+        type: "filtered"
+      }));
+      
+      if (filteredCourses && filteredCourses.length > 0) {
         // Filter for enrolled or selected courses from unified system
-        currentCourses = unifiedCourses.filter(
+        currentCourses = filteredCourses.filter(
           (course) => course.enrolled || course.selected
         );
         console.debug(
-          "CalendarEntriesSelector - Using unified courses:",
+          "CalendarEntriesSelector - Using unified filtered courses:",
           currentCourses
         );
       } else {

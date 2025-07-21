@@ -25,12 +25,12 @@ import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
 
-// Unified course selectors - PRIMARY DATA SOURCE
-import { semesterCoursesSelector } from "../../recoil/unifiedCourseDataSelectors";
-
 // Simplified data management hooks
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
+
+// Unified course selectors - PRIMARY DATA SOURCE
+import { semesterCoursesSelector, selectedCoursesSelector } from "../../recoil/unifiedCourseDataSelectors";
 
 // Icons
 import { PlusIcon } from "@heroicons/react/outline";
@@ -44,24 +44,12 @@ import { LockOpen } from "./LockOpen";
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 import { selectedCourseCourseInfo } from "../../recoil/selectedCourseCourseInfo";
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
-import { selectedCourseIdsAtom } from "../../recoil/selectedCourseIdsAtom";
 
 // Helper function - moved here for simplicity
-function isEventOrNestedCourseSelected(event, selectedCourseIds) {
-  // Safety check to avoid NULL error:
-  if (!Array.isArray(selectedCourseIds)) {
-    console.warn("selectedCourseIds is not an array:", selectedCourseIds);
-    return false;
-  }
-  // Check if the top-level event.id matches
-  if (
-    selectedCourseIds.includes(event.id) ||
-    selectedCourseIds.includes(event.courseNumber) ||
-    selectedCourseIds.includes(event.courses?.[0]?.courseNumber)
-  )
-    return true;
-
-  return false;
+// Now uses the 'selected' property from filtered courses instead of separate selectedCourseIds
+function isEventOrNestedCourseSelected(event) {
+  // The filtered courses already have the 'selected' property set by updateFilteredCourses
+  return event.selected || false;
 }
 
 export default function EventListContainer({
@@ -71,9 +59,6 @@ export default function EventListContainer({
   // Simplified recoil state
   const authToken = useRecoilValue(authTokenState);
   const selectionOptions = useRecoilValue(selectionOptionsState);
-  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
-    selectedCourseIdsAtom
-  );
   const [, setSelectedTabState] = useRecoilState(selectedTabAtom);
   const [, setSelectedCourseCourseInfo] = useRecoilState(
     selectedCourseCourseInfo
@@ -84,6 +69,11 @@ export default function EventListContainer({
   const selectedSemester = termListObject?.find(
     (semester) => semester.shortName === selectedSemesterShortName
   );
+
+  // Get selected course IDs from unified state
+  const selectedCourseIds = useRecoilValue(
+    selectedCoursesSelector(selectedSemesterShortName)
+  ) || [];
 
   // Use simplified data manager
   const { isLoading } = useEventListDataManager(
@@ -103,10 +93,10 @@ export default function EventListContainer({
 
   console.log("filteredCourses:", filteredCourses);
 
-  // Course selection hook (simplified)
+  // Course selection hook (simplified) - now works with unified state
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
-    setSelectedCourseIds,
+    setSelectedCourseIds: null, // Not needed anymore - hook will update unified state directly
     selectedSemesterShortName: selectedSemesterShortName || "",
     authToken,
   });
@@ -119,7 +109,7 @@ export default function EventListContainer({
       return null;
     }
 
-    const isSelected = isEventOrNestedCourseSelected(event, selectedCourseIds);
+    const isSelected = isEventOrNestedCourseSelected(event);
 
     // For projected semesters, we should not show any enrolled courses as locked
     const isEnrolled = event.enrolled && !selectedSemester?.isProjected;
@@ -205,7 +195,7 @@ export default function EventListContainer({
             <LockOpen
               clg="w-6 h-6 "
               selectedCourseIds={selectedCourseIds}
-              setSelectedCourseIds={setSelectedCourseIds}
+              setSelectedCourseIds={null} // Not needed anymore
             />
           ) : (
             <PlusIcon

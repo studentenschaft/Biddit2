@@ -17,7 +17,7 @@ import {
 import {
   isFutureSemesterSelector,
   referenceSemesterSelector,
-} from "../recoil/unifiedCourseDataSelectors";
+} from "../recoil/courseSelectors";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
