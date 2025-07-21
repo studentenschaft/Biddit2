@@ -704,12 +704,7 @@ export function useUnifiedCourseData() {
         filterOptions
       );
 
-      // Apply filter criteria
-      const filtered = coursesToFilter.filter((course) => {
-        return applyFilterCriteria(course, filterOptions);
-      });
-
-      // Attach ratings and status FIRST, then sort
+      // Get ratings map BEFORE filtering so ratings are available during filter criteria
       const ratingsMap = semesterData.ratings || {};
       const enrolledIds = semesterData.enrolledIds || [];
       const selectedIds = semesterData.selectedIds || [];
@@ -721,7 +716,8 @@ export function useUnifiedCourseData() {
         selectedIds.slice(0, 5)
       );
 
-      const coursesWithRatings = filtered.map((course) => {
+      // Attach ratings to courses BEFORE filtering
+      const coursesWithRatings = coursesToFilter.map((course) => {
         // Try different ways to match ratings to courses
         let rating = null;
 
@@ -761,6 +757,19 @@ export function useUnifiedCourseData() {
           }
         }
 
+        return {
+          ...course,
+          avgRating: rating || course.avgRating, // Preserve existing rating if found
+        };
+      });
+
+      // Apply filter criteria to courses WITH ratings
+      const filtered = coursesWithRatings.filter((course) => {
+        return applyFilterCriteria(course, filterOptions);
+      });
+
+      // Add enrollment and selection status to filtered courses
+      const finalCourses = filtered.map((course) => {
         // Check if this course is enrolled using enrolledIds
         const courseNumber =
           course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
@@ -771,14 +780,13 @@ export function useUnifiedCourseData() {
 
         return {
           ...course,
-          avgRating: rating || course.avgRating, // Preserve existing rating if found
           enrolled: isEnrolled, // Mark if course is enrolled
           selected: isSelected, // Mark if course is selected
         };
       });
 
       // Sort courses: enrolled first, then selected, then everything else
-      const sortedCoursesWithRatings = coursesWithRatings.sort((a, b) => {
+      const sortedFinalCourses = finalCourses.sort((a, b) => {
         // Priority 1: Enrolled courses first
         if (a.enrolled && !b.enrolled) return -1;
         if (!a.enrolled && b.enrolled) return 1;
@@ -799,24 +807,20 @@ export function useUnifiedCourseData() {
           ...cleanPrev.semesters,
           [semesterShortName]: {
             ...semesterData,
-            filtered: sortedCoursesWithRatings,
+            filtered: sortedFinalCourses,
           },
         },
       };
 
       console.log(
-        `✅ Updated filtered courses for ${semesterShortName}: ${sortedCoursesWithRatings.length} courses`
+        `✅ Updated filtered courses for ${semesterShortName}: ${sortedFinalCourses.length} courses`
       );
 
       // Summary of selected courses
-      const selectedCount = sortedCoursesWithRatings.filter(
-        (c) => c.selected
-      ).length;
-      const enrolledCount = sortedCoursesWithRatings.filter(
-        (c) => c.enrolled
-      ).length;
+      const selectedCount = sortedFinalCourses.filter((c) => c.selected).length;
+      const enrolledCount = sortedFinalCourses.filter((c) => c.enrolled).length;
       console.log(
-        `📊 [SUMMARY] Selected: ${selectedCount}, Enrolled: ${enrolledCount}, Total: ${sortedCoursesWithRatings.length}`
+        `📊 [SUMMARY] Selected: ${selectedCount}, Enrolled: ${enrolledCount}, Total: ${sortedFinalCourses.length}`
       );
 
       return newData;
@@ -857,8 +861,19 @@ export function useUnifiedCourseData() {
       return false;
     }
 
-    if (ratings.length > 0 && course.avgRating < Math.max(...ratings)) {
-      return false;
+    if (ratings.length > 0) {
+      const courseRating = course.avgRating;
+      const minRequiredRating = Math.max(...ratings);
+
+      // Only filter out courses if they have a rating and it's below the threshold
+      // Courses without ratings will be included (they won't be filtered out)
+      if (
+        courseRating !== null &&
+        courseRating !== undefined &&
+        courseRating < minRequiredRating
+      ) {
+        return false;
+      }
     }
 
     if (
