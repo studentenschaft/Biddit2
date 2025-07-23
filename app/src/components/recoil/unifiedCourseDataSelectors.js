@@ -215,7 +215,13 @@ export const semesterCoursesSelector = selectorFamily({
         case "available":
           return semesterData.available || [];
         case "selected":
-          return semesterData.selected || [];
+          // Filter available courses by selectedIds to get full course objects
+          const selectedIds = semesterData.selectedIds || [];
+          const availableCourses = semesterData.available || [];
+          return availableCourses.filter(course => {
+            const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+            return courseNumber && selectedIds.includes(courseNumber);
+          });
         case "filtered":
           // Return the actual filtered courses from the semester data
           return semesterData.filtered || [];

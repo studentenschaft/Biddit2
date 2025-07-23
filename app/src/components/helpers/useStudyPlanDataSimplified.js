@@ -74,46 +74,44 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
           `🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`
         );
 
-        // Get courses directly for the current semester using shortName (e.g., "HS25", "FS26")
-        const currentSemesterCourses =
-          studyPlansData[selectedSemester.shortName] || [];
+        // FIXED: Process ALL semesters from API response, not just selected semester
+        console.log("🔄 [FIXED] Processing ALL semesters from study plan data:", Object.keys(studyPlansData));
+        
+        let totalCoursesProcessed = 0;
+        
+        // Process each semester's study plan data
+        Object.entries(studyPlansData).forEach(([semesterName, coursesList]) => {
+          const courses = coursesList || [];
+          
+          if (courses.length > 0) {
+            console.log(
+              `✅ [FIXED] Processing ${courses.length} courses for semester ${semesterName}:`,
+              courses.slice(0, 3) // Show first 3 courses
+            );
 
+            // Update BOTH the study plan raw data AND the unified selected courses
+            // Store raw study plan data for filtering logic (these are the string course numbers)
+            updateStudyPlan(semesterName, courses);
+
+            // Update unified selected courses - this will make them appear in StudyOverview
+            updateUnifiedSelectedCourses(semesterName, courses);
+            
+            totalCoursesProcessed += courses.length;
+          } else {
+            console.log(`⚠️ [FIXED] No courses found for semester ${semesterName}`);
+            // Initialize empty data for semesters with no courses
+            updateStudyPlan(semesterName, []);
+            updateUnifiedSelectedCourses(semesterName, []);
+          }
+        });
+        
+        console.log(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total courses across ${Object.keys(studyPlansData).length} semesters`);
+        
+        // Also log what we processed for the currently selected semester specifically
+        const currentSemesterCourses = studyPlansData[selectedSemester.shortName] || [];
         console.log(
-          `🔍 [DEBUG] Found ${currentSemesterCourses.length} courses for ${selectedSemester.shortName}:`,
-          currentSemesterCourses
+          `🔍 [DEBUG] Current semester ${selectedSemester.shortName} has ${currentSemesterCourses.length} courses`
         );
-
-        if (currentSemesterCourses.length > 0) {
-          console.log(
-            `✅ [SIMPLIFIED] Found study plan for ${selectedSemester.shortName} with ${currentSemesterCourses.length} selected courses`
-          );
-
-          // The course numbers are already in the correct format (strings like "7,048,1.00")
-          const extractedCourseNumbers = currentSemesterCourses;
-
-          // Update BOTH the study plan raw data AND the unified selected courses
-          // Store raw study plan data for filtering logic (these are the string course numbers)
-          updateStudyPlan(selectedSemester.shortName, currentSemesterCourses);
-
-          // Update unified selected courses (legacy selected field)
-          updateUnifiedSelectedCourses(
-            selectedSemester.shortName,
-            extractedCourseNumbers
-          );
-
-          console.log(
-            "✅ [SIMPLIFIED] Updated unified selected courses with:",
-            extractedCourseNumbers
-          );
-        } else {
-          console.log(
-            `⚠️ [SIMPLIFIED] No study plan found for semester ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
-          );
-
-          // Initialize with empty study plan and selected courses
-          updateStudyPlan(selectedSemester.shortName, []);
-          updateUnifiedSelectedCourses(selectedSemester.shortName, []);
-        }
       } catch (error) {
         console.error("❌ Error fetching study plan:", error);
         errorHandlingService.handleError(error);
