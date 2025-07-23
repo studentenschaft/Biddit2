@@ -32,7 +32,8 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
  *   Structure: {cisId, id, shortName, isCurrent, isProjected}
  * @returns {Object} Study plan state and loading status
  */
-export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
+export const useStudyPlanDataSimplified = (params = {}) => {
+  const { authToken, selectedSemester } = params;
   // Unified course data hook - no more legacy atoms
   const {
     updateSelectedCourses: updateUnifiedSelectedCourses,
@@ -74,38 +75,78 @@ export const useStudyPlanDataSimplified = ({ authToken, selectedSemester }) => {
           `🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`
         );
 
-        // FIXED: Process ALL semesters from API response, not just selected semester
-        console.log("🔄 [FIXED] Processing ALL semesters from study plan data:", Object.keys(studyPlansData));
+        // Helper function to check if semester name is valid (not UUID or placeholder)
+        const isValidSemesterName = (semesterName) => {
+          // Valid format: HS25, FS26, etc. (2-3 letters + 2 digits)
+          const validPattern = /^[A-Z]{2,3}\d{2}$/;
+          
+          // Exclude UUIDs (contain hyphens) and placeholders (contain " - Placeholder")
+          const isUUID = semesterName.includes('-') && semesterName.length > 10;
+          const isPlaceholder = semesterName.includes(' - Placeholder');
+          
+          return validPattern.test(semesterName) && !isUUID && !isPlaceholder;
+        };
+
+        // FIXED: Process ALL semesters from API response, but only valid ones
+        const allSemesters = Object.keys(studyPlansData);
+        const validSemesters = allSemesters.filter(isValidSemesterName);
+        const invalidSemesters = allSemesters.filter(name => !isValidSemesterName(name));
+        
+        console.log("🔄 [FIXED] Processing study plan data:");
+        console.log(`  ✅ Valid semesters (${validSemesters.length}):`, validSemesters);
+        console.log(`  ⚠️ Skipping invalid/legacy semesters (${invalidSemesters.length}):`, invalidSemesters.slice(0, 3), invalidSemesters.length > 3 ? '...' : '');
         
         let totalCoursesProcessed = 0;
         
-        // Process each semester's study plan data
-        Object.entries(studyPlansData).forEach(([semesterName, coursesList]) => {
-          const courses = coursesList || [];
+        // Helper function to check if course ID is valid (not UUID or undefined)
+        const isValidCourseId = (courseId) => {
+          if (!courseId || courseId === 'undefined' || courseId === 'null') return false;
           
-          if (courses.length > 0) {
+          // Valid format: "7,015,1.00", "11,702,1.00", etc. (numbers with commas and periods)
+          const validPattern = /^\d+,\d+,\d+\.\d+$/;
+          
+          // Exclude UUIDs (contain hyphens and are long)
+          const isUUID = typeof courseId === 'string' && courseId.includes('-') && courseId.length > 20;
+          
+          return validPattern.test(courseId) && !isUUID;
+        };
+
+        // Process only valid semester data
+        validSemesters.forEach(semesterName => {
+          const coursesList = studyPlansData[semesterName];
+          const allCourses = coursesList || [];
+          
+          // Filter to only valid course IDs
+          const validCourses = allCourses.filter(isValidCourseId);
+          const invalidCourses = allCourses.filter(courseId => !isValidCourseId(courseId));
+          
+          if (validCourses.length > 0) {
             console.log(
-              `✅ [FIXED] Processing ${courses.length} courses for semester ${semesterName}:`,
-              courses.slice(0, 3) // Show first 3 courses
+              `✅ [FIXED] Processing ${validCourses.length} valid courses for semester ${semesterName}:`,
+              validCourses.slice(0, 3) // Show first 3 courses
             );
+            
+            if (invalidCourses.length > 0) {
+              console.log(`  ⚠️ Skipping ${invalidCourses.length} invalid course IDs:`, invalidCourses.slice(0, 2), invalidCourses.length > 2 ? '...' : '');
+            }
 
             // Update BOTH the study plan raw data AND the unified selected courses
             // Store raw study plan data for filtering logic (these are the string course numbers)
-            updateStudyPlan(semesterName, courses);
+            updateStudyPlan(semesterName, validCourses);
 
             // Update unified selected courses - this will make them appear in StudyOverview
-            updateUnifiedSelectedCourses(semesterName, courses);
+            updateUnifiedSelectedCourses(semesterName, validCourses);
             
-            totalCoursesProcessed += courses.length;
+            totalCoursesProcessed += validCourses.length;
           } else {
-            console.log(`⚠️ [FIXED] No courses found for semester ${semesterName}`);
-            // Initialize empty data for semesters with no courses
+            console.log(`⚠️ [FIXED] No valid courses found for semester ${semesterName} (had ${allCourses.length} invalid courses)`);
+            // Initialize empty data for semesters with no valid courses
             updateStudyPlan(semesterName, []);
             updateUnifiedSelectedCourses(semesterName, []);
           }
         });
         
-        console.log(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total courses across ${Object.keys(studyPlansData).length} semesters`);
+        console.log(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total valid courses across ${validSemesters.length} valid semesters (${allSemesters.length} total in API)`);
         
         // Also log what we processed for the currently selected semester specifically
         const currentSemesterCourses = studyPlansData[selectedSemester.shortName] || [];

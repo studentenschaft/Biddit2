@@ -33,13 +33,22 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
  *   Structure: {cisId, shortName, isCurrent, isProjected}
  * @returns {Object} Course info state and loading status
  */
-export const useCourseInfoData = ({ authToken, selectedSemester }) => {
-  // Unified course data hook - no more legacy atoms
+export const useCourseInfoData = (params) => {
+  // ALWAYS call hooks first - never put hooks after conditional returns
   const { updateAvailableCourses: updateUnifiedAvailableCourses } =
     useUnifiedCourseData();
-
-  // Local loading state
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
+
+  // Handle null parameters AFTER calling all hooks
+  if (!params) {
+    return {
+      isCourseDataLoading: false,
+      courseData: [],
+      hasData: false
+    };
+  }
+
+  const { authToken, selectedSemester } = params || {};
 
   // Fetch course data effect
   useEffect(() => {
