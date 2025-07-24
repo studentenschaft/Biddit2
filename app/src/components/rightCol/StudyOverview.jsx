@@ -16,7 +16,7 @@ import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonStudyOverview } from './LoadingSkeletons';
 import ProgramOverview from './studyOverview/components/ProgramOverview';
 import { adaptAcademicDataForStudyOverview, getMainProgram } from './studyOverview/utils/dataAdapter';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 const StudyOverview = () => {
   const academicData = useRecoilValue(unifiedAcademicDataSelector);
@@ -37,88 +37,24 @@ const StudyOverview = () => {
   } = useMultiSemesterCourseLoader(authToken, termListObject);
 
   // Convert our unified data to the format expected by ProgramOverview with course enrichment
-  const adaptedData = adaptAcademicDataForStudyOverview(academicData, unifiedCourseData);
-  const mainProgram = getMainProgram(adaptedData);
+  const adaptedData = useMemo(() => 
+    adaptAcademicDataForStudyOverview(academicData, unifiedCourseData), 
+    [academicData, unifiedCourseData]
+  );
+  const mainProgram = useMemo(() => getMainProgram(adaptedData), [adaptedData]);
 
-  // DEBUG: Detailed logging to investigate enrichment and course name display
-  console.group('🔍 [StudyOverview] ENRICHMENT STATUS & DATA FLOW');
-  
-  console.log('1️⃣ MULTI-SEMESTER ENRICHMENT STATUS:', {
-    isEnrichmentReady,
-    keySemesters,
-    isEnrichmentLoading,
-    termListObjectLoaded: !!termListObject
-  });
-  
-  console.log('2️⃣ RAW ACADEMIC DATA:', academicData);
-  console.log('   - isLoaded:', academicData.isLoaded);
-  console.log('   - hasData:', academicData.hasData);
-  console.log('   - programs keys:', Object.keys(academicData.programs || {}));
-  
-  console.log('3️⃣ UNIFIED COURSE DATA FOR ENRICHMENT:', {
-    totalSemesters: Object.keys(unifiedCourseData.semesters || {}).length,
-    semestersWithAvailableCourses: Object.entries(unifiedCourseData.semesters || {})
-      .filter(([, data]) => data.available?.length > 0)
-      .map(([semester, data]) => ({
-        semester,
-        availableCoursesCount: data.available.length,
-        sampleCourse: data.available[0]?.shortName || data.available[0]?.id
-      }))
-  });
-  
-  if (academicData.programs) {
-    Object.entries(academicData.programs).forEach(([programId, programData]) => {
-      console.log(`   - Program "${programId}":`, {
-        isMainProgram: programData.isMainProgram,
-        rawData: programData.rawData,
-        studyOverviewView: programData.studyOverviewView,
-        hasStudyOverviewData: Object.keys(programData.studyOverviewView || {}).length
-      });
-    });
-  }
-  
-  console.log('3️⃣ ADAPTED DATA (with course enrichment):', adaptedData);
-  console.log('   - programs keys:', Object.keys(adaptedData.programs || {}));
-  
-  if (adaptedData.programs) {
-    Object.entries(adaptedData.programs).forEach(([programId, programData]) => {
-      console.log(`   - Adapted Program "${programId}":`, {
-        isMainProgram: programData.isMainProgram,
-        semesterCount: Object.keys(programData.semesters || {}).length,
-        semesters: Object.keys(programData.semesters || {}),
-        rawScorecard: !!programData.rawScorecard
-      });
-      
-      // Sample course data to verify enrichment
-      Object.entries(programData.semesters || {}).forEach(([semester, courses]) => {
-        if (courses.length > 0) {
-          console.log(`     📚 ${semester} sample course:`, {
-            name: courses[0].name,
-            isEnriched: courses[0].isEnriched,
-            source: courses[0].source,
-            originalId: courses[0].courseId
-          });
-        }
-      });
-    });
-  }
-  
-  console.log('4️⃣ MAIN PROGRAM RESULT:', mainProgram);
-  
-  console.groupEnd();
 
   // Auto-fetch scorecard data if not loaded and haven't tried yet
-  const handleFetchIfNeeded = async () => {
-    if (!academicData.isLoaded && !fetchAttempted && authToken) {
-      setFetchAttempted(true);
-      await scorecardFetching.fetchAll(authToken);
-    }
-  };
+  useEffect(() => {
+    const handleFetchIfNeeded = async () => {
+      if (!academicData.isLoaded && !fetchAttempted && authToken) {
+        setFetchAttempted(true);
+        await scorecardFetching.fetchAll(authToken);
+      }
+    };
 
-  // Trigger fetch if needed
-  if (!academicData.isLoaded && !fetchAttempted && authToken) {
     handleFetchIfNeeded();
-  }
+  }, [academicData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
 
   if (!academicData.isLoaded) {
     return (
