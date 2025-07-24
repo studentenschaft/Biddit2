@@ -209,6 +209,7 @@ const GradeTranscript = ({
       descriptionLower.includes("thesis") &&
       descriptionLower.includes("(title in original language)");
 
+
     let childItems = item.items || [];
     // If it's a thesis category and currently has no child items, create a placeholder array
     if (isThesisCategory && childItems.length === 0) {
@@ -296,11 +297,19 @@ const GradeTranscript = ({
                       {/* Render lock icon for saved (wishlisted) courses */}
                       {subItem.isWishlist && (
                         <button
-                          onClick={() => addOrRemoveCourse(subItem)}
+                          onClick={() => {
+                            console.log('🔍 [GradeTranscript] Remove button clicked:', {
+                              courseId: subItem.id || subItem.courseId,
+                              courseName: subItem.shortName || subItem.description,
+                              isCurrentlySelected: selectedCourseIds.includes(subItem.id) || selectedCourseIds.includes(subItem.courseId),
+                              selectedCourseIds: selectedCourseIds
+                            });
+                            addOrRemoveCourse(subItem);
+                          }}
                           className="mr-2 focus:outline-none"
                           title="Click to remove saved course"
                         >
-                          <LockOpen clg="w-4 h-4 " event={subItem} />
+                          <LockOpen clg="w-4 h-4 " />
                         </button>
                       )}
                       <span>

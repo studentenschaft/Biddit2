@@ -11,9 +11,10 @@ import ErrorBoundary from "../components/errorHandling/ErrorBoundary";
 import CourseInfo from "../components/rightCol/CourseInfo";
 import Calendar from "../components/rightCol/Calendar";
 import SemesterSummary from "../components/rightCol/SemesterSummary";
-import { Transcript } from "../components/rightCol/Transcript";
+import Transcript from "../components/rightCol/Transcript";
 import StudyOverview from "../components/rightCol/StudyOverview";
 import SmartSearch from "../components/rightCol/SmartSearch";
+
 
 // For dynamic tab text
 import { selectedSemesterIndexAtom } from "../components/recoil/selectedSemesterAtom";
@@ -46,7 +47,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
       selectedIndex={selectedTab}
       onSelect={onTabSelect}
     >
-      <TabList className="flex w-full p-1 pt-2">
+      <TabList className="flex w-full p-1 pt-2 flex-wrap">
         <Tab className={tabStyle}>Course Details</Tab>
         <Tab className={tabStyle}>Calendar</Tab>
         <Tab className={tabStyle}>{dynamicSummaryText}</Tab>
