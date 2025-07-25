@@ -3,9 +3,9 @@ import { useState, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
 
-// Import unified selectors for graceful transition
-import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
-import { semesterCoursesSelector } from "../recoil/courseSelectors";
+// Import unified selectors
+import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+import { semesterCoursesSelector, selectedSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
@@ -24,15 +24,15 @@ export default function SemesterSummary() {
   const [hoveredDate, setHoveredDate] = useState(null);
   const [hoveredCourse, setHoveredCourse] = useState(null);
 
-  // Use new unified course data system
-  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
+  // Use unified course data system - get selected semester from selector
+  const selectedSemesterState = useRecoilValue(selectedSemesterSelector);
 
   // Also listen to direct local changes for immediate updates
   const localSelectedCoursesSemKey = useRecoilValue(
     localSelectedCoursesSemKeyState
   );
 
-  // Get enrolled courses from unified system
+  // Get enrolled and selected courses from unified system (full course objects)
   const enrolledCourses = useRecoilValue(
     semesterCoursesSelector({
       semester: selectedSemesterState,
@@ -40,7 +40,6 @@ export default function SemesterSummary() {
     })
   );
 
-  // Get selected courses from unified system
   const selectedCourses = useRecoilValue(
     semesterCoursesSelector({
       semester: selectedSemesterState,

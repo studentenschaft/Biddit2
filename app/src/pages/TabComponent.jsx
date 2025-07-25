@@ -17,29 +17,27 @@ import SmartSearch from "../components/rightCol/SmartSearch";
 
 
 // For dynamic tab text
-import { selectedSemesterIndexAtom } from "../components/recoil/selectedSemesterAtom";
-import { cisIdListSelector } from "../components/recoil/cisIdListSelector";
+import { selectedSemesterSelector } from "../components/recoil/unifiedCourseDataSelectors";
 import { useRecoilValue } from "recoil";
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
   const tabStyle =
     "flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1";
 
-  // Access Recoil values
-  const selectedSemesterIndex = useRecoilValue(selectedSemesterIndexAtom);
-  const cisIdList = useRecoilValue(cisIdListSelector);
+  // Access selected semester from unified system
+  const selectedSemester = useRecoilValue(selectedSemesterSelector);
 
   // Local state for dynamic tab text
   const [dynamicSummaryText, setDynamicSummaryText] =
     useState("Semester Summary");
 
   useEffect(() => {
-    if (cisIdList && cisIdList[selectedSemesterIndex]) {
+    if (selectedSemester) {
       // Update dynamic tab text without blocking render
-      const newSummaryText = `${cisIdList[selectedSemesterIndex].shortName} Summary`;
+      const newSummaryText = `${selectedSemester} Summary`;
       setDynamicSummaryText(newSummaryText);
     }
-  }, [selectedSemesterIndex, cisIdList]);
+  }, [selectedSemester]);
 
   return (
     <Tabs
