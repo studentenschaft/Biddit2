@@ -1,2 +1,4 @@
 /node*
 /.vscode*
+/.claude
+CLAUDE.md
