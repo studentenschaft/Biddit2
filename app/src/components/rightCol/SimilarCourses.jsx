@@ -4,41 +4,40 @@ import PropTypes from "prop-types";
 // Updated imports to use unified course data selectors
 import {
   availableCoursesSelector,
-  currentSemesterSelector,
   selectedSemesterSelector,
   semesterMetadataSelector,
 } from "../recoil/unifiedCourseDataSelectors";
+import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 // import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments"; // Keeping for potential fallback
 import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
+import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
+  const scorecardFetching = useScorecardFetching();
 
   // Use unified course data selectors instead of old atoms
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
+  const mainProgram = useRecoilValue(mainProgramSelector);
+  const scorecardData = useRecoilValue(scorecardDataState);
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
-  const currentSemesterShortName = useRecoilValue(currentSemesterSelector);
 
-  // Get current semester courses and metadata
-  const coursesCurrentSemester = useRecoilValue(
-    availableCoursesSelector(
-      currentSemesterShortName || selectedSemesterShortName
-    )
-  );
+  // Get metadata for the selected semester
   const semesterMetadata = useRecoilValue(
     semesterMetadataSelector(selectedSemesterShortName)
   );
 
-  const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
-    useState([]); // Keep for potential future use when upsert is re-enabled
+  const [, setRelevantCourseInfoForUpsert] = useState([]); // Keep for potential future use when upsert is re-enabled
   const [similarCourses, setSimilarCourses] = useState([]);
 
   // Use metadata from unified system instead of separate atoms
@@ -48,31 +47,44 @@ export default function SimilarCourses({ selectedCourse }) {
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
 
+  // Compute effective semester: always selected semester, or its reference if future
+  const effectiveSemesterShortName =
+    referenceSemesterLocalState || selectedSemesterShortName || null;
+
+  // Get courses for the effective semester
+  const coursesCurrentSemester = useRecoilValue(
+    availableCoursesSelector(effectiveSemesterShortName)
+  );
+
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingLong, setIsLoadingLong] = useState(false); // Keep for when upsert is re-enabled
+  const [isLoadingLong] = useState(false); // Keep for when upsert is re-enabled
+  // Allow setting the current CourseInfo when user clicks a similar course title
+  const { updateSelectedCourseInfo } = useUnifiedCourseData();
 
-  const [program, setProgram] = useState(null);
+  // Derive program from unified data with robust fallbacks
+  const derivedProgram =
+    mainProgram?.metadata?.programDescription ||
+    mainProgram?.programName ||
+    currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
+      ?.studyProgramDescription ||
+    (scorecardData?.rawScorecards
+      ? Object.keys(scorecardData.rawScorecards)[0]
+      : null) ||
+    null;
 
-  // needed for fetchSimilarCourses to have the most recent program value
-  const programRef = useRef(program);
-
+  // Keep latest program value available inside async handlers
+  const programRef = useRef(derivedProgram);
   useEffect(() => {
-    programRef.current = program;
-  }, [program]);
-
-  // Update program when current enrollments are available
-  useEffect(() => {
-    if (currentEnrollments && currentEnrollments.length > 0) {
-      setProgram(currentEnrollments[0]?.description || null);
-    }
-  }, [currentEnrollments]);
+    programRef.current = derivedProgram;
+  }, [derivedProgram]);
 
   // handle future semester selected
   // set true reference semester if future semester selected
   useEffect(() => {
     try {
       if (isFutureSemesterSelectedState) {
-        setReferenceSemesterLocalState(referenceSemesterState?.shortName);
+        // referenceSemester is already a shortName string in unified state
+        setReferenceSemesterLocalState(referenceSemesterState || null);
       } else {
         setReferenceSemesterLocalState(null);
       }
@@ -161,10 +173,33 @@ export default function SimilarCourses({ selectedCourse }) {
     attemptedUpsert = false
   ) {
     setIsLoading(true);
+    // Make sure program/scorecard data is available
+    if (programRef.current === null && authToken) {
+      try {
+        const result = await scorecardFetching.fetchAll(authToken);
+        const keys = result?.data ? Object.keys(result.data) : [];
+        if (keys.length > 0) {
+          programRef.current = keys[0];
+        }
+      } catch (e) {
+        console.error("Failed to prefetch scorecard data:", e);
+      }
+    }
+
     if (programRef.current !== null) {
       try {
         if (!selectedCourse.courseContent) {
           console.error("Course content is missing");
+          setIsLoading(false);
+          return;
+        }
+
+        // Always use selected semester, or its reference when projected
+        const semesterToUse = effectiveSemesterShortName;
+        if (!semesterToUse) {
+          console.warn(
+            "No semester is selected or available for SimilarCourses query"
+          );
           setIsLoading(false);
           return;
         }
@@ -184,9 +219,7 @@ export default function SimilarCourses({ selectedCourse }) {
               numberOfResults: 10,
               category: category,
               program: programRef.current,
-              semester: referenceSemesterLocalState
-                ? referenceSemesterLocalState
-                : selectedSemesterShortName,
+              semester: semesterToUse,
             },
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -243,10 +276,10 @@ export default function SimilarCourses({ selectedCourse }) {
         setIsLoading(false);
       }
     } else {
-      console.log("Program not yet loaded");
+      console.log("Program not yet loaded; will retry shortly");
       setTimeout(() => {
         fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
-      }, 1000);
+      }, 800);
     }
   }
 
@@ -562,8 +595,17 @@ export default function SimilarCourses({ selectedCourse }) {
                       })()}
                     </td>
                     <td
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 overflow-hidden overflow-ellipsis"
+                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 overflow-hidden overflow-ellipsis cursor-pointer hover:underline"
                       style={{ maxWidth: "450px" }}
+                      onClick={() => {
+                        const course = coursesCurrentSemester.find(
+                          (c) =>
+                            c.courses[0].courseNumber ===
+                            id.replace(/[A-Z]+\d+/g, "")
+                        );
+                        if (course) updateSelectedCourseInfo(course);
+                      }}
+                      title="Show course details"
                     >
                       {(
                         coursesCurrentSemester.find(

@@ -164,6 +164,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const newData = {
@@ -201,6 +202,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       // Ensure the semester exists in the structure
@@ -262,6 +264,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       // Ensure the semester exists in the structure
@@ -308,6 +311,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       // Ensure the semester exists in the structure
@@ -358,6 +362,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const currentSelectedIds =
@@ -450,6 +455,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const currentSelectedIds =
@@ -529,6 +535,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       // Ensure the semester exists in the structure
@@ -589,6 +596,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       // Ensure the semester exists in the structure
@@ -634,6 +642,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const updatedSemesters = { ...cleanPrev.semesters };
@@ -675,6 +684,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const semesterData = cleanPrev.semesters[semesterShortName];
@@ -905,6 +915,7 @@ export function useUnifiedCourseData() {
         semesters: prev.semesters || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
+        selectedCourseInfo: prev.selectedCourseInfo,
       };
 
       const updatedSemesters = { ...cleanPrev.semesters };
