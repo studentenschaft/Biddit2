@@ -158,35 +158,45 @@ export const calendarEntriesSelector = selector({
           "minutes"
         );
 
-        const startIso = startMoment.toISOString();
-        const endIso = endMoment.toISOString();
+        // Note: no need to compute ISO strings here; comparisons use moment objects directly
 
         // Check for overlaps using the index - O(1) lookup for potential overlaps
-        // This assumes that events with the same start time will overlap if they have different end times
+        // Touching intervals (end == start) are NOT considered overlaps.
         let overlapping = false;
         for (const [otherStart, endSet] of timeSlotIndex.entries()) {
           const otherStartTime = moment(otherStart);
 
-          // Skip entries for this exact course/event
-          if (
-            otherStart === startIso &&
-            endSet.size === 1 &&
-            endSet.has(endIso)
-          ) {
-            continue;
+          // Iterate each potential end and apply strict interval overlap rules
+          for (const endTime of endSet) {
+            const otherEndTime = moment(endTime);
+
+            // Skip comparing the event to itself
+            if (
+              otherStartTime.isSame(startMoment) &&
+              otherEndTime.isSame(endMoment)
+            ) {
+              continue;
+            }
+
+            // Treat adjacency as non-overlap: A.end == B.start OR B.end == A.start
+            if (
+              otherStartTime.isSame(endMoment) ||
+              otherEndTime.isSame(startMoment)
+            ) {
+              continue;
+            }
+
+            // Strict overlap check: [aStart, aEnd) intersects [bStart, bEnd)
+            if (
+              otherStartTime.isBefore(endMoment) &&
+              otherEndTime.isAfter(startMoment)
+            ) {
+              overlapping = true;
+              break;
+            }
           }
 
-          // Check for any overlap
-          if (
-            otherStartTime.isBefore(endMoment) &&
-            Array.from(endSet).some((endTime) => {
-              const otherEndTime = moment(endTime);
-              return otherEndTime.isAfter(startMoment);
-            })
-          ) {
-            overlapping = true;
-            break;
-          }
+          if (overlapping) break;
         }
 
         // Return the final shape for FullCalendar

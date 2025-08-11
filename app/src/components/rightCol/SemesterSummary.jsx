@@ -4,9 +4,10 @@ import { useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
 
 // Import unified selectors
-import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
-import { semesterCoursesSelector, selectedSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
-import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
+import {
+  semesterCoursesSelector,
+  selectedSemesterSelector,
+} from "../recoil/unifiedCourseDataSelectors";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
@@ -26,11 +27,6 @@ export default function SemesterSummary() {
 
   // Use unified course data system - get selected semester from selector
   const selectedSemesterState = useRecoilValue(selectedSemesterSelector);
-
-  // Also listen to direct local changes for immediate updates
-  const localSelectedCoursesSemKey = useRecoilValue(
-    localSelectedCoursesSemKeyState
-  );
 
   // Get enrolled and selected courses from unified system (full course objects)
   const enrolledCourses = useRecoilValue(
@@ -64,12 +60,7 @@ export default function SemesterSummary() {
     }
 
     return [];
-  }, [
-    selectedSemesterState,
-    enrolledCourses,
-    selectedCourses,
-    localSelectedCoursesSemKey,
-  ]);
+  }, [selectedSemesterState, enrolledCourses, selectedCourses]);
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;

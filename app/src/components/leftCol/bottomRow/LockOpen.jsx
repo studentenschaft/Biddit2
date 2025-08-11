@@ -1,13 +1,16 @@
 // LockOpen.jsx //
 
 import PropTypes from "prop-types";
-import { useRecoilValue, useRecoilState } from "recoil";
+import { useMemo, useState } from "react";
+import { useRecoilValue } from "recoil";
 import { authTokenState } from "../../recoil/authAtom";
-import { selectedSemesterIndexAtom, selectedSemesterAtom } from "../../recoil/selectedSemesterAtom";
+import {
+  selectedSemesterSelector,
+  selectedCoursesSelector,
+} from "../../recoil/unifiedCourseDataSelectors";
 
 import { useCourseSelection } from "../../helpers/useCourseSelection";
-
-import { selectedCourseIdsAtom } from "../../recoil/selectedCourseIdsAtom";
+import { calendarEntriesSelector } from "../../recoil/calendarEntriesSelector";
 /**
  * LockOpen Component
  * Renders an open lock icon that toggles a course in or out of the user’s study plan
@@ -15,20 +18,54 @@ import { selectedCourseIdsAtom } from "../../recoil/selectedCourseIdsAtom";
 export default function LockOpen({ clg, event }) {
   // Recoil states (NO LOCAL STATE)
   const authToken = useRecoilValue(authTokenState);
-  const index = useRecoilValue(selectedSemesterIndexAtom) + 1;
-  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
-
-  const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(
-    selectedCourseIdsAtom
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
+  const calendarEntries = useRecoilValue(calendarEntriesSelector);
+  const [isHovered, setIsHovered] = useState(false);
+  const selectedCourseIdsRaw = useRecoilValue(
+    selectedCoursesSelector(selectedSemesterShortName || "")
+  );
+  const selectedCourseIds = useMemo(
+    () => selectedCourseIdsRaw || [],
+    [selectedCourseIdsRaw]
   );
 
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
-    setSelectedCourseIds,
-    selectedSemesterShortName: selectedSemesterState?.shortName || selectedSemesterState || "",
-    index,
+    setSelectedCourseIds: null, // unified hook updates global state directly
+    selectedSemesterShortName: selectedSemesterShortName || "",
     authToken,
   });
+
+  // Compute smart color based on event state
+  const computedColor = useMemo(() => {
+    const COLOR_MAIN = "#006625"; // green
+    const COLOR_WARNING = "#FCA311"; // orange
+    const COLOR_GRAY = "#9CA3AF"; // gray
+    const COLOR_DANGER = "#DC2626"; // red-600
+
+    if (!event) return COLOR_GRAY;
+
+    const courseNumber =
+      event?.courses?.[0]?.courseNumber || event?.courseNumber || null;
+    const isSelected =
+      !!event?.selected ||
+      (courseNumber ? selectedCourseIds.includes(courseNumber) : false);
+    const isEnrolled = !!event?.enrolled;
+
+    // Determine overlap from calendar entries
+    const hasOverlap = courseNumber
+      ? calendarEntries.some(
+          (e) => e.courseNumber === courseNumber && e.overlapping
+        )
+      : false;
+
+    // On hover, indicate deletion clearly for selected (removal) items
+    if (isHovered && isSelected && !isEnrolled) return COLOR_DANGER;
+    if (isEnrolled) return COLOR_MAIN;
+    if (isSelected && hasOverlap) return COLOR_WARNING;
+    if (isSelected) return COLOR_MAIN;
+    return COLOR_GRAY; // not selected (e.g., SimilarCourses): gray
+  }, [calendarEntries, event, selectedCourseIds, isHovered]);
 
   return (
     <svg
@@ -37,9 +74,10 @@ export default function LockOpen({ clg, event }) {
       viewBox="0 0 24 24"
       strokeWidth={2}
       stroke="currentColor"
-      className={
-        clg + " hover:text-red-600 transition duration-500 ease-in-out"
-      }
+      className={clg + " transition duration-500 ease-in-out"}
+      style={{ color: computedColor }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       onMouseDown={(e) => {
         e.preventDefault();
         event

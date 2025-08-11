@@ -31,15 +31,15 @@ function getSemesterDatesUnified(cisTermData, selectedSemShortName) {
   if (!selectedSemShortName) {
     return {
       start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
-      end: new Date(new Date().getFullYear(), 11, 31)
+      end: new Date(new Date().getFullYear(), 11, 31),
     };
   }
 
   // Extract year from semester name (e.g. "FS24" -> "24")
   // Handles both "FS24" and "FS 24" formats by removing spaces first
-  const cleanShortName = selectedSemShortName.replace(/\s/g, '');
+  const cleanShortName = selectedSemShortName.replace(/\s/g, "");
   const yearStr = cleanShortName.match(/\d+/)?.[0];
-  
+
   // Convert to full year (e.g. "24" -> 2024)
   const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
 
@@ -61,31 +61,34 @@ function getSemesterDatesUnified(cisTermData, selectedSemShortName) {
 }
 
 // LEGACY VERSION: Keep for reference but unused
+// eslint-disable-next-line no-unused-vars
 function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
   const selectedSemester = cisTermData[selectedIndex];
-  
+
   // Use the selected semester short name if provided, otherwise fall back to the semester from cisTermData
   const shortName = selectedSemShortName || selectedSemester?.shortName;
-  
+
   if (!shortName) {
     return {
       start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
-      end: new Date(new Date().getFullYear(), 11, 31)
+      end: new Date(new Date().getFullYear(), 11, 31),
     };
   }
 
   // Extract year from semester name (e.g. "FS24" -> "24")
   // Handles both "FS24" and "FS 24" formats by removing spaces first
-  const cleanShortName = shortName.replace(/\s/g, '');
+  const cleanShortName = shortName.replace(/\s/g, "");
   const yearStr = cleanShortName.match(/\d+/)?.[0];
-  
+
   // Convert to full year (e.g. "24" -> 2024)
   const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
 
   // Check if spring semester
   const isSpring = cleanShortName.includes("FS");
 
-  console.log(`DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`);
+  console.log(
+    `DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`
+  );
 
   if (isSpring) {
     return {
@@ -177,7 +180,7 @@ export const Heatmap = ({
     // find all events on the date and add them to an array
     const eventsOnDate = [];
     const targetYear = date.getFullYear();
-    
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
@@ -195,7 +198,7 @@ export const Heatmap = ({
           ...event,
           // Store shifted times for overlap calculation
           shiftedStart: eventDate.getTime(),
-          shiftedEnd: eventEndDate.getTime()
+          shiftedEnd: eventEndDate.getTime(),
         });
       }
     }
@@ -204,19 +207,19 @@ export const Heatmap = ({
       return false;
     }
     for (let i = 0; i < eventsOnDate.length; i++) {
-      const event = eventsOnDate[i];
+      const a = eventsOnDate[i];
+      for (let j = i + 1; j < eventsOnDate.length; j++) {
+        const b = eventsOnDate[j];
 
-      for (let j = 0; j < eventsOnDate.length; j++) {
-        const otherEvent = eventsOnDate[j];
+        // Treat adjacency as non-overlap: a.end == b.start or b.end == a.start
+        const touches =
+          a.shiftedEnd === b.shiftedStart || b.shiftedEnd === a.shiftedStart;
+        if (touches) continue;
 
-        // check if event start time is smaller than other event start time and event end time is bigger than other event start time
-        if (
-          event.shiftedStart <= otherEvent.shiftedStart &&
-          event.shiftedEnd >= otherEvent.shiftedStart &&
-          event !== otherEvent
-        ) {
-          return true;
-        }
+        // Strict overlap: [aStart, aEnd) intersects [bStart, bEnd)
+        const overlaps =
+          a.shiftedStart < b.shiftedEnd && a.shiftedEnd > b.shiftedStart;
+        if (overlaps) return true;
       }
     }
     return false;
@@ -245,16 +248,16 @@ export const Heatmap = ({
     const shifted = new Date(originalDate);
     const originalYear = shifted.getFullYear();
     const yearDiff = targetYear - originalYear;
-    
+
     if (yearDiff !== 0) {
       shifted.setFullYear(targetYear);
-      
+
       // If the original date doesn't exist in the target year (e.g., Feb 29), adjust
       if (shifted.getMonth() !== originalDate.getMonth()) {
         shifted.setDate(0); // Go to last day of previous month
       }
     }
-    
+
     return shifted;
   }
 
@@ -270,7 +273,7 @@ export const Heatmap = ({
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      
+
       // Shift event dates to target year for future semesters
       const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
       const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
@@ -290,33 +293,42 @@ export const Heatmap = ({
     return dur / 60;
   }
 
-  function returnAllCoursesFromDate(date) {
-    const courses = [];
-    if (events.length === 0) {
-      return courses;
-    }
-
-    const targetYear = date.getFullYear();
-
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
-      const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
-
-      if (
-        (eventDate.getDate() === date.getDate() &&
-          eventDate.getMonth() === date.getMonth() &&
-          eventDate.getFullYear() === date.getFullYear()) ||
-        (eventEndDate.getDate() === date.getDate() &&
-          eventEndDate.getMonth() === date.getMonth() &&
-          eventEndDate.getFullYear() === date.getFullYear())
-      ) {
-        courses.push(event.courseNumber);
+  const returnAllCoursesFromDate = useCallback(
+    (date) => {
+      const courses = [];
+      if (events.length === 0) {
+        return courses;
       }
-    }
 
-    return courses;
-  }
+      const targetYear = date.getFullYear();
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const eventDate = getShiftedEventDate(
+          new Date(event.start),
+          targetYear
+        );
+        const eventEndDate = getShiftedEventDate(
+          new Date(event.end),
+          targetYear
+        );
+
+        if (
+          (eventDate.getDate() === date.getDate() &&
+            eventDate.getMonth() === date.getMonth() &&
+            eventDate.getFullYear() === date.getFullYear()) ||
+          (eventEndDate.getDate() === date.getDate() &&
+            eventEndDate.getMonth() === date.getMonth() &&
+            eventEndDate.getFullYear() === date.getFullYear())
+        ) {
+          courses.push(event.courseNumber);
+        }
+      }
+
+      return courses;
+    },
+    [events]
+  );
 
   function checkIfCourseHasEvent(date) {
     if (
@@ -351,10 +363,13 @@ export const Heatmap = ({
     return false;
   }
 
-  const handleMouseEnter = useCallback((date) => {
-    setHoveredDate(date);
-    setCourseOnDay(returnAllCoursesFromDate(date));
-  }, [returnAllCoursesFromDate]);
+  const handleMouseEnter = useCallback(
+    (date) => {
+      setHoveredDate(date);
+      setCourseOnDay(returnAllCoursesFromDate(date));
+    },
+    [setHoveredDate, setCourseOnDay, returnAllCoursesFromDate]
+  );
 
   return (
     <div className="flex flex-col">

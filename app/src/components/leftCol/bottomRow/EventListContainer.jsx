@@ -192,10 +192,11 @@ export default function EventListContainer({
           }`}
         >
           {isEnrolled ? (
-            <LockClosed clg="w-6 h-6 " />
+            <LockClosed clg="w-6 h-6 " event={event} />
           ) : isSelected ? (
             <LockOpen
               clg="w-6 h-6 "
+              event={event}
               selectedCourseIds={selectedCourseIds}
               setSelectedCourseIds={null} // Not needed anymore
             />
