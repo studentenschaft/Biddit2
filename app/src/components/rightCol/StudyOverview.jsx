@@ -24,7 +24,7 @@ const StudyOverview = () => {
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();
   const [fetchAttempted, setFetchAttempted] = useState(false);
-  const [selectedSemester, setSelectedSemester] = useState(null);
+  const [selectedSemesters, setSelectedSemesters] = useState({});
   
   // Multi-semester course data loading for enrichment (simplified version)
   const { termListObject } = useTermSelection();
@@ -78,8 +78,10 @@ const StudyOverview = () => {
           <ProgramOverview
             program={programData.id || programId}
             semesters={programData.semesters}
-            selectedSemester={selectedSemester}
-            setSelectedSemester={setSelectedSemester}
+            selectedSemester={selectedSemesters[programId]}
+            setSelectedSemester={(semester) => 
+              setSelectedSemesters(prev => ({...prev, [programId]: semester}))
+            }
             rawScorecard={programData.rawScorecard}
           />
           {/* Add gradient separator between programs (like original) */}
