@@ -1,74 +1,90 @@
 import { useRecoilState, useRecoilValue } from "recoil";
-import { useState, useEffect, useRef } from "react";
-import { semesterCoursesSelector } from "../recoil/courseSelectors";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
 import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
 import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
-import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
+// Use unified selected/current semester selectors instead of legacy atom
+import {
+  selectedSemesterSelector as unifiedSelectedSemesterSelector,
+  availableCoursesSelector,
+  semesterMetadataSelector,
+} from "../recoil/unifiedCourseDataSelectors";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
-import {
-  isFutureSemesterSelected,
-  referenceSemester,
-} from "../recoil/isFutureSemesterSelected";
-// Import unified selectors for graceful transition
-import {
-  isFutureSemesterSelector,
-  referenceSemesterSelector,
-} from "../recoil/courseSelectors";
+// Legacy future semester imports removed; using unified semesterMetadata instead
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+// Imports for unified program derivation and CourseInfo selection
+import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
+import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
+import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+// import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
 export default function SmartSearch() {
   const authToken = useRecoilValue(authTokenState);
   const [, setScoreCardEnrollments] = useRecoilState(scorecardEnrollmentsState);
+  const scorecardFetching = useScorecardFetching();
 
-  // Use new unified course data system
-  const selectedSemesterState = useRecoilValue(selectedSemesterAtom);
-  const coursesCurrentSemester = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "available",
-    })
-  ); // TEMPORARILY DISABLED UNTIL STABLE
+  // Use new unified course data system for semester selection
+  const unifiedSelectedSemesterShortName = useRecoilValue(
+    unifiedSelectedSemesterSelector
+  );
+  // We'll compute effective semester after reference logic below
   // eslint-disable-next-line no-unused-vars
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]);
   const [similarCourses, setSimilarCourses] = useState([]);
 
-  // Try unified state first, fallback to legacy
-  const isFutureSemesterUnified = useRecoilValue(isFutureSemesterSelector);
-  const isFutureSemesterLegacy = useRecoilValue(isFutureSemesterSelected);
-  const isFutureSemesterSelectedSate =
-    isFutureSemesterUnified !== undefined
-      ? isFutureSemesterUnified
-      : isFutureSemesterLegacy;
-
-  // Try unified state first, fallback to legacy for reference semester
-  const referenceSemesterUnified = useRecoilValue(referenceSemesterSelector);
-  const referenceSemesterLegacy = useRecoilValue(referenceSemester);
-  const referenceSemesterState =
-    referenceSemesterUnified || referenceSemesterLegacy;
+  // Use unified semester metadata for future/reference semester handling
+  const semesterMetadata = useRecoilValue(
+    semesterMetadataSelector(unifiedSelectedSemesterShortName)
+  );
+  const isFutureSemesterSelectedSate = semesterMetadata?.isFutureSemester;
+  const referenceSemesterState = semesterMetadata?.referenceSemester;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
+  // Determine the effective semester: selected semester or its reference if projected
+  const effectiveSemesterShortName =
+    referenceSemesterLocalState || unifiedSelectedSemesterShortName || null;
+
+  // Retrieve available courses for the effective semester
+  const coursesCurrentSemester = useRecoilValue(
+    availableCoursesSelector(effectiveSemesterShortName)
+  );
 
   const [isLoading, setIsLoading] = useState(false);
   // TEMPORARILY DISABLED UNTIL STABLE
   // eslint-disable-next-line no-unused-vars
   const [isLoadingLong, setIsLoadingLong] = useState(false);
-
-  const [program, setProgram] = useState(null);
   const [searchInput, setSearchInput] = useState("");
 
-  // needed for fetchSimilarCourses to have the most recent program value
-  const programRef = useRef(program);
+  // // Use unified course data to set CourseInfo when clicking a title
+  // const { updateSelectedCourseInfo } = useUnifiedCourseData();
 
+  // Unified program derivation with fallbacks
+  const currentEnrollments = useRecoilValue(currentEnrollmentsState);
+  const mainProgram = useRecoilValue(mainProgramSelector);
+  const scorecardData = useRecoilValue(scorecardDataState);
+
+  const derivedProgram =
+    mainProgram?.metadata?.programDescription ||
+    mainProgram?.programName ||
+    currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
+      ?.studyProgramDescription ||
+    (scorecardData?.rawScorecards
+      ? Object.keys(scorecardData.rawScorecards)[0]
+      : null) ||
+    null;
+
+  // needed for fetchSimilarCourses to have the most recent program value
+  const programRef = useRef(derivedProgram);
   useEffect(() => {
-    programRef.current = program;
-  }, [program]);
+    programRef.current = derivedProgram;
+  }, [derivedProgram]);
 
   useEffect(() => {
     if (authToken) {
@@ -76,7 +92,6 @@ export default function SmartSearch() {
         try {
           const data = await fetchScoreCardEnrollments(authToken);
           setScoreCardEnrollments(data);
-          setProgram(data[0] ? data[0].description : null);
         } catch (error) {
           console.error("Error fetching scorecard enrollments:", error);
           if (!retry) {
@@ -95,7 +110,8 @@ export default function SmartSearch() {
   useEffect(() => {
     try {
       if (isFutureSemesterSelectedSate) {
-        setReferenceSemesterLocalState(referenceSemesterState?.shortName);
+        // referenceSemester already stored as shortName
+        setReferenceSemesterLocalState(referenceSemesterState || null);
       } else {
         setReferenceSemesterLocalState(null);
       }
@@ -114,12 +130,12 @@ export default function SmartSearch() {
       if (!coursesCurrentSemester) return;
       const relevantData = coursesCurrentSemester
         .map((course) => {
-          if (!course.courseNumber) {
+          if (!course.courses?.[0]?.courseNumber) {
             console.warn("Missing course number for course:", course);
             return null;
           }
           return {
-            courseNumber: course.courseNumber,
+            courseNumber: course.courses[0].courseNumber,
             shortName: course.shortName,
             classification: course.classification,
             courseContent: course.courseContent,
@@ -181,8 +197,37 @@ export default function SmartSearch() {
     }
 
     setIsLoading(true);
+    // Ensure program/scorecard data is available before querying
+    if (programRef.current === null) {
+      // Try to derive from existing scorecard data
+      const fallbackProgram = scorecardData?.rawScorecards
+        ? Object.keys(scorecardData.rawScorecards)[0]
+        : null;
+      if (fallbackProgram) {
+        programRef.current = fallbackProgram;
+      } else if (authToken) {
+        try {
+          const result = await scorecardFetching.fetchAll(authToken);
+          const keys = result?.data ? Object.keys(result.data) : [];
+          if (keys.length > 0) {
+            programRef.current = keys[0];
+          }
+        } catch (e) {
+          console.error("Failed to prefetch scorecard data:", e);
+        }
+      }
+    }
+
     if (programRef.current !== null) {
       try {
+        const semesterToUse = effectiveSemesterShortName;
+        if (!semesterToUse) {
+          console.warn(
+            "No semester is selected or available for SmartSearch query"
+          );
+          setIsLoading(false);
+          return;
+        }
         const response = await axios.get(
           "https://api.shsg.ch/similar-courses/query",
           {
@@ -191,9 +236,7 @@ export default function SmartSearch() {
               numberOfResults: 10,
               category: category,
               program: programRef.current,
-              semester: referenceSemesterLocalState
-                ? referenceSemesterLocalState
-                : selectedSemesterState,
+              semester: semesterToUse,
             },
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -264,33 +307,54 @@ export default function SmartSearch() {
         setIsLoading(false);
       }
     } else {
-      console.log("Program not yet loaded");
+      console.log("Program not yet loaded; will retry shortly");
       setTimeout(() => {
         fetchSimilarCourses(category, attemptedUpsert);
-      }, 1000);
+      }, 800);
     }
   }
 
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [creditsFilter, setCreditsFilter] = useState("all");
+
+  // Build stable option arrays for filters
+  const categoryOptions = useMemo(() => {
+    const ids = similarCourses?.ids?.[0] ?? [];
+    const categories = ids
+      .map((id) => {
+        const course = coursesCurrentSemester?.find(
+          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+        );
+        return course ? course.classification : null;
+      })
+      .filter((v) => v != null);
+    return Array.from(new Set(categories)).sort();
+  }, [similarCourses?.ids, coursesCurrentSemester]);
+
+  const creditOptions = useMemo(() => {
+    const ids = similarCourses?.ids?.[0] ?? [];
+    const credits = ids
+      .map((id) => {
+        const course = coursesCurrentSemester?.find(
+          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+        );
+        return course ? (course.credits / 100).toFixed(2) : null;
+      })
+      .filter((v) => v != null);
+    return Array.from(new Set(credits)).sort();
+  }, [similarCourses?.ids, coursesCurrentSemester]);
+
   const filteredCourses = similarCourses.ids
     ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
-          (course) => course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
-
         const categoryMatch =
           categoryFilter === "all" || categoryFilter === course.classification;
-
         const creditsMatch =
           creditsFilter === "all" ||
           creditsFilter === (course.credits / 100).toFixed(2);
-
-        console.log(
-          "categoryMatch && creditsMatch",
-          categoryMatch && creditsMatch
-        );
         return categoryMatch && creditsMatch;
       })
     : [];
@@ -312,30 +376,32 @@ export default function SmartSearch() {
     if (!coursesCurrentSemester) return;
 
     const locked = coursesCurrentSemester
-      .filter((course) => course.enrolled && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter((course) => course.enrolled && course.courses?.[0]?.courseNumber)
+      .map((course) => course.courses[0].courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
-      .filter((course) => course.selected && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter((course) => course.selected && course.courses?.[0]?.courseNumber)
+      .map((course) => course.courses[0].courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
-      .filter((course) => course.overlapping && course.courseNumber)
-      .map((course) => course.courseNumber);
+      .filter(
+        (course) => course.overlapping && course.courses?.[0]?.courseNumber
+      )
+      .map((course) => course.courses[0].courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
   function isLocked(course) {
-    return lockedCourses.includes(course.courseNumber);
+    return lockedCourses.includes(course.courses[0].courseNumber);
   }
 
   function isSelected(course) {
-    return selectedCourses.includes(course.courseNumber);
+    return selectedCourses.includes(course.courses[0].courseNumber);
   }
 
   function isOverlapping(course) {
-    return overlappingCourses.includes(course.courseNumber);
+    return overlappingCourses.includes(course.courses[0].courseNumber);
   }
 
   useEffect(() => {
@@ -425,29 +491,16 @@ export default function SmartSearch() {
             name="categoryFilter"
             className="w-fit pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none  focus:ring-green-700 focus:border-green-700 sm:text-sm rounded-md"
             onChange={(e) => setCategoryFilter(e.target.value)}
+            value={categoryFilter}
           >
             <option className="focus:selection:bg-green-500" value="all">
               All
-            </option>{" "}
-            {[
-              ...new Set(
-                similarCourses.ids?.[0]
-                  .map((id) => {
-                    const course = coursesCurrentSemester.find(
-                      (course) =>
-                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
-                    );
-                    return course ? course.classification : null;
-                  })
-                  .filter((category) => category !== null)
-              ),
-            ]
-              .sort()
-              .map((category, index) => (
-                <option key={index} value={category}>
-                  {category}
-                </option>
-              ))}
+            </option>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
           </select>
         </div>
         <div className="mt-4">
@@ -462,27 +515,14 @@ export default function SmartSearch() {
             name="creditsFilter"
             className="w-fit pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-green-700 focus:border-green-700 sm:text-sm rounded-md"
             onChange={(e) => setCreditsFilter(e.target.value)}
+            value={creditsFilter}
           >
-            <option value="all">All</option>{" "}
-            {[
-              ...new Set(
-                similarCourses.ids?.[0]
-                  .map((id) => {
-                    const course = coursesCurrentSemester.find(
-                      (course) =>
-                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
-                    );
-                    return course ? (course.credits / 100).toFixed(2) : null;
-                  })
-                  .filter((credits) => credits !== null)
-              ),
-            ]
-              .sort()
-              .map((credits, index) => (
-                <option key={index} value={credits}>
-                  {credits}
-                </option>
-              ))}
+            <option value="all">All</option>
+            {creditOptions.map((credits) => (
+              <option key={credits} value={credits}>
+                {credits}
+              </option>
+            ))}
           </select>
         </div>
       </div>
@@ -546,22 +586,26 @@ export default function SmartSearch() {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredCourses
                 .sort((a, b) => {
+                  const ids = similarCourses?.ids?.[0] ?? [];
+                  const dists = similarCourses?.distances?.[0] ?? [];
+                  const idxA = ids.indexOf(a);
+                  const idxB = ids.indexOf(b);
                   const distanceA =
-                    similarCourses.distances[0][filteredCourses.indexOf(a)];
+                    idxA >= 0 ? dists[idxA] ?? Infinity : Infinity;
                   const distanceB =
-                    similarCourses.distances[0][filteredCourses.indexOf(b)];
+                    idxB >= 0 ? dists[idxB] ?? Infinity : Infinity;
                   return distanceA - distanceB;
                 })
-                .map((id) => (
-                  <tr key={id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      {" "}
-                      {(() => {
-                        const course = coursesCurrentSemester.find(
-                          (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
-                        );
-                        return course && isLocked(course) ? (
+                .map((id) => {
+                  const course = coursesCurrentSemester.find(
+                    (c) =>
+                      c.courses?.[0]?.courseNumber ===
+                      id.replace(/[A-Z]+\d+/g, "")
+                  );
+                  return (
+                    <tr key={id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {course && isLocked(course) ? (
                           <LockClosed
                             clg={`w-4 h-4 text-green-800 cursor-not-allowed ${
                               isOverlapping(course) ? "text-orange-400" : ""
@@ -578,52 +622,45 @@ export default function SmartSearch() {
                             }`}
                             event={course}
                             onClick={() => {
+                              if (!course) return;
                               const updatedSelectedCourses = isSelected(course)
                                 ? selectedCourses.filter(
-                                    (c) => c !== course.courseNumber
+                                    (c) => c !== course.courses[0].courseNumber
                                   )
-                                : [...selectedCourses, course.courseNumber];
+                                : [
+                                    ...selectedCourses,
+                                    course.courses[0].courseNumber,
+                                  ];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
                           />
-                        );
-                      })()}
-                    </td>{" "}
-                    <td
-                      className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 overflow-hidden overflow-ellipsis"
-                      style={{ maxWidth: "450px" }}
-                    >
-                      {(
-                        coursesCurrentSemester.find(
-                          (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
-                        ) || {}
-                      ).shortName || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(
-                        coursesCurrentSemester.find(
-                          (course) =>
-                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
-                        ) || {}
-                      ).classification || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(
-                        (
-                          coursesCurrentSemester.find(
-                            (course) =>
-                              course.courseNumber ===
-                              id.replace(/[A-Z]+\d+/g, "")
-                          ) || {}
-                        ).credits / 100
-                      ).toFixed(2) || "N/A"}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {similarCourses.ids[0].indexOf(id) + 1}
-                    </td>
-                  </tr>
-                ))}
+                        )}
+                      </td>
+                      <td
+                        className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 overflow-hidden overflow-ellipsis cursor-pointer "
+                        style={{ maxWidth: "450px" }}
+                        // onClick={() => {
+                        //   if (course) {
+                        //     // Match SimilarCourses: pass the course wrapper
+                        //     updateSelectedCourseInfo(course);
+                        //   }
+                        // }}
+                        // title="Show course details"
+                      >
+                        {(course || {}).shortName || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {(course || {}).classification || "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {course ? (course.credits / 100).toFixed(2) : "N/A"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {similarCourses.ids[0].indexOf(id) + 1}
+                      </td>
+                    </tr>
+                  );
+                })}
             </tbody>
           </table>
         </div>
