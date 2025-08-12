@@ -39,6 +39,7 @@ export function useTermSelection() {
 
   // Unified semester state hook
   const {
+    courseData,
     setSelectedSemester: setUnifiedSelectedSemester,
     setLatestValidTerm: setUnifiedLatestValidTerm,
   } = useUnifiedSemesterState();
@@ -298,14 +299,11 @@ export function useTermSelection() {
 
           setTermListObject(builtTermListObject);
 
-          // Set the selected semester to the latest valid term
-          if (latestValidTerm) {
-            setUnifiedSelectedSemester(
-              latestValidTerm,
-              termIdList,
-              latestValidTerm
-            );
-          }
+          // Set the selected semester to the latest valid term only if no semester is currently selected
+          // This prevents overriding the user's existing semester selection when StudyOverview opens
+            if (!courseData.selectedSemester && latestValidTerm) {
+            setUnifiedSelectedSemester(latestValidTerm, termIdList, latestValidTerm);
+            }
 
           console.log(
             "✅ [TERM SELECTION] Term list object built:",
