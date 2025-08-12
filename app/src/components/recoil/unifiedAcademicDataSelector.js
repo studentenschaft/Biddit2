@@ -40,19 +40,40 @@ export const unifiedAcademicDataSelector = selector({
         completionPercentage: 0
       };
       
-      // First pass: Identify the main program
+      // First pass: Identify the main program with intelligent fallback
       let mainProgramId = null;
-      Object.entries(scorecardData.rawScorecards).forEach(([programId, rawData]) => {
-        if (rawData.isMainStudy) {
-          mainProgramId = programId;
-          console.log(`🎯 [unifiedAcademicDataSelector] Identified main program: ${programId}`);
-        }
-      });
+      const programEntries = Object.entries(scorecardData.rawScorecards);
       
-      // If no main program found, use the first program as fallback
-      if (!mainProgramId && Object.keys(scorecardData.rawScorecards).length > 0) {
-        mainProgramId = Object.keys(scorecardData.rawScorecards)[0];
-        console.log(`⚠️ [unifiedAcademicDataSelector] No main program found, using first program as fallback: ${mainProgramId}`);
+      // Strategy 1: Look for explicitly marked main program
+      const explicitMain = programEntries.find(([, rawData]) => rawData.isMainStudy);
+      if (explicitMain) {
+        mainProgramId = explicitMain[0];
+        console.log(`🎯 [unifiedAcademicDataSelector] Found explicitly marked main program: ${mainProgramId}`);
+      } else {
+        console.log(`⚠️ [unifiedAcademicDataSelector] No explicitly marked main program, using fallback strategies...`);
+        
+        // Strategy 2: Prefer Master programs, then Bachelor programs
+        const masterProgram = programEntries.find(([programId]) => 
+          programId.toLowerCase().includes('master')
+        );
+        
+        if (masterProgram) {
+          mainProgramId = masterProgram[0];
+          console.log(`✅ [unifiedAcademicDataSelector] Using Master program as main: ${mainProgramId}`);
+        } else {
+          const bachelorProgram = programEntries.find(([programId]) => 
+            programId.toLowerCase().includes('bachelor')
+          );
+          
+          if (bachelorProgram) {
+            mainProgramId = bachelorProgram[0];
+            console.log(`✅ [unifiedAcademicDataSelector] Using Bachelor program as main: ${mainProgramId}`);
+          } else {
+            // Strategy 3: Use first program as final fallback
+            mainProgramId = programEntries[0]?.[0];
+            console.log(`⚠️ [unifiedAcademicDataSelector] Using first available program as fallback: ${mainProgramId}`);
+          }
+        }
       }
       
       Object.entries(scorecardData.rawScorecards).forEach(([programId, rawData]) => {

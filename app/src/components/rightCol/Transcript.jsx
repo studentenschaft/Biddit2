@@ -9,7 +9,9 @@
 
 import { useRecoilValue, useRecoilState } from 'recoil';
 import { unifiedAcademicDataSelector } from '../recoil/unifiedAcademicDataSelector';
+import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
 import { useScorecardFetching } from '../helpers/useScorecardFetching';
+import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonTranscript } from './LoadingSkeletons';
@@ -23,14 +25,25 @@ import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
 import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
+import { getMainProgramKey } from '../helpers/getMainProgram';
 
 const Transcript = () => {
   // Use same data approach as StudyOverview (which works)
   const academicData = useRecoilValue(unifiedAcademicDataSelector);
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [scorecardError] = useState(false);
+
+  // Course data loading infrastructure (shared with StudyOverview)
+  const {
+    isLoading: isCourseLoading,
+    isEnrichmentReady,
+    hasEnrichmentDataForSemester,
+    totalSemestersNeeded,
+    termListObject
+  } = useUnifiedCourseLoader(authToken, unifiedCourseData);
   
   
   // State needed for GradeTranscript component
@@ -48,14 +61,14 @@ const Transcript = () => {
   
   // Get main program transcript data using memoization for performance
   const mainProgramTranscript = useMemo(() => {
-    const firstProgramKey = Object.keys(academicData.transcriptView || {})[0];
-    const firstProgramData = academicData.transcriptView?.[firstProgramKey];
-    const hierarchicalData = firstProgramData?.hierarchicalStructure?.[0];
+    const mainProgramKey = getMainProgramKey(academicData);
+    const mainProgramData = academicData.transcriptView?.[mainProgramKey];
+    const hierarchicalData = mainProgramData?.hierarchicalStructure?.[0];
     
     return hierarchicalData ? {
       items: [hierarchicalData]
     } : null;
-  }, [academicData.transcriptView]);
+  }, [academicData.transcriptView, academicData.programs, totalSemestersNeeded]);
   
   // Helper function to normalize classification names to match transcript categories
   const normalizeClassification = useCallback((classification) => {
@@ -74,8 +87,23 @@ const Transcript = () => {
 
   // Get wishlist courses from unified academic data
   const wishlistCourses = useMemo(() => {
-    const mainProgramKey = Object.keys(academicData.programs || {})[0];
+    const mainProgramKey = getMainProgramKey(academicData);
+    console.log('🔍 [Transcript] Program selection and data:', {
+      mainProgramKey,
+      availablePrograms: Object.keys(academicData.programs || {}),
+      hasStudyOverviewView: !!academicData.studyOverviewView?.[mainProgramKey]
+    });
+    
+    console.log('🔍 [Transcript] Full academic data structure:', {
+      isLoaded: academicData.isLoaded,
+      hasPrograms: !!academicData.programs,
+      hasTranscriptView: !!academicData.transcriptView,
+      hasStudyOverviewView: !!academicData.studyOverviewView,
+      topLevelKeys: Object.keys(academicData)
+    });
+    
     if (!mainProgramKey || !academicData.studyOverviewView?.[mainProgramKey]) {
+      console.log('❌ [Transcript] No study overview data for main program');
       return [];
     }
     
@@ -95,6 +123,7 @@ const Transcript = () => {
       }
     });
     
+    console.log('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
     return allWishlistCourses;
   }, [academicData.studyOverviewView, academicData.programs, normalizeClassification]);
 

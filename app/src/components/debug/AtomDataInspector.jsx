@@ -27,7 +27,6 @@ import { useScorecardAccess } from "../helpers/useScorecardAccess";
 
 // Import the new unified selectors
 import { transcriptDataSelector } from "../recoil/transcriptDataSelector";
-import { studyOverviewDataSelector } from "../recoil/studyOverviewDataSelector";
 import { unifiedAcademicDataSelector } from "../recoil/unifiedAcademicDataSelector";
 
 // Try to import more atoms that might be relevant
@@ -68,7 +67,6 @@ const AtomDataInspector = () => {
     
     // 🆕 NEW UNIFIED SELECTORS
     transcriptData: useRecoilValue(transcriptDataSelector),
-    studyOverviewData: useRecoilValue(studyOverviewDataSelector),
     unifiedAcademicData: useRecoilValue(unifiedAcademicDataSelector),
     
     ...additionalAtoms

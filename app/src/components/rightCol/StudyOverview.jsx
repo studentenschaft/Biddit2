@@ -9,9 +9,7 @@ import { useRecoilValue } from 'recoil';
 import { unifiedAcademicDataSelector } from '../recoil/unifiedAcademicDataSelector';
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
 import { useScorecardFetching } from '../helpers/useScorecardFetching';
-import { useMultiSemesterCourseLoader } from '../helpers/useMultiSemesterCourseLoader';
-import { useStudyOverviewCourseLoader } from '../helpers/useStudyOverviewCourseLoader';
-import { useTermSelection } from '../helpers/useTermSelection';
+import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonStudyOverview } from './LoadingSkeletons';
@@ -27,21 +25,14 @@ const StudyOverview = () => {
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [selectedSemesters, setSelectedSemesters] = useState({});
   
-  // Multi-semester course data loading for enrichment (simplified version)
-  const { termListObject } = useTermSelection();
+  // Course data loading infrastructure
   const {
+    isLoading,
     isEnrichmentReady,
-    keySemesters,
     hasEnrichmentDataForSemester,
-    getEnrichmentSourceForSemester,
-    isAnyLoading: isEnrichmentLoading
-  } = useMultiSemesterCourseLoader(authToken, termListObject);
-
-  // Proactive course data loading for StudyOverview
-  const {
-    isLoading: isStudyOverviewLoading,
-    totalSemestersNeeded
-  } = useStudyOverviewCourseLoader(authToken, unifiedCourseData, academicData, termListObject);
+    totalSemestersNeeded,
+    termListObject
+  } = useUnifiedCourseLoader(authToken, unifiedCourseData);
 
   // Convert our unified data to the format expected by ProgramOverview with course enrichment
   const adaptedData = useMemo(() => 
