@@ -9,7 +9,6 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-// import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments"; // Keeping for potential fallback
 import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
 import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
@@ -47,13 +46,13 @@ export default function SimilarCourses({ selectedCourse }) {
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
 
-  // Compute effective semester: always selected semester, or its reference if future
+  // Compute effective semester for API calls: use reference semester if future, otherwise selected
   const effectiveSemesterShortName =
     referenceSemesterLocalState || selectedSemesterShortName || null;
 
-  // Get courses for the effective semester
+  // For course lookups and display, always use the real selected semester (not reference)
   const coursesCurrentSemester = useRecoilValue(
-    availableCoursesSelector(effectiveSemesterShortName)
+    availableCoursesSelector(selectedSemesterShortName)
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -97,9 +96,9 @@ export default function SimilarCourses({ selectedCourse }) {
     }
   }, [isFutureSemesterSelectedState, referenceSemesterState]);
 
-  // set courses of current semester based on selected semester (use reference semester if future semester selected)
-  // Note: coursesCurrentSemester is now directly loaded from unified selector
-  // This effect is simplified since we get courses directly from availableCoursesSelector
+  // set courses of current semester based on selected semester (always use real semester, not reference)
+  // Note: coursesCurrentSemester is now directly loaded from unified selector using selectedSemesterShortName
+  // This ensures we display courses from the actual selected semester, even if it's a future semester
 
   useEffect(() => {
     try {
@@ -127,6 +126,7 @@ export default function SimilarCourses({ selectedCourse }) {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
+  // TODO: Reintroduce once logs are showing and we can verify that correct data will be uploaded (once new semester data is published that is not yet in backend)
   // DISABLED: Upsert mechanism commented out until tested by Quality Control
   /*
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {

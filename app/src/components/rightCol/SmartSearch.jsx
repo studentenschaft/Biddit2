@@ -151,7 +151,7 @@ export default function SmartSearch() {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
-  // UPSERT FUNCTIONALITY DISABLED - NOT STABLE YET
+  // TODO: Reintroduce once logs are showing and we can verify that correct data will be uploaded (once new semester data is published that is not yet in backend)
   // This feature is temporarily disabled until we have a stable version
   // eslint-disable-next-line no-unused-vars
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
