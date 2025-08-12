@@ -10,6 +10,7 @@ import { unifiedAcademicDataSelector } from '../recoil/unifiedAcademicDataSelect
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
 import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useMultiSemesterCourseLoader } from '../helpers/useMultiSemesterCourseLoader';
+import { useStudyOverviewCourseLoader } from '../helpers/useStudyOverviewCourseLoader';
 import { useTermSelection } from '../helpers/useTermSelection';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
@@ -36,6 +37,12 @@ const StudyOverview = () => {
     isAnyLoading: isEnrichmentLoading
   } = useMultiSemesterCourseLoader(authToken, termListObject);
 
+  // Proactive course data loading for StudyOverview
+  const {
+    isLoading: isStudyOverviewLoading,
+    totalSemestersNeeded
+  } = useStudyOverviewCourseLoader(authToken, unifiedCourseData, academicData, termListObject);
+
   // Convert our unified data to the format expected by ProgramOverview with course enrichment
   const adaptedData = useMemo(() => 
     adaptAcademicDataForStudyOverview(academicData, unifiedCourseData), 
@@ -55,6 +62,7 @@ const StudyOverview = () => {
 
     handleFetchIfNeeded();
   }, [academicData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
+
 
   if (!academicData.isLoaded) {
     return (
