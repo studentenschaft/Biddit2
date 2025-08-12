@@ -83,25 +83,34 @@ export function useTermSelection() {
         .toString()
         .slice(-2)}`;
 
-      // Find reference semester: same season from previous year
+      // SAME-SEASON PREVIOUS-YEAR RULE for reference
       const referenceSemesterName = `${currentSeason}${(currentYear - 1)
         .toString()
         .slice(-2)}`;
 
-      // Look for the reference semester in API data
+      // Look for the same-season previous-year in API data
       const referenceTerm = allApiTerms.find(
         (term) => term.shortName === referenceSemesterName
       );
 
-      // Use reference semester's cisId if found, otherwise use latest semester's cisId
-      const referenceCisId =
-        referenceTerm?.cisId || allApiTerms[allApiTerms.length - 1]?.cisId;
+      // If we don't have the same-season previous year, attempt fallback: year-1 opposite season, else last API term
+      let referenceCisId = referenceTerm?.cisId;
+      if (!referenceCisId) {
+        const fallbackOppositeSeason = `${
+          currentSeason === "FS" ? "HS" : "FS"
+        }${(currentYear - 1).toString().slice(-2)}`;
+        const fallbackTerm = allApiTerms.find(
+          (t) => t.shortName === fallbackOppositeSeason
+        );
+        referenceCisId =
+          fallbackTerm?.cisId || allApiTerms[allApiTerms.length - 1]?.cisId;
+      }
 
       futureSemesters.push({
         cisId: referenceCisId, // Use the reference semester's cisId
         id: `future-${futureShortName}`, // Generate a unique ID for future semesters
         shortName: futureShortName,
-        referenceSemester: referenceSemesterName, // Track which semester this references
+        referenceSemester: referenceSemesterName, // Track same-season previous-year reference
         isCurrent: false,
         isProjected: true,
         isFuture: true, // Mark as artificially generated future semester

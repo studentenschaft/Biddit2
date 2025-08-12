@@ -5,7 +5,6 @@ import { useRefreshMockData } from "../testing/useRefreshMockData";
 import { selectedDegreeState } from "../testing/devModeSelectedDegreeAtom";
 import { useErrorHandler } from "../errorHandling/useErrorHandler";
 import { useState } from "react";
-import MigrationController from "../common/MigrationController";
 
 const DevModeBanner = () => {
   const [devMode] = useRecoilState(devModeState);
@@ -35,7 +34,6 @@ const DevModeBanner = () => {
             >
               ×
             </button>
-            <MigrationController />
           </div>
         </div>
       )}

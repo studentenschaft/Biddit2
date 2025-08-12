@@ -8,6 +8,17 @@ import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 export function useUnifiedSemesterState() {
   const [courseData, setCourseData] = useRecoilState(unifiedCourseDataState);
 
+  // Compute same-season previous-year semester shortName (FS26 -> FS25, HS26 -> HS25)
+  const computeSameSeasonPrevYear = (shortName) => {
+    if (!shortName || shortName.length < 4) return null;
+    const season = shortName.slice(0, 2); // FS / HS
+    const yearPart = shortName.slice(2);
+    const yearNum = parseInt(yearPart, 10);
+    if (isNaN(yearNum)) return null;
+    const prevYear = yearNum - 1;
+    return `${season}${prevYear.toString().padStart(2, "0")}`;
+  };
+
   /**
    * Update the selected semester and determine if it's a future semester
    */
@@ -45,9 +56,15 @@ export function useUnifiedSemesterState() {
 
       let referenceSemesterName = null;
       if (isFuture && termIdList?.length) {
-        // Determine reference semester for future projections
-        // Use the term with more course data or fallback to most recent
-        referenceSemesterName = latestValidTerm || termIdList[0]?.shortName;
+        // SAME-SEASON PREVIOUS-YEAR RULE
+        const candidate = computeSameSeasonPrevYear(semesterShortName);
+        const existsInList = termIdList.some(
+          (t) => t && t.shortName === candidate
+        );
+        referenceSemesterName = existsInList
+          ? candidate
+          : // Fallback: use latestValidTerm (legacy) if same-season previous year not present
+            latestValidTerm || termIdList[0]?.shortName;
       }
 
       // Ensure the semester exists in the data structure
@@ -139,7 +156,9 @@ export function useUnifiedSemesterState() {
           [selectedSem]: {
             ...semesterData,
             isFutureSemester: isFuture,
-            referenceSemester: isFuture ? referenceSemester : null,
+            referenceSemester: isFuture
+              ? referenceSemester || computeSameSeasonPrevYear(selectedSem)
+              : null,
           },
         },
       };

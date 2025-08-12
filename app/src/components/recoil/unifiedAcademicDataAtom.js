@@ -64,9 +64,9 @@ export const unifiedAcademicDataState = atom({
       isLoading: false,
       isInitialized: false,
       error: null,
-      lastInitialized: null
-    }
-  }
+      lastInitialized: null,
+    },
+  },
 });
 
 /**
@@ -75,5 +75,5 @@ export const unifiedAcademicDataState = atom({
  */
 export const initializedProgramsState = atom({
   key: "initializedProgramsState",
-  default: new Set()
+  default: new Set(),
 });

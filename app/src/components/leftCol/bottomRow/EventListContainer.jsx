@@ -19,6 +19,7 @@
 import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Suspense } from "react";
+import { useEffect, useRef } from "react";
 import { authTokenState } from "../../recoil/authAtom";
 import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { FixedSizeList } from "react-window";
@@ -66,7 +67,7 @@ export default function EventListContainer({
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
   // Use unified course data for managing selected course info
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
+  const { updateSelectedCourseInfo, courseData } = useUnifiedCourseData();
 
   // Get selected semester object from termListObject
   const selectedSemester = termListObject?.find(
@@ -93,7 +94,99 @@ export default function EventListContainer({
       })
     ) || [];
 
-  console.log("filteredCourses:", filteredCourses);
+  /**
+   * ========================= DEV LOGGING UTILITIES =========================
+   * Provides short summary lines plus expandable full objects for quick inspection
+   * Only runs in development mode (NODE_ENV === 'development') to avoid prod noise.
+   */
+  const lastLogSnapshotRef = useRef(null);
+
+  const buildSemesterSummary = (semData) => {
+    if (!semData) return "<no semester data>";
+    return `enrolledIds:${semData.enrolledIds?.length || 0} available:${
+      semData.available?.length || 0
+    } selectedIds:${semData.selectedIds?.length || 0} filtered:${
+      semData.filtered?.length || 0
+    } studyPlan:${semData.studyPlan?.length || 0}`;
+  };
+
+  const shallowSummary = () => {
+    const semesterData = courseData?.semesters?.[selectedSemesterShortName];
+    return {
+      semester: selectedSemesterShortName,
+      filteredCount: filteredCourses.length,
+      selectedCount: selectedCourseIds.length,
+      isLoading,
+      semesterSnapshot: buildSemesterSummary(semesterData),
+    };
+  };
+
+  const logAtomSummary = () => {
+    if (!import.meta.env.DEV) return; // dev only
+    try {
+      const summary = shallowSummary();
+      // Avoid duplicate logs by hashing snapshot
+      const snapshotKey = JSON.stringify({
+        f: summary.filteredCount,
+        s: summary.selectedCount,
+        l: summary.isLoading,
+        sem: summary.semesterSnapshot,
+      });
+      if (lastLogSnapshotRef.current === snapshotKey) return; // no change
+      lastLogSnapshotRef.current = snapshotKey;
+
+      const semesterData = courseData?.semesters?.[selectedSemesterShortName];
+      const groupLabel = `📋 EventListContainer @${selectedSemesterShortName} | filtered:${summary.filteredCount} selected:${summary.selectedCount} loading:${summary.isLoading}`;
+      // Collapsed group keeps console tidy
+      console.groupCollapsed(groupLabel);
+      console.log("Term List (len)", termListObject?.length, termListObject);
+      console.log("Selection Options", selectionOptions);
+      console.log(
+        "Auth Token (truncated)",
+        authToken ? authToken.slice(0, 8) + "…" : null
+      );
+      console.log("Selected Course IDs", selectedCourseIds);
+      console.log("Filtered Courses (first 5)", filteredCourses.slice(0, 5));
+      console.log("Semester Data Summary", summary.semesterSnapshot);
+      console.log("Full Semester Data", semesterData);
+      console.log(
+        "Unified Course Data (keys)",
+        Object.keys(courseData?.semesters || {})
+      );
+      console.groupEnd();
+    } catch (e) {
+      console.warn("[EventListContainer] Dev logging failed", e);
+    }
+  };
+
+  // Log whenever core inputs change
+  const enrolledCount =
+    courseData?.semesters?.[selectedSemesterShortName]?.enrolledIds?.length ||
+    0;
+  useEffect(() => {
+    logAtomSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    selectedSemesterShortName,
+    filteredCourses.length,
+    selectedCourseIds.length,
+    isLoading,
+    enrolledCount,
+  ]);
+
+  // Expose manual trigger for console via window for deeper inspection
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    window.__BIDDIT_DEBUG = window.__BIDDIT_DEBUG || {};
+    window.__BIDDIT_DEBUG.logEventListAtoms = logAtomSummary;
+    return () => {
+      if (window.__BIDDIT_DEBUG) {
+        delete window.__BIDDIT_DEBUG.logEventListAtoms;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // ======================= END DEV LOGGING UTILITIES =======================
 
   // Course selection hook (simplified) - now works with unified state
   const { addOrRemoveCourse } = useCourseSelection({
