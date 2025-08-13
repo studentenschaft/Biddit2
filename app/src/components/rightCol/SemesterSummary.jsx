@@ -91,11 +91,36 @@ export default function SemesterSummary() {
     return false;
   }
 
+  // Helper function to shift event dates for future semesters
+  function getShiftedEventDate(originalDate, targetYear) {
+    const shifted = new Date(originalDate);
+    const originalYear = shifted.getFullYear();
+    const yearDiff = targetYear - originalYear;
+
+    if (yearDiff !== 0) {
+      shifted.setFullYear(targetYear);
+
+      // If the original date doesn't exist in the target year (e.g., Feb 29), adjust
+      if (shifted.getMonth() !== originalDate.getMonth()) {
+        shifted.setDate(0); // Go to last day of previous month
+      }
+    }
+
+    return shifted;
+  }
+
   function returnEventOfThatDay(course) {
-    if (!course.calendarEntry || course.calendarEntry.length === 0) {
-      // fix if calendarEntry is empty
+    if (
+      !course.calendarEntry ||
+      course.calendarEntry.length === 0 ||
+      !hoveredDate
+    ) {
+      // fix if calendarEntry is empty or no hoveredDate
       return null;
     }
+
+    // Get target year from hoveredDate for future semester date shifting
+    const targetYear = hoveredDate.getFullYear();
 
     for (let i = 0; i < course.calendarEntry.length; i++) {
       const entry = course.calendarEntry[i];
@@ -103,25 +128,32 @@ export default function SemesterSummary() {
         continue; // Skip entries with empty eventDate
       }
 
-      let event = new Date(entry.eventDate);
+      // Shift event date to match the target year (for future semesters)
+      const originalEventDate = new Date(entry.eventDate);
+      const shiftedEventDate = getShiftedEventDate(
+        originalEventDate,
+        targetYear
+      );
+
       if (
-        event.getDate() === hoveredDate.getDate() &&
-        event.getMonth() === hoveredDate.getMonth() &&
-        event.getFullYear() === hoveredDate.getFullYear()
+        shiftedEventDate.getDate() === hoveredDate.getDate() &&
+        shiftedEventDate.getMonth() === hoveredDate.getMonth() &&
+        shiftedEventDate.getFullYear() === hoveredDate.getFullYear()
       ) {
         let starttimeString = "N/A";
         let endtimeString = "N/A";
 
         try {
           starttimeString =
-            event.toLocaleTimeString("locale", {
+            shiftedEventDate.toLocaleTimeString("locale", {
               hour: "2-digit",
               minute: "2-digit",
             }) || "N/A";
 
           endtimeString =
             new Date(
-              event.getTime() + (entry.durationInMinutes || 0) * 60000
+              shiftedEventDate.getTime() +
+                (entry.durationInMinutes || 0) * 60000
             ).toLocaleTimeString("locale", {
               hour: "2-digit",
               minute: "2-digit",
