@@ -4,13 +4,8 @@ import moment from "moment/moment";
 // Import unified course data
 import {
   semesterCoursesSelector,
-  allSemesterCoursesSelector,
   selectedSemesterSelector,
 } from "./unifiedCourseDataSelectors";
-
-// for future semesters handling
-import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
-import { referenceSemesterAtom } from "./referenceSemesterAtom";
 
 /**
  * Build an index of overlapping time slots
@@ -88,47 +83,6 @@ export const calendarEntriesSelector = selector({
         "CalendarEntriesSelector - Falling back to legacy data:",
         error.message
       );
-
-      // Fallback to unified system with different approach
-      const allCourses = get(allSemesterCoursesSelector);
-      const futureSemesterSelected = get(isFutureSemesterSelected);
-      const referenceSemester = get(referenceSemesterAtom);
-
-      console.log(
-        "CalendarEntriesSelector - selectedSemester:",
-        selectedSemester,
-        "referenceSemester:",
-        referenceSemester
-      );
-
-      console.log(
-        "CalendarEntriesSelector - allCourses:",
-        allCourses,
-        "futureSemesterSelected:",
-        futureSemesterSelected
-      );
-
-      // Use the reference semester if future semester is selected
-      let targetSemester = selectedSemester;
-      if (futureSemesterSelected && referenceSemester) {
-        targetSemester = referenceSemester.shortName || referenceSemester;
-      }
-
-      console.log(
-        "CalendarEntriesSelector - Using targetSemester:",
-        targetSemester
-      );
-
-      // Get courses from the unified system for the target semester
-      if (allCourses && allCourses[targetSemester]) {
-        const semesterData = allCourses[targetSemester];
-        currentCourses = [
-          ...(semesterData.enrolled || []),
-          ...(semesterData.selected || []),
-        ].filter((course) => course.enrolled || course.selected);
-      } else {
-        currentCourses = [];
-      }
 
       console.debug(
         "CalendarEntriesSelector - currentCourses:",
@@ -216,7 +170,6 @@ export const calendarEntriesSelector = selector({
         };
       });
     });
-
     return calendarEntries;
   },
 });
