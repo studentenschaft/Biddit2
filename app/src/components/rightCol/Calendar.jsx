@@ -10,19 +10,19 @@ import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/solid";
 // Other
 import "./calendar.css";
 import { useRecoilValue } from "recoil";
-import { calendarEntriesWithMetaSelector } from "../recoil/calendarEntriesSelector";
+import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
-import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
+import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 
 // Implementation of calendar widget
 export default function Calendar() {
-  const calendarData = useRecoilValue(calendarEntriesWithMetaSelector);
-  const latestValidTerm = useRecoilValue(latestValidTermAtom);
+  const finalEvents = useRecoilValue(calendarEntriesSelector);
+  const currentSemester = useRecoilValue(currentSemesterSelector);
   const [isLoading, setIsLoading] = React.useState(true);
   const [calendarKey, setCalendarKey] = React.useState(0);
   const calendarRef = React.useRef();
@@ -34,22 +34,20 @@ export default function Calendar() {
     isFutureSemesterSelected
   );
 
-  // Extract data from the enhanced selector
-  const { events: finalEvents, emptyReason } = calendarData;
-
-  console.log("Calendar Data:", calendarData);
   console.log("Final Events:", finalEvents);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
 
+  // Show loading if currentSemester is not yet available
+  const shouldShowLoading = !currentSemester || isLoading;
+
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
-    // Always set loading to false since we have valid data from the selector
-    setIsLoading(false);
-
     if (finalEvents && finalEvents.length > 0) {
+      setIsLoading(false);
+
       // Sort events by start date
       const sortedEvents = [...finalEvents].sort(
         (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
@@ -89,7 +87,7 @@ export default function Calendar() {
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
     }
-  }, [finalEvents, latestValidTerm, isFutureSemesterSelectedState]);
+  }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -207,28 +205,34 @@ export default function Calendar() {
         </div>
       )}
 
-      {isLoading ? (
+      {shouldShowLoading ? (
         <div className="flex items-center justify-center h-full">
           <LoadingText>Loading calendar entries...</LoadingText>
         </div>
       ) : finalEvents.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center">
-            <p className="text-gray-500 text-lg mb-2">
-              {emptyReason === "no_selected_courses"
-                ? "No courses selected or enrolled"
-                : emptyReason === "no_courses"
-                ? "No courses available for this semester"
-                : emptyReason === "invalid_semester"
-                ? "Invalid semester selected"
-                : "No calendar entries available"}
-            </p>
-            {emptyReason === "no_selected_courses" && (
-              <p className="text-gray-400 text-sm">
-                Please select or enroll in courses to view your schedule
-              </p>
-            )}
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+          <div className="bg-gray-100 rounded-full p-4 mb-4">
+            <svg
+              className="w-12 h-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
           </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No calendar events found
+          </h3>
+
+          <p className="text-gray-400 text-sm max-w-md">
+            Hint: Some courses may not have any related calendar entries.
+          </p>
         </div>
       ) : (
         <div className="flex w-full h-full">

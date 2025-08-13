@@ -1,7 +1,6 @@
 import { Suspense, useState } from "react";
 import "react-tabs/style/react-tabs.css";
 import { SelectSemester } from "../components/leftCol/topRow/SelectOptions";
-import DevModeBanner from "../components/testing/DevModeBanner";
 import { SideNav } from "../components/leftCol/sideNav/SideNav";
 
 // Recoil
@@ -42,12 +41,10 @@ export default function Biddit2() {
           )}
         </button>
       </div>
-
       {/* Side Navigation */}
       <div className={`md:block ${isSideNavOpen ? "block" : "hidden"}`}>
         <SideNav />
       </div>
-
       {/* Mobile View Toggle */}
       <div className="md:hidden fixed bottom-0 w-full bg-hsg-800 flex justify-around p-2 z-20 shadow-lg">
         <button
@@ -73,7 +70,6 @@ export default function Biddit2() {
           Tabs
         </button>
       </div>
-
       {/* Content */}
       <div
         className={`w-full h-full md:w-1/3 p-4 bg-gray-100 ${
@@ -97,10 +93,7 @@ export default function Biddit2() {
             onTabSelect={(index) => setSelectedTabState(index)}
           />
         </Suspense>
-      </div>
-
-      {/* DevModeBanner */}
-      <DevModeBanner />
+      </div>{" "}
     </div>
   );
 }

@@ -1,0 +1,345 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                           SIMPLIFIED COURSE DATA FLOW                                   ║
+║                         🔄 BEFORE vs AFTER COMPARISON                                   ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    ❌ BEFORE (OLD)                                      │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SelectOptions.jsx ─────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // COMPLEX LEGACY LOGIC TO DETERMINE selectedSemId                                    │
+│  const selectedSemId = (() => {                                                        │
+│    if (!selectedSem || selectedSem === "loading semester data...") return null;       │
+│                                                                                         │
+│    const matchingTerms =                                                               │
+│      termIdList?.filter((term) => term.shortName === selectedSem) || [];              │
+│                                                                                         │
+│    if (matchingTerms.length > 1) {                                                     │
+│      if (selectedSem === latestValidTerm) {                                           │
+│        const validTerm = matchingTerms.find((term) => term.isCurrent);               │
+│        if (validTerm) return validTerm;                                               │
+│      }                                                                                  │
+│    }                                                                                    │
+│                                                                                         │
+│    return matchingTerms[0] || null;                                                    │
+│  })();                                                                                  │
+│                                                                                         │
+│  // PASS COMPLEX OBJECT TO EventListContainer                                          │
+│  <EventListContainer selectedSemesterState={selectedSemId} />                         │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ useTermSelection.js ───────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // RETURNS SCATTERED DATA                                                             │
+│  return {                                                                              │
+│    isLoading,                                                                          │
+│    selectedSem,              // String                                                │
+│    latestValidTerm,           // String                                               │
+│    sortedTermShortNames,      // Array                                                │
+│    handleTermSelect,          // Function                                             │
+│    termIdList,               // Complex array with duplicates                        │
+│  };                                                                                    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ EventListContainer.jsx ───────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // RECEIVES COMPLEX selectedSemesterState OBJECT                                      │
+│  export default function EventListContainer({ selectedSemesterState }) {              │
+│                                                                                         │
+│    // COMPLEX LEGACY INDEX-BASED LOGIC                                                │
+│    let cisId = null;                                                                   │
+│    let index = null;                                                                   │
+│    if (selectedSemesterState) {                                                        │
+│      cisId = selectedSemesterState.cisId;                                             │
+│      index = selectedSemesterState.index; // ❌ INDEX-BASED!                          │
+│                                                                                         │
+│      // Handle future semester selection                                              │
+│      if (!allCourseInfo[index]) {                                                     │
+│        if (index === cisIdList.length) {                                             │
+│          index = 2;                                                                   │
+│          setIsFutureSemesterSelected(true);                                          │
+│          setReferenceSemesterState(cisIdList[1]);                                    │
+│        }                                                                              │
+│        // ... MORE COMPLEX LOGIC                                                      │
+│      }                                                                                │
+│    }                                                                                   │
+│                                                                                         │
+│    // USES LEGACY ATOMS                                                               │
+│    const allCourseInfo = useRecoilValue(allCourseInfoState);                          │
+│    const localSelectedCoursesSemKey = useRecoilValue(localSelectedCoursesSemKeyState);│
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    ✅ AFTER (NEW)                                       │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ SelectOptions.jsx ─────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // SIMPLIFIED: Get termListObject from new useTermSelection hook                      │
+│  const {                                                                               │
+│    isLoading,                                                                          │
+│    termListObject,  // ✅ CLEAN STRUCTURED ARRAY                                      │
+│  } = useTermSelection();                                                               │
+│                                                                                         │
+│  // Get current selected semester from unified state                                  │
+│  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);          │
+│                                                                                         │
+│  // ❌ REMOVED: Complex selectedSemId logic completely eliminated!                    │
+│                                                                                         │
+│  // ✅ SIMPLIFIED: Pass clean props to EventListContainer                             │
+│  <EventListContainer                                                                  │
+│    termListObject={termListObject || []}                                              │
+│    selectedSemesterShortName={selectedSemesterShortName || ""}                        │
+│  />                                                                                    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ useTermSelection.js ───────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // SIMPLIFIED RETURN STRUCTURE                                                        │
+│  return {                                                                              │
+│    isLoading: boolean,                                                                 │
+│    termListObject: [                    // ✅ CLEAN STRUCTURED ARRAY                  │
+│      {                                                                                 │
+│        cisId: "12345",                                                                │
+│        shortName: "HS24",                                                             │
+│        isCurrent: true,                                                               │
+│        isProjected: false                 // ✅ NO MORE NULL VALUES!                 │
+│      },                                                                               │
+│      {                                                                                │
+│        cisId: "67890",                                                                │
+│        shortName: "FS25",                                                             │
+│        isCurrent: false,                                                              │
+│        isProjected: true                  // ✅ FUTURE SEMESTER PROPERLY MARKED      │
+│      }                                                                                │
+│    ]                                                                                  │
+│  };                                                                                    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─ EventListContainer.jsx ───────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  // SIMPLIFIED INTERFACE                                                               │
+│  export default function EventListContainer({                                         │
+│    termListObject,              // ✅ CLEAN ARRAY OF SEMESTER OBJECTS                 │
+│    selectedSemesterShortName    // ✅ SIMPLE STRING                                   │
+│  }) {                                                                                  │
+│                                                                                         │
+│    // ❌ REMOVED: All complex index-based logic                                       │
+│    // ❌ REMOVED: Legacy atom dependencies                                            │
+│                                                                                         │
+│    // ✅ SIMPLIFIED: Get semester object from termListObject                          │
+│    const selectedSemester = termListObject?.find(                                     │
+│      semester => semester.shortName === selectedSemesterShortName                     │
+│    );                                                                                  │
+│                                                                                         │
+│    // ✅ UNIFIED DATA: Get courses directly from unified selectors                    │
+│    const filteredCourses = useRecoilValue(                                           │
+│      semesterCoursesSelector({                                                        │
+│        semester: selectedSemesterShortName,                                           │
+│        type: "filtered",                                                              │
+│      })                                                                               │
+│    ) || [];                                                                           │
+│                                                                                         │
+│    // ✅ SIMPLIFIED: Check if projected semester                                      │
+│    const isEnrolled = event.enrolled && !selectedSemester?.isProjected;              │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                                  📊 DATA STRUCTURE                                      ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ termListObject Structure ─────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  [                                                                                     │
+│    {                                                                                   │
+│      cisId: "12345",           // ✅ CIS API ID for fetching course data              │
+│      shortName: "HS24",        // ✅ Human-readable semester identifier               │
+│      isCurrent: true,          // ✅ Marked as current by HSG API                     │
+│      isProjected: false        // ✅ Whether this is a future/projected semester     │
+│    },                                                                                  │
+│    {                                                                                   │
+│      cisId: "67890",                                                                  │
+│      shortName: "FS25",                                                               │
+│      isCurrent: false,                                                                │
+│      isProjected: true         // ✅ Future semester - no enrolled courses shown     │
+│    },                                                                                  │
+│    {                                                                                   │
+│      cisId: "11111",                                                                  │
+│      shortName: "HS25",                                                               │
+│      isCurrent: false,                                                                │
+│      isProjected: true         // ✅ Another future semester                         │
+│    }                                                                                   │
+│  ]                                                                                     │
+│                                                                                         │
+│  ✅ ORDERED: Chronologically sorted by semester                                       │
+│  ✅ CLEAN: No null values, consistent structure                                       │
+│  ✅ SEMANTIC: Uses shortName instead of numeric indices                               │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                                🔄 DATA FLOW DIAGRAM                                     ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+┌─ API DATA SOURCES ──────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  🌐 CisTermAndPhaseInformations  ──┐                                                   │
+│  🌐 MyCourses/byTerm             ──┼──➤ useTermSelection()                            │
+│  🌐 Course Information           ──┘                                                   │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ useTermSelection() ────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  📤 OUTPUT:                                                                            │
+│    • isLoading: boolean                                                               │
+│    • termListObject: [{cisId, shortName, isCurrent, isProjected}]                     │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ SelectOptions.jsx ─────────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  📝 LOGIC:                                                                             │
+│    • Renders semester selection dropdown                                              │
+│    • Gets selectedSemesterShortName from unified state                                │
+│    • Passes clean props to EventListContainer                                         │
+│                                                                                         │
+│  📤 PASSES TO EventListContainer:                                                     │
+│    • termListObject: [...] (clean structured array)                                   │
+│    • selectedSemesterShortName: "HS24" (simple string)                                │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ EventListContainer.jsx ───────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  📝 LOGIC:                                                                             │
+│    • Gets selectedSemester from termListObject by shortName                           │
+│    • Uses useEventListDataManager for data coordination                               │
+│    • Gets filteredCourses directly from semesterCoursesSelector                       │
+│                                                                                         │
+│  📤 DISPLAYS:                                                                          │
+│    • Virtualized list of filtered courses                                             │
+│    • Handles projected semesters (no enrolled courses shown)                          │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ useEventListDataManager() ────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  📝 COORDINATES:                                                                       │
+│    • useEnrolledCoursesData()                                                          │
+│    • useCourseInfoData()                                                               │
+│    • useCourseRatingsData()                                                            │
+│                                                                                         │
+│  📤 UPDATES:                                                                           │
+│    • unifiedCourseDataAtom (SINGLE SOURCE OF TRUTH)                                   │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ unifiedCourseDataAtom ─────────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  💾 STRUCTURE:                                                                         │
+│    semesters: {                                                                        │
+│      "HS24": {                                                                        │
+│        enrolled: [],     available: [],     selected: [],     filtered: [],          │
+│        ratings: {},      lastFetched: "",   isFutureSemester: false,                  │
+│        referenceSemester: null,             cisId: "12345",                           │
+│        isCurrent: true,  isProjected: false                                           │
+│      }                                                                                 │
+│    },                                                                                  │
+│    selectedSemester: "HS24",                                                          │
+│    latestValidTerm: "HS24"                                                            │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─ Unified Course Selectors ─────────────────────────────────────────────────────────────┐
+│                                                                                         │
+│  📊 SELECTORS:                                                                         │
+│    • semesterCoursesSelector({semester, type: "filtered"})                           │
+│    • enrolledCoursesSelector(semester)                                                │
+│    • selectedCoursesSelector(semester)                                                │
+│    • semesterMetadataSelector(semester)                                               │
+│                                                                                         │
+│  📤 PROVIDES DATA TO:                                                                  │
+│    • EventListContainer (filtered courses)                                            │
+│    • Other components (enrolled, selected courses)                                    │
+│                                                                                         │
+└─────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                              🗑️ REMOVED LEGACY SYSTEMS                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+❌ localSelectedCoursesState                  ➤ ✅ unifiedCourseDataAtom.semesters[].selected
+❌ localSelectedCoursesSemKeyState            ➤ ✅ unifiedCourseDataAtom.semesters[].selected  
+❌ useUpdateEnrolledCoursesAtom               ➤ ✅ useUnifiedCourseData.updateEnrolledCourses
+❌ useUpdateCourseInfoAtom                    ➤ ✅ useUnifiedCourseData.updateAvailableCourses
+❌ Index-based semester identification        ➤ ✅ Semantic shortName identification
+❌ Complex selectedSemId calculation logic    ➤ ✅ Simple termListObject lookup
+❌ Scattered atom dependencies                ➤ ✅ Single unified course data atom
+❌ Null values for projected semesters        ➤ ✅ Proper isProjected flag structure
+
+
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                                   🎯 BENEFITS                                           ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+🚀 PERFORMANCE:
+   • Single atom updates instead of multiple scattered atom updates
+   • Efficient selectors prevent unnecessary re-renders
+   • Direct data access without intermediate processing
+
+🧹 CODE SIMPLICITY:  
+   • 60+ lines of complex selectedSemId logic ➤ Simple termListObject lookup
+   • 4+ legacy hooks/atoms removed ➤ Single unified course data system
+   • Index-based complexity ➤ Semantic shortName simplicity
+
+🔧 MAINTAINABILITY:
+   • All course data logic centralized in useUnifiedCourseData
+   • Clear data interfaces with TypeScript-ready structures  
+   • Single source of truth eliminates state synchronization bugs
+
+🐛 DEBUGGING:
+   • All course data visible in single atom in React DevTools
+   • Clear data flow path from API ➤ Unified Data ➤ Selectors ➤ Components
+   • No more tracking scattered atoms across multiple files
+
+🧪 TESTING:
+   • Easy to mock termListObject structure for tests
+   • Unified data makes integration testing simpler
+   • Clear interfaces make unit testing straightforward
+
+
+╔══════════════════════════════════════════════════════════════════════════════════════════╗
+║                          🔄 MIGRATION STATUS: COMPLETE                                  ║
+╚══════════════════════════════════════════════════════════════════════════════════════════╝
+
+✅ useTermSelection.js           ➤ REPLACED with simplified version
+✅ useEventListDataManager.js   ➤ REPLACED with simplified version  
+✅ EventListContainer.jsx       ➤ REPLACED with simplified version
+✅ SelectOptions.jsx            ➤ REPLACED with simplified version
+✅ unifiedCourseDataAtom.js     ➤ ENHANCED with isCurrent, isProjected
+✅ unifiedCourseDataSelectors.js ➤ ENHANCED with metadata selectors
+✅ useUnifiedCourseData.js      ➤ REWRITTEN with consistent structure
+
+📋 NEXT STEPS:
+1. Remove legacy atom files (localSelectedCourses*, useUpdate* files)  
+2. Update remaining components to use unified selectors
+3. Test the complete data flow end-to-end
+4. Monitor performance improvements

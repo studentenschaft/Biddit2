@@ -4,52 +4,45 @@ import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
 import { cisIdList } from "../recoil/cisIdListAtom";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
-import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
-import { enrolledCoursesState } from "../recoil/enrolledCoursesAtom";
-import { courseInfoState } from "../recoil/courseInfoAtom";
-import { latestValidTermProjectionState } from "../recoil/latestValidTermProjection";
-import {
-  selectedSemesterAtom,
-  selectedSemesterIndexAtom,
-} from "../recoil/selectedSemesterAtom";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-import { useUpdateEnrolledCoursesAtom } from "../helpers/useUpdateEnrolledCourses";
-import { referenceSemesterAtom } from "../recoil/referenceSemesterAtom";
+import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 
 /**
- * Custom hook to handle term selection logic including:
- * - Loading CIS ID list
- * - Determining latest valid term
- * - Setting up term projections for future semesters
- * - Managing semester selection state
+ * SIMPLIFIED Custom hook to handle term selection logic
+ *
+ * Returns:
+ * - isLoading: boolean indicating if data is still being fetched
+ * - termListObject: Array of semester objects ordered by semester shortName
+ *   Each object contains: { cisId, shortName, isCurrent, isProjected }
+ *
+ * REMOVED DEPENDENCIES:
+ * - useUpdateEnrolledCoursesAtom (replaced with unified course data)
+ * - localSelectedCoursesSemKeyState (replaced with unified selected courses)
+ * - Index-based legacy systems (replaced with semantic semester names)
  */
 export function useTermSelection() {
   const authToken = useRecoilValue(authTokenState);
   const [cisIdListAtom, setCisIdList] = useRecoilState(cisIdList);
   const termIdList = useRecoilValue(cisIdListSelector);
-  const [latestValidTerm, setLatestValidTerm] =
-    useRecoilState(latestValidTermAtom);
-  const enrolledCourses = useRecoilValue(enrolledCoursesState);
-  const [, setSelectedIndex] = useRecoilState(selectedSemesterIndexAtom);
-  const [, setSelectedSemesterState] = useRecoilState(selectedSemesterAtom);
-  const [, setReferenceSemester] = useRecoilState(referenceSemesterAtom);
 
-  // Local state
-  const [fetchAttempted, setFetchAttempted] = useState(false);
+  // Local state - simplified
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedSem, setSelectedSemester] = useState(
-    "loading semester data..."
-  );
+  const [termListObject, setTermListObject] = useState([]);
   const initialSelectionMadeRef = useRef(false);
 
-  // Helpers
-  const updateEnrolledCourses = useUpdateEnrolledCoursesAtom();
+  // Unified course data hooks
+  const {
+    updateEnrolledCourses: updateUnifiedEnrolledCourses,
+    initializeSemester: initializeUnifiedSemester,
+  } = useUnifiedCourseData();
 
-  // For future semesters
-  const courseInfo = useRecoilValue(courseInfoState);
-  const [, setLatestValidTermProjection] = useRecoilState(
-    latestValidTermProjectionState
-  );
+  // Unified semester state hook
+  const {
+    courseData,
+    setSelectedSemester: setUnifiedSelectedSemester,
+    setLatestValidTerm: setUnifiedLatestValidTerm,
+  } = useUnifiedSemesterState();
 
   // Sort terms helper function
   const sortTerms = (terms) => {
@@ -66,12 +59,74 @@ export function useTermSelection() {
     });
   };
 
+  // Generate future semesters helper function
+  const generateFutureSemesters = (latestSemester, allApiTerms, count = 2) => {
+    if (!latestSemester || !allApiTerms) return [];
+
+    const futureSemesters = [];
+    const [season, yearStr] = [
+      latestSemester.slice(0, 2),
+      latestSemester.slice(2),
+    ];
+    let currentYear = parseInt(yearStr, 10);
+    let currentSeason = season;
+
+    for (let i = 0; i < count; i++) {
+      // Calculate next semester
+      if (currentSeason === "FS") {
+        currentSeason = "HS";
+      } else {
+        currentSeason = "FS";
+        currentYear += 1;
+      }
+
+      const futureShortName = `${currentSeason}${currentYear
+        .toString()
+        .slice(-2)}`;
+
+      // SAME-SEASON PREVIOUS-YEAR RULE for reference
+      const referenceSemesterName = `${currentSeason}${(currentYear - 1)
+        .toString()
+        .slice(-2)}`;
+
+      // Look for the same-season previous-year in API data
+      const referenceTerm = allApiTerms.find(
+        (term) => term.shortName === referenceSemesterName
+      );
+
+      // If we don't have the same-season previous year, attempt fallback: year-1 opposite season, else last API term
+      let referenceCisId = referenceTerm?.cisId;
+      if (!referenceCisId) {
+        const fallbackOppositeSeason = `${
+          currentSeason === "FS" ? "HS" : "FS"
+        }${(currentYear - 1).toString().slice(-2)}`;
+        const fallbackTerm = allApiTerms.find(
+          (t) => t.shortName === fallbackOppositeSeason
+        );
+        referenceCisId =
+          fallbackTerm?.cisId || allApiTerms[allApiTerms.length - 1]?.cisId;
+      }
+
+      futureSemesters.push({
+        cisId: referenceCisId, // Use the reference semester's cisId
+        id: `future-${futureShortName}`, // Generate a unique ID for future semesters
+        shortName: futureShortName,
+        referenceSemester: referenceSemesterName, // Track same-season previous-year reference
+        isCurrent: false,
+        isProjected: true,
+        isFuture: true, // Mark as artificially generated future semester
+      });
+    }
+
+    return futureSemesters;
+  };
+
   // 1. Load cisIdList data
   useEffect(() => {
     if (authToken && !cisIdListAtom) {
-      console.log("📥 [TERM SELECTION] Loading CIS ID list...");
       (async () => {
         try {
+          setIsLoading(true);
           const response = await axios.get(
             `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
             {
@@ -83,545 +138,196 @@ export function useTermSelection() {
               },
             }
           );
-          console.log(
-            "✅ [TERM SELECTION] CIS ID list loaded:",
-            response.data?.length,
-            "terms"
-          );
           setCisIdList(response.data);
+          console.log("✅ [TERM SELECTION] CIS ID list loaded:", response.data);
         } catch (error) {
-          console.error(
-            "❌ [TERM SELECTION] Error loading CIS ID list:",
-            error
-          );
+          console.error("[CisIdList] Error fetching data:", error);
           errorHandlingService.handleError(error);
+          setIsLoading(false);
         }
       })();
     }
-  }, [authToken, setCisIdList, cisIdListAtom]);
+  }, [authToken, cisIdListAtom, setCisIdList]);
 
-  // 2. Find latest valid term with courses
+  // 2. Build termListObject and find latest valid term
   useEffect(() => {
-    if (
-      authToken &&
-      (!enrolledCourses[1] || enrolledCourses[1].length === 0) &&
-      cisIdListAtom &&
-      termIdList &&
-      !fetchAttempted
-    ) {
-      console.log("🔍 [LATEST TERM] Starting search for latest valid term...");
-      console.log(
-        "📋 [LATEST TERM] Available terms:",
-        termIdList.map((t) => `${t.shortName} (current: ${t.isCurrent})`)
-      );
+    if (authToken && termIdList?.length && !initialSelectionMadeRef.current) {
+      initialSelectionMadeRef.current = true;
 
-      setFetchAttempted(true);
-
-      // Find the most likely current term
-      let primaryTermId;
-      let backupTermId;
-      let primaryTermShortName;
-      let backupTermShortName;
-
-      // First check for terms marked as current in the API
-      const currentTerms = termIdList.filter((term) => term.isCurrent);
-      console.log(
-        "🎯 [LATEST TERM] Terms marked as current:",
-        currentTerms.map((t) => t.shortName)
-      );
-
-      if (currentTerms.length > 0) {
-        // If we have terms marked as current, use the first one
-        primaryTermId = currentTerms[0].id;
-        primaryTermShortName = currentTerms[0].shortName;
-
-        // Backup is the second current term or the first term, whichever exists
-        backupTermId = currentTerms[1]?.id || termIdList[0].id;
-        backupTermShortName =
-          currentTerms[1]?.shortName || termIdList[0].shortName;
-
-        console.log(
-          "✅ [LATEST TERM] Using API-marked current terms - Primary:",
-          primaryTermShortName,
-          "Backup:",
-          backupTermShortName
-        );
-      } else {
-        // Otherwise fall back to the first two terms by index
-        primaryTermId = termIdList[0].id;
-        primaryTermShortName = termIdList[0].shortName;
-        backupTermId = termIdList[1]?.id;
-        backupTermShortName = termIdList[1]?.shortName;
-
-        console.log(
-          "⚠️ [LATEST TERM] No current terms found, using fallback - Primary:",
-          primaryTermShortName,
-          "Backup:",
-          backupTermShortName
-        );
-      }
-
-      // Make a single request first
       (async () => {
         try {
-          console.log(
-            "🔄 [LATEST TERM] Fetching courses for primary term:",
-            primaryTermShortName
-          );
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${primaryTermId}`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "EN",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
+          setIsLoading(true);
+          console.log("🔄 [TERM SELECTION] Building term list object...");
 
-          console.log(
-            "✅ [LATEST TERM] Primary term response:",
-            response.data.length,
-            "courses found"
-          );
-          setLatestValidTerm(primaryTermShortName);
+          // Initialize all semesters in unified data
+          termIdList.forEach((term) => {
+            initializeUnifiedSemester(term.shortName, {
+              id: term.id, // timeSegmentId for MyCourses API
+              cisId: term.cisId, // actual CIS ID for CourseInformationSheets API
+              isCurrent: term.isCurrent || false,
+              isProjected: false, // Will be determined later for future semesters
+            });
+          });
 
-          // If we got data or it's an empty array (which is valid), use it
-          updateEnrolledCourses(response.data, 1);
+          // Find current terms from API
+          const currentTerms = termIdList.filter((term) => term.isCurrent);
+          let latestValidTerm = null;
+          let primaryTermShortName = null;
 
-          // Only try backup term if the first one returned an empty array
-          if (response.data.length === 0 && backupTermId) {
+          if (currentTerms.length > 0) {
+            primaryTermShortName = currentTerms[0].shortName;
             console.log(
-              "⚠️ [LATEST TERM] Primary term empty, trying backup term:",
-              backupTermShortName
+              "✅ [TERM SELECTION] Using API-marked current term:",
+              primaryTermShortName
             );
-            try {
-              const backupResponse = await axios.get(
-                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
-                {
-                  headers: {
-                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                    "X-RequestedLanguage": "EN",
-                    "API-Version": "1",
-                    Authorization: `Bearer ${authToken}`,
-                  },
-                }
-              );
-
-              console.log(
-                "✅ [LATEST TERM] Backup term response:",
-                backupResponse.data.length,
-                "courses found"
-              );
-              setLatestValidTerm(backupTermShortName);
-              updateEnrolledCourses(backupResponse.data, 2);
-            } catch (backupError) {
-              console.error(
-                "❌ [LATEST TERM] Backup term failed:",
-                backupError
-              );
-              // We already have a valid (though empty) primary term response,
-              // so we don't need to call error handling here
-            }
-          }
-
-          console.log(
-            "🎯 [LATEST TERM] Final latest valid term set to:",
-            primaryTermShortName
-          );
-        } catch (error) {
-          console.error("❌ [LATEST TERM] Primary term failed:", error);
-
-          // Only try backup if primary failed
-          if (backupTermId) {
-            console.log(
-              "🔄 [LATEST TERM] Trying backup term after primary failure:",
-              backupTermShortName
-            );
-            try {
-              const backupResponse = await axios.get(
-                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${backupTermId}`,
-                {
-                  headers: {
-                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                    "X-RequestedLanguage": "EN",
-                    "API-Version": "1",
-                    Authorization: `Bearer ${authToken}`,
-                  },
-                }
-              );
-
-              console.log(
-                "✅ [LATEST TERM] Backup term success:",
-                backupResponse.data.length,
-                "courses found"
-              );
-              setLatestValidTerm(backupTermShortName);
-              updateEnrolledCourses(backupResponse.data, 2);
-            } catch (backupError) {
-              console.error(
-                "❌ [LATEST TERM] Both primary and backup terms failed:",
-                backupError
-              );
-              errorHandlingService.handleError(backupError);
-            }
           } else {
-            console.error("❌ [LATEST TERM] No backup term available");
-            errorHandlingService.handleError(error);
+            primaryTermShortName = termIdList[0]?.shortName;
+            console.log(
+              "⚠️ [TERM SELECTION] No current terms found, using first term:",
+              primaryTermShortName
+            );
           }
+
+          // Try to fetch enrolled courses to validate the term
+          if (primaryTermShortName) {
+            const primaryTerm = termIdList.find(
+              (t) => t.shortName === primaryTermShortName
+            );
+            try {
+              const response = await axios.get(
+                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${primaryTerm.id}`,
+                {
+                  headers: {
+                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+                    "X-RequestedLanguage": "DE",
+                    "API-Version": "1",
+                    Authorization: `Bearer ${authToken}`,
+                  },
+                }
+              );
+
+              // Update unified course data
+              updateUnifiedEnrolledCourses(primaryTermShortName, response.data);
+              latestValidTerm = primaryTermShortName;
+              setUnifiedLatestValidTerm(primaryTermShortName);
+
+              console.log(
+                "✅ [TERM SELECTION] Latest valid term:",
+                latestValidTerm
+              );
+            } catch (error) {
+              console.error(
+                "[TERM SELECTION] Error fetching courses for primary term:",
+                error
+              );
+              // Still set it as latest valid term even if no courses
+              latestValidTerm = primaryTermShortName;
+              setUnifiedLatestValidTerm(primaryTermShortName);
+            }
+          }
+
+          // Build the final termListObject with proper ordering and metadata
+          const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
+
+          // Calculate how many artificial future semesters we need to generate
+          // We want to ensure we always have at least 2 future semesters beyond the latest valid term
+          const futureSemestersNeeded = Math.max(
+            0,
+            2 -
+              (sortedTerms.length -
+                sortedTerms.indexOf(latestValidTerm || sortedTerms[0]) -
+                1)
+          );
+
+          let artificialFutureSemesters = [];
+          if (futureSemestersNeeded > 0) {
+            // Find the latest semester from API data to use as reference for artificial ones
+            const latestApiSemester = sortedTerms[sortedTerms.length - 1];
+
+            // Generate artificial future semesters only if needed
+            // Pass the full termIdList so the function can find proper reference semesters
+            artificialFutureSemesters = generateFutureSemesters(
+              latestApiSemester,
+              termIdList,
+              futureSemestersNeeded
+            );
+
+            // Initialize artificial future semesters in unified data
+            artificialFutureSemesters.forEach((futureSemester) => {
+              initializeUnifiedSemester(futureSemester.shortName, {
+                id: futureSemester.id,
+                cisId: futureSemester.cisId,
+                isCurrent: false,
+                isProjected: true, // Mark as artificially generated
+                isFuture: true,
+                referenceSemester: futureSemester.referenceSemester, // Store reference semester info
+              });
+            });
+          }
+
+          // Combine API terms with artificial future semesters and sort again
+          const allTerms = [...termIdList, ...artificialFutureSemesters];
+          const allSortedTerms = sortTerms(allTerms.map((t) => t.shortName));
+
+          const builtTermListObject = allSortedTerms
+            .map((shortName) => {
+              const termData = allTerms.find((t) => t.shortName === shortName);
+              if (!termData) return null;
+
+              // Find the current semester as marked by the API
+              const currentSemester =
+                currentTerms.length > 0 ? currentTerms[0].shortName : null;
+
+              // Determine if this is a future semester (newer than current semester)
+              const isFuture = currentSemester
+                ? allSortedTerms.indexOf(shortName) >
+                  allSortedTerms.indexOf(currentSemester)
+                : false;
+
+              // isProjected = artificially generated (not from API)
+              // isFuture = newer than current semester (could be real API data or artificial)
+              return {
+                cisId: termData.cisId, // real CIS ID for API terms, reference cisId for artificial ones
+                id: termData.id, // real timeSegmentId for API terms, generated ID for artificial ones
+                shortName: termData.shortName,
+                isCurrent: termData.isCurrent || false,
+                isProjected: termData.isFuture || false, // Only artificial semesters are "projected"
+                isFuture: isFuture, // Any semester newer than current semester
+              };
+            })
+            .filter(Boolean);
+
+          setTermListObject(builtTermListObject);
+
+          // Set the selected semester to the latest valid term only if no semester is currently selected
+          // This prevents overriding the user's existing semester selection when StudyOverview opens
+            if (!courseData.selectedSemester && latestValidTerm) {
+            setUnifiedSelectedSemester(latestValidTerm, termIdList, latestValidTerm);
+            }
+
+          console.log(
+            "✅ [TERM SELECTION] Term list object built:",
+            builtTermListObject
+          );
+          setIsLoading(false);
+        } catch (error) {
+          console.error("[TERM SELECTION] Error building term list:", error);
+          errorHandlingService.handleError(error);
+          setIsLoading(false);
         }
       })();
     }
-    // eslint-disable-next-line
-  }, [authToken, termIdList, cisIdListAtom, enrolledCourses, fetchAttempted]);
-
-  // 3. Setup projections for future semesters
-  useEffect(() => {
-    if (
-      courseInfo &&
-      Object.keys(courseInfo).length > 0 &&
-      termIdList?.[0] &&
-      termIdList?.[1]
-    ) {
-      console.log("🔮 [FUTURE SEMESTERS] Setting up projections...");
-      console.log(
-        "📊 [FUTURE SEMESTERS] Course info available for slots:",
-        Object.keys(courseInfo)
-      );
-      console.log(
-        "📊 [FUTURE SEMESTERS] Slot 1 courses:",
-        courseInfo[1]?.length || 0
-      );
-
-      const xCourses = 10;
-
-      if (courseInfo[1]?.length > xCourses && termIdList[0]) {
-        console.log(
-          "✅ [FUTURE SEMESTERS] Using first term for projections (>10 courses):",
-          termIdList[0].shortName
-        );
-        setLatestValidTermProjection(termIdList[0].shortName);
-      } else {
-        console.log(
-          "✅ [FUTURE SEMESTERS] Using second term for projections (≤10 courses):",
-          termIdList[1].shortName
-        );
-        setLatestValidTermProjection(termIdList[1].shortName);
-      }
-    }
-  }, [courseInfo, termIdList, setLatestValidTermProjection]);
-
-  // 4. Initialize semester selection once latestValidTerm is set
-  useEffect(() => {
-    if (
-      latestValidTerm &&
-      fetchAttempted &&
-      !initialSelectionMadeRef.current &&
-      (selectedSem === "loading semester data..." ||
-        selectedSem !== latestValidTerm)
-    ) {
-      console.log(
-        "🎯 [SEMESTER SELECTION] Initializing with latest valid term:",
-        latestValidTerm
-      );
-      setSelectedSemester(latestValidTerm);
-      setSelectedSemesterState(latestValidTerm);
-
-      const validTermIndex = termIdList?.findIndex(
-        (term) => term.shortName === latestValidTerm
-      );
-
-      if (validTermIndex !== -1 && validTermIndex !== undefined) {
-        console.log(
-          "📍 [SEMESTER SELECTION] Setting selected index to:",
-          validTermIndex
-        );
-        setSelectedIndex(validTermIndex);
-        initialSelectionMadeRef.current = true;
-      }
-
-      console.log("✅ [SEMESTER SELECTION] Initial selection completed");
-      setIsLoading(false);
-    }
   }, [
-    selectedSem,
-    latestValidTerm,
-    fetchAttempted,
-    setSelectedSemesterState,
+    authToken,
     termIdList,
-    setSelectedIndex,
+    initializeUnifiedSemester,
+    updateUnifiedEnrolledCourses,
+    setUnifiedLatestValidTerm,
+    setUnifiedSelectedSemester,
   ]);
-
-  // Add this new effect to update reference semester when selected semester changes
-  useEffect(() => {
-    if (termIdList?.length && selectedSem !== "loading semester data...") {
-      console.log(
-        "🔄 [REFERENCE SEMESTER] Updating reference for selected semester:",
-        selectedSem
-      );
-
-      const selectedTermIdx = termIdList.findIndex(
-        (term) => term.shortName === selectedSem
-      );
-
-      const latestValidTermIdx = termIdList.findIndex(
-        (term) => term.shortName === latestValidTerm
-      );
-
-      // Sort the terms to get proper chronological order
-      const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
-      const selectedTermSortedIdx = sortedTerms.indexOf(selectedSem);
-      const latestValidTermSortedIdx = sortedTerms.indexOf(latestValidTerm);
-
-      // Check if selected semester is in the future (chronologically after latest valid term)
-      const isFutureSemester = selectedTermSortedIdx > latestValidTermSortedIdx;
-
-      console.log(
-        "📍 [REFERENCE SEMESTER] Selected index:",
-        selectedTermIdx,
-        "Latest valid index:",
-        latestValidTermIdx
-      );
-      console.log(
-        "📅 [REFERENCE SEMESTER] Chronological order - Selected position:",
-        selectedTermSortedIdx,
-        "Latest valid position:",
-        latestValidTermSortedIdx
-      );
-      console.log(
-        "🔮 [REFERENCE SEMESTER] Is future semester:",
-        isFutureSemester
-      );
-
-      if (isFutureSemester) {
-        // For future semesters, we need to find the appropriate reference semester
-        // This should be the semester immediately before the selected one, or the latest valid term
-        let referenceTermShortName;
-
-        if (selectedTermSortedIdx > 0) {
-          // Use the semester immediately before the selected one
-          referenceTermShortName = sortedTerms[selectedTermSortedIdx - 1];
-        } else {
-          // Fallback to latest valid term
-          referenceTermShortName = latestValidTerm;
-        }
-
-        // Additional logic: if we're selecting FS26, use FS25 as reference
-        // if we're selecting HS26, use HS25 as reference, etc.
-        const selectedYear = parseInt(selectedSem.slice(2));
-        const selectedSeason = selectedSem.slice(0, 2);
-        const potentialReferenceTermShortName =
-          selectedSeason + (selectedYear - 1);
-
-        const potentialReferenceExists = termIdList.some(
-          (term) => term.shortName === potentialReferenceTermShortName
-        );
-
-        if (potentialReferenceExists) {
-          referenceTermShortName = potentialReferenceTermShortName;
-          console.log(
-            "🎯 [REFERENCE SEMESTER] Using year-previous reference term:",
-            referenceTermShortName,
-            "for future semester:",
-            selectedSem
-          );
-        } else {
-          console.log(
-            "⚠️ [REFERENCE SEMESTER] Year-previous reference term not found, using chronological previous:",
-            referenceTermShortName
-          );
-        }
-
-        setReferenceSemester(referenceTermShortName);
-      } else {
-        // For current/past semesters, reference is itself
-        console.log(
-          "✅ [REFERENCE SEMESTER] Using selected semester as reference (current/past):",
-          selectedSem
-        );
-        setReferenceSemester(selectedSem);
-      }
-    }
-    //eslint-disable-next-line
-  }, [selectedSem, termIdList, latestValidTerm, courseInfo]);
-
-  // Get sorted terms for the dropdown
-  const sortedTermShortNames = termIdList?.length
-    ? (() => {
-        // Debug: Log the raw termIdList to see what we're working with
-        console.log(
-          "🔍 [DROPDOWN] Raw termIdList:",
-          termIdList.map((t) => `${t.shortName} (ID: ${t.id})`)
-        );
-
-        // Log detailed term information to understand duplicates
-        console.log("🔍 [DROPDOWN] Full term details:");
-        termIdList.forEach((term, index) => {
-          console.log(
-            `  ${index}: ${term.shortName} | ID: ${term.id} | Current: ${term.isCurrent}`
-          );
-        });
-
-        // Get unique terms by shortName, but prefer terms with unique IDs (real terms over projections)
-        const uniqueTermsMap = new Map();
-        const usedIds = new Set();
-
-        // First pass: Add terms with unique IDs (real terms)
-        termIdList.forEach((term) => {
-          if (!usedIds.has(term.id)) {
-            uniqueTermsMap.set(term.shortName, term);
-            usedIds.add(term.id);
-            console.log(
-              `✅ [DROPDOWN] Adding real term: ${term.shortName} (ID: ${term.id})`
-            );
-          }
-        });
-
-        // Second pass: Add terms with duplicate IDs only if shortName is not already present
-        termIdList.forEach((term) => {
-          if (usedIds.has(term.id) && !uniqueTermsMap.has(term.shortName)) {
-            uniqueTermsMap.set(term.shortName, term);
-            console.log(
-              `➕ [DROPDOWN] Adding projected term: ${term.shortName} (ID: ${term.id}, projection)`
-            );
-          }
-        });
-
-        const uniqueTerms = Array.from(uniqueTermsMap.keys());
-        console.log(
-          "🔍 [DROPDOWN] Unique terms after deduplication:",
-          uniqueTerms
-        );
-
-        // Now add missing chronological terms that should exist
-        const sortedExistingTerms = sortTerms(uniqueTerms);
-        console.log(
-          "📅 [DROPDOWN] Existing terms in chronological order:",
-          sortedExistingTerms
-        );
-
-        const termsToAdd = [];
-
-        // For each existing term, check if the next logical term exists
-        sortedExistingTerms.forEach((term, index) => {
-          if (index < sortedExistingTerms.length - 1) {
-            const currentYear = parseInt(term.slice(2));
-            const currentSeason = term.slice(0, 2);
-            const nextTerm = sortedExistingTerms[index + 1];
-            // const nextYear = parseInt(nextTerm.slice(2));
-            // const nextSeason = nextTerm.slice(0, 2);
-
-            // Check if there's a gap in the chronological sequence
-            let expectedNextTerm;
-            if (currentSeason === "FS") {
-              expectedNextTerm = `HS${String(currentYear).padStart(2, "0")}`;
-            } else if (currentSeason === "HS") {
-              expectedNextTerm = `FS${String(currentYear + 1).padStart(
-                2,
-                "0"
-              )}`;
-            }
-
-            if (
-              expectedNextTerm &&
-              expectedNextTerm !== nextTerm &&
-              !uniqueTerms.includes(expectedNextTerm)
-            ) {
-              termsToAdd.push(expectedNextTerm);
-              console.log(
-                `➕ [DROPDOWN] Adding missing chronological term: ${expectedNextTerm} (between ${term} and ${nextTerm})`
-              );
-            }
-          }
-        });
-
-        // Also add one term after the last existing term
-        if (sortedExistingTerms.length > 0) {
-          const lastTerm = sortedExistingTerms[sortedExistingTerms.length - 1];
-          const lastYear = parseInt(lastTerm.slice(2));
-          const lastSeason = lastTerm.slice(0, 2);
-
-          let nextLogicalTerm;
-          if (lastSeason === "FS") {
-            nextLogicalTerm = `HS${String(lastYear).padStart(2, "0")}`;
-          } else if (lastSeason === "HS") {
-            nextLogicalTerm = `FS${String(lastYear + 1).padStart(2, "0")}`;
-          }
-
-          if (nextLogicalTerm && !uniqueTerms.includes(nextLogicalTerm)) {
-            termsToAdd.push(nextLogicalTerm);
-            console.log(
-              `➕ [DROPDOWN] Adding next logical term after ${lastTerm}: ${nextLogicalTerm}`
-            );
-          }
-        }
-
-        const allTerms = [...uniqueTerms, ...termsToAdd];
-        console.log(
-          "📋 [DROPDOWN] All terms including added future terms:",
-          allTerms
-        );
-
-        // Sort them chronologically
-        const sorted = sortTerms(allTerms);
-        console.log("📋 [DROPDOWN] Final sorted terms:", sorted);
-        return sorted;
-      })()
-    : ["loading semester data..."];
-
-  // Log dropdown contents
-  console.log(
-    "📋 [DROPDOWN] Available terms for selection:",
-    sortedTermShortNames
-  );
-
-  // Handle term selection
-  const handleTermSelect = (termValue) => {
-    console.log("👆 [USER SELECTION] User selected term:", termValue);
-    setSelectedSemester(termValue);
-
-    // Find the selected term in the original termIdList
-    const selectedIdx = termIdList.findIndex(
-      (term) => term.shortName === termValue
-    );
-
-    console.log("📍 [USER SELECTION] Setting index to:", selectedIdx);
-
-    if (selectedIdx !== -1) {
-      // Term exists in original list
-      setSelectedIndex(selectedIdx);
-      console.log("✅ [USER SELECTION] Found existing term in termIdList");
-    } else {
-      // This is a future term we added, need to handle it specially
-      console.log(
-        "🔮 [USER SELECTION] Selected term is a future semester not in original termIdList"
-      );
-
-      // For future semesters, we need to set up reference data
-      const selectedYear = parseInt(termValue.slice(2));
-      const selectedSeason = termValue.slice(0, 2);
-      const referenceTermShortName = selectedSeason + (selectedYear - 1);
-
-      console.log(
-        "🎯 [USER SELECTION] Setting reference semester for future term:",
-        referenceTermShortName
-      );
-      setReferenceSemester(referenceTermShortName);
-
-      // Set index to -1 to indicate this is a future term
-      setSelectedIndex(-1);
-    }
-
-    setSelectedSemesterState(termValue);
-  };
 
   return {
     isLoading,
-    selectedSem,
-    latestValidTerm,
-    sortedTermShortNames,
-    handleTermSelect,
-    termIdList,
+    termListObject,
   };
 }

@@ -1,6 +1,29 @@
 import PropTypes from "prop-types";
+import { useMemo } from "react";
+import { useRecoilValue } from "recoil";
+import { calendarEntriesSelector } from "../../recoil/calendarEntriesSelector";
 
-export default function LockClosed({ clg }) {
+export default function LockClosed({ clg, event }) {
+  const calendarEntries = useRecoilValue(calendarEntriesSelector);
+
+  const computedColor = useMemo(() => {
+    const COLOR_MAIN = "#006625"; // green
+    const COLOR_WARNING = "#FCA311"; // orange
+    // Closed lock means enrolled; default to green when unsure
+    if (!event) return COLOR_MAIN;
+
+    const courseNumber =
+      event?.courses?.[0]?.courseNumber || event?.courseNumber || null;
+    const hasOverlap = courseNumber
+      ? calendarEntries.some(
+          (e) => e.courseNumber === courseNumber && e.overlapping
+        )
+      : false;
+
+    // Never gray: orange if overlapping, else green
+    return hasOverlap ? COLOR_WARNING : COLOR_MAIN;
+  }, [calendarEntries, event]);
+
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -9,6 +32,7 @@ export default function LockClosed({ clg }) {
       strokeWidth={2}
       stroke="currentColor"
       className={clg}
+      style={{ color: computedColor }}
     >
       <path
         strokeLinecap="round"
@@ -21,6 +45,7 @@ export default function LockClosed({ clg }) {
 
 LockClosed.propTypes = {
   clg: PropTypes.string.isRequired,
+  event: PropTypes.object,
 };
 
 export { LockClosed };

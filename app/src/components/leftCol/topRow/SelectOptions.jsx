@@ -2,6 +2,8 @@ import { useRecoilValue } from "recoil";
 import { useState } from "react";
 import Select from "react-select";
 import { useTermSelection } from "../../helpers/useTermSelection";
+import { useUnifiedSemesterState } from "../../helpers/useUnifiedSemesterState";
+import { selectedSemesterSelector } from "../../recoil/unifiedCourseDataSelectors";
 import { SelectClassification } from "./SelectClassification";
 import { SelectEcts } from "./SelectEcts";
 import { SelectLanguage } from "./SelectLanguage";
@@ -10,20 +12,16 @@ import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
-import { isFutureSemesterSelected } from "../../recoil/isFutureSemesterSelected";
 
 export default function SelectSemester() {
-  // Get all term selection logic from our custom hook
-  const {
-    isLoading,
-    selectedSem,
-    latestValidTerm,
-    sortedTermShortNames,
-    handleTermSelect,
-    termIdList,
-  } = useTermSelection();
+  // SIMPLIFIED: Get termListObject from new useTermSelection hook
+  const { isLoading, termListObject } = useTermSelection();
 
-  const isFutureSemester = useRecoilValue(isFutureSemesterSelected);
+  // Get current selected semester from unified state
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
+
+  // Unified semester state hook for setting selected semester
+  const { setSelectedSemester } = useUnifiedSemesterState();
 
   // UI state
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -32,98 +30,25 @@ export default function SelectSemester() {
     setIsCollapsed((prev) => !prev);
   };
 
-  // Determine the selected semester ID for the event list container
-  const selectedSemId = (() => {
-    console.log(
-      "🔍 [SEMESTER ID] Determining selected semester ID for:",
-      selectedSem
-    );
+  // Handle semester selection - SIMPLIFIED
+  const handleTermSelect = (selectedShortName) => {
+    // Update unified state with the new selected semester
+    // termListObject contains latestValidTerm info, so we can pass it
+    const latestValidTerm =
+      termListObject?.find((term) => term.isCurrent)?.shortName ||
+      termListObject?.[0]?.shortName;
+    setSelectedSemester(selectedShortName, termListObject, latestValidTerm);
+  };
 
-    if (!selectedSem || selectedSem === "loading semester data...") {
-      console.log("❌ [SEMESTER ID] No valid semester selected");
-      return null;
-    }
+  // Check if selected semester is projected (future)
+  const selectedSemesterData = termListObject?.find(
+    (term) => term.shortName === selectedSemesterShortName
+  );
+  const isFutureSemester = selectedSemesterData?.isProjected || false;
 
-    const matchingTerms =
-      termIdList?.filter((term) => term.shortName === selectedSem) || [];
-
-    console.log(
-      "📋 [SEMESTER ID] Found",
-      matchingTerms.length,
-      "matching terms for",
-      selectedSem
-    );
-
-    if (matchingTerms.length > 0) {
-      // Term exists in original termIdList
-      if (matchingTerms.length > 1) {
-        if (selectedSem === latestValidTerm) {
-          const validTerm = matchingTerms.find((term) => term.isCurrent);
-          if (validTerm) {
-            console.log(
-              "✅ [SEMESTER ID] Using current term:",
-              validTerm.shortName,
-              "ID:",
-              validTerm.id
-            );
-            return validTerm;
-          }
-        }
-      }
-
-      const finalTerm = matchingTerms[0];
-      console.log(
-        "✅ [SEMESTER ID] Using term:",
-        finalTerm.shortName,
-        "ID:",
-        finalTerm.id
-      );
-      return finalTerm;
-    } else {
-      // This is a future semester we added - need to use reference term
-      console.log(
-        "🔮 [SEMESTER ID] Selected term is future semester, finding reference term"
-      );
-
-      const selectedYear = parseInt(selectedSem.slice(2));
-      const selectedSeason = selectedSem.slice(0, 2);
-      const referenceTermShortName = selectedSeason + (selectedYear - 1);
-
-      console.log(
-        "🎯 [SEMESTER ID] Looking for reference term:",
-        referenceTermShortName
-      );
-
-      const referenceTerms =
-        termIdList?.filter(
-          (term) => term.shortName === referenceTermShortName
-        ) || [];
-
-      if (referenceTerms.length > 0) {
-        const referenceTerm = referenceTerms[0];
-        console.log(
-          "✅ [SEMESTER ID] Using reference term:",
-          referenceTerm.shortName,
-          "ID:",
-          referenceTerm.id,
-          "for future semester:",
-          selectedSem
-        );
-
-        // Return a modified term object that indicates it's being used for projection
-        return {
-          ...referenceTerm,
-          shortName: selectedSem, // Keep the selected semester name for display
-          isProjection: true, // Flag to indicate this is a projection
-        };
-      } else {
-        console.log(
-          "❌ [SEMESTER ID] No reference term found for future semester"
-        );
-        return null;
-      }
-    }
-  })();
+  // SIMPLIFIED: Create sorted term names from termListObject
+  const sortedTermShortNames =
+    termListObject?.map((term) => term.shortName) || [];
 
   // Handle loading state with skeleton UI
   if (isLoading) {
@@ -149,7 +74,10 @@ export default function SelectSemester() {
         className="text-sm"
         name="semester"
         id="semester"
-        value={{ value: selectedSem, label: selectedSem }}
+        value={{
+          value: selectedSemesterShortName || "",
+          label: selectedSemesterShortName || "Select Semester",
+        }}
         onChange={(option) => handleTermSelect(option.value)}
         options={sortedTermShortNames.map((term) => ({
           value: term,
@@ -194,7 +122,11 @@ export default function SelectSemester() {
       )}
 
       <ErrorBoundary>
-        <EventListContainer selectedSemesterState={selectedSemId} />
+        {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
+        <EventListContainer
+          termListObject={termListObject || []}
+          selectedSemesterShortName={selectedSemesterShortName || ""}
+        />
       </ErrorBoundary>
     </>
   );

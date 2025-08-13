@@ -209,6 +209,7 @@ const GradeTranscript = ({
       descriptionLower.includes("thesis") &&
       descriptionLower.includes("(title in original language)");
 
+
     let childItems = item.items || [];
     // If it's a thesis category and currently has no child items, create a placeholder array
     if (isThesisCategory && childItems.length === 0) {
@@ -295,20 +296,21 @@ const GradeTranscript = ({
                     <div className="flex items-center">
                       {/* Render lock icon for saved (wishlisted) courses */}
                       {subItem.isWishlist && (
-                        <>
-                          {console.log(
-                            "Rendering LockOpen icon for course ",
-                            subItem.shortName,
-                            subItem
-                          )}
-                          <button
-                            onClick={() => addOrRemoveCourse(subItem)}
-                            className="mr-2 focus:outline-none"
-                            title="Click to remove saved course"
-                          >
-                            <LockOpen clg="w-4 h-4 " event={subItem} />
-                          </button>
-                        </>
+                        <button
+                          onClick={() => {
+                            console.log('🔍 [GradeTranscript] Remove button clicked:', {
+                              courseId: subItem.id || subItem.courseId,
+                              courseName: subItem.shortName || subItem.description,
+                              isCurrentlySelected: selectedCourseIds.includes(subItem.id) || selectedCourseIds.includes(subItem.courseId),
+                              selectedCourseIds: selectedCourseIds
+                            });
+                            addOrRemoveCourse(subItem);
+                          }}
+                          className="mr-2 focus:outline-none"
+                          title="Click to remove saved course"
+                        >
+                          <LockOpen clg="w-4 h-4 " />
+                        </button>
                       )}
                       <span>
                         {subItem.description && subItem.description.trim()
@@ -324,15 +326,20 @@ const GradeTranscript = ({
                     <div className="text-right">
                       {formatNumber(parseFloat(subItem.sumOfCredits))} ECTS
                     </div>
-                    <div className="text-right">{subItem.mark || "-"}</div>
+                    <div className="text-right">{subItem.mark || subItem.gradeText || "-"}</div>
                     <div className="text-right">
-                      <CustomGradeInput
-                        key={`${subItem.shortName}-${customGradeUpdate}`}
-                        initialValue={getCustomGrade(subItem.shortName)}
-                        onUpdate={(value) =>
-                          handleCustomGradeChange(subItem.shortName, value)
-                        }
-                      />
+                      {subItem.gradeText && subItem.gradeText.toLowerCase().includes('p') ? (
+                        // Don't show wish grade input for passed courses
+                        <span className="text-gray-500 text-sm">-</span>
+                      ) : (
+                        <CustomGradeInput
+                          key={`${subItem.shortName}-${customGradeUpdate}`}
+                          initialValue={getCustomGrade(subItem.shortName)}
+                          onUpdate={(value) =>
+                            handleCustomGradeChange(subItem.shortName, value)
+                          }
+                        />
+                      )}
                     </div>
                   </div>
                 </div>

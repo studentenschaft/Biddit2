@@ -85,7 +85,7 @@ export const transformScorecard = (scorecard) => {
           semesters[semester] = [];
         }
         semesters[semester].push({
-          name: item.description,
+          name: item.shortName || item.description || `Course ${item.id}`,
           credits: parseFloat(item.sumOfCredits) || 0,
           type: item.hierarchyParent.includes("00100")
             ? "core"
@@ -93,7 +93,9 @@ export const transformScorecard = (scorecard) => {
             ? "contextual"
             : "elective",
           grade: item.mark ? parseFloat(item.mark) : null,
+          gradeText: item.gradeText,
           id: item.id,
+          courseId: item.id,
         });
       } else if (item.items) {
         processItems(item.items);
