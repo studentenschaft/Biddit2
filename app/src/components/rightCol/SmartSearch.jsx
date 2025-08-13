@@ -47,13 +47,13 @@ export default function SmartSearch() {
   const referenceSemesterState = semesterMetadata?.referenceSemester;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
-  // Determine the effective semester: selected semester or its reference if projected
-  const effectiveSemesterShortName =
-    referenceSemesterLocalState || unifiedSelectedSemesterShortName || null;
+  // For future semesters, use the actual selected semester for course filtering (not reference)
+  // Only use reference semester for API calls where needed
+  const semesterForCourseFiltering = unifiedSelectedSemesterShortName || null;
 
-  // Retrieve available courses for the effective semester
+  // Retrieve available courses for the actual selected semester (not reference)
   const coursesCurrentSemester = useRecoilValue(
-    availableCoursesSelector(effectiveSemesterShortName)
+    availableCoursesSelector(semesterForCourseFiltering)
   );
 
   const [isLoading, setIsLoading] = useState(false);
@@ -220,7 +220,9 @@ export default function SmartSearch() {
 
     if (programRef.current !== null) {
       try {
-        const semesterToUse = effectiveSemesterShortName;
+        // For API calls, use reference semester if it's a future semester, otherwise use selected semester
+        const semesterToUse =
+          referenceSemesterLocalState || unifiedSelectedSemesterShortName;
         if (!semesterToUse) {
           console.warn(
             "No semester is selected or available for SmartSearch query"
