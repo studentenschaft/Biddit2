@@ -5,7 +5,7 @@ import { Tooltip as ReactTooltip } from "react-tooltip";
 import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/solid";
+import { ChevronRightIcon, ChevronLeftIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/solid";
 // import moment from "moment";
 // Other
 import "./calendar.css";
@@ -238,32 +238,37 @@ export default function Calendar() {
         <div className="flex w-full h-full">
           {/* Left navigation */}
           <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
-            {/* Move navigation buttons below the notice by adding extra margin if notice is shown */}
-            <div
-              className={`absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20 ${
-                isFutureSemesterSelectedState ? "mt-12" : ""
-              }`}
-              style={isFutureSemesterSelectedState ? { top: "5.5rem" } : {}}
-            >
-              {isFutureSemesterSelectedState ? (
-                <div className="flex space-x-2">
-                  <button
-                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
-                    onClick={() => NavigateToDate(firstEventDate)}
-                  >
-                    Start
-                  </button>
-                  <button
-                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
-                    onClick={() => NavigateToDate(lastEventDate)}
-                  >
-                    End
-                  </button>
-                </div>
-              ) : (
-                <div onClick={Today}>Today</div>
+            {/* Navigation buttons */}
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <button
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                onClick={() => NavigateToDate(firstEventDate)}
+                aria-label="Go to semester start"
+              >
+                <ChevronDoubleLeftIcon className="w-3 h-3" />
+                Start
+              </button>
+              
+              {!isFutureSemesterSelectedState && (
+                <button
+                  className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                  onClick={Today}
+                  aria-label="Go to today"
+                >
+                  Today
+                </button>
               )}
+              
+              <button
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                onClick={() => NavigateToDate(lastEventDate)}
+                aria-label="Go to semester end"
+              >
+                End
+                <ChevronDoubleRightIcon className="w-3 h-3" />
+              </button>
             </div>
+            
             <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
               <ChevronLeftIcon
                 aria-hidden="true"
