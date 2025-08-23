@@ -4,9 +4,7 @@ import { useRecoilValue } from "recoil";
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import PropTypes from "prop-types";
 import { cisIdList as cisIdListAtom } from "../recoil/cisIdListAtom";
-import { selectedSemesterIndexAtom } from "../recoil/selectedSemesterAtom";
-import { selectedSemesterAtom } from "../recoil/selectedSemesterAtom";
-import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
+import { selectedSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 import { useMemo, useCallback } from "react";
 
 // Helper to get date from calendar week
@@ -28,31 +26,69 @@ function getDateOfISOWeek(week, year, getEndOfWeek = false) {
   return ISOweekStart;
 }
 
-function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
-  const selectedSemester = cisTermData[selectedIndex];
-  
-  // Use the selected semester short name if provided, otherwise fall back to the semester from cisTermData
-  const shortName = selectedSemShortName || selectedSemester?.shortName;
-  
-  if (!shortName) {
+// UNIFIED VERSION: Use selected semester directly from unified system
+function getSemesterDatesUnified(cisTermData, selectedSemShortName) {
+  if (!selectedSemShortName) {
     return {
       start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
-      end: new Date(new Date().getFullYear(), 11, 31)
+      end: new Date(new Date().getFullYear(), 11, 31),
     };
   }
 
   // Extract year from semester name (e.g. "FS24" -> "24")
   // Handles both "FS24" and "FS 24" formats by removing spaces first
-  const cleanShortName = shortName.replace(/\s/g, '');
+  const cleanShortName = selectedSemShortName.replace(/\s/g, "");
   const yearStr = cleanShortName.match(/\d+/)?.[0];
-  
+
   // Convert to full year (e.g. "24" -> 2024)
   const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
 
   // Check if spring semester
   const isSpring = cleanShortName.includes("FS");
 
-  console.log(`DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`);
+  // Use standard university calendar weeks
+  if (isSpring) {
+    return {
+      start: getDateOfISOWeek(8, year),
+      end: getDateOfISOWeek(21, year, true),
+    };
+  } else {
+    return {
+      start: getDateOfISOWeek(38, year),
+      end: getDateOfISOWeek(51, year, true),
+    };
+  }
+}
+
+// LEGACY VERSION: Keep for reference but unused
+// eslint-disable-next-line no-unused-vars
+function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
+  const selectedSemester = cisTermData[selectedIndex];
+
+  // Use the selected semester short name if provided, otherwise fall back to the semester from cisTermData
+  const shortName = selectedSemShortName || selectedSemester?.shortName;
+
+  if (!shortName) {
+    return {
+      start: new Date(new Date().getFullYear(), 1, 1), // Default to current year
+      end: new Date(new Date().getFullYear(), 11, 31),
+    };
+  }
+
+  // Extract year from semester name (e.g. "FS24" -> "24")
+  // Handles both "FS24" and "FS 24" formats by removing spaces first
+  const cleanShortName = shortName.replace(/\s/g, "");
+  const yearStr = cleanShortName.match(/\d+/)?.[0];
+
+  // Convert to full year (e.g. "24" -> 2024)
+  const year = yearStr ? 2000 + parseInt(yearStr) : new Date().getFullYear();
+
+  // Check if spring semester
+  const isSpring = cleanShortName.includes("FS");
+
+  console.log(
+    `DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`
+  );
 
   if (isSpring) {
     return {
@@ -107,14 +143,12 @@ export const Heatmap = ({
   const events = useRecoilValue(calendarEntriesSelector);
 
   const cisIdList = useRecoilValue(cisIdListAtom);
-  const selectedIndex = useRecoilValue(selectedSemesterIndexAtom);
-  const selectedSemesterShortName = useRecoilValue(selectedSemesterAtom);
-  const isFutureSem = useRecoilValue(isFutureSemesterSelected);
+  const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
 
   // Memoize semester dates
   const { start: semesterStartDate, end: semesterEndDate } = useMemo(() => {
-    return getSemesterDates(cisIdList, selectedIndex, selectedSemesterShortName);
-  }, [cisIdList, selectedIndex, selectedSemesterShortName]);
+    return getSemesterDatesUnified(cisIdList, selectedSemesterShortName);
+  }, [cisIdList, selectedSemesterShortName]);
 
   // Memoize the dates array
   const dates = useMemo(() => {
@@ -145,10 +179,12 @@ export const Heatmap = ({
   function checkIfEventsOverlap(date) {
     // find all events on the date and add them to an array
     const eventsOnDate = [];
+    const targetYear = date.getFullYear();
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const eventDate = new Date(event.start);
-      const eventEndDate = new Date(event.end);
+      const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
+      const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
 
       if (
         (eventDate.getDate() === date.getDate() &&
@@ -158,7 +194,12 @@ export const Heatmap = ({
           eventEndDate.getMonth() === date.getMonth() &&
           eventEndDate.getFullYear() === date.getFullYear())
       ) {
-        eventsOnDate.push(event);
+        eventsOnDate.push({
+          ...event,
+          // Store shifted times for overlap calculation
+          shiftedStart: eventDate.getTime(),
+          shiftedEnd: eventEndDate.getTime(),
+        });
       }
     }
     // check for each event if it overlaps with another event
@@ -166,19 +207,19 @@ export const Heatmap = ({
       return false;
     }
     for (let i = 0; i < eventsOnDate.length; i++) {
-      const event = eventsOnDate[i];
+      const a = eventsOnDate[i];
+      for (let j = i + 1; j < eventsOnDate.length; j++) {
+        const b = eventsOnDate[j];
 
-      for (let j = 0; j < eventsOnDate.length; j++) {
-        const otherEvent = eventsOnDate[j];
+        // Treat adjacency as non-overlap: a.end == b.start or b.end == a.start
+        const touches =
+          a.shiftedEnd === b.shiftedStart || b.shiftedEnd === a.shiftedStart;
+        if (touches) continue;
 
-        // check if event start time is smaller than other event start time and event end time is bigger than other event start time
-        if (
-          event.start <= otherEvent.start &&
-          event.end >= otherEvent.start &&
-          event !== otherEvent
-        ) {
-          return true;
-        }
+        // Strict overlap: [aStart, aEnd) intersects [bStart, bEnd)
+        const overlaps =
+          a.shiftedStart < b.shiftedEnd && a.shiftedEnd > b.shiftedStart;
+        if (overlaps) return true;
       }
     }
     return false;
@@ -202,6 +243,24 @@ export const Heatmap = ({
 
   // filter all events from current courses
 
+  // Helper function to shift event dates for future semesters
+  function getShiftedEventDate(originalDate, targetYear) {
+    const shifted = new Date(originalDate);
+    const originalYear = shifted.getFullYear();
+    const yearDiff = targetYear - originalYear;
+
+    if (yearDiff !== 0) {
+      shifted.setFullYear(targetYear);
+
+      // If the original date doesn't exist in the target year (e.g., Feb 29), adjust
+      if (shifted.getMonth() !== originalDate.getMonth()) {
+        shifted.setDate(0); // Go to last day of previous month
+      }
+    }
+
+    return shifted;
+  }
+
   // function to check if there is an event on a specific date
   function checkIfEventOnDate(date) {
     let dur = 0;
@@ -209,10 +268,15 @@ export const Heatmap = ({
       return dur;
     }
 
+    // Get target year from the heatmap (for future semester date shifting)
+    const targetYear = date.getFullYear();
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const eventDate = new Date(event.start);
-      const eventEndDate = new Date(event.end);
+
+      // Shift event dates to target year for future semesters
+      const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
+      const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
 
       if (
         (eventDate.getDate() === date.getDate() &&
@@ -229,31 +293,42 @@ export const Heatmap = ({
     return dur / 60;
   }
 
-  function returnAllCoursesFromDate(date) {
-    const courses = [];
-    if (events.length === 0) {
-      return courses;
-    }
-
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      const eventDate = new Date(event.start);
-      const eventEndDate = new Date(event.end);
-
-      if (
-        (eventDate.getDate() === date.getDate() &&
-          eventDate.getMonth() === date.getMonth() &&
-          eventDate.getFullYear() === date.getFullYear()) ||
-        (eventEndDate.getDate() === date.getDate() &&
-          eventEndDate.getMonth() === date.getMonth() &&
-          eventEndDate.getFullYear() === date.getFullYear())
-      ) {
-        courses.push(event.courseNumber);
+  const returnAllCoursesFromDate = useCallback(
+    (date) => {
+      const courses = [];
+      if (events.length === 0) {
+        return courses;
       }
-    }
 
-    return courses;
-  }
+      const targetYear = date.getFullYear();
+
+      for (let i = 0; i < events.length; i++) {
+        const event = events[i];
+        const eventDate = getShiftedEventDate(
+          new Date(event.start),
+          targetYear
+        );
+        const eventEndDate = getShiftedEventDate(
+          new Date(event.end),
+          targetYear
+        );
+
+        if (
+          (eventDate.getDate() === date.getDate() &&
+            eventDate.getMonth() === date.getMonth() &&
+            eventDate.getFullYear() === date.getFullYear()) ||
+          (eventEndDate.getDate() === date.getDate() &&
+            eventEndDate.getMonth() === date.getMonth() &&
+            eventEndDate.getFullYear() === date.getFullYear())
+        ) {
+          courses.push(event.courseNumber);
+        }
+      }
+
+      return courses;
+    },
+    [events]
+  );
 
   function checkIfCourseHasEvent(date) {
     if (
@@ -264,10 +339,12 @@ export const Heatmap = ({
       return false;
     }
 
+    const targetYear = date.getFullYear();
+
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
-      const eventDate = new Date(event.start);
-      const eventEndDate = new Date(event.end);
+      const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
+      const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
 
       if (
         (eventDate.getDate() === date.getDate() &&
@@ -286,10 +363,13 @@ export const Heatmap = ({
     return false;
   }
 
-  const handleMouseEnter = useCallback((date) => {
-    setHoveredDate(date);
-    setCourseOnDay(returnAllCoursesFromDate(date));
-  }, [returnAllCoursesFromDate]);
+  const handleMouseEnter = useCallback(
+    (date) => {
+      setHoveredDate(date);
+      setCourseOnDay(returnAllCoursesFromDate(date));
+    },
+    [setHoveredDate, setCourseOnDay, returnAllCoursesFromDate]
+  );
 
   return (
     <div className="flex flex-col">

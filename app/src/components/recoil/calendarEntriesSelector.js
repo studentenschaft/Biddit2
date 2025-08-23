@@ -1,13 +1,11 @@
 import { selector } from "recoil";
-import { selectedSemesterIndexAtom } from "./selectedSemesterAtom";
 import moment from "moment/moment";
-import { cisIdListSelector } from "./cisIdListSelector";
 
-import { allCourseInfoState } from "./allCourseInfosSelector";
-
-// for future semesters handling
-import { isFutureSemesterSelected } from "./isFutureSemesterSelected";
-import { referenceSemesterAtom } from "./referenceSemesterAtom";
+// Import unified course data
+import {
+  semesterCoursesSelector,
+  selectedSemesterSelector,
+} from "./unifiedCourseDataSelectors";
 
 /**
  * Build an index of overlapping time slots
@@ -44,71 +42,53 @@ const buildOverlapIndex = (courses) => {
 export const calendarEntriesSelector = selector({
   key: "calendarEntriesSelector",
   get: ({ get }) => {
-    const selectedSemesterIndex = get(selectedSemesterIndexAtom);
-    const cisIdList = get(cisIdListSelector);
-    const semShortName = cisIdList[selectedSemesterIndex]?.shortName || "";
+    // Get the currently selected semester from unified state
+    const selectedSemester = get(selectedSemesterSelector);
+    const semShortName = selectedSemester;
 
-    // Bail out if the semester index or shortName is invalid
-    if (selectedSemesterIndex == null || !semShortName) {
-      console.error(
-        "CES: Invalid semester index or shortName; returning empty array",
-        selectedSemesterIndex,
-        semShortName
+    // Bail out if the semester shortName is invalid
+    if (!semShortName) {
+      console.warn(
+        "CES: No selected semester available; returning empty array"
       );
       return [];
     }
-    // Retrieve all courses and define the correct semester index.
-    // If a future semester is selected, use the reference semester for course info.
-    const allCourses = get(allCourseInfoState);
-    const futureSemesterSelected = get(isFutureSemesterSelected);
-    const referenceSemester = get(referenceSemesterAtom);
 
-    console.log(
-      "CalendarEntriesSelector - selectedSemesterIndex:",
-      selectedSemesterIndex,
-      "referenceSemester:",
-      referenceSemester
-    );
+    // Try to use unified course data first, fallback to legacy system
+    let currentCourses = [];
+    try {
+      // Get courses from unified system for current semester
+      // Get available courses that have been filtered (includes selected/enrolled flags)
+      const filteredCourses = get(
+        semesterCoursesSelector({
+          semester: semShortName,
+          type: "filtered",
+        })
+      );
 
-    console.log(
-      "CalendarEntriesSelector - allCourses:",
-      allCourses,
-      "futureSemesterSelected:",
-      futureSemesterSelected
-    );
-
-    let adjustedSemester = selectedSemesterIndex;
-    if (futureSemesterSelected && referenceSemester != null) {
-      // Check if referenceSemester is already a number, otherwise find the correct index
-      if (typeof referenceSemester === "number") {
-        adjustedSemester = referenceSemester;
-      } else {
-        // Find the index in cisIdList that corresponds to referenceSemester
-        console.log("referenceSemester:", referenceSemester);
-        console.log("cisIdList:", cisIdList);
-        const referenceIndex = cisIdList.findIndex(
-          (sem) => sem.shortName === referenceSemester.shortName
+      if (filteredCourses && filteredCourses.length > 0) {
+        // Filter for enrolled or selected courses from unified system
+        currentCourses = filteredCourses.filter(
+          (course) => course.enrolled || course.selected
         );
-        if (referenceIndex !== -1) {
-          adjustedSemester = referenceIndex;
-        }
+        console.debug(
+          "CalendarEntriesSelector - Using unified filtered courses:",
+          currentCourses
+        );
+      } else {
+        throw new Error("No unified courses available, falling back to legacy");
       }
+    } catch (error) {
+      console.debug(
+        "CalendarEntriesSelector - Falling back to legacy data:",
+        error.message
+      );
+
+      console.debug(
+        "CalendarEntriesSelector - currentCourses:",
+        currentCourses
+      );
     }
-
-    console.log(
-      "CalendarEntriesSelector - Using adjustedSemester:",
-      adjustedSemester,
-      "which maps to:",
-      allCourses[adjustedSemester + 1]
-        ? `${allCourses[adjustedSemester + 1].length} courses`
-        : "no courses"
-    );
-
-    const currentCourses = (allCourses[adjustedSemester + 1] || []).filter(
-      (course) => course.enrolled || course.selected
-    );
-
-    console.debug("CalendarEntriesSelector - currentCourses:", currentCourses);
 
     // Use currentCourses as the relevant courses for the calendar
     const relevantCourses = currentCourses;
@@ -132,35 +112,45 @@ export const calendarEntriesSelector = selector({
           "minutes"
         );
 
-        const startIso = startMoment.toISOString();
-        const endIso = endMoment.toISOString();
+        // Note: no need to compute ISO strings here; comparisons use moment objects directly
 
         // Check for overlaps using the index - O(1) lookup for potential overlaps
-        // This assumes that events with the same start time will overlap if they have different end times
+        // Touching intervals (end == start) are NOT considered overlaps.
         let overlapping = false;
         for (const [otherStart, endSet] of timeSlotIndex.entries()) {
           const otherStartTime = moment(otherStart);
 
-          // Skip entries for this exact course/event
-          if (
-            otherStart === startIso &&
-            endSet.size === 1 &&
-            endSet.has(endIso)
-          ) {
-            continue;
+          // Iterate each potential end and apply strict interval overlap rules
+          for (const endTime of endSet) {
+            const otherEndTime = moment(endTime);
+
+            // Skip comparing the event to itself
+            if (
+              otherStartTime.isSame(startMoment) &&
+              otherEndTime.isSame(endMoment)
+            ) {
+              continue;
+            }
+
+            // Treat adjacency as non-overlap: A.end == B.start OR B.end == A.start
+            if (
+              otherStartTime.isSame(endMoment) ||
+              otherEndTime.isSame(startMoment)
+            ) {
+              continue;
+            }
+
+            // Strict overlap check: [aStart, aEnd) intersects [bStart, bEnd)
+            if (
+              otherStartTime.isBefore(endMoment) &&
+              otherEndTime.isAfter(startMoment)
+            ) {
+              overlapping = true;
+              break;
+            }
           }
 
-          // Check for any overlap
-          if (
-            otherStartTime.isBefore(endMoment) &&
-            Array.from(endSet).some((endTime) => {
-              const otherEndTime = moment(endTime);
-              return otherEndTime.isAfter(startMoment);
-            })
-          ) {
-            overlapping = true;
-            break;
-          }
+          if (overlapping) break;
         }
 
         // Return the final shape for FullCalendar
@@ -180,7 +170,73 @@ export const calendarEntriesSelector = selector({
         };
       });
     });
-
     return calendarEntries;
+  },
+});
+
+// Enhanced selector that includes metadata about the state
+export const calendarEntriesWithMetaSelector = selector({
+  key: "calendarEntriesWithMetaSelector",
+  get: ({ get }) => {
+    const selectedSemesterIndex = get(selectedSemesterIndexAtom);
+    const cisIdList = get(cisIdListSelector);
+    const semShortName = cisIdList[selectedSemesterIndex]?.shortName || "";
+
+    // Check if we have valid semester data
+    if (selectedSemesterIndex == null || !semShortName) {
+      return {
+        events: [],
+        isEmpty: true,
+        isLoading: false,
+        emptyReason: "invalid_semester",
+      };
+    }
+
+    const allCourses = get(allCourseInfoState);
+    const futureSemesterSelected = get(isFutureSemesterSelected);
+    const referenceSemester = get(referenceSemesterAtom);
+
+    let adjustedSemester = selectedSemesterIndex;
+    if (futureSemesterSelected && referenceSemester != null) {
+      if (typeof referenceSemester === "number") {
+        adjustedSemester = referenceSemester;
+      } else {
+        const referenceIndex = cisIdList.findIndex(
+          (sem) => sem.shortName === referenceSemester.shortName
+        );
+        if (referenceIndex !== -1) {
+          adjustedSemester = referenceIndex;
+        }
+      }
+    }
+
+    // Check if courses data is available
+    const semesterCourses = allCourses[adjustedSemester + 1] || [];
+
+    // Check if any courses are enrolled or selected
+    const currentCourses = semesterCourses.filter(
+      (course) => course.enrolled || course.selected
+    );
+
+    // If no courses are selected/enrolled, return appropriate state
+    if (currentCourses.length === 0) {
+      return {
+        events: [],
+        isEmpty: true,
+        isLoading: false,
+        emptyReason:
+          semesterCourses.length === 0 ? "no_courses" : "no_selected_courses",
+      };
+    }
+
+    // Get the actual calendar entries
+    const calendarEntries = get(calendarEntriesSelector);
+
+    return {
+      events: calendarEntries,
+      isEmpty: calendarEntries.length === 0,
+      isLoading: false,
+      emptyReason: calendarEntries.length === 0 ? "no_calendar_entries" : null,
+    };
   },
 });

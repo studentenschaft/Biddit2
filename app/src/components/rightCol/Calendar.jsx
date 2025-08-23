@@ -5,7 +5,7 @@ import { Tooltip as ReactTooltip } from "react-tooltip";
 import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import { ChevronRightIcon, ChevronLeftIcon } from "@heroicons/react/solid";
+import { ChevronRightIcon, ChevronLeftIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/solid";
 // import moment from "moment";
 // Other
 import "./calendar.css";
@@ -14,7 +14,7 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
-import { latestValidTermAtom } from "../recoil/latestValidTermAtom";
+import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
@@ -22,7 +22,7 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
-  const latestValidTerm = useRecoilValue(latestValidTermAtom);
+  const currentSemester = useRecoilValue(currentSemesterSelector);
   const [isLoading, setIsLoading] = React.useState(true);
   const [calendarKey, setCalendarKey] = React.useState(0);
   const calendarRef = React.useRef();
@@ -35,11 +35,13 @@ export default function Calendar() {
   );
 
   console.log("Final Events:", finalEvents);
-  console.log("Calender Entries selector:", calendarEntriesSelector);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
+
+  // Show loading if currentSemester is not yet available
+  const shouldShowLoading = !currentSemester || isLoading;
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
@@ -85,7 +87,7 @@ export default function Calendar() {
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
     }
-  }, [finalEvents, latestValidTerm, isFutureSemesterSelectedState]);
+  }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
   // Information on hovering
   const hoverEvent = (info) => {
@@ -203,46 +205,70 @@ export default function Calendar() {
         </div>
       )}
 
-      {isLoading ? (
+      {shouldShowLoading ? (
         <div className="flex items-center justify-center h-full">
           <LoadingText>Loading calendar entries...</LoadingText>
         </div>
       ) : finalEvents.length === 0 ? (
-        <div className="flex items-center justify-center h-full">
-          <p className="text-gray-500 text-lg">
-            No courses available for this semester
+        <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+          <div className="bg-gray-100 rounded-full p-4 mb-4">
+            <svg
+              className="w-12 h-12 text-gray-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">
+            No calendar events found
+          </h3>
+
+          <p className="text-gray-400 text-sm max-w-md">
+            Hint: Some courses may not have any related calendar entries.
           </p>
         </div>
       ) : (
         <div className="flex w-full h-full">
           {/* Left navigation */}
           <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
-            {/* Move navigation buttons below the notice by adding extra margin if notice is shown */}
-            <div
-              className={`absolute p-2 text-gray-500 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300 top-20 ${
-                isFutureSemesterSelectedState ? "mt-12" : ""
-              }`}
-              style={isFutureSemesterSelectedState ? { top: "5.5rem" } : {}}
-            >
-              {isFutureSemesterSelectedState ? (
-                <div className="flex space-x-2">
-                  <button
-                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
-                    onClick={() => NavigateToDate(firstEventDate)}
-                  >
-                    Start
-                  </button>
-                  <button
-                    className="bg-blue-100 hover:bg-blue-200 px-2 py-1 rounded z-20"
-                    onClick={() => NavigateToDate(lastEventDate)}
-                  >
-                    End
-                  </button>
-                </div>
-              ) : (
-                <div onClick={Today}>Today</div>
+            {/* Navigation buttons */}
+            <div className="flex flex-col items-center gap-2 mb-4">
+              <button
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                onClick={() => NavigateToDate(firstEventDate)}
+                aria-label="Go to semester start"
+              >
+                <ChevronDoubleLeftIcon className="w-3 h-3" />
+                Start
+              </button>
+              
+              {!isFutureSemesterSelectedState && (
+                <button
+                  className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                  onClick={Today}
+                  aria-label="Go to today"
+                >
+                  Today
+                </button>
               )}
+              
+              <button
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                onClick={() => NavigateToDate(lastEventDate)}
+                aria-label="Go to semester end"
+              >
+                End
+                <ChevronDoubleRightIcon className="w-3 h-3" />
+              </button>
             </div>
+            
             <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
               <ChevronLeftIcon
                 aria-hidden="true"

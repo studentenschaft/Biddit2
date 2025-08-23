@@ -38,7 +38,9 @@ export const coursesTakenForRatingState = atom({
     get: async ({ get }) => {
       const token = get(authTokenState);
       const cisIdList = get(cisIdListSelector);
-      const currentSemester = cisIdList.find(term => term.isCurrent)?.shortName;
+      const currentSemester = cisIdList.find(
+        (term) => term.isCurrent
+      )?.shortName;
       if (!currentSemester) {
         console.warn("No current semester found");
         return [];
@@ -59,9 +61,11 @@ export const coursesTakenForRatingState = atom({
         );
 
         // replace any data.shortname entries semester name formatting (e.g., SpSXX -> FSXX, AuSXX -> HSXX)
-        semesterInfo.data = semesterInfo.data.map(semester => {
+        semesterInfo.data = semesterInfo.data.map((semester) => {
           const oldShortName = semester.shortName;
-          const normalizedShortName = semester.shortName.replace(/SpS(\d{2})/, "FS$1").replace(/AuS(\d{2})/, "HS$1");
+          const normalizedShortName = semester.shortName
+            .replace(/SpS(\d{2})/, "FS$1")
+            .replace(/AuS(\d{2})/, "HS$1");
           return {
             ...semester,
             shortName: normalizedShortName,
@@ -71,9 +75,12 @@ export const coursesTakenForRatingState = atom({
 
         // Filter for ratable semesters and map to TimeSegmentIds
         const ratableSemesters = semesterInfo.data
-          .filter(semester => isSemesterRatable(semester.shortName, currentSemester))
+          .filter((semester) =>
+            isSemesterRatable(semester.shortName, currentSemester)
+          )
           .reduce((acc, semester) => {
-            if (semester && semester.shortName) { // Ensure semester and semester.shortName are defined
+            if (semester && semester.shortName) {
+              // Ensure semester and semester.shortName are defined
               acc[semester.shortName] = semester.timeSegmentId; // If timeSegmentId is missing, undefined will be assigned, which is acceptable.
             }
             return acc;
@@ -94,14 +101,18 @@ export const coursesTakenForRatingState = atom({
             );
             return { id: semesterName, data: res.data || [] };
           } catch (err) {
-            console.error(`Error loading courses for semester ${semesterName}:`, err);
+            console.error(
+              `Error loading courses for semester ${semesterName}:`,
+              err
+            );
             return { id: semesterName, data: [] };
           }
         }
 
         const data = await Promise.all(
-          Object.entries(ratableSemesters).map(([semesterName, timeSegmentId]) =>
-            loadRatingCourses(semesterName, timeSegmentId)
+          Object.entries(ratableSemesters).map(
+            ([semesterName, timeSegmentId]) =>
+              loadRatingCourses(semesterName, timeSegmentId)
           )
         );
 
@@ -117,7 +128,10 @@ export const coursesTakenForRatingState = atom({
                 if (course === null || course === undefined) {
                   return null;
                 }
-                if (course.eventCourseNumber === null || course.eventCourseNumber === undefined) {
+                if (
+                  course.eventCourseNumber === null ||
+                  course.eventCourseNumber === undefined
+                ) {
                   return {
                     courseId: "",
                     courseName: course.eventDescription,
@@ -170,23 +184,23 @@ export async function SubmitCourseRatingById(token, courseRating) {
   }
 }
 
-
-
 /**
  * Determines if a semester should be ratable based on current date and semester dates
  * @param {string} semesterShortName - The semester to check (e.g., "FS23")
  * @param {string} currentSemesterShortName - Current semester from cisIdList
  * @returns {boolean} - True if the semester should be ratable
  */
-export const isSemesterRatable = (semesterShortName, currentSemesterShortName) => {
-
-  if (!semesterShortName || !currentSemesterShortName){
+export const isSemesterRatable = (
+  semesterShortName,
+  currentSemesterShortName
+) => {
+  if (!semesterShortName || !currentSemesterShortName) {
     return false;
   }
-  
+
   const targetSem = parseSemester(semesterShortName);
   const currentSem = parseSemester(currentSemesterShortName);
-  
+
   if (!targetSem || !currentSem) {
     console.log("RATINGSV2: Failed to parse semester names.");
     return false;
@@ -196,8 +210,8 @@ export const isSemesterRatable = (semesterShortName, currentSemesterShortName) =
   // 2. It's from the current year but is a spring semester and we're in fall
   if (currentSem.year - targetSem.year > 3) return false;
   if (targetSem.year < currentSem.year) return true;
-  if (targetSem.year === currentSem.year && targetSem.sem < currentSem.sem) return true;
-  
+  if (targetSem.year === currentSem.year && targetSem.sem < currentSem.sem)
+    return true;
+
   return false;
 };
-

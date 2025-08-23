@@ -1,7 +1,6 @@
 import { selector } from "recoil";
 import { cisIdList } from "./cisIdListAtom";
 import { latestValidTermProjectionState } from "./latestValidTermProjection";
-//TODO: FIX async issue: this is updated several times before values are correct but wrong values are already displayed without beening refecthed
 export const cisIdListSelector = selector({
   key: "cisIdListSelector",
   get: async ({ get }) => {
@@ -46,7 +45,7 @@ export const cisIdListSelector = selector({
                 shortName: modifiedShortName,
                 id: nextEntry.timeSegmentId,
                 cisId: nextEntry.id,
-                isCurrent: nextEntry.isCurrent,
+                isCurrent: false, // Projected terms are never current
                 isProjected: true, // flag to allow filtering of pure data.
               });
             }
