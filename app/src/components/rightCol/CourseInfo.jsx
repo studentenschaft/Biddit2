@@ -46,7 +46,7 @@ export default function CourseInfo() {
     } catch (err) {
       try {
         const res = await axios.get(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${selectedCourse.courses[0].courseNumber}`,
+          `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}`,
           {
             headers: {
               "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
@@ -119,7 +119,7 @@ export default function CourseInfo() {
   async function fetchCourseRatings(selectedCourse, authToken) {
     try {
       const res = await axios.get(
-        `https://api.shsg.ch/course-ratings/by-course/${selectedCourse.courses[0].courseNumber}`,
+        `https://api.shsg.ch/course-ratings/by-course/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}`,
         {
           headers: {
             "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
@@ -187,7 +187,7 @@ export default function CourseInfo() {
         <header className="font-bold lg:text-2xl">
           <div className="flex justify-between pb-4">
             <a
-              href={selectedCourse?.courses?.[0]?.timeTableLink || "#"} // bugfix 30.4.25  Error Message: undefined is not an object (evaluating 'n.courses[0]')
+              href={selectedCourse?.courses?.[0]?.timeTableLink || selectedCourse?.timeTableLink || "#"}
               target="_blank"
               rel="noreferrer"
             >
@@ -197,7 +197,7 @@ export default function CourseInfo() {
             </a>
             {semesterAbbreviation && (
               <a
-                href={`https://tools.unisg.ch/handlers/Public/CourseInformationSheet.ashx/semester/${semesterAbbreviation}/eventnumber/${selectedCourse.courses[0].courseNumber}.pdf`}
+                href={`https://tools.unisg.ch/handlers/Public/CourseInformationSheet.ashx/semester/${semesterAbbreviation}/eventnumber/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}.pdf`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -225,10 +225,8 @@ export default function CourseInfo() {
                   : ""}
               </div>
               <div className="mb-4">
-                {selectedCourse.courses &&
-                  selectedCourse.courses.length > 0 &&
-                  selectedCourse.courses[0].lecturers &&
-                  selectedCourse.courses[0].lecturers
+                {(selectedCourse.courses?.[0]?.lecturers || selectedCourse.lecturers) &&
+                  (selectedCourse.courses?.[0]?.lecturers || selectedCourse.lecturers)
                     .map((prof) => {
                       return prof.displayName;
                     })

@@ -354,7 +354,7 @@ export const Heatmap = ({
         (eventEndDate.getDate() === date.getDate() &&
           eventEndDate.getMonth() === date.getMonth() &&
           eventEndDate.getFullYear() === date.getFullYear() &&
-          event.courseNumber === hovered.courses[0].courseNumber)
+          event.courseNumber === (hovered.courses?.[0]?.courseNumber || hovered.courseNumber))
       ) {
         return true;
       }
