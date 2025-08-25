@@ -3,6 +3,7 @@ import {
   unifiedCourseDataState,
   initializedSemestersState,
 } from "../recoil/unifiedCourseDataAtom";
+import { isExerciseGroup } from "./smartExerciseGroupHandler";
 
 /**
  * Default semester structure with all required fields
@@ -352,17 +353,51 @@ export function useUnifiedCourseData() {
 
   /**
    * Update available courses for a semester
+   * Flattens nested courses from the courses array to make exercise groups selectable
    */
   const updateAvailableCourses = (semesterShortName, courses) => {
+    const flattenedCourses = [];
+    
+    (courses || []).forEach(parentCourse => {
+      if (parentCourse.courses && Array.isArray(parentCourse.courses)) {
+        parentCourse.courses.forEach(nestedCourse => {
+          const flattenedCourse = {
+            ...parentCourse,
+            ...nestedCourse,
+            courseNumber: nestedCourse.courseNumber || parentCourse.courseNumber,
+            shortName: nestedCourse.shortName || parentCourse.shortName,
+            id: nestedCourse.id || parentCourse.id,
+            lecturers: nestedCourse.lecturers || parentCourse.lecturers,
+            courses: undefined
+          };
+          
+          // Filter calendar entries to only include events for this specific course
+          if (parentCourse.calendarEntry && Array.isArray(parentCourse.calendarEntry)) {
+            const courseNumber = nestedCourse.courseNumber || parentCourse.courseNumber;
+            flattenedCourse.calendarEntry = parentCourse.calendarEntry.filter(
+              entry => entry.courseNumber === courseNumber
+            );
+          }
+          
+          // Apply exercise group ECTS logic: set credits to 0 for exercise groups
+          if (isExerciseGroup(flattenedCourse)) {
+            flattenedCourse.credits = 0;
+          }
+          
+          flattenedCourses.push(flattenedCourse);
+        });
+      } else {
+        flattenedCourses.push(parentCourse);
+      }
+    });
+
     patchSemester(
       semesterShortName,
-      { available: courses || [] },
+      { available: flattenedCourses },
       { touchLastFetched: true }
     );
     console.log(
-      `✅ Updated available courses for ${semesterShortName}: ${
-        (courses || []).length
-      }`
+      `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)`
     );
   };
 
@@ -556,6 +591,7 @@ export function useUnifiedCourseData() {
         selectedIds.slice(0, 5)
       );
 
+
       // Attach ratings to courses BEFORE filtering
       const coursesWithRatings = coursesToFilter.map((course) => {
         // Try different ways to match ratings to courses
@@ -607,6 +643,7 @@ export function useUnifiedCourseData() {
       const filtered = coursesWithRatings.filter((course) => {
         return applyFilterCriteria(course, filterOptions);
       });
+
 
       // Add enrollment and selection status to filtered courses
       const finalCourses = filtered.map((course) => {
@@ -663,6 +700,7 @@ export function useUnifiedCourseData() {
         `📊 [SUMMARY] Selected: ${selectedCount}, Enrolled: ${enrolledCount}, Total: ${sortedFinalCourses.length}`
       );
 
+
       return newData;
     });
   };
@@ -691,10 +729,8 @@ export function useUnifiedCourseData() {
 
     if (
       lecturer.length > 0 &&
-      course.courses &&
-      course.courses[0] &&
-      course.courses[0].lecturers &&
-      !course.courses[0].lecturers.some((lect) =>
+      course.lecturers &&
+      !course.lecturers.some((lect) =>
         lecturer.includes(lect.displayName)
       )
     ) {

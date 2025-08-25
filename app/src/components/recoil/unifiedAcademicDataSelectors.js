@@ -1,7 +1,7 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
-import { exerciseGroupRegex } from "../helpers/regEx";
+import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 
 /**
  * Selector to get the current program data
@@ -98,14 +98,9 @@ export const unifiedStudyPlanSelector = selector({
           }
         }
 
-        // PHASE 2.5: EXERCISE GROUP PROCESSING
-        // Remove credits for exercise groups
-        processedCourses = processedCourses.map(course => {
-          if (course.name && course.name.match(exerciseGroupRegex)) {
-            return { ...course, credits: 0 };
-          }
-          return course;
-        });
+        // PHASE 2.5: SMART EXERCISE GROUP PROCESSING
+        // Intelligently handle exercise group credits based on main course existence
+        processedCourses = processExerciseGroupECTS(processedCourses);
 
         // PHASE 3: SORTING PASS
         // Sort by type priority

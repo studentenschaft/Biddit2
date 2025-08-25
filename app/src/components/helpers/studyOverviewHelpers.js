@@ -6,7 +6,7 @@
 
 import { useRecoilValue } from "recoil";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
-import { exerciseGroupRegex } from "./regEx";
+import { calculateSmartSemesterCredits } from "./smartExerciseGroupHandler";
 /**
  * Custom hook that provides the current semester (shortName) by looking up
  * the Recoil cisIdListSelector. If no current semester is found, returns null.
@@ -118,15 +118,7 @@ export const filterCoursesForSemester = (courses, semester, currentSemester) => 
  * @returns {number} - Total credits for the semester.
  */
 export const calculateSemesterCredits = (courses) => {
-  return courses.reduce((sum, course) => {
-    // Heuristic: if the course name indicates it’s an exercise group, skip its credits
-    if (exerciseGroupRegex.test(course.name)) {
-      //TODO: Improve REGEX
-      return sum;
-    }
-  const credits = parseFloat(course.credits || course.sumOfCredits) || 0;
-  return sum + credits;
-  }, 0);
+  return calculateSmartSemesterCredits(courses);
 };
 
 

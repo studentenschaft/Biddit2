@@ -198,7 +198,7 @@ export const unifiedAcademicDataSelector = selector({
                   id: courseId,
                   courseId: courseId,
                   name: fullCourse.shortName || fullCourse.name || courseId,
-                  credits: parseFloat(fullCourse.credits) / 100 || 3, // Credits from API are in 300 format, divide by 100
+                  credits: fullCourse.credits != null ? parseFloat(fullCourse.credits) / 100 : 3, // Preserve 0 credits, default to 3 for null/undefined
                   type: fullCourse.classification || 'elective',
                   classification: fullCourse.classification,
                   avgRating: fullCourse.avgRating,

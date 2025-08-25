@@ -10,11 +10,11 @@ import { useUnifiedCourseData } from "./useUnifiedCourseData";
 
 // Helper function to normalize credits from API format to display format
 const normalizeCredits = (credits) => {
-  if (!credits) return 4; // Default to 4 ECTS
+  if (credits === null || credits === undefined) return 4; // Default to 4 ECTS only for null/undefined
   if (typeof credits === "number" && credits > 99) {
     return credits / 100; // Convert 400 -> 4, 200 -> 2, etc.
   }
-  return credits;
+  return credits; // Return 0 for exercise groups, other values as-is
 };
 
 /**
