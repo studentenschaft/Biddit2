@@ -130,12 +130,12 @@ export default function SmartSearch() {
       if (!coursesCurrentSemester) return;
       const relevantData = coursesCurrentSemester
         .map((course) => {
-          if (!course.courses?.[0]?.courseNumber) {
+          if (!course.courseNumber) {
             console.warn("Missing course number for course:", course);
             return null;
           }
           return {
-            courseNumber: course.courses[0].courseNumber,
+            courseNumber: course.courseNumber,
             shortName: course.shortName,
             classification: course.classification,
             courseContent: course.courseContent,
@@ -325,7 +325,7 @@ export default function SmartSearch() {
     const categories = ids
       .map((id) => {
         const course = coursesCurrentSemester?.find(
-          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+          (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         return course ? course.classification : null;
       })
@@ -338,7 +338,7 @@ export default function SmartSearch() {
     const credits = ids
       .map((id) => {
         const course = coursesCurrentSemester?.find(
-          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+          (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         return course ? (course.credits / 100).toFixed(2) : null;
       })
@@ -349,7 +349,7 @@ export default function SmartSearch() {
   const filteredCourses = similarCourses.ids
     ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
-          (c) => c.courses?.[0]?.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+          (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
         const categoryMatch =
@@ -378,32 +378,32 @@ export default function SmartSearch() {
     if (!coursesCurrentSemester) return;
 
     const locked = coursesCurrentSemester
-      .filter((course) => course.enrolled && course.courses?.[0]?.courseNumber)
-      .map((course) => course.courses[0].courseNumber);
+      .filter((course) => course.enrolled && course.courseNumber)
+      .map((course) => course.courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
-      .filter((course) => course.selected && course.courses?.[0]?.courseNumber)
-      .map((course) => course.courses[0].courseNumber);
+      .filter((course) => course.selected && course.courseNumber)
+      .map((course) => course.courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
       .filter(
-        (course) => course.overlapping && course.courses?.[0]?.courseNumber
+        (course) => course.overlapping && course.courseNumber
       )
-      .map((course) => course.courses[0].courseNumber);
+      .map((course) => course.courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
   function isLocked(course) {
-    return lockedCourses.includes(course.courses[0].courseNumber);
+    return lockedCourses.includes(course.courseNumber);
   }
 
   function isSelected(course) {
-    return selectedCourses.includes(course.courses[0].courseNumber);
+    return selectedCourses.includes(course.courseNumber);
   }
 
   function isOverlapping(course) {
-    return overlappingCourses.includes(course.courses[0].courseNumber);
+    return overlappingCourses.includes(course.courseNumber);
   }
 
   useEffect(() => {
@@ -601,7 +601,7 @@ export default function SmartSearch() {
                 .map((id) => {
                   const course = coursesCurrentSemester.find(
                     (c) =>
-                      c.courses?.[0]?.courseNumber ===
+                      c.courseNumber ===
                       id.replace(/[A-Z]+\d+/g, "")
                   );
                   return (
@@ -627,11 +627,11 @@ export default function SmartSearch() {
                               if (!course) return;
                               const updatedSelectedCourses = isSelected(course)
                                 ? selectedCourses.filter(
-                                    (c) => c !== course.courses[0].courseNumber
+                                    (c) => c !== course.courseNumber
                                   )
                                 : [
                                     ...selectedCourses,
-                                    course.courses[0].courseNumber,
+                                    course.courseNumber,
                                   ];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
