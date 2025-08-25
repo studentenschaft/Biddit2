@@ -61,14 +61,30 @@ const Transcript = () => {
   
   // Get main program transcript data using memoization for performance
   const mainProgramTranscript = useMemo(() => {
-    const mainProgramKey = getMainProgramKey(academicData);
-    const mainProgramData = academicData.transcriptView?.[mainProgramKey];
-    const hierarchicalData = mainProgramData?.hierarchicalStructure?.[0];
+    // Early return if academic data is not loaded
+    if (!academicData.isLoaded) {
+      return null;
+    }
     
-    return hierarchicalData ? {
+    const mainProgramKey = getMainProgramKey(academicData);
+    if (!mainProgramKey) {
+      return null;
+    }
+    
+    const mainProgramData = academicData.transcriptView?.[mainProgramKey];
+    if (!mainProgramData?.hierarchicalStructure || !Array.isArray(mainProgramData.hierarchicalStructure)) {
+      return null;
+    }
+    
+    const hierarchicalData = mainProgramData.hierarchicalStructure[0];
+    if (!hierarchicalData) {
+      return null;
+    }
+    
+    return {
       items: [hierarchicalData]
-    } : null;
-  }, [academicData.transcriptView, academicData.programs, totalSemestersNeeded]);
+    };
+  }, [academicData.isLoaded, academicData.transcriptView, academicData.programs, totalSemestersNeeded]);
   
   // Helper function to normalize classification names to match transcript categories
   const normalizeClassification = useCallback((classification) => {
@@ -87,6 +103,11 @@ const Transcript = () => {
 
   // Get wishlist courses from unified academic data
   const wishlistCourses = useMemo(() => {
+    // Early return if academic data is not loaded
+    if (!academicData.isLoaded) {
+      return [];
+    }
+    
     const mainProgramKey = getMainProgramKey(academicData);
     console.log('🔍 [Transcript] Program selection and data:', {
       mainProgramKey,
@@ -125,7 +146,7 @@ const Transcript = () => {
     
     console.log('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
     return allWishlistCourses;
-  }, [academicData.studyOverviewView, academicData.programs, normalizeClassification]);
+  }, [academicData.isLoaded, academicData.studyOverviewView, academicData.programs, normalizeClassification]);
 
   /**
    * Helper: Build a mapping from course classification to an array of courses.

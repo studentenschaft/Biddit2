@@ -351,21 +351,46 @@ const GradeTranscript = ({
     );
   };
 
-  // Calculate overall values for the transcript header
-  const {
-    totalCredits,
-    gradeSum,
-    filteredCredits,
-    customGradeSum,
-    customEctsSum,
-  } = calculateCreditsAndGrades(
-    scorecardDetails.items[0].items,
-    getCustomGrade
-  );
-  const overallAvgGrade =
-    filteredCredits > 0 ? gradeSum / filteredCredits : null;
-  const overallCustomAvg =
-    customEctsSum > 0 ? customGradeSum / customEctsSum : null;
+  // Calculate overall values for the transcript header (with null safety)
+  const overallCalculations = React.useMemo(() => {
+    if (!scorecardDetails?.items?.[0]?.items) {
+      return {
+        totalCredits: 0,
+        gradeSum: 0,
+        filteredCredits: 0,
+        customGradeSum: 0,
+        customEctsSum: 0,
+        overallAvgGrade: null,
+        overallCustomAvg: null
+      };
+    }
+    
+    const {
+      totalCredits,
+      gradeSum,
+      filteredCredits,
+      customGradeSum,
+      customEctsSum,
+    } = calculateCreditsAndGrades(
+      scorecardDetails.items[0].items,
+      getCustomGrade
+    );
+    
+    const overallAvgGrade = filteredCredits > 0 ? gradeSum / filteredCredits : null;
+    const overallCustomAvg = customEctsSum > 0 ? customGradeSum / customEctsSum : null;
+    
+    return {
+      totalCredits,
+      gradeSum,
+      filteredCredits,
+      customGradeSum,
+      customEctsSum,
+      overallAvgGrade,
+      overallCustomAvg
+    };
+  }, [scorecardDetails, getCustomGrade]);
+  
+  const { overallAvgGrade, overallCustomAvg } = overallCalculations;
 
   return (
     <div className="p-4 bg-white">
@@ -373,24 +398,24 @@ const GradeTranscript = ({
         <>
           {/* Main category header */}
           <h3 className="text-xl font-semibold mb-4 text-gray-700">
-            {scorecardDetails.items[0].description}
+            {scorecardDetails.items[0]?.description || 'Academic Transcript'}
           </h3>
           <div className="grid grid-cols-[3fr,repeat(5,1fr)] gap-2 text-lg font-bold mb-4 text-green-700">
             <div className="text-right"></div>
             <div className="text-right">
-              {formatNumber(parseFloat(scorecardDetails.items[0].minCredits))}{" "}
+              {formatNumber(parseFloat(scorecardDetails.items[0]?.minCredits || 0))}{" "}
               ECTS
             </div>
             <div className="text-right">
-              {formatNumber(parseFloat(scorecardDetails.items[0].maxCredits))}{" "}
+              {formatNumber(parseFloat(scorecardDetails.items[0]?.maxCredits || 0))}{" "}
               ECTS
             </div>
             <div className="text-right">
-              {formatNumber(parseFloat(scorecardDetails.items[0].sumOfCredits))}{" "}
+              {formatNumber(parseFloat(scorecardDetails.items[0]?.sumOfCredits || 0))}{" "}
               ECTS
             </div>
             <div className="text-right">
-              {formatNumber(parseFloat(scorecardDetails.items[0].mark), true)}
+              {formatNumber(parseFloat(scorecardDetails.items[0]?.mark || 0), true)}
             </div>
             <div className="text-right">
               {formatNumber(overallCustomAvg, true)}
@@ -406,7 +431,7 @@ const GradeTranscript = ({
               <div className="text-right">Real</div>
               <div className="text-right">Wish</div>
             </div>
-            {scorecardDetails.items[0].items.map((item, index) => (
+            {(scorecardDetails.items[0]?.items || []).map((item, index) => (
               <div key={index}>{renderTranscriptItem(item)}</div>
             ))}
           </div>
