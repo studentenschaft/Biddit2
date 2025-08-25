@@ -105,12 +105,12 @@ export default function SimilarCourses({ selectedCourse }) {
       if (!coursesCurrentSemester) return;
       const relevantData = coursesCurrentSemester
         .map((course) => {
-          if (!course.courses[0]) {
+          if (!course.courseNumber) {
             console.warn("Missing course number for course:", course); // filter out missing courseNumbers, this was the case FS25 before bidding start
             return null;
           }
           return {
-            courseNumber: course.courses[0].courseNumber,
+            courseNumber: course.courseNumber,
             shortName: course.shortName,
             classification: course.classification,
             courseContent: course.courseContent,
@@ -290,7 +290,7 @@ export default function SimilarCourses({ selectedCourse }) {
     ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
           (course) =>
-            course.courses[0].courseNumber === id.replace(/[A-Z]+\d+/g, "")
+            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
 
@@ -320,50 +320,47 @@ export default function SimilarCourses({ selectedCourse }) {
   const [overlappingCourses, setOverlappingCourses] = useState([]);
 
   useEffect(() => {
-    //bugfix: 25.04.25 undefined is not an object (evaluating 'X.courses[0].courseNumber')
+    //bugfix: 25.04.25 undefined is not an object (evaluating 'X.courseNumber')
     if (!coursesCurrentSemester) return;
 
     const locked = coursesCurrentSemester
       .filter(
         (course) =>
           course.enrolled &&
-          course.courses?.length > 0 &&
-          course.courses[0]?.courseNumber
+          course.courseNumber
       )
-      .map((course) => course.courses[0].courseNumber);
+      .map((course) => course.courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
       .filter(
         (course) =>
           course.selected &&
-          course.courses?.length > 0 &&
-          course.courses[0]?.courseNumber
+          course.courseNumber
       )
-      .map((course) => course.courses[0].courseNumber);
+      .map((course) => course.courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
       .filter(
         (course) =>
           course.overlapping &&
-          course.courses?.length > 0 &&
-          course.courses[0]?.courseNumber
+          course.courseNumber
       )
-      .map((course) => course.courses[0].courseNumber);
+      .map((course) => course.courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
 
   function isLocked(course) {
-    return lockedCourses.includes(course.courses[0].courseNumber);
+    return course.courseNumber && lockedCourses.includes(course.courseNumber);
   }
 
   function isSelected(course) {
-    return selectedCourses.includes(course.courses[0].courseNumber);
+    return course.courseNumber && selectedCourses.includes(course.courseNumber);
   }
 
   function isOverlapping(course) {
-    return overlappingCourses.includes(course.courses[0].courseNumber);
+    return course.courseNumber && overlappingCourses.includes(course.courseNumber);
   }
 
   useEffect(() => {
@@ -435,7 +432,7 @@ export default function SimilarCourses({ selectedCourse }) {
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courses[0].courseNumber ===
+                        course.courseNumber ===
                         id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? course.classification : null;
@@ -471,7 +468,7 @@ export default function SimilarCourses({ selectedCourse }) {
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courses[0].courseNumber ===
+                        course.courseNumber ===
                         id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? (course.credits / 100).toFixed(2) : null;
@@ -560,7 +557,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(() => {
                         const course = coursesCurrentSemester.find(
                           (course) =>
-                            course.courses[0].courseNumber ===
+                            course.courseNumber ===
                             id.replace(/[A-Z]+\d+/g, "")
                         );
                         return course && isLocked(course) ? (
@@ -582,11 +579,11 @@ export default function SimilarCourses({ selectedCourse }) {
                             onClick={() => {
                               const updatedSelectedCourses = isSelected(course)
                                 ? selectedCourses.filter(
-                                    (c) => c !== course.courses[0].courseNumber
+                                    (c) => c !== course.courseNumber
                                   )
                                 : [
                                     ...selectedCourses,
-                                    course.courses[0].courseNumber,
+                                    course.courseNumber,
                                   ];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
@@ -600,7 +597,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       onClick={() => {
                         const course = coursesCurrentSemester.find(
                           (c) =>
-                            c.courses[0].courseNumber ===
+                            c.courseNumber ===
                             id.replace(/[A-Z]+\d+/g, "")
                         );
                         if (course) updateSelectedCourseInfo(course);
@@ -610,7 +607,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courses[0].courseNumber ===
+                            course.courseNumber ===
                             id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).shortName || "N/A"}
@@ -620,7 +617,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courses[0].courseNumber ===
+                            course.courseNumber ===
                             id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).classification || "N/A"}
@@ -630,7 +627,7 @@ export default function SimilarCourses({ selectedCourse }) {
                         (
                           coursesCurrentSemester.find(
                             (course) =>
-                              course.courses[0].courseNumber ===
+                              course.courseNumber ===
                               id.replace(/[A-Z]+\d+/g, "")
                           ) || {}
                         ).credits / 100
