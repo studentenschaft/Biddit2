@@ -64,7 +64,7 @@ export const adaptAcademicDataForStudyOverview = (academicData, unifiedCourseDat
           console.log(`      🔍 Processing selected course:`, course);
           courses.push({
             name: course.name || course.courseId || course.id,
-            credits: course.credits || 3,
+            credits: course.credits ?? 3, // Use nullish coalescing to preserve 0 values
             type: `${course.type || course.classification || 'elective'}-wishlist`, // Mark as wishlist type
             big_type: course.classification || course.type || 'elective',
             grade: null, // Planned courses have no grades yet

@@ -371,6 +371,14 @@ export function useUnifiedCourseData() {
             courses: undefined
           };
           
+          // Filter calendar entries to only include events for this specific course
+          if (parentCourse.calendarEntry && Array.isArray(parentCourse.calendarEntry)) {
+            const courseNumber = nestedCourse.courseNumber || parentCourse.courseNumber;
+            flattenedCourse.calendarEntry = parentCourse.calendarEntry.filter(
+              entry => entry.courseNumber === courseNumber
+            );
+          }
+          
           // Apply exercise group ECTS logic: set credits to 0 for exercise groups
           if (isExerciseGroup(flattenedCourse)) {
             flattenedCourse.credits = 0;
