@@ -105,7 +105,7 @@ export default function SimilarCourses({ selectedCourse }) {
       if (!coursesCurrentSemester) return;
       const relevantData = coursesCurrentSemester
         .map((course) => {
-          if (!course.courses[0]) {
+          if (!course.courses || !course.courses[0]) {
             console.warn("Missing course number for course:", course); // filter out missing courseNumbers, this was the case FS25 before bidding start
             return null;
           }
