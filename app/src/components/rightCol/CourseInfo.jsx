@@ -8,6 +8,7 @@ import Collapsible from "./Collapsible";
 import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import SimilarCourses from "./SimilarCourses.jsx";
+import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
 
 // Unified course data
 import {
@@ -166,16 +167,6 @@ export default function CourseInfo() {
     }
   }, [courseWithRatings, selectedCourse, setCourseWithRatings]);
 
-  const tooltipTexts = {
-    topic:
-      "Were the topics covered in class what you expected from the course information sheet?",
-    lecture: "How well was the lecture structured?",
-    materials:
-      "How well did the provided course materials support your education?",
-    professor: "How well did the professor perform?",
-    exam: "Was the exam fair?",
-    workload: "Was the workload appropriate for the ECTS?",
-  };
 
   return (
     <>
@@ -257,16 +248,28 @@ export default function CourseInfo() {
                         <div className="items-center flex flex-row md:">
                           <div
                             className="capitalize w-1/3  mr-4"
-                            data-tip="tooltip"
-                            data-for={category}
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={RATING_TOOLTIP_TEXTS[category]}
                           >
                             {category}
                           </div>
-                          <ReactTooltip id={category} type="light">
-                            <span>{tooltipTexts[category]}</span>
-                          </ReactTooltip>
+                          <ReactTooltip
+                            id={`rating-${category}`}
+                            place="top"
+                            style={{
+                              backgroundColor: "#f9fafb",
+                              color: "#111827",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "0.375rem",
+                              fontSize: "0.875rem"
+                            }}
+                          />
 
-                          <div className="bg-gray-300 rounded-full h-3 align-middle flex-1 ">
+                          <div 
+                            className="bg-gray-300 rounded-full h-3 align-middle flex-1 cursor-help"
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={RATING_TOOLTIP_TEXTS[category]}
+                          >
                             {/*  dark:bg-gray-600 */}
                             <div
                               className="bg-gray-500 h-3 rounded-full "
@@ -278,7 +281,11 @@ export default function CourseInfo() {
                               }}
                             />
                           </div>
-                          <div className="ml-4 w-1/6">
+                          <div 
+                            className="ml-4 w-1/6 cursor-help"
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={RATING_TOOLTIP_TEXTS[category]}
+                          >
                             Ø {courseWithRatings.avgRatings[category]}
                           </div>
                         </div>

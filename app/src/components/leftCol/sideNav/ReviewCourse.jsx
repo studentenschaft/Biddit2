@@ -5,6 +5,7 @@ import ReactStars from "react-rating-stars-component";
 // import TextareaAutosize from "react-textarea-autosize";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import { useRecoilState, useRecoilValue } from "recoil";
+import { RATING_TOOLTIP_TEXTS } from "../../../constants/ratingTooltips";
 import {
   SubmitCourseRatingById,
   coursesTakenForRatingState,
@@ -112,15 +113,6 @@ export const ReviewCourse = ({ courseName, submittable, setSubmittable }) => {
     return false;
   }
 
-  const tooltipTexts = {
-    topic: "Were the topics covered what you expected from the course sheet?",
-    lecture: "How well was the lecture structured?",
-    materials:
-      "How well did the provided course materials support your education?",
-    // professor: "How well did the professor perform?",
-    exam: "Was the exam fair?",
-    workload: "Was the workload appropriate for the ECTS?",
-  };
 
   return (
     <div>
@@ -130,31 +122,67 @@ export const ReviewCourse = ({ courseName, submittable, setSubmittable }) => {
       <div className="mt-3 sm:mt-5">
         <div className="grid grid-cols-2 font-semibold gap-x-4 gap-y-4">
           <div className="grid items-center grid-cols-2 bg-gray-100 rounded-lg">
-            <div data-tip="tooltip" data-for="topic" className="text-lg">
+            <div 
+              data-tooltip-id="rating-topic"
+              data-tooltip-content={RATING_TOOLTIP_TEXTS.topic}
+              className="text-lg"
+            >
               Topic*
             </div>
             <ReactStars onChange={setTopic} {...baseStyle} />
-            <ReactTooltip id="topic" type="light">
-              <span>{tooltipTexts.topic}</span>
-            </ReactTooltip>
+            <ReactTooltip
+              id="rating-topic"
+              place="top"
+              style={{
+                backgroundColor: "#f9fafb",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem"
+              }}
+            />
           </div>
           <div className="grid items-center grid-cols-2 bg-gray-100">
-            <div data-tip="tooltip" data-for="Exam" className="text-lg">
+            <div 
+              data-tooltip-id="rating-exam"
+              data-tooltip-content={RATING_TOOLTIP_TEXTS.exam}
+              className="text-lg"
+            >
               Exam*
             </div>
             <ReactStars onChange={setExam} {...baseStyle} />
-            <ReactTooltip id="Exam" type="light">
-              <span>{tooltipTexts.exam}</span>
-            </ReactTooltip>
+            <ReactTooltip
+              id="rating-exam"
+              place="top"
+              style={{
+                backgroundColor: "#f9fafb",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem"
+              }}
+            />
           </div>
           <div className="grid items-center grid-cols-2 bg-gray-100">
-            <div data-tip="tooltip" data-for="Lecture" className="text-lg">
+            <div 
+              data-tooltip-id="rating-lecture"
+              data-tooltip-content={RATING_TOOLTIP_TEXTS.lecture}
+              className="text-lg"
+            >
               Lecture*
             </div>
             <ReactStars onChange={setLecture} {...baseStyle} />
-            <ReactTooltip id="Lecture" type="light">
-              <span>{tooltipTexts.lecture}</span>
-            </ReactTooltip>
+            <ReactTooltip
+              id="rating-lecture"
+              place="top"
+              style={{
+                backgroundColor: "#f9fafb",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem"
+              }}
+            />
           </div>
           {/* <div className="grid items-center grid-cols-2 bg-gray-100">
             <div data-tip="tooltip" data-for="Professor" className="text-lg">
@@ -167,22 +195,46 @@ export const ReviewCourse = ({ courseName, submittable, setSubmittable }) => {
           </div> */}
 
           <div className="grid items-center grid-cols-2 bg-gray-100">
-            <div data-tip="tooltip" data-for="Materials" className="text-lg">
+            <div 
+              data-tooltip-id="rating-materials"
+              data-tooltip-content={RATING_TOOLTIP_TEXTS.materials}
+              className="text-lg"
+            >
               Materials*
             </div>
             <ReactStars onChange={setMaterials} {...baseStyle} />
-            <ReactTooltip id="Materials" type="light">
-              <span>{tooltipTexts.materials}</span>
-            </ReactTooltip>
+            <ReactTooltip
+              id="rating-materials"
+              place="top"
+              style={{
+                backgroundColor: "#f9fafb",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem"
+              }}
+            />
           </div>
           <div className="grid items-center grid-cols-2 bg-gray-100">
-            <div data-tip="tooltip" data-for="Workload" className="text-lg">
+            <div 
+              data-tooltip-id="rating-workload"
+              data-tooltip-content={RATING_TOOLTIP_TEXTS.workload}
+              className="text-lg"
+            >
               Workload*
             </div>
             <ReactStars onChange={setWorkload} {...baseStyle} />
-            <ReactTooltip id="Workload" type="light">
-              <span>{tooltipTexts.workload}</span>
-            </ReactTooltip>
+            <ReactTooltip
+              id="rating-workload"
+              place="top"
+              style={{
+                backgroundColor: "#f9fafb",
+                color: "#111827",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.375rem",
+                fontSize: "0.875rem"
+              }}
+            />
           </div>
         </div>
         {/* <div className="pt-4 mb-4">
