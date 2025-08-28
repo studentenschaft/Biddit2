@@ -1,22 +1,17 @@
-import axios from 'axios';
-import { errorHandlingService } from '../errorHandling/ErrorHandlingService';
+import { apiClient } from "../helpers/axiosClient";
+import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 export const fetchScoreCardEnrollments = async (authToken) => {
-    try {
-        const response = await axios.get('https://integration.unisg.ch/AchievementApi/MyScoreCards/studiesWithProgramEnrollmentStatus', 
-        {
-            headers: {
-            'X-ApplicationId': '820e077d-4c13-45b8-b092-4599d78d45ec',
-            'X-RequestedLanguage': 'EN',
-            'API-Version': '1',
-            'Authorization': `Bearer ${authToken}`,
-            },
-        });
-        console.log('Enrollments data fetched: ', response.data);
-        return response.data;
-        } catch (error) {
-        console.error('Error fetching scorecard enrollments:', error);
-        //throw error;
-        errorHandlingService.handleError(error);
-    }
+  try {
+    const response = await apiClient.get(
+      "https://integration.unisg.ch/AchievementApi/MyScoreCards/studiesWithProgramEnrollmentStatus",
+      authToken
+    );
+    console.log("Enrollments data fetched: ", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching scorecard enrollments:", error);
+    //throw error;
+    errorHandlingService.handleError(error);
+  }
 };
