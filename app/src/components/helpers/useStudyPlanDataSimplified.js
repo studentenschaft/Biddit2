@@ -19,7 +19,7 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosClient from "./axiosClient";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -59,7 +59,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔄 [SIMPLIFIED] Fetching study plan for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
-        const response = await axios.get("https://api.shsg.ch/study-plans", {
+        const response = await axiosClient.get("https://api.shsg.ch/study-plans", {
           headers: {
             "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
             "X-RequestedLanguage": "EN",

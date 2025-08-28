@@ -20,7 +20,7 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosClient from "./axiosClient";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -39,19 +39,16 @@ export const useCourseInfoData = (params) => {
     useUnifiedCourseData();
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
 
-  // Handle null parameters AFTER calling all hooks
-  if (!params) {
-    return {
-      isCourseDataLoading: false,
-      courseData: [],
-      hasData: false
-    };
-  }
-
   const { authToken, selectedSemester } = params || {};
 
   // Fetch course data effect
   useEffect(() => {
+    // Handle null parameters inside the effect
+    if (!params || !selectedSemester?.cisId || !selectedSemester?.shortName) {
+      setIsCourseDataLoading(false);
+      return;
+    }
+
     const fetchCourseData = async () => {
       // Only fetch if we have required data
       if (!selectedSemester?.cisId || !selectedSemester?.shortName) {
@@ -66,7 +63,7 @@ export const useCourseInfoData = (params) => {
           `🔄 [SIMPLIFIED] Fetching course data for semester: ${selectedSemester.shortName}, CIS ID: ${selectedSemester.cisId}`
         );
 
-        const response = await axios.get(
+        const response = await axiosClient.get(
           `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.cisId}`,
           {
             headers: {
@@ -110,6 +107,13 @@ export const useCourseInfoData = (params) => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, selectedSemester?.cisId, selectedSemester?.shortName]);
+
+  // Handle null parameters by returning default values
+  if (!params) {
+    return {
+      isCourseDataLoading: false,
+    };
+  }
 
   return {
     isCourseDataLoading,

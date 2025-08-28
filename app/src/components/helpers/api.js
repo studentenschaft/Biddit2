@@ -1,4 +1,4 @@
-import axios from "axios";
+import axiosClient from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
@@ -12,7 +12,7 @@ export const initializeSemester = async (semesterIdentifier, token) => {
     console.log(`Initializing semester: ${semesterIdentifier}`);
 
     // We'll pass an empty array as courseIds to create the semester without courses
-    const res = await axios.post(
+    const res = await axiosClient.post(
       `https://api.shsg.ch/study-plans/${semesterIdentifier}`,
       { courseIds: [] },
       {
@@ -34,7 +34,7 @@ export const initializeSemester = async (semesterIdentifier, token) => {
 
 export const getStudyPlan = async (token) => {
   try {
-    const res = await axios.get("https://api.shsg.ch/study-plans", {
+    const res = await axiosClient.get("https://api.shsg.ch/study-plans", {
       headers: {
         "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
         "X-RequestedLanguage": "EN",
@@ -61,7 +61,7 @@ export const getStudyPlan = async (token) => {
 
 export const getStudyPlanCourses = async (studyPlanId, token) => {
   try {
-    const res = await axios.get(
+    const res = await axiosClient.get(
       `https://api.shsg.ch/study-plans/${studyPlanId}`,
       {
         headers: {
@@ -87,7 +87,7 @@ export const saveCourse = async (studyPlanId, eventId, token) => {
       "eventId",
       eventId
     );
-    const res = await axios.post(
+    const res = await axiosClient.post(
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
       {},
       {
@@ -114,7 +114,7 @@ export const deleteCourse = async (studyPlanId, eventId, token) => {
       "eventId",
       eventId
     );
-    const res = await axios.delete(
+    const res = await axiosClient.delete(
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
       {
         headers: {
@@ -135,7 +135,7 @@ export const deleteCourse = async (studyPlanId, eventId, token) => {
 
 export const getLightCourseDetails = async (cisTermId, token) => {
   try {
-    const res = await axios.get(
+    const res = await axiosClient.get(
       `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisTermId}/?fields=id,shortName,credits,classification,courses`,
       {
         headers: {
