@@ -9,7 +9,7 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-import axios from "axios";
+import { apiClient } from "../helpers/axiosClient";
 import { authTokenState } from "../recoil/authAtom";
 import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
@@ -211,8 +211,9 @@ export default function SimilarCourses({ selectedCourse }) {
         //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
         //   .trim(); // Trim leading and trailing spaces
 
-        const response = await axios.get(
+        const response = await apiClient.get(
           "https://api.shsg.ch/similar-courses/query",
+          authToken,
           {
             params: {
               courseDescription: selectedCourse.courseContent,
@@ -220,9 +221,6 @@ export default function SimilarCourses({ selectedCourse }) {
               category: category,
               program: programRef.current,
               semester: semesterToUse,
-            },
-            headers: {
-              Authorization: `Bearer ${authToken}`,
             },
           }
         );
@@ -289,8 +287,7 @@ export default function SimilarCourses({ selectedCourse }) {
   const filteredCourses = similarCourses.ids
     ? similarCourses.ids[0].filter((id) => {
         const course = coursesCurrentSemester.find(
-          (course) =>
-            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
+          (course) => course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
         );
         if (!course) return false;
 
@@ -324,29 +321,17 @@ export default function SimilarCourses({ selectedCourse }) {
     if (!coursesCurrentSemester) return;
 
     const locked = coursesCurrentSemester
-      .filter(
-        (course) =>
-          course.enrolled &&
-          course.courseNumber
-      )
+      .filter((course) => course.enrolled && course.courseNumber)
       .map((course) => course.courseNumber);
     setLockedCourses(locked);
 
     const selected = coursesCurrentSemester
-      .filter(
-        (course) =>
-          course.selected &&
-          course.courseNumber
-      )
+      .filter((course) => course.selected && course.courseNumber)
       .map((course) => course.courseNumber);
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
-      .filter(
-        (course) =>
-          course.overlapping &&
-          course.courseNumber
-      )
+      .filter((course) => course.overlapping && course.courseNumber)
       .map((course) => course.courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
@@ -360,7 +345,9 @@ export default function SimilarCourses({ selectedCourse }) {
   }
 
   function isOverlapping(course) {
-    return course.courseNumber && overlappingCourses.includes(course.courseNumber);
+    return (
+      course.courseNumber && overlappingCourses.includes(course.courseNumber)
+    );
   }
 
   useEffect(() => {
@@ -432,8 +419,7 @@ export default function SimilarCourses({ selectedCourse }) {
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courseNumber ===
-                        id.replace(/[A-Z]+\d+/g, "")
+                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? course.classification : null;
                   })
@@ -468,8 +454,7 @@ export default function SimilarCourses({ selectedCourse }) {
                   .map((id) => {
                     const course = coursesCurrentSemester.find(
                       (course) =>
-                        course.courseNumber ===
-                        id.replace(/[A-Z]+\d+/g, "")
+                        course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                     );
                     return course ? (course.credits / 100).toFixed(2) : null;
                   })
@@ -557,8 +542,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(() => {
                         const course = coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber ===
-                            id.replace(/[A-Z]+\d+/g, "")
+                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         );
                         return course && isLocked(course) ? (
                           <LockClosed
@@ -581,10 +565,7 @@ export default function SimilarCourses({ selectedCourse }) {
                                 ? selectedCourses.filter(
                                     (c) => c !== course.courseNumber
                                   )
-                                : [
-                                    ...selectedCourses,
-                                    course.courseNumber,
-                                  ];
+                                : [...selectedCourses, course.courseNumber];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
                           />
@@ -596,9 +577,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       style={{ maxWidth: "450px" }}
                       onClick={() => {
                         const course = coursesCurrentSemester.find(
-                          (c) =>
-                            c.courseNumber ===
-                            id.replace(/[A-Z]+\d+/g, "")
+                          (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         );
                         if (course) updateSelectedCourseInfo(course);
                       }}
@@ -607,8 +586,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber ===
-                            id.replace(/[A-Z]+\d+/g, "")
+                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).shortName || "N/A"}
                     </td>
@@ -617,8 +595,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       {(
                         coursesCurrentSemester.find(
                           (course) =>
-                            course.courseNumber ===
-                            id.replace(/[A-Z]+\d+/g, "")
+                            course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         ) || {}
                       ).classification || "N/A"}
                     </td>

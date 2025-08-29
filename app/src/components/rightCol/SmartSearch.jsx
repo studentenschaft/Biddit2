@@ -2,7 +2,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
 import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
-import axios from "axios";
+import { apiClient } from "../helpers/axiosClient";
 import { authTokenState } from "../recoil/authAtom";
 // Use unified selected/current semester selectors instead of legacy atom
 import {
@@ -230,8 +230,9 @@ export default function SmartSearch() {
           setIsLoading(false);
           return;
         }
-        const response = await axios.get(
+        const response = await apiClient.get(
           "https://api.shsg.ch/similar-courses/query",
+          authToken,
           {
             params: {
               courseDescription: searchInput,
@@ -239,9 +240,6 @@ export default function SmartSearch() {
               category: category,
               program: programRef.current,
               semester: semesterToUse,
-            },
-            headers: {
-              Authorization: `Bearer ${authToken}`,
             },
           }
         );
@@ -388,9 +386,7 @@ export default function SmartSearch() {
     setSelectedCourses(selected);
 
     const overlapping = coursesCurrentSemester
-      .filter(
-        (course) => course.overlapping && course.courseNumber
-      )
+      .filter((course) => course.overlapping && course.courseNumber)
       .map((course) => course.courseNumber);
     setOverlappingCourses(overlapping);
   }, [coursesCurrentSemester]);
@@ -600,9 +596,7 @@ export default function SmartSearch() {
                 })
                 .map((id) => {
                   const course = coursesCurrentSemester.find(
-                    (c) =>
-                      c.courseNumber ===
-                      id.replace(/[A-Z]+\d+/g, "")
+                    (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                   );
                   return (
                     <tr key={id}>
@@ -629,10 +623,7 @@ export default function SmartSearch() {
                                 ? selectedCourses.filter(
                                     (c) => c !== course.courseNumber
                                   )
-                                : [
-                                    ...selectedCourses,
-                                    course.courseNumber,
-                                  ];
+                                : [...selectedCourses, course.courseNumber];
                               setSelectedCourses(updatedSelectedCourses);
                             }}
                           />
