@@ -9,6 +9,8 @@ import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import SimilarCourses from "./SimilarCourses.jsx";
 import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
+import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
+import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
 
 // Unified course data
 import {
@@ -229,10 +231,15 @@ export default function CourseInfo() {
           {/* // Course Description // */}
 
           {courseWithRatings && containsCourseRatings && (
-            <div
-              className="grid grid-cols-1 lg:grid-cols-5 gap-8 text-base pb-4 "
-              key={courseWithRatings.shortName}
-            >
+            <>
+              {/* Exercise Group Disclaimer */}
+              {isExerciseGroup(selectedCourse) && <ExerciseGroupDisclaimer />}
+              
+              {/* Course Ratings */}
+              <div
+                className="grid grid-cols-1 lg:grid-cols-5 gap-8 text-base pb-4 "
+                key={courseWithRatings.shortName}
+              >
               <div className="col-span-2">
                 <dl className="">
                   <div className="flex text-sm font-medium toggle text-gray-900">
@@ -317,6 +324,7 @@ export default function CourseInfo() {
                             )}
                         </div> */}
             </div>
+            </>
           )}
 
           {/* // Exam Description // */}

@@ -10,3 +10,5 @@ export const RATING_TOOLTIP_TEXTS = {
   exam: "Was the exam fair?",
   workload: "Was the workload appropriate for the ECTS?",
 };
+
+export const EXERCISE_GROUP_TOOLTIP_TEXT = "Exercise groups often switch teaching assistants between semesters. The ratings shown may reflect previous instructors and might not apply to the current teaching staff.";
