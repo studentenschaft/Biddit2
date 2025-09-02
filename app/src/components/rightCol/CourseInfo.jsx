@@ -1,13 +1,16 @@
 import { useRecoilValue, useRecoilState } from "recoil";
 import { ExternalLinkIcon } from "@heroicons/react/outline";
 import { authTokenState } from "../recoil/authAtom";
-import axios from "axios";
+import { apiClient } from "../helpers/axiosClient";
 import { useEffect, useState } from "react";
 import { examinationTypesState } from "../recoil/examinationTypesAtom";
 import Collapsible from "./Collapsible";
 import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import SimilarCourses from "./SimilarCourses.jsx";
+import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
+import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
+import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
 
 // Unified course data
 import {
@@ -30,14 +33,12 @@ export default function CourseInfo() {
   // fetch achievement parts information (will be done every time a course is selected)
   async function fetchCourseInformation(selectedCourse, authToken) {
     try {
-      const res = await axios.get(
+      const res = await apiClient.get(
         `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${selectedCourse.hsgEntityId}`,
+        authToken,
         {
           headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
             "API-Version": "3",
-            Authorization: `Bearer ${authToken}`,
           },
         }
       );
@@ -45,14 +46,15 @@ export default function CourseInfo() {
       return res.data;
     } catch (err) {
       try {
-        const res = await axios.get(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}`,
+        const res = await apiClient.get(
+          `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${
+            selectedCourse.courses?.[0]?.courseNumber ||
+            selectedCourse.courseNumber
+          }`,
+          authToken,
           {
             headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
               "API-Version": "3",
-              Authorization: `Bearer ${authToken}`,
             },
           }
         );
@@ -78,16 +80,9 @@ export default function CourseInfo() {
 
   async function fetchExaminationIds() {
     try {
-      const res = await axios.get(
+      const res = await apiClient.get(
         `https://integration.unisg.ch/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
-        {
-          headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
-            "API-Version": "1",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
+        authToken
       );
 
       const examinationIdObject = {};
@@ -118,16 +113,12 @@ export default function CourseInfo() {
 
   async function fetchCourseRatings(selectedCourse, authToken) {
     try {
-      const res = await axios.get(
-        `https://api.shsg.ch/course-ratings/by-course/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}`,
-        {
-          headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
-            "API-Version": "1",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
+      const res = await apiClient.get(
+        `https://api.shsg.ch/course-ratings/by-course/${
+          selectedCourse.courses?.[0]?.courseNumber ||
+          selectedCourse.courseNumber
+        }`,
+        authToken
       );
       res.data = res.data.filter(
         (course) => course.courseNumber !== "7,721,1.00" // this has been requested to be removed
@@ -166,17 +157,6 @@ export default function CourseInfo() {
     }
   }, [courseWithRatings, selectedCourse, setCourseWithRatings]);
 
-  const tooltipTexts = {
-    topic:
-      "Were the topics covered in class what you expected from the course information sheet?",
-    lecture: "How well was the lecture structured?",
-    materials:
-      "How well did the provided course materials support your education?",
-    professor: "How well did the professor perform?",
-    exam: "Was the exam fair?",
-    workload: "Was the workload appropriate for the ECTS?",
-  };
-
   return (
     <>
       {/* // Course Name and Link to courses page and course info sheet // */}
@@ -187,7 +167,11 @@ export default function CourseInfo() {
         <header className="font-bold lg:text-2xl">
           <div className="flex justify-between pb-4">
             <a
-              href={selectedCourse?.courses?.[0]?.timeTableLink || selectedCourse?.timeTableLink || "#"}
+              href={
+                selectedCourse?.courses?.[0]?.timeTableLink ||
+                selectedCourse?.timeTableLink ||
+                "#"
+              }
               target="_blank"
               rel="noreferrer"
             >
@@ -197,7 +181,10 @@ export default function CourseInfo() {
             </a>
             {semesterAbbreviation && (
               <a
-                href={`https://tools.unisg.ch/handlers/Public/CourseInformationSheet.ashx/semester/${semesterAbbreviation}/eventnumber/${selectedCourse.courses?.[0]?.courseNumber || selectedCourse.courseNumber}.pdf`}
+                href={`https://tools.unisg.ch/handlers/Public/CourseInformationSheet.ashx/semester/${semesterAbbreviation}/eventnumber/${
+                  selectedCourse.courses?.[0]?.courseNumber ||
+                  selectedCourse.courseNumber
+                }.pdf`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -225,8 +212,12 @@ export default function CourseInfo() {
                   : ""}
               </div>
               <div className="mb-4">
-                {(selectedCourse.courses?.[0]?.lecturers || selectedCourse.lecturers) &&
-                  (selectedCourse.courses?.[0]?.lecturers || selectedCourse.lecturers)
+                {(selectedCourse.courses?.[0]?.lecturers ||
+                  selectedCourse.lecturers) &&
+                  (
+                    selectedCourse.courses?.[0]?.lecturers ||
+                    selectedCourse.lecturers
+                  )
                     .map((prof) => {
                       return prof.displayName;
                     })
@@ -238,10 +229,15 @@ export default function CourseInfo() {
           {/* // Course Description // */}
 
           {courseWithRatings && containsCourseRatings && (
-            <div
-              className="grid grid-cols-1 lg:grid-cols-5 gap-8 text-base pb-4 "
-              key={courseWithRatings.shortName}
-            >
+            <>
+              {/* Exercise Group Disclaimer */}
+              {isExerciseGroup(selectedCourse) && <ExerciseGroupDisclaimer />}
+              
+              {/* Course Ratings */}
+              <div
+                className="grid grid-cols-1 lg:grid-cols-5 gap-8 text-base pb-4 "
+                key={courseWithRatings.shortName}
+              >
               <div className="col-span-2">
                 <dl className="">
                   <div className="flex text-sm font-medium toggle text-gray-900">
@@ -257,16 +253,32 @@ export default function CourseInfo() {
                         <div className="items-center flex flex-row md:">
                           <div
                             className="capitalize w-1/3  mr-4"
-                            data-tip="tooltip"
-                            data-for={category}
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={
+                              RATING_TOOLTIP_TEXTS[category]
+                            }
                           >
                             {category}
                           </div>
-                          <ReactTooltip id={category} type="light">
-                            <span>{tooltipTexts[category]}</span>
-                          </ReactTooltip>
+                          <ReactTooltip
+                            id={`rating-${category}`}
+                            place="top"
+                            style={{
+                              backgroundColor: "#f9fafb",
+                              color: "#111827",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "0.375rem",
+                              fontSize: "0.875rem",
+                            }}
+                          />
 
-                          <div className="bg-gray-300 rounded-full h-3 align-middle flex-1 ">
+                          <div
+                            className="bg-gray-300 rounded-full h-3 align-middle flex-1 cursor-help"
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={
+                              RATING_TOOLTIP_TEXTS[category]
+                            }
+                          >
                             {/*  dark:bg-gray-600 */}
                             <div
                               className="bg-gray-500 h-3 rounded-full "
@@ -278,7 +290,13 @@ export default function CourseInfo() {
                               }}
                             />
                           </div>
-                          <div className="ml-4 w-1/6">
+                          <div
+                            className="ml-4 w-1/6 cursor-help"
+                            data-tooltip-id={`rating-${category}`}
+                            data-tooltip-content={
+                              RATING_TOOLTIP_TEXTS[category]
+                            }
+                          >
                             Ø {courseWithRatings.avgRatings[category]}
                           </div>
                         </div>
@@ -310,6 +328,7 @@ export default function CourseInfo() {
                             )}
                         </div> */}
             </div>
+            </>
           )}
 
           {/* // Exam Description // */}

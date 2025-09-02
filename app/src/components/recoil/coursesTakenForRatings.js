@@ -2,7 +2,7 @@ import { atom, selector } from "recoil";
 import { authTokenState } from "./authAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { parseSemester } from "../helpers/transformScorecard";
-import axios from "axios";
+import { apiClient } from "../helpers/axiosClient";
 
 export const coursesRatedState = atom({
   key: "coursesRated",
@@ -11,16 +11,9 @@ export const coursesRatedState = atom({
     get: async ({ get }) => {
       const token = get(authTokenState);
       try {
-        const res = await axios.get(
+        const res = await apiClient.get(
           `https://api.shsg.ch/course-ratings/of-user`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          token
         );
         return res.data;
       } catch (err) {
@@ -48,16 +41,9 @@ export const coursesTakenForRatingState = atom({
 
       try {
         // First get all available semesters and their TimeSegmentIds
-        const semesterInfo = await axios.get(
+        const semesterInfo = await apiClient.get(
           `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${token}`,
-            },
-          }
+          token
         );
 
         // replace any data.shortname entries semester name formatting (e.g., SpSXX -> FSXX, AuSXX -> HSXX)
@@ -88,16 +74,9 @@ export const coursesTakenForRatingState = atom({
 
         async function loadRatingCourses(semesterName, timeSegmentId) {
           try {
-            const res = await axios.get(
+            const res = await apiClient.get(
               `https://integration.unisg.ch/eventapi/MyCourses/byTerm/${timeSegmentId}`,
-              {
-                headers: {
-                  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                  "X-RequestedLanguage": "EN",
-                  "API-Version": "1",
-                  Authorization: `Bearer ${token}`,
-                },
-              }
+              token
             );
             return { id: semesterName, data: res.data || [] };
           } catch (err) {
@@ -164,17 +143,10 @@ export const coursesTakenForRatingState = atom({
 
 export async function SubmitCourseRatingById(token, courseRating) {
   try {
-    const res = await axios.post(
+    const res = await apiClient.post(
       `https://api.shsg.ch/course-ratings/`,
       courseRating,
-      {
-        headers: {
-          "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-          "X-RequestedLanguage": "EN",
-          "API-Version": "1",
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      token
     );
     console.log("Rating submitted successfully:", res.data);
     return res.data;
