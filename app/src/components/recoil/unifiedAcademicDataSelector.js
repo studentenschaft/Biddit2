@@ -149,9 +149,15 @@ export const unifiedAcademicDataSelector = selector({
             
             // MAIN PROGRAM FILTERING: Only include selected courses for the main program
             const isMainProgram = programId === mainProgramId;
-            const selectedCourseIds = isMainProgram 
+            const enrolledIdsFromUnified = unifiedCourseData.semesters?.[semesterKey]?.enrolledIds || [];
+            const selectedIdsFromUnified = isMainProgram 
               ? (unifiedCourseData.semesters?.[semesterKey]?.selectedIds || [])
               : []; // Empty array for non-main programs
+
+            // Union to ensure assigned (enrolledIds) also surface in planning views (StudyOverview/Transcript)
+            const selectedCourseIds = Array.from(
+              new Set([...(selectedIdsFromUnified || []), ...(enrolledIdsFromUnified || [])])
+            );
             
             // ENHANCED COURSE ENRICHMENT: Use existing enriched data from unified system with fallback logic
             let availableCourses = unifiedCourseData.semesters?.[semesterKey]?.available || [];
@@ -206,7 +212,9 @@ export const unifiedAcademicDataSelector = selector({
                   status: 'planned',
                   isCompleted: false,
                   isPlanned: true,
-                  isEnriched: true // Leveraging existing EventListContainer enrichment
+                  isEnriched: true, // Leveraging existing EventListContainer enrichment
+                  // Mark if this planned item is assigned/enrolled from backend
+                  isAssigned: enrolledIdsFromUnified.includes(courseId)
                 };
               } else {
                 // Fallback when course not found in available data
@@ -220,7 +228,8 @@ export const unifiedAcademicDataSelector = selector({
                   status: 'planned', 
                   isCompleted: false,
                   isPlanned: true,
-                  isEnriched: false // Not enriched - semester data may not be loaded yet
+                  isEnriched: false, // Not enriched - semester data may not be loaded yet
+                  isAssigned: enrolledIdsFromUnified.includes(courseId)
                 };
               }
             });
@@ -230,6 +239,17 @@ export const unifiedAcademicDataSelector = selector({
               console.log(`✅ [unifiedAcademicDataSelector] ${semesterKey} has ${selectedCourses.length} selected courses in MAIN PROGRAM (${programId}):`, selectedCourses);
             } else if (unifiedCourseData.semesters?.[semesterKey]?.selectedIds?.length > 0 && !isMainProgram) {
               console.log(`ℹ️ [unifiedAcademicDataSelector] ${semesterKey} has selected courses but skipping for non-main program (${programId})`);
+            }
+
+            // Debug snapshot for derived assigned
+            if ((enrolledIdsFromUnified || []).length > 0) {
+              console.log('[uADS] derivedAssigned', {
+                semester: semesterKey,
+                enrolledIds: enrolledIdsFromUnified.length,
+                selectedIds: selectedIdsFromUnified.length,
+                unionIds: selectedCourseIds.length,
+                matched: selectedCourses.filter(c => c.isAssigned).length
+              });
             }
             
             studyOverviewView[semesterKey] = {

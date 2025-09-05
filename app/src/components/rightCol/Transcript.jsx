@@ -212,7 +212,7 @@ const Transcript = () => {
               item.items = [];
             }
             
-            // Add wishlist courses to this category, transforming to transcript format
+            // Add wishlist and assigned courses to this category, transforming to transcript format
             categoryWishlist.forEach(course => {
               item.items.push({
                 // Transform to match transcript data structure
@@ -248,8 +248,10 @@ const Transcript = () => {
                 courseNumber: course.courseId || course.id, // Course identifier for API
                 courseId: course.courseId || course.id, // Alternative identifier
                 
-                // Keep wishlist-specific fields
+                // Wishlist/assigned flags
                 isWishlist: true,
+                isAssigned: !!course.isAssigned,
+                enrolled: !!course.isAssigned,
                 
                 // Keep original course data for debugging
                 originalCourse: course
