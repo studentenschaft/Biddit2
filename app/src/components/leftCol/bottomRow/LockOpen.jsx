@@ -80,9 +80,14 @@ export default function LockOpen({ clg, event }) {
       onMouseLeave={() => setIsHovered(false)}
       onMouseDown={(e) => {
         e.preventDefault();
-        event
-          ? addOrRemoveCourse(event)
-          : console.log("no event to lock/unlock");
+        if (!event) {
+          return;
+        }
+        // Safety guard: ignore toggles for enrolled (assigned) courses
+        if (event.enrolled) {
+          return;
+        }
+        addOrRemoveCourse(event);
       }}
     >
       <path

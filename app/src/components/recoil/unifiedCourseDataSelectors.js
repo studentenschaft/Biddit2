@@ -211,17 +211,101 @@ export const semesterCoursesSelector = selectorFamily({
       // Handle different course types
       switch (type) {
         case "enrolled":
-          return semesterData.enrolled || [];
+          // Derive full enrolled course objects from available + enrolledIds
+          // Unified data stores only enrolledIds; 'enrolled' array is not populated
+          {
+            const enrolledIds = semesterData.enrolledIds || [];
+            const availableCourses = semesterData.available || [];
+            const selectedIds = semesterData.selectedIds || [];
+
+            const enrolledCourses = availableCourses
+              .filter((course) => {
+                const courseNumber =
+                  course.courses?.[0]?.courseNumber ||
+                  course.courseNumber ||
+                  course.id;
+                return courseNumber && enrolledIds.includes(courseNumber);
+              })
+              .map((course) => {
+                const courseNumber =
+                  course.courses?.[0]?.courseNumber ||
+                  course.courseNumber ||
+                  course.id;
+                return {
+                  ...course,
+                  enrolled: true,
+                  // Preserve selected flag if this enrolled course is also selected
+                  selected:
+                    course.selected ||
+                    (courseNumber && selectedIds.includes(courseNumber)) ||
+                    false,
+                };
+              });
+
+            if (import.meta?.env?.DEV) {
+              // Minimal debug snapshot
+              // eslint-disable-next-line no-console
+              console.debug(
+                "[semesterCoursesSelector] enrolled:",
+                semester,
+                {
+                  enrolledIds: enrolledIds.length,
+                  available: availableCourses.length,
+                  result: enrolledCourses.length,
+                }
+              );
+            }
+
+            return enrolledCourses;
+          }
         case "available":
           return semesterData.available || [];
         case "selected":
           // Filter available courses by selectedIds to get full course objects
-          const selectedIds = semesterData.selectedIds || [];
-          const availableCourses = semesterData.available || [];
-          return availableCourses.filter(course => {
-            const courseNumber = course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
-            return courseNumber && selectedIds.includes(courseNumber);
-          });
+          {
+            const selectedIds = semesterData.selectedIds || [];
+            const availableCourses = semesterData.available || [];
+            const enrolledIds = semesterData.enrolledIds || [];
+
+            const selectedCourses = availableCourses
+              .filter((course) => {
+                const courseNumber =
+                  course.courses?.[0]?.courseNumber ||
+                  course.courseNumber ||
+                  course.id;
+                return courseNumber && selectedIds.includes(courseNumber);
+              })
+              .map((course) => {
+                const courseNumber =
+                  course.courses?.[0]?.courseNumber ||
+                  course.courseNumber ||
+                  course.id;
+                return {
+                  ...course,
+                  selected: true,
+                  // Preserve enrolled flag if this selected course is also enrolled
+                  enrolled:
+                    course.enrolled ||
+                    (courseNumber && enrolledIds.includes(courseNumber)) ||
+                    false,
+                };
+              });
+
+            if (import.meta?.env?.DEV) {
+              // eslint-disable-next-line no-console
+              console.debug(
+                "[semesterCoursesSelector] selected:",
+                semester,
+                {
+                  selectedIds: selectedIds.length,
+                  available: availableCourses.length,
+                  result: selectedCourses.length,
+                }
+              );
+            }
+
+            return selectedCourses;
+          }
         case "filtered":
           // Return the actual filtered courses from the semester data
           return semesterData.filtered || [];

@@ -294,23 +294,46 @@ const GradeTranscript = ({
                       ${subItem.isWishlist ? "italic text-gray-600" : ""}`}
                   >
                     <div className="flex items-center">
-                      {/* Render lock icon for saved (wishlisted) courses */}
+                      {/* Render lock icon for saved courses; assigned ones are locked and non-removable */}
                       {subItem.isWishlist && (
-                        <button
-                          onClick={() => {
-                            console.log('🔍 [GradeTranscript] Remove button clicked:', {
-                              courseId: subItem.id || subItem.courseId,
-                              courseName: subItem.shortName || subItem.description,
-                              isCurrentlySelected: selectedCourseIds.includes(subItem.id) || selectedCourseIds.includes(subItem.courseId),
-                              selectedCourseIds: selectedCourseIds
-                            });
-                            addOrRemoveCourse(subItem);
-                          }}
-                          className="mr-2 focus:outline-none"
-                          title="Click to remove saved course"
-                        >
-                          <LockOpen clg="w-4 h-4 " />
-                        </button>
+                        subItem.isAssigned ? (
+                          <span
+                            className="mr-2"
+                            title="Assigned by university backend — cannot remove here"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              strokeWidth={2}
+                              stroke="currentColor"
+                              className="w-4 h-4"
+                              style={{ color: "#006625" }}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z"
+                              />
+                            </svg>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              console.log('🔍 [GradeTranscript] Remove button clicked:', {
+                                courseId: subItem.id || subItem.courseId,
+                                courseName: subItem.shortName || subItem.description,
+                                isCurrentlySelected: selectedCourseIds.includes(subItem.id) || selectedCourseIds.includes(subItem.courseId),
+                                selectedCourseIds: selectedCourseIds
+                              });
+                              addOrRemoveCourse(subItem);
+                            }}
+                            className="mr-2 focus:outline-none"
+                            title="Click to remove saved course"
+                          >
+                            <LockOpen clg="w-4 h-4 " />
+                          </button>
+                        )
                       )}
                       <span>
                         {subItem.description && subItem.description.trim()
