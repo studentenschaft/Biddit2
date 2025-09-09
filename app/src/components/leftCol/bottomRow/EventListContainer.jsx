@@ -40,6 +40,7 @@ import {
 // Icons
 import { PlusIcon } from "@heroicons/react/outline";
 import { StarIcon } from "@heroicons/react/solid";
+import { Tooltip as ReactTooltip } from "react-tooltip";
 
 // Custom components
 import { LockClosed } from "./LockClosed";
@@ -270,6 +271,8 @@ export default function EventListContainer({
           id="select_course"
           onClick={() => addOrRemoveCourse(event)}
           disabled={isEnrolled}
+          data-tooltip-id={isEnrolled ? "enrolled-tooltip" : undefined}
+          data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
           className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
             wasPreviouslyEnrolled
               ? "bg-gray-100 border-gray-300 text-gray-400"
@@ -361,6 +364,12 @@ export default function EventListContainer({
           </FixedSizeList>
         )}
       </AutoSizer>
+      <ReactTooltip
+        id="enrolled-tooltip"
+        place="top"
+        effect="solid"
+        className="bg-gray-800 text-white text-xs rounded px-2 py-1"
+      />
     </Suspense>
   );
 }

@@ -20,6 +20,7 @@ import LoadingText from "../common/LoadingText";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
+import { showServerOverloadNotification } from "../common/ServerOverloadNotification";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
@@ -172,6 +173,10 @@ export default function SimilarCourses({ selectedCourse }) {
     category = null,
     attemptedUpsert = false
   ) {
+    // SERVER OVERLOAD: Temporarily disable similar courses feature
+    showServerOverloadNotification();
+    return;
+    
     setIsLoading(true);
     // Make sure program/scorecard data is available
     if (programRef.current === null && authToken) {
