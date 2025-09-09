@@ -23,6 +23,7 @@ import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
 // import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
+import { showServerOverloadNotification } from "../common/ServerOverloadNotification";
 
 export default function SmartSearch() {
   const authToken = useRecoilValue(authTokenState);
@@ -192,6 +193,10 @@ export default function SmartSearch() {
 
   // fetch similar courses using search input
   async function fetchSimilarCourses(category = null, attemptedUpsert = false) {
+    // SERVER OVERLOAD: Temporarily disable smart search feature
+    showServerOverloadNotification();
+    return;
+    
     if (!searchInput.trim()) {
       return; // Don't search if input is empty
     }
