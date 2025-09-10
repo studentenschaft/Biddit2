@@ -17,7 +17,7 @@ const ServerOverloadToast = ({ onDismiss }) => (
       </p>
       <ul className="mt-1 text-sm text-orange-700 list-disc list-inside">
         <li>Find Similar Courses feature</li>
-        <li>Smart Search feature</li>
+        <li>Saving courses to Study Plans</li>
       </ul>
     </div>
     <p className="mt-3 text-xs text-gray-600">

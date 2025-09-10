@@ -7,6 +7,7 @@ import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { showServerOverloadNotification } from "../common/ServerOverloadNotification";
 
 // Helper function to normalize credits from API format to display format
 const normalizeCredits = (credits) => {
@@ -54,6 +55,10 @@ export function useCourseSelection({
    * @param {Object} course - the course object with {id, shortName, classification, credits, ...}
    */
   async function addOrRemoveCourse(course) {
+    // SERVER OVERLOAD: Temporarily disable course saving to study plans
+    showServerOverloadNotification();
+    return;
+    
     if (!authToken) {
       console.error("No auth token available");
       return;
