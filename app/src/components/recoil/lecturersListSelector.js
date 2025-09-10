@@ -17,10 +17,9 @@ export const lecturersListSelector = selector({
             ...(semesterData.selected || []),
           ];
           allCoursesInSemester.forEach((course) => {
-            // Check if course.courses exists and has at least one element
-            if (course.courses && course.courses.length > 0) {
-              // Check if the first course has a lecturers array
-              const lecturers = course.courses[0].lecturers;
+            // Access lecturers directly from course (flattened structure)
+            if (course && course.lecturers) {
+              const lecturers = course.lecturers;
               if (Array.isArray(lecturers)) {
                 lecturers.forEach((lecturer) => {
                   if (lecturer && lecturer.displayName) {
@@ -48,10 +47,9 @@ export const lecturersListSelector = selector({
 
     Object.keys(courseInfo).forEach((semester) => {
       courseInfo[semester].forEach((course) => {
-        // Check if course.courses exists and has at least one element
-        if (course.courses && course.courses.length > 0) {
-          // Check if the first course has a lecturers array
-          const lecturers = course.courses[0].lecturers;
+        // Access lecturers directly from course (flattened structure)
+        if (course && course.lecturers) {
+          const lecturers = course.lecturers;
           if (Array.isArray(lecturers)) {
             lecturers.forEach((lecturer) => {
               if (lecturer && lecturer.displayName) {
@@ -71,7 +69,7 @@ export const lecturersListSelector = selector({
           }
         } else {
           console.error(
-            "lecturersList: No courses element found in the data for course: ",
+            "lecturersList: No lecturers found in the data for course: ",
             course
           );
         }
