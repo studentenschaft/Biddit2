@@ -8,6 +8,10 @@ export const extractBaseName = (courseName) => {
   return courseName
     .replace(/\s*(Exercises?|Übungen?|Exercisegroup|Übungsgruppe)\s*\d*\s*/gi, '')
     .replace(/\s*(Gruppe?|Group)\s*\d*\s*/gi, '')
+    // Coaching subgroups like ": Coaching" or ": Coaching 1" at end
+    .replace(/\s*:\s*Coaching\s*\d*\s*$/i, '')
+    // Coaching Gruppe/Group N at end
+    .replace(/\s*Coaching\s*(Gruppe|Group)\s*\d*\s*$/i, '')
     .replace(/\s*\d+\s*$/, '')
     .replace(/\s*[,-]\s*$/, '')
     .trim();
