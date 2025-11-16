@@ -213,7 +213,7 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
                 {course.type.replace("-wishlist", "")}
                 {course.type.endsWith("-wishlist") && (
                   <span className="ml-1 text-orange-500 inline-flex items-center">
-                    <LockClosed className="w-3 h-3" />
+                    <LockClosed clg="w-3 h-3" />
                   </span>
                 )}
               </div>
