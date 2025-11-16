@@ -24,7 +24,7 @@
 
 import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
-import axios from "axios";
+import { apiClient } from "./axiosClient";
 import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
@@ -59,17 +59,15 @@ export const useCourseRatingsData = ({ authToken }) => {
         try {
           console.log("🔄 Fetching course ratings from SHSG API...");
 
-          const response = await axios({
-            method: "get",
-            maxBodyLength: Infinity,
-            url: "https://api.shsg.ch/course-ratings",
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "DE",
-              "API-Version": "1",
-              Authorization: "Bearer " + authToken,
-            },
-          });
+          const response = await apiClient.get(
+            "https://api.shsg.ch/course-ratings",
+            authToken,
+            {
+              headers: {
+                "X-RequestedLanguage": "DE",
+              },
+            }
+          );
 
           console.log(
             `✅ Successfully fetched ${response.data.length} course ratings`
