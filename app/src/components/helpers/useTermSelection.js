@@ -328,7 +328,6 @@ export function useTermSelection() {
     setUnifiedLatestValidTerm,
     setUnifiedSelectedSemester,
     courseData.selectedSemester,
-    setTermListAtom,
   ]);
 
   return {

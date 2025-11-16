@@ -63,37 +63,26 @@ export function useUnifiedSemesterState() {
         );
         referenceSemesterName = existsInList
           ? candidate
-          : // Fallback: use latestValidTerm (legacy) if same-season previous year not present
-            latestValidTerm || termIdList[0]?.shortName;
+          : latestValidTerm || termIdList[0]?.shortName;
       }
 
-      // Ensure the semester exists in the data structure
-      const semesterData = prev.semesters[semesterShortName] || {
-        enrolled: [],
-        available: [],
-        selected: [],
-        filtered: [],
-        ratings: {},
-        lastFetched: null,
-        isFutureSemester: false,
-        referenceSemester: null,
-        cisId: null,
-      };
-
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters,
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-      };
+      const prevSemesters = prev.semesters || {};
+      const semesterData = prevSemesters[semesterShortName] || {};
 
       return {
-        ...cleanPrev,
+        ...prev,
         selectedSemester: semesterShortName,
         semesters: {
-          ...cleanPrev.semesters,
+          ...prevSemesters,
           [semesterShortName]: {
             ...semesterData,
+            enrolled: semesterData.enrolled || [],
+            available: semesterData.available || [],
+            selected: semesterData.selected || [],
+            filtered: semesterData.filtered || [],
+            ratings: semesterData.ratings || {},
+            lastFetched: semesterData.lastFetched || null,
+            cisId: semesterData.cisId || null,
             isFutureSemester: isFuture,
             referenceSemester: isFuture ? referenceSemesterName : null,
           },
@@ -106,19 +95,10 @@ export function useUnifiedSemesterState() {
    * Set the latest valid term (term with actual course data)
    */
   const setLatestValidTerm = (termShortName) => {
-    setCourseData((prev) => {
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters,
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-      };
-
-      return {
-        ...cleanPrev,
-        latestValidTerm: termShortName,
-      };
-    });
+    setCourseData((prev) => ({
+      ...prev,
+      latestValidTerm: termShortName,
+    }));
   };
 
   /**
@@ -129,32 +109,22 @@ export function useUnifiedSemesterState() {
       const selectedSem = prev.selectedSemester;
       if (!selectedSem) return prev;
 
-      // Ensure the semester exists in the data structure
-      const semesterData = prev.semesters[selectedSem] || {
-        enrolled: [],
-        available: [],
-        selected: [],
-        filtered: [],
-        ratings: {},
-        lastFetched: null,
-        isFutureSemester: false,
-        referenceSemester: null,
-        cisId: null,
-      };
-
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters,
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-      };
+      const prevSemesters = prev.semesters || {};
+      const semesterData = prevSemesters[selectedSem] || {};
 
       return {
-        ...cleanPrev,
+        ...prev,
         semesters: {
-          ...cleanPrev.semesters,
+          ...prevSemesters,
           [selectedSem]: {
             ...semesterData,
+            enrolled: semesterData.enrolled || [],
+            available: semesterData.available || [],
+            selected: semesterData.selected || [],
+            filtered: semesterData.filtered || [],
+            ratings: semesterData.ratings || {},
+            lastFetched: semesterData.lastFetched || null,
+            cisId: semesterData.cisId || null,
             isFutureSemester: isFuture,
             referenceSemester: isFuture
               ? referenceSemester || computeSameSeasonPrevYear(selectedSem)
@@ -174,17 +144,10 @@ export function useUnifiedSemesterState() {
         return prev; // Already initialized
       }
 
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters,
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-      };
-
       return {
-        ...cleanPrev,
+        ...prev,
         semesters: {
-          ...cleanPrev.semesters,
+          ...(prev.semesters || {}),
           [semesterShortName]: {
             enrolled: [],
             available: [],
