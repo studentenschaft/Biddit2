@@ -125,3 +125,82 @@ export function lookupCourseRating(course, ratingsMap) {
 
   return null;
 }
+
+/**
+ * Applies filter criteria to determine if a course should be included.
+ * Used for filtering course lists based on user selections.
+ *
+ * @param {Object} course - The course object to evaluate
+ * @param {Object} filterOptions - Filter criteria
+ * @param {string[]} filterOptions.classifications - Allowed classifications
+ * @param {number[]} filterOptions.ects - Allowed credit values
+ * @param {string[]} filterOptions.lecturer - Allowed lecturer names
+ * @param {number[]} filterOptions.ratings - Minimum rating thresholds
+ * @param {string[]} filterOptions.courseLanguage - Allowed language codes
+ * @param {string} filterOptions.searchTerm - Search term for shortName
+ * @returns {boolean} True if course passes all filters
+ */
+export function applyFilterCriteria(course, filterOptions) {
+  if (!filterOptions) return true;
+
+  const classifications = filterOptions.classifications || [];
+  const ects = filterOptions.ects || [];
+  const ratings = filterOptions.ratings || [];
+  const courseLanguage = filterOptions.courseLanguage || [];
+  const lecturer = filterOptions.lecturer || [];
+  const searchTerm = filterOptions.searchTerm || "";
+
+  // Classification filter
+  if (
+    classifications.length > 0 &&
+    !classifications.includes(course.classification)
+  ) {
+    return false;
+  }
+
+  // ECTS filter
+  if (ects.length > 0 && !ects.includes(course.credits)) {
+    return false;
+  }
+
+  // Lecturer filter
+  if (
+    lecturer.length > 0 &&
+    course.lecturers &&
+    !course.lecturers.some((lect) => lecturer.includes(lect.displayName))
+  ) {
+    return false;
+  }
+
+  // Rating filter - only exclude if course HAS a rating below threshold
+  if (ratings.length > 0) {
+    const courseRating = course.avgRating;
+    const minRequiredRating = Math.max(...ratings);
+
+    if (
+      courseRating !== null &&
+      courseRating !== undefined &&
+      courseRating < minRequiredRating
+    ) {
+      return false;
+    }
+  }
+
+  // Language filter
+  if (
+    courseLanguage.length > 0 &&
+    !courseLanguage.includes(course.courseLanguage?.code)
+  ) {
+    return false;
+  }
+
+  // Search term filter (case insensitive)
+  if (
+    searchTerm.length > 0 &&
+    !course.shortName?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) {
+    return false;
+  }
+
+  return true;
+}

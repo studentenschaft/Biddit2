@@ -8,6 +8,7 @@ import {
   getCourseIdentifier,
   sortCoursesByStatus,
   lookupCourseRating,
+  applyFilterCriteria,
 } from "./courseUtils";
 
 /**
@@ -624,70 +625,6 @@ export function useUnifiedCourseData() {
 
       return newData;
     });
-  };
-
-  /**
-   * Helper function to apply filter criteria (same as in filteredCoursesSelector)
-   */
-  const applyFilterCriteria = (course, selectionOptions) => {
-    const classifications = selectionOptions.classifications || [];
-    const ects = selectionOptions.ects || [];
-    const ratings = selectionOptions.ratings || [];
-    const courseLanguage = selectionOptions.courseLanguage || [];
-    const lecturer = selectionOptions.lecturer || [];
-    const searchTerm = selectionOptions.searchTerm || "";
-
-    if (
-      classifications.length > 0 &&
-      !classifications.includes(course.classification)
-    ) {
-      return false;
-    }
-
-    if (ects.length > 0 && !ects.includes(course.credits)) {
-      return false;
-    }
-
-    if (
-      lecturer.length > 0 &&
-      course.lecturers &&
-      !course.lecturers.some((lect) =>
-        lecturer.includes(lect.displayName)
-      )
-    ) {
-      return false;
-    }
-
-    if (ratings.length > 0) {
-      const courseRating = course.avgRating;
-      const minRequiredRating = Math.max(...ratings);
-
-      // Only filter out courses if they have a rating and it's below the threshold
-      // Courses without ratings will be included (they won't be filtered out)
-      if (
-        courseRating !== null &&
-        courseRating !== undefined &&
-        courseRating < minRequiredRating
-      ) {
-        return false;
-      }
-    }
-
-    if (
-      courseLanguage.length > 0 &&
-      !courseLanguage.includes(course.courseLanguage?.code)
-    ) {
-      return false;
-    }
-
-    if (
-      searchTerm.length > 0 &&
-      !course.shortName.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
-    }
-
-    return true;
   };
 
   /**
