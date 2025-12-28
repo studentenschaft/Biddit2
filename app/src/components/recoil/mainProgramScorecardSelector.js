@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file is unused and scheduled for removal.
+ * Functionality migrated to unified state management system.
+ * Last checked: December 2024
+ */
+
 import { selector } from 'recoil';
 import { scorecardDataState } from './scorecardsAllRawAtom';
 import { currentEnrollmentsState } from './currentEnrollmentsAtom';

@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file is unused. Course selectors have been consolidated into
+ * unifiedCourseDataSelectors.js. Safe to delete after verification.
+ * Last checked: December 2024
+ */
+
 import { selector, selectorFamily } from "recoil";
 import {
   unifiedCourseDataState,

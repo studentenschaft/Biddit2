@@ -1,4 +1,10 @@
 /**
+ * @deprecated This file is unused and scheduled for removal.
+ * Functionality migrated to unified state management system.
+ * Last checked: December 2024
+ */
+
+/**
  * transcriptDataSelector.js
  * 
  * Recoil selector that merges scorecard data + unified course data for transcript view

@@ -1,3 +1,9 @@
+/**
+ * @deprecated This file is unused and scheduled for removal.
+ * Functionality migrated to unified state management system.
+ * Last checked: December 2024
+ */
+
 // transformedScorecardsSelector.js //
 
 // Data Format:  object where semesters are keys and values are arrays of course objects.
