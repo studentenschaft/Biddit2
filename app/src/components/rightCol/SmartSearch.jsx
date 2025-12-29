@@ -20,7 +20,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 // Imports for unified program derivation and CourseInfo selection
 import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 // import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
@@ -68,15 +68,15 @@ export default function SmartSearch() {
   // Unified program derivation with fallbacks
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const mainProgram = useRecoilValue(mainProgramSelector);
-  const scorecardData = useRecoilValue(scorecardDataState);
+  const academicData = useRecoilValue(unifiedAcademicDataState);
 
   const derivedProgram =
     mainProgram?.metadata?.programDescription ||
     mainProgram?.programName ||
     currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
       ?.studyProgramDescription ||
-    (scorecardData?.rawScorecards
-      ? Object.keys(scorecardData.rawScorecards)[0]
+    (academicData?.programs
+      ? Object.keys(academicData.programs)[0]
       : null) ||
     null;
 
@@ -199,9 +199,9 @@ export default function SmartSearch() {
     setIsLoading(true);
     // Ensure program/scorecard data is available before querying
     if (programRef.current === null) {
-      // Try to derive from existing scorecard data
-      const fallbackProgram = scorecardData?.rawScorecards
-        ? Object.keys(scorecardData.rawScorecards)[0]
+      // Try to derive from existing academic data
+      const fallbackProgram = academicData?.programs
+        ? Object.keys(academicData.programs)[0]
         : null;
       if (fallbackProgram) {
         programRef.current = fallbackProgram;

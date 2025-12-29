@@ -11,7 +11,7 @@ import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import { apiClient } from "../helpers/axiosClient";
 import { authTokenState } from "../recoil/authAtom";
-import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
@@ -28,7 +28,7 @@ export default function SimilarCourses({ selectedCourse }) {
   // Use unified course data selectors instead of old atoms
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const mainProgram = useRecoilValue(mainProgramSelector);
-  const scorecardData = useRecoilValue(scorecardDataState);
+  const academicData = useRecoilValue(unifiedAcademicDataState);
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
 
   // Get metadata for the selected semester
@@ -66,8 +66,8 @@ export default function SimilarCourses({ selectedCourse }) {
     mainProgram?.programName ||
     currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
       ?.studyProgramDescription ||
-    (scorecardData?.rawScorecards
-      ? Object.keys(scorecardData.rawScorecards)[0]
+    (academicData?.programs
+      ? Object.keys(academicData.programs)[0]
       : null) ||
     null;
 

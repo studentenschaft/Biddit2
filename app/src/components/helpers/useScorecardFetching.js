@@ -6,10 +6,18 @@ import {
 } from "recoil";
 
 import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
+import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import { fetchCurrentEnrollments } from "../recoil/ApiCurrentEnrollments";
 import { fetchScoreCardDetails } from "../recoil/ApiScorecardDetails";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import {
+  findMainProgram,
+  buildTranscriptView,
+  buildStudyOverviewView,
+  calculateProgramStats
+} from "./academicDataTransformers";
 
 const resolveProgramId = (enrollment) =>
   enrollment.studyProgramDescription ||
@@ -23,6 +31,8 @@ const resolveProgramId = (enrollment) =>
  */
 export const useScorecardFetching = () => {
   const [scorecardState, setScorecardState] = useRecoilState(scorecardDataState);
+  const setUnifiedAcademicData = useSetRecoilState(unifiedAcademicDataState);
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
 
@@ -100,6 +110,7 @@ export const useScorecardFetching = () => {
           }
         });
 
+        // LEGACY: Keep scorecardDataState populated for backward compatibility
         setScorecardState({
           rawScorecards,
           isLoaded: Object.keys(rawScorecards).length > 0,
@@ -107,6 +118,71 @@ export const useScorecardFetching = () => {
           error: errors.length ? errors.join("; ") : null,
           lastFetched: new Date().toISOString(),
         });
+
+        // NEW: Transform and store in unified academic data state
+        if (Object.keys(rawScorecards).length > 0) {
+          const mainProgramId = findMainProgram(rawScorecards);
+          const programs = {};
+
+          Object.entries(rawScorecards).forEach(([programId, rawData]) => {
+            const isMainProgram = programId === mainProgramId;
+            const transcriptView = buildTranscriptView(rawData);
+            const studyOverviewView = buildStudyOverviewView(
+              rawData,
+              unifiedCourseData,
+              programId,
+              isMainProgram
+            );
+
+            const programStats = calculateProgramStats(
+              transcriptView.completedCourses,
+              Object.values(studyOverviewView).flatMap(s => s.selectedCourses || []),
+              rawData
+            );
+
+            programs[programId] = {
+              transcript: {
+                rawScorecard: rawData,
+                processedTranscript: transcriptView,
+                mergedTranscript: null,
+                lastFetched: Date.now()
+              },
+              studyPlan: {
+                semesterMap: studyOverviewView,
+                progress: {
+                  totalCreditsRequired: programStats.creditsRequired,
+                  totalCreditsCompleted: programStats.creditsEarned,
+                  totalCreditsPlanned: 0,
+                  completionPercentage: programStats.completionPercentage,
+                  estimatedCompletion: null
+                },
+                lastUpdated: Date.now()
+              },
+              metadata: {
+                programId,
+                isMainStudy: rawData.isMainStudy || isMainProgram,
+                programType: programId.toLowerCase().includes('master') ? 'master' :
+                             programId.toLowerCase().includes('bachelor') ? 'bachelor' : 'other',
+                requirementsFulfilled: {
+                  creditsDE: rawData.creditsFulfilledDe === true,
+                  creditsEN: rawData.creditsFulfilledEn === true,
+                  overall: rawData.creditsFulfilledDe === true && rawData.creditsFulfilledEn === true
+                }
+              }
+            };
+          });
+
+          setUnifiedAcademicData({
+            programs,
+            currentProgram: mainProgramId,
+            initialization: {
+              isLoading: false,
+              isInitialized: true,
+              error: errors.length ? errors.join("; ") : null,
+              lastInitialized: Date.now()
+            }
+          });
+        }
 
         return {
           success: true,
@@ -131,6 +207,8 @@ export const useScorecardFetching = () => {
       scorecardState.rawScorecards,
       setCurrentEnrollments,
       setScorecardState,
+      setUnifiedAcademicData,
+      unifiedCourseData,
     ]
   );
 

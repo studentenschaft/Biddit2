@@ -1,5 +1,5 @@
 import { selector } from "recoil";
-import { scorecardDataState } from "./scorecardsAllRawAtom";
+import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 
 const getCategoryTypeMap = (items) => {
   const categoryMap = new Map();
@@ -33,9 +33,9 @@ const getCategoryTypeMap = (items) => {
 export const coursesWithTypesSelector = selector({
   key: "coursesWithTypesSelector",
   get: ({ get }) => {
-    const scorecardData = get(scorecardDataState);
+    const academicData = get(unifiedAcademicDataState);
 
-    if (!scorecardData.isLoaded || !scorecardData.rawScorecards) {
+    if (!academicData.initialization?.isInitialized || !academicData.programs) {
       return {
         courses: [],
         categoryTypeMap: {},
@@ -44,9 +44,11 @@ export const coursesWithTypesSelector = selector({
 
     const categoryTypeMap = {};
 
-    Object.values(scorecardData.rawScorecards).forEach((scorecard) => {
-      if (scorecard?.items) {
-        const categoryMap = getCategoryTypeMap(scorecard.items);
+    // Extract raw scorecards from unified academic data structure
+    Object.values(academicData.programs).forEach((program) => {
+      const rawScorecard = program.transcript?.rawScorecard;
+      if (rawScorecard?.items) {
+        const categoryMap = getCategoryTypeMap(rawScorecard.items);
         Object.entries(categoryMap).forEach(([key, value]) => {
           categoryTypeMap[key] = value;
         });

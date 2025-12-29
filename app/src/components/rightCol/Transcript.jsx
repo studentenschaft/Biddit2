@@ -8,7 +8,7 @@
  */
 
 import { useRecoilValue, useRecoilState } from 'recoil';
-import { unifiedAcademicDataSelector } from '../recoil/unifiedAcademicDataSelector';
+import { legacyAcademicDataSelector } from '../recoil/unifiedAcademicDataSelectors';
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
 import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
@@ -29,7 +29,7 @@ import { getMainProgramKey } from '../helpers/getMainProgram';
 
 const Transcript = () => {
   // Use same data approach as StudyOverview (which works)
-  const academicData = useRecoilValue(unifiedAcademicDataSelector);
+  const academicData = useRecoilValue(legacyAcademicDataSelector);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();
