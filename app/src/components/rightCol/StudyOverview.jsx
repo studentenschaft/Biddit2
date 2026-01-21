@@ -6,7 +6,7 @@
  */
 
 import { useRecoilValue } from 'recoil';
-import { unifiedAcademicDataSelector } from '../recoil/unifiedAcademicDataSelector';
+import { legacyAcademicDataSelector } from '../recoil/unifiedAcademicDataSelectors';
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
 import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
@@ -18,7 +18,7 @@ import { adaptAcademicDataForStudyOverview, getMainProgram } from './studyOvervi
 import { useState, useMemo, useEffect } from 'react';
 
 const StudyOverview = () => {
-  const academicData = useRecoilValue(unifiedAcademicDataSelector);
+  const academicData = useRecoilValue(legacyAcademicDataSelector);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();

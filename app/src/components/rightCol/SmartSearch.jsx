@@ -4,7 +4,6 @@ import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
 import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
 import { apiClient } from "../helpers/axiosClient";
 import { authTokenState } from "../recoil/authAtom";
-// Use unified selected/current semester selectors instead of legacy atom
 import {
   selectedSemesterSelector as unifiedSelectedSemesterSelector,
   availableCoursesSelector,
@@ -13,14 +12,13 @@ import {
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
-// Legacy future semester imports removed; using unified semesterMetadata instead
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 // Imports for unified program derivation and CourseInfo selection
 import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-import { scorecardDataState } from "../recoil/scorecardsAllRawAtom";
+import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 // import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
@@ -34,7 +32,6 @@ export default function SmartSearch() {
     unifiedSelectedSemesterSelector
   );
   // We'll compute effective semester after reference logic below
-  // eslint-disable-next-line no-unused-vars
   const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
     useState([]);
   const [similarCourses, setSimilarCourses] = useState([]);
@@ -57,27 +54,24 @@ export default function SmartSearch() {
   );
 
   const [isLoading, setIsLoading] = useState(false);
-  // TEMPORARILY DISABLED UNTIL STABLE
-  // eslint-disable-next-line no-unused-vars
   const [isLoadingLong, setIsLoadingLong] = useState(false);
   const [searchInput, setSearchInput] = useState("");
 
-  // // Use unified course data to set CourseInfo when clicking a title
+  // potential future development to show course details on click ( removed because of complexity )
+  // Use unified course data to set CourseInfo when clicking a title
   // const { updateSelectedCourseInfo } = useUnifiedCourseData();
 
   // Unified program derivation with fallbacks
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const mainProgram = useRecoilValue(mainProgramSelector);
-  const scorecardData = useRecoilValue(scorecardDataState);
+  const academicData = useRecoilValue(unifiedAcademicDataState);
 
   const derivedProgram =
     mainProgram?.metadata?.programDescription ||
     mainProgram?.programName ||
     currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
       ?.studyProgramDescription ||
-    (scorecardData?.rawScorecards
-      ? Object.keys(scorecardData.rawScorecards)[0]
-      : null) ||
+    (academicData?.programs ? Object.keys(academicData.programs)[0] : null) ||
     null;
 
   // needed for fetchSimilarCourses to have the most recent program value
@@ -151,43 +145,34 @@ export default function SmartSearch() {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
-  // TODO: Reintroduce once logs are showing and we can verify that correct data will be uploaded (once new semester data is published that is not yet in backend)
-  // This feature is temporarily disabled until we have a stable version
-  // eslint-disable-next-line no-unused-vars
+
+  // upsert relevant course info to backend if no similar courses found
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
-    console.log(
-      "Upsert functionality is currently disabled for stability reasons"
-    );
-    return; // Early return - function disabled
-
-    /* COMMENTED OUT UNTIL STABLE
-    setIsLoadingLong(true);
-
     try {
-      await axios.post(
+      if (!authToken) {
+        console.warn("Missing auth token for similar courses upsert");
+        return;
+      }
+      const program = programRef.current;
+      const semester =
+        referenceSemesterLocalState || unifiedSelectedSemesterShortName;
+
+      await apiClient.post(
         "https://api.shsg.ch/similar-courses/upsert",
         {
           courses: relevantCourseInfoForUpsert.map((course) => ({
             courseNumber: course.courseNumber,
-            semester: referenceSemesterLocalState
-              ? referenceSemesterLocalState
-              : selectedSemesterState,
+            semester,
             courseDescription: course.courseContent,
             category: course.classification,
-            program: program,
+            program,
           })),
         },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
+        authToken
       );
     } catch (error) {
-      console.error("Error adding courses:", error);
       errorHandlingService.handleError(error);
     }
-    */
   }
 
   // fetch similar courses using search input
@@ -199,9 +184,9 @@ export default function SmartSearch() {
     setIsLoading(true);
     // Ensure program/scorecard data is available before querying
     if (programRef.current === null) {
-      // Try to derive from existing scorecard data
-      const fallbackProgram = scorecardData?.rawScorecards
-        ? Object.keys(scorecardData.rawScorecards)[0]
+      // Try to derive from existing academic data
+      const fallbackProgram = academicData?.programs
+        ? Object.keys(academicData.programs)[0]
         : null;
       if (fallbackProgram) {
         programRef.current = fallbackProgram;
@@ -246,52 +231,23 @@ export default function SmartSearch() {
 
         setSimilarCourses(response.data);
         console.log("Similar courses:", response.data);
-        setIsLoading(false); // UPSERT DISABLED - Show message instead of attempting upsert
+        setIsLoading(false);
         if (
           response.data.ids &&
           response.data.ids[0] &&
           response.data.ids[0].length === 0 &&
           !attemptedUpsert
         ) {
-          console.log(
-            "No similar courses found. Upsert functionality is currently disabled."
-          );
-          setSimilarCourses({
-            ids: [[]],
-            distances: [[]],
-            metadatas: [[]],
-            message:
-              "No similar courses found in database. Course embedding feature is temporarily disabled for stability.",
-          });
-          return;
-
-          /* COMMENTED OUT UNTIL STABLE
           setIsLoadingLong(true);
           await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
           setIsLoadingLong(false);
           // Pass true to indicate we've already attempted an upsert
           fetchSimilarCourses(category, true);
-          */
         }
       } catch (error) {
         console.error("Error querying database:", error);
         if (error.response && error.response.status === 404) {
-          console.log(
-            "No courses found (404 error). Upsert functionality is currently disabled."
-          );
-          if (!attemptedUpsert) {
-            setSimilarCourses({
-              ids: [[]],
-              distances: [[]],
-              metadatas: [[]],
-              message:
-                "No courses found in database. Course embedding feature is temporarily disabled for stability.",
-            });
-          } else {
-            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
-          }
-
-          /* COMMENTED OUT UNTIL STABLE
+          // No similar courses found, attempt upsert if not already done
           if (!attemptedUpsert) {
             setIsLoadingLong(true);
             await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
@@ -300,7 +256,6 @@ export default function SmartSearch() {
           } else {
             setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
           }
-          */
         } else {
           errorHandlingService.handleError(error);
         }

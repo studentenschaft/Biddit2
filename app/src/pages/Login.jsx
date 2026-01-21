@@ -24,11 +24,11 @@ export default function Login() {
 
   const navigate = useNavigate();
   useEffect(() => {
-    if (instance.getActiveAccount()) {
-      navigate("/biddit2");
-      console.log("Navigating to biddit2");
+    const account = instance.getActiveAccount();
+    if (account) {
+      navigate("/biddit2", { replace: true });
     }
-  });
+  }, [instance, navigate]);
   const [showCookieBanner, setShowCookieBanner] = useState(true);
   const handleCookieBanner = () => {
     setShowCookieBanner(false);

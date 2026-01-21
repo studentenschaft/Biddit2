@@ -8,6 +8,12 @@ export const extractBaseName = (courseName) => {
   return courseName
     .replace(/\s*(Exercises?|Übungen?|Exercisegroup|Übungsgruppe)\s*\d*\s*/gi, '')
     .replace(/\s*(Gruppe?|Group)\s*\d*\s*/gi, '')
+    // If there is a ": Exercises ..." or ": Übungen ..." suffix, drop it entirely (safer fallback)
+    .replace(/\s*:\s*(Exercises?|Übungen?)\b.*$/i, '')
+    // Coaching subgroups like ": Coaching" or ": Coaching 1" at end
+    .replace(/\s*:\s*Coaching\s*\d*\s*$/i, '')
+    // Coaching Gruppe/Group N at end
+    .replace(/\s*Coaching\s*(Gruppe|Group)\s*\d*\s*$/i, '')
     .replace(/\s*\d+\s*$/, '')
     .replace(/\s*[,-]\s*$/, '')
     .trim();
@@ -20,6 +26,19 @@ export const isExerciseGroup = (course) => {
   return exerciseGroupRegex.test(courseName);
 };
 
+// Build a stable grouping key:
+// - Prefer a normalized root key from identifiers like courseNumber/courseId/id
+//   Example: "3,135,1.00" and "3,135,2.04" -> root key "3,135"
+// - Fall back to a cleaned base name when identifiers are missing
+const getCourseRootKey = (course) => {
+  const raw = course?.courseNumber || course?.courseId || course?.id || null;
+  if (!raw || typeof raw !== 'string') return null;
+  const m = raw.match(/^(\d+),(\d+),/);
+  if (m) return `${m[1]},${m[2]}`;
+  return null;
+};
+
+// Prefer grouping by normalized identifier root; fallback to base-name grouping.
 export const groupCoursesByBaseName = (courses) => {
   if (!Array.isArray(courses)) {
     return new Map();
@@ -29,7 +48,8 @@ export const groupCoursesByBaseName = (courses) => {
   
   courses.forEach(course => {
     const courseName = course.name || course.shortName || course.description || '';
-    const baseName = extractBaseName(courseName);
+    const rootKey = getCourseRootKey(course);
+    const baseName = rootKey || extractBaseName(courseName);
     
     if (baseName) {
       if (!groups.has(baseName)) {

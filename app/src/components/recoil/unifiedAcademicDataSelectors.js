@@ -1,7 +1,13 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
+import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
 import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
+import {
+  enrichCourseFromAvailable,
+  getAvailableCoursesWithFallback,
+  findMainProgram
+} from "../helpers/academicDataTransformers";
 
 /**
  * Selector to get the current program data
@@ -217,5 +223,254 @@ export const academicDataInitializationSelector = selector({
   get: ({ get }) => {
     const academicData = get(unifiedAcademicDataState);
     return academicData.initialization;
+  }
+});
+
+// ============================================================================
+// BACKWARD COMPATIBILITY SELECTORS
+// These selectors provide the same interface as the deprecated
+// unifiedAcademicDataSelector.js for smooth migration
+// ============================================================================
+
+/**
+ * Selector to check if academic data is loaded
+ * Replaces checking academicData.isLoaded from old selector
+ */
+export const academicDataLoadedSelector = selector({
+  key: "academicDataLoadedSelector",
+  get: ({ get }) => {
+    const academicData = get(unifiedAcademicDataState);
+    return academicData.initialization?.isInitialized &&
+           Object.keys(academicData.programs || {}).length > 0;
+  }
+});
+
+/**
+ * Selector to get transcript view for all programs
+ * Provides the hierarchical structure for transcript display
+ */
+export const transcriptViewSelector = selector({
+  key: "transcriptViewSelector",
+  get: ({ get }) => {
+    const academicData = get(unifiedAcademicDataState);
+
+    if (!academicData.programs) return {};
+
+    return Object.fromEntries(
+      Object.entries(academicData.programs).map(([programId, programData]) => [
+        programId,
+        programData.transcript?.processedTranscript || {
+          programInfo: {},
+          hierarchicalStructure: programData.transcript?.rawScorecard?.items || [],
+          completedCourses: [],
+          plannedCourses: []
+        }
+      ])
+    );
+  }
+});
+
+/**
+ * Selector to get study overview view for all programs
+ * Provides semester-based planning view
+ * REACTIVE: Dynamically merges current course selections from unifiedCourseDataState
+ */
+export const studyOverviewViewSelector = selector({
+  key: "studyOverviewViewSelector",
+  get: ({ get }) => {
+    const academicData = get(unifiedAcademicDataState);
+    const unifiedCourseData = get(unifiedCourseDataState);
+
+    if (!academicData.programs) return {};
+
+    // Find main program for filtering selections
+    const mainProgramId = findMainProgram(
+      Object.fromEntries(
+        Object.entries(academicData.programs).map(([id, p]) => [
+          id,
+          { isMainStudy: p.metadata?.isMainStudy }
+        ])
+      )
+    );
+
+    const result = {};
+
+    Object.entries(academicData.programs).forEach(([programId, programData]) => {
+      const isMainProgram = programId === mainProgramId;
+      const baseSemesterMap = programData.studyPlan?.semesterMap || {};
+
+      // Merge with current course selections from unifiedCourseDataState
+      const mergedSemesterMap = {};
+
+      // Get all semesters from both sources
+      const allSemesters = new Set([
+        ...Object.keys(baseSemesterMap),
+        ...Object.keys(unifiedCourseData.semesters || {})
+      ]);
+
+      allSemesters.forEach(semesterKey => {
+        const baseData = baseSemesterMap[semesterKey] || {
+          enrolledCourses: [],
+          selectedCourses: [],
+          semesterStats: { creditsEarned: 0, coursesCompleted: 0, coursesPlanned: 0, hasActivity: false }
+        };
+
+        // Get current selections from unifiedCourseDataState (reactive!)
+        const currentSelectedIds = isMainProgram
+          ? (unifiedCourseData.semesters?.[semesterKey]?.selectedIds || [])
+          : [];
+        const currentEnrolledIds = unifiedCourseData.semesters?.[semesterKey]?.enrolledIds || [];
+
+        // Union of selected and enrolled IDs
+        const allSelectedIds = Array.from(new Set([...currentSelectedIds, ...currentEnrolledIds]));
+
+        // Get available courses for enrichment
+        const availableCourses = getAvailableCoursesWithFallback(
+          semesterKey,
+          unifiedCourseData.semesters
+        );
+
+        // Enrich selected courses with current data
+        const enrichedSelectedCourses = allSelectedIds
+          .map(courseId => enrichCourseFromAvailable(courseId, availableCourses, {
+            enrolledIds: currentEnrolledIds
+          }))
+          .filter(course => {
+            // Filter out courses that are already in enrolledCourses (completed)
+            const enrolledCourses = baseData.enrolledCourses || [];
+            return !enrolledCourses.some(enrolled =>
+              enrolled.courseId === course.courseId ||
+              enrolled.id === course.id ||
+              enrolled.courseId === course.id
+            );
+          })
+          .map(course => ({
+            ...course,
+            source: 'planned',
+            status: 'planned',
+            isCompleted: false,
+            isPlanned: true
+          }));
+
+        mergedSemesterMap[semesterKey] = {
+          enrolledCourses: baseData.enrolledCourses || [],
+          selectedCourses: enrichedSelectedCourses,
+          semesterStats: {
+            creditsEarned: (baseData.enrolledCourses || []).reduce((sum, c) => {
+              const credits = parseFloat(c.credits || c.ects || 0);
+              return sum + (isNaN(credits) ? 0 : credits);
+            }, 0),
+            coursesCompleted: (baseData.enrolledCourses || []).length,
+            coursesPlanned: enrichedSelectedCourses.length,
+            hasActivity: (baseData.enrolledCourses || []).length > 0 || enrichedSelectedCourses.length > 0
+          }
+        };
+      });
+
+      result[programId] = mergedSemesterMap;
+    });
+
+    return result;
+  }
+});
+
+/**
+ * Selector to get overall progress across all programs
+ */
+export const overallProgressSelector = selector({
+  key: "overallProgressSelector",
+  get: ({ get }) => {
+    const academicData = get(unifiedAcademicDataState);
+
+    if (!academicData.programs || Object.keys(academicData.programs).length === 0) {
+      return null;
+    }
+
+    const stats = {
+      totalCreditsEarned: 0,
+      totalCreditsRequired: 0,
+      totalCoursesCompleted: 0,
+      totalCoursesPlanned: 0,
+      completionPercentage: 0
+    };
+
+    Object.values(academicData.programs).forEach(program => {
+      const progress = program.studyPlan?.progress || {};
+      stats.totalCreditsEarned += progress.totalCreditsCompleted || 0;
+      stats.totalCreditsRequired += progress.totalCreditsRequired || 0;
+    });
+
+    stats.completionPercentage = stats.totalCreditsRequired > 0
+      ? Math.round((stats.totalCreditsEarned / stats.totalCreditsRequired) * 100)
+      : 0;
+
+    return stats;
+  }
+});
+
+/**
+ * Comprehensive selector that provides the same interface as the deprecated
+ * unifiedAcademicDataSelector for backward compatibility with existing components
+ * REACTIVE: Subscribes to unifiedCourseDataState for dynamic updates
+ */
+export const legacyAcademicDataSelector = selector({
+  key: "legacyAcademicDataSelector",
+  get: ({ get }) => {
+    const academicData = get(unifiedAcademicDataState);
+    const unifiedCourseData = get(unifiedCourseDataState);
+    const isLoaded = get(academicDataLoadedSelector);
+    const transcriptView = get(transcriptViewSelector);
+    const studyOverviewView = get(studyOverviewViewSelector);
+    const overallProgress = get(overallProgressSelector);
+
+    if (!isLoaded) {
+      return {
+        isLoaded: false,
+        programs: {},
+        hasData: false,
+        error: academicData.initialization?.error || null,
+        transcriptView: {},
+        studyOverviewView: {},
+        overallProgress: null
+      };
+    }
+
+    // Build programs object with expected shape
+    const programs = {};
+    Object.entries(academicData.programs).forEach(([programId, programData]) => {
+      programs[programId] = {
+        rawData: programData.transcript?.rawScorecard,
+        transcriptView: transcriptView[programId],
+        studyOverviewView: studyOverviewView[programId],
+        programStats: programData.studyPlan?.progress,
+        programId,
+        isMainProgram: programData.metadata?.isMainStudy || false,
+        programType: programData.metadata?.programType || 'other',
+        requirementsFulfilled: programData.metadata?.requirementsFulfilled || {}
+      };
+    });
+
+    // Calculate total planned courses from current selections
+    const totalPlannedCourses = Object.values(unifiedCourseData.semesters || {})
+      .reduce((sum, semester) => sum + (semester.selectedIds?.length || 0), 0);
+
+    return {
+      isLoaded: true,
+      programs,
+      hasData: Object.keys(programs).length > 0,
+      error: null,
+      transcriptView,
+      studyOverviewView,
+      overallProgress,
+      lastFetched: academicData.initialization?.lastInitialized,
+      programIds: Object.keys(programs),
+      totalPrograms: Object.keys(programs).length,
+      planningContext: {
+        selectedSemester: unifiedCourseData.selectedSemester,
+        availableSemesters: Object.keys(unifiedCourseData.semesters || {}),
+        latestValidTerm: unifiedCourseData.latestValidTerm,
+        totalPlannedCourses
+      }
+    };
   }
 });

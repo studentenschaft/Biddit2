@@ -4,6 +4,12 @@ import {
   initializedSemestersState,
 } from "../recoil/unifiedCourseDataAtom";
 import { isExerciseGroup } from "./smartExerciseGroupHandler";
+import {
+  getCourseIdentifier,
+  sortCoursesByStatus,
+  lookupCourseRating,
+  applyFilterCriteria,
+} from "./courseUtils";
 
 /**
  * Default semester structure with all required fields
@@ -330,15 +336,7 @@ export function useUnifiedCourseData() {
    */
   const updateEnrolledCourses = (semesterShortName, courses) => {
     const enrolledIds = (courses || [])
-      .map(
-        (course) =>
-          course.courses?.[0]?.courseNumber ||
-          course.eventCourseNumber ||
-          course.courseNumber ||
-          course.id ||
-          course.number ||
-          course._id
-      )
+      .map((course) => getCourseIdentifier(course))
       .filter(Boolean);
     patchSemester(
       semesterShortName,
@@ -423,12 +421,7 @@ export function useUnifiedCourseData() {
     setCourseData((prev) => {
       const semester = prev.semesters?.[semesterShortName];
       if (!semester) return prev; // Should be initialized beforehand
-      const courseId =
-        course.courses?.[0]?.courseNumber ||
-        course.courseNumber ||
-        course.id ||
-        course.number ||
-        course._id;
+      const courseId = getCourseIdentifier(course);
       if (!courseId) {
         console.warn("No valid course ID for", course);
         return prev;
@@ -436,18 +429,10 @@ export function useUnifiedCourseData() {
       if (semester.selectedIds.includes(courseId)) return prev; // no change
       const newSelectedIds = [...semester.selectedIds, courseId];
       const updatedFiltered = (semester.filtered || []).map((c) => {
-        const id = c.courses?.[0]?.courseNumber || c.courseNumber || c.id;
+        const id = getCourseIdentifier(c);
         return id === courseId ? { ...c, selected: true } : c;
       });
-      updatedFiltered.sort((a, b) => {
-        if (a.enrolled && !b.enrolled) return -1;
-        if (!a.enrolled && b.enrolled) return 1;
-        if (!a.enrolled && !b.enrolled) {
-          if (a.selected && !b.selected) return -1;
-          if (!a.selected && b.selected) return 1;
-        }
-        return 0;
-      });
+      const sortedFiltered = sortCoursesByStatus(updatedFiltered);
       return {
         ...prev,
         semesters: {
@@ -455,7 +440,7 @@ export function useUnifiedCourseData() {
           [semesterShortName]: {
             ...semester,
             selectedIds: newSelectedIds,
-            filtered: updatedFiltered,
+            filtered: sortedFiltered,
           },
         },
       };
@@ -475,18 +460,10 @@ export function useUnifiedCourseData() {
         (id) => id !== courseId
       );
       const updatedFiltered = (semester.filtered || []).map((c) => {
-        const id = c.courses?.[0]?.courseNumber || c.courseNumber || c.id;
+        const id = getCourseIdentifier(c);
         return id === courseId ? { ...c, selected: false } : c;
       });
-      updatedFiltered.sort((a, b) => {
-        if (a.enrolled && !b.enrolled) return -1;
-        if (!a.enrolled && b.enrolled) return 1;
-        if (!a.enrolled && !b.enrolled) {
-          if (a.selected && !b.selected) return -1;
-          if (!a.selected && b.selected) return 1;
-        }
-        return 0;
-      });
+      const sortedFiltered = sortCoursesByStatus(updatedFiltered);
       return {
         ...prev,
         semesters: {
@@ -494,7 +471,7 @@ export function useUnifiedCourseData() {
           [semesterShortName]: {
             ...semester,
             selectedIds: newSelectedIds,
-            filtered: updatedFiltered,
+            filtered: sortedFiltered,
           },
         },
       };
@@ -594,45 +571,7 @@ export function useUnifiedCourseData() {
 
       // Attach ratings to courses BEFORE filtering
       const coursesWithRatings = coursesToFilter.map((course) => {
-        // Try different ways to match ratings to courses
-        let rating = null;
-
-        // Method 1: Direct course ID match
-        if (ratingsMap[course.id]) {
-          rating = ratingsMap[course.id];
-        }
-        // Method 2: Course number match (direct property)
-        else if (course.courseNumber && ratingsMap[course.courseNumber]) {
-          rating = ratingsMap[course.courseNumber];
-        }
-        // Method 3: Course number match (nested in courses array)
-        else if (
-          course.courses?.[0]?.courseNumber &&
-          ratingsMap[course.courses[0].courseNumber]
-        ) {
-          rating = ratingsMap[course.courses[0].courseNumber];
-        }
-        // Method 4: Try course shortName
-        else if (ratingsMap[course.shortName]) {
-          rating = ratingsMap[course.shortName];
-        }
-        // Method 5: Try alternative properties that might exist
-        else {
-          // Check what other properties might match
-          const possibleKeys = [
-            course._id,
-            course.number,
-            course.title,
-            course.name,
-          ];
-          for (const key of possibleKeys) {
-            if (key && ratingsMap[key]) {
-              rating = ratingsMap[key];
-              break;
-            }
-          }
-        }
-
+        const rating = lookupCourseRating(course, ratingsMap);
         return {
           ...course,
           avgRating: rating || course.avgRating, // Preserve existing rating if found
@@ -647,36 +586,19 @@ export function useUnifiedCourseData() {
 
       // Add enrollment and selection status to filtered courses
       const finalCourses = filtered.map((course) => {
-        // Check if this course is enrolled using enrolledIds
-        const courseNumber =
-          course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
+        const courseNumber = getCourseIdentifier(course);
         const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
-
-        // Check if this course is selected using selectedIds
         const isSelected = courseNumber && selectedIds.includes(courseNumber);
 
         return {
           ...course,
-          enrolled: isEnrolled, // Mark if course is enrolled
-          selected: isSelected, // Mark if course is selected
+          enrolled: isEnrolled,
+          selected: isSelected,
         };
       });
 
       // Sort courses: enrolled first, then selected, then everything else
-      const sortedFinalCourses = finalCourses.sort((a, b) => {
-        // Priority 1: Enrolled courses first
-        if (a.enrolled && !b.enrolled) return -1;
-        if (!a.enrolled && b.enrolled) return 1;
-
-        // Priority 2: Among non-enrolled, selected courses come first
-        if (!a.enrolled && !b.enrolled) {
-          if (a.selected && !b.selected) return -1;
-          if (!a.selected && b.selected) return 1;
-        }
-
-        // If same status, maintain original order
-        return 0;
-      });
+      const sortedFinalCourses = sortCoursesByStatus(finalCourses);
 
       const newData = {
         ...prev,
@@ -706,70 +628,6 @@ export function useUnifiedCourseData() {
   };
 
   /**
-   * Helper function to apply filter criteria (same as in filteredCoursesSelector)
-   */
-  const applyFilterCriteria = (course, selectionOptions) => {
-    const classifications = selectionOptions.classifications || [];
-    const ects = selectionOptions.ects || [];
-    const ratings = selectionOptions.ratings || [];
-    const courseLanguage = selectionOptions.courseLanguage || [];
-    const lecturer = selectionOptions.lecturer || [];
-    const searchTerm = selectionOptions.searchTerm || "";
-
-    if (
-      classifications.length > 0 &&
-      !classifications.includes(course.classification)
-    ) {
-      return false;
-    }
-
-    if (ects.length > 0 && !ects.includes(course.credits)) {
-      return false;
-    }
-
-    if (
-      lecturer.length > 0 &&
-      course.lecturers &&
-      !course.lecturers.some((lect) =>
-        lecturer.includes(lect.displayName)
-      )
-    ) {
-      return false;
-    }
-
-    if (ratings.length > 0) {
-      const courseRating = course.avgRating;
-      const minRequiredRating = Math.max(...ratings);
-
-      // Only filter out courses if they have a rating and it's below the threshold
-      // Courses without ratings will be included (they won't be filtered out)
-      if (
-        courseRating !== null &&
-        courseRating !== undefined &&
-        courseRating < minRequiredRating
-      ) {
-        return false;
-      }
-    }
-
-    if (
-      courseLanguage.length > 0 &&
-      !courseLanguage.includes(course.courseLanguage?.code)
-    ) {
-      return false;
-    }
-
-    if (
-      searchTerm.length > 0 &&
-      !course.shortName.toLowerCase().includes(searchTerm.toLowerCase())
-    ) {
-      return false;
-    }
-
-    return true;
-  };
-
-  /**
    * Update filtered courses for ALL semesters at once
    * Useful when filter criteria changes globally
    * Now handles study plan data directly instead of using legacy selectedCourseIds atom
@@ -791,21 +649,8 @@ export function useUnifiedCourseData() {
           applyFilterCriteria(course, filterOptions)
         );
         const coursesWithStatus = filtered.map((course) => {
-          let rating = null;
-          if (ratingsMap[course.id]) rating = ratingsMap[course.id];
-          else if (course.courseNumber && ratingsMap[course.courseNumber])
-            rating = ratingsMap[course.courseNumber];
-          else if (
-            course.courses?.[0]?.courseNumber &&
-            ratingsMap[course.courses[0].courseNumber]
-          )
-            rating = ratingsMap[course.courses[0].courseNumber];
-          else if (ratingsMap[course.shortName])
-            rating = ratingsMap[course.shortName];
-          const courseNumber =
-            course.courses?.[0]?.courseNumber ||
-            course.courseNumber ||
-            course.id;
+          const rating = lookupCourseRating(course, ratingsMap);
+          const courseNumber = getCourseIdentifier(course);
           const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
           const isSelected = courseNumber && selectedIds.includes(courseNumber);
           return {
@@ -815,18 +660,10 @@ export function useUnifiedCourseData() {
             selected: isSelected,
           };
         });
-        coursesWithStatus.sort((a, b) => {
-          if (a.enrolled && !b.enrolled) return -1;
-          if (!a.enrolled && b.enrolled) return 1;
-          if (!a.enrolled && !b.enrolled) {
-            if (a.selected && !b.selected) return -1;
-            if (!a.selected && b.selected) return 1;
-          }
-          return 0;
-        });
+        const sortedCourses = sortCoursesByStatus(coursesWithStatus);
         semesters[semesterShortName] = {
           ...semesterData,
-          filtered: coursesWithStatus,
+          filtered: sortedCourses,
         };
       });
       return { ...prev, semesters };

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
+import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import axios from "axios";
 import { authTokenState } from "../recoil/authAtom";
 import { cisIdList } from "../recoil/cisIdListAtom";
@@ -7,6 +7,7 @@ import { cisIdListSelector } from "../recoil/cisIdListSelector";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
+import { termListState } from "../recoil/termListState";
 
 /**
  * SIMPLIFIED Custom hook to handle term selection logic
@@ -29,6 +30,7 @@ export function useTermSelection() {
   // Local state - simplified
   const [isLoading, setIsLoading] = useState(true);
   const [termListObject, setTermListObject] = useState([]);
+  const setTermListAtom = useSetRecoilState(termListState);
   const initialSelectionMadeRef = useRef(false);
 
   // Unified course data hooks
@@ -298,6 +300,7 @@ export function useTermSelection() {
             .filter(Boolean);
 
           setTermListObject(builtTermListObject);
+          setTermListAtom(builtTermListObject);
 
           // Set the selected semester to the latest valid term only if no semester is currently selected
           // This prevents overriding the user's existing semester selection when StudyOverview opens
@@ -324,6 +327,7 @@ export function useTermSelection() {
     updateUnifiedEnrolledCourses,
     setUnifiedLatestValidTerm,
     setUnifiedSelectedSemester,
+    courseData.selectedSemester,
   ]);
 
   return {

@@ -12,8 +12,9 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { useTermSelection } from './useTermSelection';
 import { useUnifiedCourseData } from './useUnifiedCourseData';
+import { useRecoilValue } from 'recoil';
+import { termListState } from '../recoil/termListState';
 
 /**
  * Identifies semesters that need course data loading
@@ -74,7 +75,7 @@ const identifySemestersNeedingData = (unifiedCourseData, termListObject) => {
  * @returns {Object} Loading states and utilities
  */
 export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
-  const { termListObject } = useTermSelection();
+  const termListObject = useRecoilValue(termListState);
   const { updateAvailableCourses } = useUnifiedCourseData();
   const [loadedSemesters, setLoadedSemesters] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
