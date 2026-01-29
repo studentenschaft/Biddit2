@@ -322,9 +322,14 @@ const GradeTranscript = ({
                             onClick={() => {
                               console.log('🔍 [GradeTranscript] Remove button clicked:', {
                                 courseId: subItem.id || subItem.courseId,
+                                courseNumber: subItem.courseNumber,
                                 courseName: subItem.shortName || subItem.description,
+                                courseSemester: subItem.semester,
+                                originalCourseSemester: subItem.originalCourse?.semester,
+                                isOrphaned: subItem.isOrphaned,
                                 isCurrentlySelected: selectedCourseIds.includes(subItem.id) || selectedCourseIds.includes(subItem.courseId),
-                                selectedCourseIds: selectedCourseIds
+                                uiSelectedSemester: semesterShortName,
+                                fullCourseObject: subItem
                               });
                               addOrRemoveCourse(subItem);
                             }}

@@ -253,6 +253,10 @@ const Transcript = () => {
                 isAssigned: !!course.isAssigned,
                 enrolled: !!course.isAssigned,
                 
+                // Flag for orphaned courses (couldn't be enriched with course data)
+                // These show raw IDs like "7,035,1.00" instead of proper course names
+                isOrphaned: course.isEnriched === false,
+
                 // Keep original course data for debugging
                 originalCourse: course
               });
@@ -296,40 +300,68 @@ const Transcript = () => {
 
   /**
    * Handler to clear all saved courses from the backend.
-   * It confirms the action with the user and then iterates over the current study plan's courses,
-   * calling deleteCourse for each saved course. Upon success, it clears the courses from the local study plan state.
+   * Iterates over ALL study plans (all semesters), not just the current one,
+   * to ensure courses from past semesters are also cleared.
    */
   const handleClearCourses = async () => {
     if (
       !window.confirm(
-        "Are you sure you want to clear all saved courses? You have to add all courses to your wishlist again."
+        "Are you sure you want to clear all saved courses from ALL semesters? You have to add all courses to your wishlist again."
       )
     ) {
       return;
     }
-    // Ensure we have a study plan and a current plan with saved courses.
-    if (
-      !studyPlan ||
-      !studyPlan.currentPlan ||
-      !studyPlan.currentPlan.courses ||
-      studyPlan.currentPlan.courses.length === 0
-    ) {
+
+    // Collect all courses from all study plans
+    const allPlansWithCourses = [];
+
+    // Check allPlans array for courses across all semesters
+    if (studyPlan?.allPlans && Array.isArray(studyPlan.allPlans)) {
+      studyPlan.allPlans.forEach(plan => {
+        if (plan?.courses && plan.courses.length > 0) {
+          allPlansWithCourses.push({
+            planId: plan.id,
+            courses: plan.courses
+          });
+        }
+      });
+    }
+
+    // Also check currentPlan if it has courses not in allPlans
+    if (studyPlan?.currentPlan?.courses?.length > 0) {
+      const currentPlanExists = allPlansWithCourses.some(p => p.planId === studyPlan.currentPlan.id);
+      if (!currentPlanExists) {
+        allPlansWithCourses.push({
+          planId: studyPlan.currentPlan.id,
+          courses: studyPlan.currentPlan.courses
+        });
+      }
+    }
+
+    if (allPlansWithCourses.length === 0) {
       alert("No saved courses found to clear.");
       return;
     }
-    const courseIds = studyPlan.currentPlan.courses;
+
+    const totalCourses = allPlansWithCourses.reduce((sum, plan) => sum + plan.courses.length, 0);
+    console.log(`🧹 [Transcript] Clearing ${totalCourses} courses from ${allPlansWithCourses.length} study plans`);
+
     try {
       // Iterate over each saved course and call the deleteCourse API.
-      for (const courseId of courseIds) {
-        await deleteCourse(studyPlan.currentPlan.id, courseId, authToken);
+      for (const plan of allPlansWithCourses) {
+        console.log(`🧹 [Transcript] Clearing ${plan.courses.length} courses from plan: ${plan.planId}`);
+        for (const courseId of plan.courses) {
+          await deleteCourse(plan.planId, courseId, authToken);
+        }
       }
       // Update local study plan state to reflect that all courses have been cleared.
       setStudyPlan((prev) => ({
         ...prev,
-        currentPlan: { ...prev.currentPlan, courses: [] },
+        currentPlan: prev.currentPlan ? { ...prev.currentPlan, courses: [] } : null,
+        allPlans: prev.allPlans?.map(plan => ({ ...plan, courses: [] })) || []
       }));
-      alert("All saved courses have been cleared - refreshing the page now.");
-      // Force a full page refresh
+
+      alert("All saved courses have been cleared from all semesters - refreshing the page now.");
       window.location.reload();
     } catch (error) {
       console.error("Error clearing saved courses:", error);
