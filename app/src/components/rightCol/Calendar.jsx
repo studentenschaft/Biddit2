@@ -1,12 +1,16 @@
 // Dependencies
 import React from "react";
-
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import { ChevronRightIcon, ChevronLeftIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon } from "@heroicons/react/solid";
-// import moment from "moment";
+import {
+  ChevronRightIcon,
+  ChevronLeftIcon,
+  ChevronDoubleLeftIcon,
+  ChevronDoubleRightIcon,
+} from "@heroicons/react/solid";
+
 // Other
 import "./calendar.css";
 import { useRecoilValue } from "recoil";
@@ -24,6 +28,8 @@ export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
   const currentSemester = useRecoilValue(currentSemesterSelector);
   const [isLoading, setIsLoading] = React.useState(true);
+  const [displaySelectCoursesFirst, setDisplaySelectCoursesFirst] =
+    React.useState(false);
   const [calendarKey, setCalendarKey] = React.useState(0);
   const calendarRef = React.useRef();
   // Add state to track initial date for mounting the calendar
@@ -31,7 +37,7 @@ export default function Calendar() {
 
   // Get future semester state
   const isFutureSemesterSelectedState = useRecoilValue(
-    isFutureSemesterSelected
+    isFutureSemesterSelected,
   );
 
   console.log("Final Events:", finalEvents);
@@ -40,17 +46,23 @@ export default function Calendar() {
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
 
-  // Show loading if currentSemester is not yet available
-  const shouldShowLoading = !currentSemester || isLoading;
+  const shouldShowLoading = isLoading;
+
+  // Keep empty-state message in sync with incoming events
+  React.useEffect(() => {
+    const hasEvents = Array.isArray(finalEvents) && finalEvents.length > 0;
+    setDisplaySelectCoursesFirst(!hasEvents);
+    if (!hasEvents) {
+      setIsLoading(false);
+    }
+  }, [finalEvents]);
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
     if (finalEvents && finalEvents.length > 0) {
-      setIsLoading(false);
-
       // Sort events by start date
       const sortedEvents = [...finalEvents].sort(
-        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()
+        (a, b) => new Date(a.start).getTime() - new Date(b.start).getTime(),
       );
 
       // Ensure we have valid events with start dates
@@ -58,6 +70,7 @@ export default function Calendar() {
 
       if (validEvents.length === 0) {
         console.warn("No valid events with start dates found");
+        setIsLoading(false);
         return;
       }
 
@@ -86,6 +99,8 @@ export default function Calendar() {
 
       // Force full re-render with new key when events change
       setCalendarKey((prev) => prev + 1);
+
+      setIsLoading(false);
     }
   }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
@@ -205,11 +220,7 @@ export default function Calendar() {
         </div>
       )}
 
-      {shouldShowLoading ? (
-        <div className="flex items-center justify-center h-full">
-          <LoadingText>Loading calendar entries...</LoadingText>
-        </div>
-      ) : finalEvents.length === 0 ? (
+      {displaySelectCoursesFirst ? (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
           <div className="bg-gray-100 rounded-full p-4 mb-4">
             <svg
@@ -227,12 +238,16 @@ export default function Calendar() {
             </svg>
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            No calendar events found
+            No calendar events found, Please select some courses first.
           </h3>
 
           <p className="text-gray-400 text-sm max-w-md">
             Hint: Some courses may not have any related calendar entries.
           </p>
+        </div>
+      ) : shouldShowLoading ? (
+        <div className="flex items-center justify-center h-full">
+          <LoadingText>Loading calendar entries...</LoadingText>
         </div>
       ) : (
         <div className="flex w-full h-full">
@@ -248,7 +263,7 @@ export default function Calendar() {
                 <ChevronDoubleLeftIcon className="w-3 h-3" />
                 Start
               </button>
-              
+
               {!isFutureSemesterSelectedState && (
                 <button
                   className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
@@ -258,7 +273,7 @@ export default function Calendar() {
                   Today
                 </button>
               )}
-              
+
               <button
                 className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
                 onClick={() => NavigateToDate(lastEventDate)}
@@ -268,7 +283,7 @@ export default function Calendar() {
                 <ChevronDoubleRightIcon className="w-3 h-3" />
               </button>
             </div>
-            
+
             <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
               <ChevronLeftIcon
                 aria-hidden="true"

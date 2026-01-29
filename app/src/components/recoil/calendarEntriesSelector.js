@@ -21,7 +21,7 @@ const buildOverlapIndex = (courses) => {
       const startMoment = moment(entry.eventDate);
       const endMoment = moment(startMoment).add(
         entry.durationInMinutes,
-        "minutes"
+        "minutes",
       );
 
       // Store as ISO strings for consistent comparison
@@ -49,7 +49,7 @@ export const calendarEntriesSelector = selector({
     // Bail out if the semester shortName is invalid
     if (!semShortName) {
       console.warn(
-        "CES: No selected semester available; returning empty array"
+        "CES: No selected semester available; returning empty array",
       );
       return [];
     }
@@ -63,17 +63,17 @@ export const calendarEntriesSelector = selector({
         semesterCoursesSelector({
           semester: semShortName,
           type: "filtered",
-        })
+        }),
       );
 
       if (filteredCourses && filteredCourses.length > 0) {
         // Filter for enrolled or selected courses from unified system
         currentCourses = filteredCourses.filter(
-          (course) => course.enrolled || course.selected
+          (course) => course.enrolled || course.selected,
         );
         console.debug(
           "CalendarEntriesSelector - Using unified filtered courses:",
-          currentCourses
+          currentCourses,
         );
       } else {
         throw new Error("No unified courses available, falling back to legacy");
@@ -81,12 +81,12 @@ export const calendarEntriesSelector = selector({
     } catch (error) {
       console.debug(
         "CalendarEntriesSelector - Falling back to legacy data:",
-        error.message
+        error.message,
       );
 
       console.debug(
         "CalendarEntriesSelector - currentCourses:",
-        currentCourses
+        currentCourses,
       );
     }
 
@@ -109,7 +109,7 @@ export const calendarEntriesSelector = selector({
         const startMoment = moment(entry.eventDate);
         const endMoment = moment(startMoment).add(
           entry.durationInMinutes,
-          "minutes"
+          "minutes",
         );
 
         // Note: no need to compute ISO strings here; comparisons use moment objects directly
@@ -117,6 +117,17 @@ export const calendarEntriesSelector = selector({
         // Check for overlaps using the index - O(1) lookup for potential overlaps
         // Touching intervals (end == start) are NOT considered overlaps.
         let overlapping = false;
+
+        // Detect if another entry exists with the exact same start/end
+        const hasSameSlot = relevantCourses.some((c) =>
+          c.calendarEntry?.some((e) => {
+            if (e === entry) return false;
+            const eStart = moment(e.eventDate);
+            const eEnd = moment(eStart).add(e.durationInMinutes, "minutes");
+            return eStart.isSame(startMoment) && eEnd.isSame(endMoment);
+          }),
+        );
+
         for (const [otherStart, endSet] of timeSlotIndex.entries()) {
           const otherStartTime = moment(otherStart);
 
@@ -124,11 +135,14 @@ export const calendarEntriesSelector = selector({
           for (const endTime of endSet) {
             const otherEndTime = moment(endTime);
 
-            // Skip comparing the event to itself
+            // Same start/end should count as overlap only if another entry exists
             if (
               otherStartTime.isSame(startMoment) &&
               otherEndTime.isSame(endMoment)
             ) {
+              if (hasSameSlot) {
+          overlapping = true;
+              }
               continue;
             }
 
@@ -165,78 +179,11 @@ export const calendarEntriesSelector = selector({
           color: overlapping
             ? "rgba(252, 163, 17, 1)" // Orange when overlapping
             : course.enrolled
-            ? "rgba(0,102,37, 1)" // Green if truly "enrolled" (current sem)
-            : "rgb(156 163 175)", // Gray if only locally selected
+              ? "rgba(0,102,37, 1)" // Green if truly "enrolled" (current sem)
+              : "rgb(156 163 175)", // Gray if only locally selected
         };
       });
     });
     return calendarEntries;
-  },
-});
-
-// Enhanced selector that includes metadata about the state
-export const calendarEntriesWithMetaSelector = selector({
-  key: "calendarEntriesWithMetaSelector",
-  get: ({ get }) => {
-    const selectedSemesterIndex = get(selectedSemesterIndexAtom);
-    const cisIdList = get(cisIdListSelector);
-    const semShortName = cisIdList[selectedSemesterIndex]?.shortName || "";
-
-    // Check if we have valid semester data
-    if (selectedSemesterIndex == null || !semShortName) {
-      return {
-        events: [],
-        isEmpty: true,
-        isLoading: false,
-        emptyReason: "invalid_semester",
-      };
-    }
-
-    const allCourses = get(allCourseInfoState);
-    const futureSemesterSelected = get(isFutureSemesterSelected);
-    const referenceSemester = get(referenceSemesterAtom);
-
-    let adjustedSemester = selectedSemesterIndex;
-    if (futureSemesterSelected && referenceSemester != null) {
-      if (typeof referenceSemester === "number") {
-        adjustedSemester = referenceSemester;
-      } else {
-        const referenceIndex = cisIdList.findIndex(
-          (sem) => sem.shortName === referenceSemester.shortName
-        );
-        if (referenceIndex !== -1) {
-          adjustedSemester = referenceIndex;
-        }
-      }
-    }
-
-    // Check if courses data is available
-    const semesterCourses = allCourses[adjustedSemester + 1] || [];
-
-    // Check if any courses are enrolled or selected
-    const currentCourses = semesterCourses.filter(
-      (course) => course.enrolled || course.selected
-    );
-
-    // If no courses are selected/enrolled, return appropriate state
-    if (currentCourses.length === 0) {
-      return {
-        events: [],
-        isEmpty: true,
-        isLoading: false,
-        emptyReason:
-          semesterCourses.length === 0 ? "no_courses" : "no_selected_courses",
-      };
-    }
-
-    // Get the actual calendar entries
-    const calendarEntries = get(calendarEntriesSelector);
-
-    return {
-      events: calendarEntries,
-      isEmpty: calendarEntries.length === 0,
-      isLoading: false,
-      emptyReason: calendarEntries.length === 0 ? "no_calendar_entries" : null,
-    };
   },
 });
