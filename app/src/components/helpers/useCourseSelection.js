@@ -59,6 +59,11 @@ export function useCourseSelection({
       return;
     }
 
+    // Extract the course's actual semester - critical for Transcript tab where courses
+    // from multiple semesters are displayed but selectedSemesterShortName is the UI's current selection
+    const courseSemester = course.semester || course.originalCourse?.semester || selectedSemesterShortName;
+    const normalizedCourseSemester = normalizeSemesterName(courseSemester);
+
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {
       if (typeof prevCourses === "object" && prevCourses !== null) {
@@ -86,16 +91,13 @@ export function useCourseSelection({
     });
 
     // Update local selected courses (indexed by shortName)
+    // Use the course's actual semester for accurate state updates
     setLocalSelectedCoursesSemKey((prevCourses) => {
-      // Add debug logging to see what's happening
-      const normalizedSemesterKey = normalizeSemesterName(
-        selectedSemesterShortName
-      );
+      // Use the course's semester, not the UI's selected semester
+      const semKey = normalizedCourseSemester;
 
       if (typeof prevCourses === "object" && prevCourses !== null) {
         const updatedCourses = { ...prevCourses };
-        // Use the normalized semester key instead of the raw one
-        const semKey = normalizedSemesterKey;
         // Create minimal course object with normalized credits
         const minimalCourse = {
           id: course.id,
@@ -128,7 +130,7 @@ export function useCourseSelection({
 
       // Create new entry if prevCourses is not an object
       return {
-        [normalizedSemesterKey]: [
+        [semKey]: [
           {
             id: course.id,
             shortName: course.shortName,
@@ -146,29 +148,40 @@ export function useCourseSelection({
       const isCourseSelected =
         selectedCourseIds.includes(course.id) ||
         selectedCourseIds.includes(course.courseNumber) ||
+        selectedCourseIds.includes(course.courseId) ||
         selectedCourseIds.includes(course.courses?.[0]?.courseNumber);
 
       // Extract the correct course number for API calls
       const courseNumber =
-        course.courses?.[0]?.courseNumber || course.courseNumber || course.id;
-      // Use selectedSemesterShortName as studyPlanId
-      const studyPlanId = selectedSemesterShortName;
+        course.courses?.[0]?.courseNumber || course.courseNumber || course.courseId || course.id;
+
+      // Use the course's actual semester for API calls - this is critical for Transcript
+      // where courses from multiple semesters are displayed
+      const studyPlanId = normalizedCourseSemester;
+
+      console.log('🔍 [useCourseSelection] API operation:', {
+        isCourseSelected,
+        courseNumber,
+        studyPlanId,
+        originalSelectedSemester: selectedSemesterShortName,
+        courseSemester: normalizedCourseSemester
+      });
 
       if (isCourseSelected) {
-        // Remove course from unified state and backend
-        removeSelectedCourse(selectedSemesterShortName, courseNumber);
+        // Remove course from unified state using the course's actual semester
+        removeSelectedCourse(normalizedCourseSemester, courseNumber);
 
         // Update legacy selectedCourseIds if setter is provided
         if (setSelectedCourseIds) {
           setSelectedCourseIds((prevIds) =>
-            prevIds.filter((id) => id !== course.id && id !== courseNumber)
+            prevIds.filter((id) => id !== course.id && id !== courseNumber && id !== course.courseId)
           );
         }
 
-        // Delete from backend using correct parameters
+        // Delete from backend using the course's actual semester
         await deleteCourse(studyPlanId, courseNumber, authToken);
         console.log(
-          `Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
+          `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
         );
 
         // Übergangslösung: To ensure old id-based courses get removed as well
@@ -176,16 +189,22 @@ export function useCourseSelection({
           await deleteCourse(studyPlanId, course.id, authToken);
           console.log(`Course ${course.id} deleted from backend (legacy)`);
         }
+
+        // Also try deletion with course.courseId if different
+        if (course.courseId && course.courseId !== courseNumber && course.courseId !== course.id) {
+          await deleteCourse(studyPlanId, course.courseId, authToken);
+          console.log(`✅ Course ${course.courseId} deleted from backend (courseId)`);
+        }
       } else {
-        // Add course to unified state and backend
-        addSelectedCourse(selectedSemesterShortName, course);
+        // Add course to unified state using the course's actual semester
+        addSelectedCourse(normalizedCourseSemester, course);
 
         // Update legacy selectedCourseIds if setter is provided
         if (setSelectedCourseIds) {
           setSelectedCourseIds((prevIds) => [...prevIds, courseNumber]);
         }
 
-        // Save to backend using correct parameters
+        // Save to backend using the course's actual semester
         await saveCourse(studyPlanId, courseNumber, authToken);
         console.log(
           `Course ${courseNumber} saved to backend (studyPlan: ${studyPlanId})`
