@@ -8,35 +8,143 @@ import {
 } from "./unifiedCourseDataSelectors";
 
 /**
- * Build an index of overlapping time slots
- * Returns a Map where keys are event start times and values are sets of event end times
+ * Union-Find data structure for clustering overlapping events into collision groups.
+ * Uses path compression for efficient lookups.
  */
-const buildOverlapIndex = (courses) => {
-  const timeSlotIndex = new Map();
+class UnionFind {
+  constructor() {
+    this.parent = new Map();
+  }
 
-  courses.forEach((course) => {
+  find(x) {
+    if (!this.parent.has(x)) this.parent.set(x, x);
+    if (this.parent.get(x) !== x) {
+      this.parent.set(x, this.find(this.parent.get(x))); // Path compression
+    }
+    return this.parent.get(x);
+  }
+
+  union(x, y) {
+    const rootX = this.find(x);
+    const rootY = this.find(y);
+    if (rootX !== rootY) {
+      this.parent.set(rootX, rootY);
+    }
+  }
+}
+
+/**
+ * Single warning color for all collision groups.
+ * Collision metadata (groupId, conflictsWith) is still computed for tooltips.
+ */
+export const COLLISION_COLOR = "#FCA311"; // Orange warning color
+
+// Keep for backwards compatibility
+export const COLLISION_COLORS = [COLLISION_COLOR];
+export const getCollisionColor = () => COLLISION_COLOR;
+
+/**
+ * Check if two time intervals overlap (exclusive of touching boundaries).
+ * Intervals [aStart, aEnd) and [bStart, bEnd) overlap if aStart < bEnd AND bStart < aEnd.
+ */
+const intervalsOverlap = (entryA, entryB) => {
+  // Exact same slot counts as overlap
+  if (entryA.start.isSame(entryB.start) && entryA.end.isSame(entryB.end)) {
+    return true;
+  }
+  // Adjacent intervals (touching at boundary) are NOT overlaps
+  if (entryA.end.isSame(entryB.start) || entryB.end.isSame(entryA.start)) {
+    return false;
+  }
+  // Standard interval overlap check
+  return entryA.start.isBefore(entryB.end) && entryB.start.isBefore(entryA.end);
+};
+
+/**
+ * Build collision groups using Union-Find to cluster overlapping events.
+ * Returns metadata about each entry including its collision group and conflicting courses.
+ */
+const buildCollisionGroups = (courses) => {
+  const uf = new UnionFind();
+  const entries = [];
+
+  // Collect all calendar entries with unique IDs and precomputed time bounds
+  courses.forEach((course, courseIdx) => {
     if (!course.calendarEntry) return;
-
-    course.calendarEntry.forEach((entry) => {
-      const startMoment = moment(entry.eventDate);
-      const endMoment = moment(startMoment).add(
-        entry.durationInMinutes,
-        "minutes",
-      );
-
-      // Store as ISO strings for consistent comparison
-      const startIso = startMoment.toISOString();
-      const endIso = endMoment.toISOString();
-
-      // Add to the index
-      if (!timeSlotIndex.has(startIso)) {
-        timeSlotIndex.set(startIso, new Set());
-      }
-      timeSlotIndex.get(startIso).add(endIso);
+    course.calendarEntry.forEach((entry, entryIdx) => {
+      const entryId = `${courseIdx}-${entryIdx}`;
+      const start = moment(entry.eventDate);
+      const end = moment(start).add(entry.durationInMinutes, "minutes");
+      entries.push({
+        id: entryId,
+        entry,
+        course,
+        courseIdx,
+        entryIdx,
+        start,
+        end,
+      });
     });
   });
 
-  return timeSlotIndex;
+  // Pairwise comparison to find overlaps and union them
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      if (intervalsOverlap(entries[i], entries[j])) {
+        uf.union(entries[i].id, entries[j].id);
+      }
+    }
+  }
+
+  // Build group mapping: root → groupId (sequential numbers starting from 0)
+  const rootToGroupId = new Map();
+  let nextGroupId = 0;
+
+  // Count members per group to identify actual collision groups (size > 1)
+  const groupMembers = new Map();
+  entries.forEach(({ id }) => {
+    const root = uf.find(id);
+    if (!groupMembers.has(root)) {
+      groupMembers.set(root, []);
+    }
+    groupMembers.get(root).push(id);
+  });
+
+  // Only assign group IDs to groups with more than one member (actual collisions)
+  groupMembers.forEach((members, root) => {
+    if (members.length > 1) {
+      rootToGroupId.set(root, nextGroupId++);
+    }
+  });
+
+  // Build final entry metadata with collision info
+  const entryMetadata = new Map();
+  entries.forEach((entryData) => {
+    const root = uf.find(entryData.id);
+    const groupId = rootToGroupId.has(root) ? rootToGroupId.get(root) : null;
+
+    // Find conflicting courses for this entry
+    const conflictsWith = [];
+    if (groupId !== null) {
+      entries.forEach((other) => {
+        if (other.id !== entryData.id && intervalsOverlap(entryData, other)) {
+          const courseName = other.course?.shortName || other.course?.courseName;
+          if (courseName && !conflictsWith.includes(courseName)) {
+            conflictsWith.push(courseName);
+          }
+        }
+      });
+    }
+
+    entryMetadata.set(entryData.id, {
+      ...entryData,
+      collisionGroupId: groupId,
+      conflictsWith,
+      overlapping: groupId !== null,
+    });
+  });
+
+  return { entries, entryMetadata, groupCount: nextGroupId };
 };
 
 export const calendarEntriesSelector = selector({
@@ -93,18 +201,17 @@ export const calendarEntriesSelector = selector({
     // Use currentCourses as the relevant courses for the calendar
     const relevantCourses = currentCourses;
 
-    // Build an index for quick overlap detection
-    const timeSlotIndex = buildOverlapIndex(relevantCourses);
+    // Build collision groups using Union-Find algorithm
+    const { entryMetadata } = buildCollisionGroups(relevantCourses);
 
-    // Now build FullCalendar-style events from the relevant courses
-    const calendarEntries = relevantCourses.flatMap((course) => {
+    // Build FullCalendar-style events from the relevant courses
+    const calendarEntries = relevantCourses.flatMap((course, courseIdx) => {
       // If for future semesters we have no real schedule, calendarEntry might be empty or undefined
       if (!course.calendarEntry || course.calendarEntry.length === 0) {
-        // Optionally, return an empty array here or create a "TBD" event
         return [];
       }
 
-      return course.calendarEntry.map((entry) => {
+      return course.calendarEntry.map((entry, entryIdx) => {
         // Convert event date & duration into FullCalendar's start/end
         const startMoment = moment(entry.eventDate);
         const endMoment = moment(startMoment).add(
@@ -112,59 +219,22 @@ export const calendarEntriesSelector = selector({
           "minutes",
         );
 
-        // Note: no need to compute ISO strings here; comparisons use moment objects directly
+        // Get collision metadata for this entry
+        const entryId = `${courseIdx}-${entryIdx}`;
+        const metadata = entryMetadata.get(entryId) || {
+          overlapping: false,
+          collisionGroupId: null,
+          conflictsWith: [],
+        };
 
-        // Check for overlaps using the index - O(1) lookup for potential overlaps
-        // Touching intervals (end == start) are NOT considered overlaps.
-        let overlapping = false;
-
-        // Detect if another entry exists with the exact same start/end
-        const hasSameSlot = relevantCourses.some((c) =>
-          c.calendarEntry?.some((e) => {
-            if (e === entry) return false;
-            const eStart = moment(e.eventDate);
-            const eEnd = moment(eStart).add(e.durationInMinutes, "minutes");
-            return eStart.isSame(startMoment) && eEnd.isSame(endMoment);
-          }),
-        );
-
-        for (const [otherStart, endSet] of timeSlotIndex.entries()) {
-          const otherStartTime = moment(otherStart);
-
-          // Iterate each potential end and apply strict interval overlap rules
-          for (const endTime of endSet) {
-            const otherEndTime = moment(endTime);
-
-            // Same start/end should count as overlap only if another entry exists
-            if (
-              otherStartTime.isSame(startMoment) &&
-              otherEndTime.isSame(endMoment)
-            ) {
-              if (hasSameSlot) {
-          overlapping = true;
-              }
-              continue;
-            }
-
-            // Treat adjacency as non-overlap: A.end == B.start OR B.end == A.start
-            if (
-              otherStartTime.isSame(endMoment) ||
-              otherEndTime.isSame(startMoment)
-            ) {
-              continue;
-            }
-
-            // Strict overlap check: [aStart, aEnd) intersects [bStart, bEnd)
-            if (
-              otherStartTime.isBefore(endMoment) &&
-              otherEndTime.isAfter(startMoment)
-            ) {
-              overlapping = true;
-              break;
-            }
-          }
-
-          if (overlapping) break;
+        // Determine color based on overlap or enrollment status
+        let color;
+        if (metadata.overlapping) {
+          color = COLLISION_COLOR; // Orange for all overlapping courses
+        } else if (course.enrolled) {
+          color = "rgba(0,102,37, 1)"; // Green for enrolled courses
+        } else {
+          color = "rgb(156 163 175)"; // Gray for locally selected courses
         }
 
         // Return the final shape for FullCalendar
@@ -175,12 +245,10 @@ export const calendarEntriesSelector = selector({
           start: startMoment.toISOString(),
           end: endMoment.toISOString(),
           selected: true,
-          overlapping,
-          color: overlapping
-            ? "rgba(252, 163, 17, 1)" // Orange when overlapping
-            : course.enrolled
-              ? "rgba(0,102,37, 1)" // Green if truly "enrolled" (current sem)
-              : "rgb(156 163 175)", // Gray if only locally selected
+          overlapping: metadata.overlapping,
+          collisionGroupId: metadata.collisionGroupId,
+          conflictsWith: metadata.conflictsWith,
+          color,
         };
       });
     });

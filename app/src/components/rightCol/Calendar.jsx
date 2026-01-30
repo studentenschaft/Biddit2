@@ -116,6 +116,7 @@ export default function Calendar() {
       minute: "2-digit",
     });
     let room = info.event._def.extendedProps.room;
+    let conflictsWith = info.event._def.extendedProps.conflictsWith || [];
 
     info.el.setAttribute("data-tip", `${title}`);
     info.el.setAttribute("data-tooltip-id", "event-tooltip");
@@ -123,6 +124,7 @@ export default function Calendar() {
     info.el.setAttribute("data-room", `${room}`);
     info.el.setAttribute("data-start-time", `${startTime}`);
     info.el.setAttribute("data-end-time", `${endTime}`);
+    info.el.setAttribute("data-conflicts-with", conflictsWith.join(", "));
   };
 
   // Text to be displayed when hovering
@@ -196,17 +198,33 @@ export default function Calendar() {
     <>
       <ReactTooltip
         id="event-tooltip"
-        style={{ zIndex: 9999 }}
-        render={({ content, activeAnchor }) => (
-          <span>
-            {content}
-            <br />
-            Room: {activeAnchor?.getAttribute("data-room") || "N/A"}
-            <br />
-            {activeAnchor?.getAttribute("data-start-time") || "N/A"} -{" "}
-            {activeAnchor?.getAttribute("data-end-time") || "N/A"}
-          </span>
-        )}
+        style={{ zIndex: 9999, maxWidth: "min(350px, 90vw)" }}
+        render={({ content, activeAnchor }) => {
+          const conflictsWith = activeAnchor?.getAttribute("data-conflicts-with");
+          const conflictList = conflictsWith ? conflictsWith.split(", ") : [];
+          return (
+            <div>
+              <div className="font-medium">{content}</div>
+              <div className="text-gray-300">
+                Room: {activeAnchor?.getAttribute("data-room") || "N/A"}
+              </div>
+              <div className="text-gray-300">
+                {activeAnchor?.getAttribute("data-start-time") || "N/A"} -{" "}
+                {activeAnchor?.getAttribute("data-end-time") || "N/A"}
+              </div>
+              {conflictList.length > 0 && (
+                <div className="text-amber-300 mt-1 pt-1 border-t border-gray-600">
+                  <div className="font-medium">⚠ Conflicts with:</div>
+                  <ul className="list-disc list-inside text-sm">
+                    {conflictList.map((course, idx) => (
+                      <li key={idx} className="truncate">{course}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          );
+        }}
       />
 
       {/* Show projection data banner for future semesters */}

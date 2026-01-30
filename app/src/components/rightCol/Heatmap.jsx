@@ -177,52 +177,25 @@ export const Heatmap = ({
   }
 
   function checkIfEventsOverlap(date) {
-    // find all events on the date and add them to an array
-    const eventsOnDate = [];
     const targetYear = date.getFullYear();
+    const eventsOnDate = [];
 
     for (let i = 0; i < events.length; i++) {
       const event = events[i];
       const eventDate = getShiftedEventDate(new Date(event.start), targetYear);
-      const eventEndDate = getShiftedEventDate(new Date(event.end), targetYear);
 
+      // Check if the event is on the same date
       if (
-        (eventDate.getDate() === date.getDate() &&
-          eventDate.getMonth() === date.getMonth() &&
-          eventDate.getFullYear() === date.getFullYear()) ||
-        (eventEndDate.getDate() === date.getDate() &&
-          eventEndDate.getMonth() === date.getMonth() &&
-          eventEndDate.getFullYear() === date.getFullYear())
+        eventDate.getDate() === date.getDate() &&
+        eventDate.getMonth() === date.getMonth() &&
+        eventDate.getFullYear() === date.getFullYear()
       ) {
-        eventsOnDate.push({
-          ...event,
-          // Store shifted times for overlap calculation
-          shiftedStart: eventDate.getTime(),
-          shiftedEnd: eventEndDate.getTime(),
-        });
+        eventsOnDate.push(event);
       }
     }
-    // check for each event if it overlaps with another event
-    if (eventsOnDate.length === 0 || eventsOnDate.length === 1) {
-      return false;
-    }
-    for (let i = 0; i < eventsOnDate.length; i++) {
-      const a = eventsOnDate[i];
-      for (let j = i + 1; j < eventsOnDate.length; j++) {
-        const b = eventsOnDate[j];
 
-        // Treat adjacency as non-overlap: a.end == b.start or b.end == a.start
-        const touches =
-          a.shiftedEnd === b.shiftedStart || b.shiftedEnd === a.shiftedStart;
-        if (touches) continue;
-
-        // Strict overlap: [aStart, aEnd) intersects [bStart, bEnd)
-        const overlaps =
-          a.shiftedStart < b.shiftedEnd && a.shiftedEnd > b.shiftedStart;
-        if (overlaps) return true;
-      }
-    }
-    return false;
+    // Return true if any event on this date has overlapping flag
+    return eventsOnDate.some((event) => event.overlapping);
   }
 
   function getDatesInRange(startDate, endDate) {
@@ -411,7 +384,7 @@ export const Heatmap = ({
             {dates.map((date) => (
               <div
                 key={date.toISOString()}
-                className={`flex items-center text-center align-middle border-1 border  justify-center  xl:w-6 xl:h-6 w-4 h-4 m-auto text-xxs rounded font 
+                className={`flex items-center text-center align-middle border-1 border justify-center xl:w-6 xl:h-6 w-4 h-4 m-auto text-xxs rounded font 
               ${
                 date.getDate() === 1
                   ? "border-black bg-white"
