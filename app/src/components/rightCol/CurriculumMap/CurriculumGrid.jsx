@@ -122,16 +122,16 @@ const CurriculumGrid = ({
     hasHierarchy && categoryHierarchy.some((parent) => parent.children.length > 1);
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-stone-300">
+    <div className="overflow-x-auto rounded-lg ring-1 ring-black ring-opacity-5">
       <div
-        className="grid gap-px bg-stone-300 min-w-fit"
+        className="grid min-w-fit bg-white"
         style={{ gridTemplateColumns }}
       >
         {/* Parent header row (only if hierarchy exists with multiple children) */}
         {showParentHeaders && (
           <>
             {/* Corner cell for parent row */}
-            <div className="bg-stone-100 p-2 sticky left-0 z-20" />
+            <div className="bg-gray-100 p-2 sticky left-0 z-20 border-b border-gray-200" />
 
             {/* Parent category headers with colspan and collapse toggle */}
             {categoryHierarchy.map((parent) => {
@@ -141,7 +141,7 @@ const CurriculumGrid = ({
               return (
                 <div
                   key={parent.id}
-                  className={`bg-stone-200 border-b border-stone-400 p-2 flex items-center gap-2 ${
+                  className={`bg-gray-100 border-b border-gray-200 p-2 flex items-center gap-2 ${
                     isParentCollapsed ? "justify-center" : "justify-between"
                   }`}
                   style={{
@@ -152,7 +152,7 @@ const CurriculumGrid = ({
                     // Collapsed parent view
                     <button
                       onClick={() => toggleParentCollapse(parent.id, childPaths)}
-                      className="flex items-center gap-1 hover:bg-stone-300 rounded px-1 py-0.5 transition-colors"
+                      className="flex items-center gap-1 hover:bg-gray-200 rounded px-1 py-0.5 transition-colors"
                       title={`Expand ${parent.name}`}
                     >
                       <ChevronRightIcon className="w-4 h-4 text-gray-600" />
@@ -170,7 +170,7 @@ const CurriculumGrid = ({
                       </span>
                       <button
                         onClick={() => toggleParentCollapse(parent.id, childPaths)}
-                        className="p-1 hover:bg-stone-300 rounded transition-colors flex-shrink-0"
+                        className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
                         title={`Collapse ${parent.name}`}
                       >
                         <ChevronLeftIcon className="w-4 h-4 text-gray-600" />
@@ -185,7 +185,7 @@ const CurriculumGrid = ({
 
         {/* Leaf category header row */}
         <div
-          className={`bg-stone-100 p-2 sticky left-0 z-20 ${
+          className={`bg-gray-50 p-2 sticky left-0 z-20 border-b border-gray-200 ${
             showParentHeaders ? "" : "rounded-tl-lg"
           }`}
         >
@@ -244,6 +244,7 @@ const CurriculumGrid = ({
                   isLastRow={semIdx === semesters.length - 1}
                   isLastCol={catIdx === leafCategories.length - 1}
                   isCollapsed={isCategoryCollapsed(category.path)}
+                  isCategoryComplete={category.isComplete}
                 />
               );
             })}

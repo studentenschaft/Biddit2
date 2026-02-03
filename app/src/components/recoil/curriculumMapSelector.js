@@ -6,6 +6,14 @@ import { curriculumPlanState, sortSemesters, parseSemesterKey } from "./curricul
 import { findMainProgram } from "../helpers/academicDataTransformers";
 
 /**
+ * Normalize semester key by removing spaces (e.g., "FS 25" -> "FS25")
+ * This handles inconsistency between scorecard API (with spaces) and internal state (without)
+ */
+const normalizeSemesterKey = (semester) => {
+  return semester ? semester.replace(/\s+/g, "") : "";
+};
+
+/**
  * Curriculum Map Selector
  *
  * Combines data from multiple sources into a unified grid-ready structure:
@@ -65,26 +73,36 @@ const extractClassifications = (categoryItem) => {
   const name = (categoryItem.description || categoryItem.shortName || "").toLowerCase();
 
   // Map common category names to course classification values
-  if (name.includes("compulsory") || name.includes("pflicht")) {
-    classifications.push("compulsory", "pflicht", "Pflichtbereich");
+  // Each pattern maps category keywords -> possible course classification values
+  if (name.includes("compulsory") || name.includes("pflicht") || name.includes("mandatory")) {
+    classifications.push("compulsory", "pflicht", "Pflichtbereich", "mandatory", "Pflicht");
   }
-  if (name.includes("elective") || name.includes("wahl")) {
-    classifications.push("elective", "wahl", "Wahlbereich", "Elective");
+  if (name.includes("elective") || name.includes("wahl") && !name.includes("pflicht")) {
+    classifications.push("elective", "wahl", "Wahlbereich", "Elective", "Wahl");
   }
   if (name.includes("context") || name.includes("kontext")) {
-    classifications.push("context", "kontext", "Contextual Studies");
+    classifications.push("context", "kontext", "Contextual Studies", "Kontextstudium");
   }
-  if (name.includes("method") || name.includes("forschung")) {
-    classifications.push("method", "forschung", "Research Methods");
+  if (name.includes("focus") || name.includes("schwerpunkt") || name.includes("major") || name.includes("concentration")) {
+    classifications.push("focus", "schwerpunkt", "Focus Area", "Major", "Concentration", "Schwerpunktfächer");
   }
-  if (name.includes("thesis") || name.includes("arbeit")) {
-    classifications.push("thesis", "masterarbeit", "bachelorarbeit", "Thesis");
+  if (name.includes("method") || name.includes("forschung") || name.includes("research")) {
+    classifications.push("method", "forschung", "Research Methods", "Forschungsmethoden");
+  }
+  if (name.includes("thesis") || name.includes("arbeit") || name.includes("dissertation")) {
+    classifications.push("thesis", "masterarbeit", "bachelorarbeit", "Thesis", "Master Thesis", "Bachelor Thesis");
   }
   if (name.includes("project") || name.includes("projekt")) {
-    classifications.push("project", "projekt", "Projects");
+    classifications.push("project", "projekt", "Projects", "Projekte");
   }
-  if (name.includes("core") || name.includes("kern")) {
-    classifications.push("core", "kern", "Core");
+  if (name.includes("core") || name.includes("kern") || name.includes("foundation")) {
+    classifications.push("core", "kern", "Core", "Foundation", "Kernbereich");
+  }
+  if (name.includes("seminar")) {
+    classifications.push("seminar", "Seminar", "Seminare");
+  }
+  if (name.includes("integration") || name.includes("capstone")) {
+    classifications.push("integration", "capstone", "Integrationsfächer", "Capstone");
   }
 
   return classifications;
@@ -375,15 +393,16 @@ export const curriculumMapSelector = selector({
       : [];
 
     // Collect all semesters from: completed courses + wishlist + planned items
+    // IMPORTANT: Normalize all semester keys to remove spaces (scorecard API uses "FS 25", internal uses "FS25")
     const allSemesterKeys = new Set();
 
-    completedCourses.forEach((c) => allSemesterKeys.add(c.semester));
-    Object.keys(localSelectedCourses).forEach((k) => allSemesterKeys.add(k));
+    completedCourses.forEach((c) => allSemesterKeys.add(normalizeSemesterKey(c.semester)));
+    Object.keys(localSelectedCourses).forEach((k) => allSemesterKeys.add(normalizeSemesterKey(k)));
     Object.keys(curriculumPlan.plannedItems || {}).forEach((k) =>
-      allSemesterKeys.add(k)
+      allSemesterKeys.add(normalizeSemesterKey(k))
     );
     Object.keys(unifiedCourseData.semesters || {}).forEach((k) =>
-      allSemesterKeys.add(k)
+      allSemesterKeys.add(normalizeSemesterKey(k))
     );
 
     // Sort semesters chronologically
@@ -402,7 +421,7 @@ export const curriculumMapSelector = selector({
 
     // Place completed courses into grid
     completedCourses.forEach((course) => {
-      const semKey = course.semester;
+      const semKey = normalizeSemesterKey(course.semester);
       const catPath = course.categoryPath;
 
       if (coursesBySemesterAndCategory[semKey]) {
@@ -413,6 +432,7 @@ export const curriculumMapSelector = selector({
         if (matchedCat) {
           coursesBySemesterAndCategory[semKey][matchedCat.path].push({
             ...course,
+            semester: semKey, // Use normalized semester key
             source: "transcript",
           });
         }
@@ -450,14 +470,29 @@ export const curriculumMapSelector = selector({
 
         // Fallback to classification matching if no stored path
         if (!targetCatPath) {
-          const matchedCat = flatCategories.find((cat) =>
-            cat.validClassifications.some(
-              (vc) =>
-                vc.toLowerCase() === classification.toLowerCase() ||
-                classification.toLowerCase().includes(vc.toLowerCase())
-            )
-          );
+          // First try direct name match (classification often equals category name exactly)
+          const matchedCat = flatCategories.find(
+            (cat) => cat.name.toLowerCase() === classification.toLowerCase()
+          ) ||
+            // Fallback to fuzzy keyword matching for edge cases
+            flatCategories.find((cat) =>
+              cat.validClassifications.some(
+                (vc) =>
+                  vc.toLowerCase() === classification.toLowerCase() ||
+                  classification.toLowerCase().includes(vc.toLowerCase())
+              )
+            );
           targetCatPath = matchedCat?.path || flatCategories[0]?.path;
+
+          // Debug: Log when falling back to first column (indicates classification mismatch)
+          if (import.meta.env.DEV && !matchedCat) {
+            console.warn(
+              `[CurriculumMap] No category match for course "${course.shortName || course.id}"`,
+              `\n  Classification: "${classification}"`,
+              `\n  Available categories:`,
+              flatCategories.map((c) => `${c.name} [${c.validClassifications.join(", ")}]`)
+            );
+          }
         }
 
         if (targetCatPath && coursesBySemesterAndCategory[semKey][targetCatPath]) {
@@ -474,6 +509,75 @@ export const curriculumMapSelector = selector({
             classification,
             source: "wishlist",
             calendarEntry: course.calendarEntry || fullCourse?.calendarEntry,
+          });
+        }
+      });
+    });
+
+    // Place enrolled courses into grid (courses user is actually enrolled in, shown with lock icon)
+    Object.entries(unifiedCourseData.semesters || {}).forEach(([semKey, semData]) => {
+      const normalizedSemKey = normalizeSemesterKey(semKey);
+      if (!coursesBySemesterAndCategory[normalizedSemKey]) return;
+
+      const enrolledIds = semData.enrolledIds || [];
+      const availableCourses = semData.available || [];
+
+      enrolledIds.forEach((enrolledId) => {
+        // Skip if already added (e.g., from transcript as completed)
+        const alreadyExists = Object.values(coursesBySemesterAndCategory[normalizedSemKey])
+          .flat()
+          .some((c) => c.id === enrolledId || c.courseId === enrolledId);
+
+        if (alreadyExists) return;
+
+        // Find full course data
+        const fullCourse = availableCourses.find(
+          (c) => c.courseNumber === enrolledId || c.id === enrolledId
+        );
+
+        if (!fullCourse) return;
+
+        const classification = fullCourse.classification || fullCourse.big_type || "elective";
+
+        // Find matching category based on classification
+        // First try direct name match (classification often equals category name exactly)
+        const matchedCat = flatCategories.find(
+          (cat) => cat.name.toLowerCase() === classification.toLowerCase()
+        ) ||
+          // Fallback to fuzzy keyword matching for edge cases
+          flatCategories.find((cat) =>
+            cat.validClassifications.some(
+              (vc) =>
+                vc.toLowerCase() === classification.toLowerCase() ||
+                classification.toLowerCase().includes(vc.toLowerCase())
+            )
+          );
+        const targetCatPath = matchedCat?.path || flatCategories[0]?.path;
+
+        // Debug: Log when falling back to first column (indicates classification mismatch)
+        if (import.meta.env.DEV && !matchedCat) {
+          console.warn(
+            `[CurriculumMap] No category match for enrolled course "${fullCourse.shortName || enrolledId}"`,
+            `\n  Classification: "${classification}"`,
+            `\n  Available categories:`,
+            flatCategories.map((c) => `${c.name} [${c.validClassifications.join(", ")}]`)
+          );
+        }
+
+        if (targetCatPath && coursesBySemesterAndCategory[normalizedSemKey][targetCatPath]) {
+          coursesBySemesterAndCategory[normalizedSemKey][targetCatPath].push({
+            id: enrolledId,
+            courseId: enrolledId,
+            name: fullCourse.shortName || fullCourse.description || enrolledId,
+            credits: (fullCourse.credits || 300) / 100,
+            semester: normalizedSemKey,
+            categoryPath: targetCatPath,
+            status: "enrolled",
+            isCompleted: false,
+            isEnrolled: true,
+            classification,
+            source: "enrolled",
+            calendarEntry: fullCourse.calendarEntry,
           });
         }
       });

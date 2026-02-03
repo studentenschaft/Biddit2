@@ -59,27 +59,27 @@ const PlanItem = ({ item, semesterKey }) => {
       }
     : undefined;
 
-  // Style variants based on course status (HSG colors)
+  // Style variants based on course status (unified green theme)
   const statusStyles = {
     completed: {
-      bg: "bg-hsg-100",
-      border: "border-hsg-600",
-      text: "text-hsg-900",
+      bg: "bg-green-100",
+      border: "border-green-600",
+      text: "text-green-900",
     },
     enrolled: {
-      bg: "bg-amber-100",
-      border: "border-amber-500",
-      text: "text-amber-900",
+      bg: "bg-green-50",
+      border: "border-green-400",
+      text: "text-green-800",
     },
     planned: {
-      bg: "bg-blue-100",
-      border: "border-blue-400",
-      text: "text-blue-900",
+      bg: "bg-gray-100",
+      border: "border-gray-300",
+      text: "text-gray-800",
     },
     placeholder: {
       bg: "bg-gray-50",
       border: "border-gray-300 border-dashed",
-      text: "text-gray-600",
+      text: "text-gray-500",
     },
   };
 
@@ -110,28 +110,34 @@ const PlanItem = ({ item, semesterKey }) => {
       : name
     : "Unknown Course";
 
-  // Status icon - simplified for cleaner look
-  const statusIcon = {
-    completed: "✓",
-    enrolled: "●",
-    planned: "○",
-    placeholder: "...",
-  };
-
-  // Drag indicator for draggable items
+  // Drag indicator for draggable items (only show on hover via group)
   const dragHandle = isDraggable ? (
-    <span className="text-[10px] text-gray-400 mr-1 select-none" title="Drag to move">
+    <span className="text-[10px] text-gray-400 mr-1 select-none opacity-0 group-hover:opacity-100 transition-opacity" title="Drag to move">
       ⠿
     </span>
   ) : null;
 
-  // Handle remove button click
+  // Handle remove button click with error handling
   const handleRemove = (e) => {
-    e.stopPropagation(); // Prevent drag from starting
+    e.stopPropagation();
     e.preventDefault();
+
     const itemId = id || courseId;
-    if (itemId && semesterKey) {
+
+    if (!itemId) {
+      console.warn("[PlanItem] Cannot remove: missing item ID");
+      return;
+    }
+
+    if (!semesterKey) {
+      console.warn("[PlanItem] Cannot remove: missing semester key");
+      return;
+    }
+
+    try {
       removeCourse(itemId, semesterKey, source || "wishlist");
+    } catch (error) {
+      console.error("[PlanItem] Failed to remove course:", error);
     }
   };
 
@@ -150,46 +156,36 @@ const PlanItem = ({ item, semesterKey }) => {
       ref={setNodeRef}
       style={style}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
-      className={`${statusStyle.bg} ${statusStyle.border} ${statusStyle.text} ${cursorClass} ${opacityClass} border rounded px-2 py-1.5 text-xs transition-all hover:shadow-sm select-none`}
+      className={`group ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text} ${cursorClass} ${opacityClass} border rounded px-2 py-1 text-xs transition-all hover:shadow-sm select-none`}
       title={`${name} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${
         isDraggable ? "\nDrag to move" : ""
       }`}
     >
-      {/* Top row: drag handle, name and icons */}
-      <div className="flex items-start justify-between gap-1">
+      {/* Course name with drag handle */}
+      <div className="flex items-center justify-between gap-1">
         <span className="font-medium leading-tight truncate flex-1 flex items-center">
           {dragHandle}
           {displayName}
         </span>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          {isRemovable && (
-            <button
-              onClick={handleRemove}
-              onPointerDown={(e) => e.stopPropagation()}
-              className="p-0.5 rounded hover:bg-red-200 text-gray-400 hover:text-red-600 transition-colors"
-              title="Remove from plan"
-            >
-              <XIcon className="w-3 h-3" />
-            </button>
-          )}
-          <span className="text-[10px] opacity-70" title={status}>
-            {statusIcon[styleKey]}
-          </span>
-        </div>
-      </div>
-
-      {/* Bottom row: credits and grade */}
-      <div className="flex items-center justify-between mt-0.5">
-        <span className="text-[10px] text-gray-600">{creditsDisplay} ECTS</span>
-        {(grade || gradeText) && (
-          <span className="text-[10px] font-semibold">{grade || gradeText}</span>
+        {isRemovable && (
+          <button
+            onClick={handleRemove}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="p-0.5 rounded hover:bg-red-200 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
+            title="Remove from plan"
+          >
+            <XIcon className="w-3 h-3" />
+          </button>
         )}
       </div>
 
-      {/* Source indicator - dev only */}
-      {source && import.meta.env.DEV && (
-        <div className="text-[8px] text-gray-400 mt-0.5 truncate">[{source}]</div>
-      )}
+      {/* Credits and grade on same line */}
+      <div className="flex items-center justify-between mt-0.5 text-[10px]">
+        <span className="text-gray-500">{creditsDisplay} ECTS</span>
+        {(grade || gradeText) && (
+          <span className="font-semibold">{grade || gradeText}</span>
+        )}
+      </div>
     </div>
   );
 };

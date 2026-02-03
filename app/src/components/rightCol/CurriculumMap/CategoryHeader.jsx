@@ -23,23 +23,16 @@ const CategoryHeader = ({
     earnedCredits = 0,
     plannedCredits = 0,
     isComplete,
-    isOverfilled,
   } = category;
 
-  // Calculate progress percentages
-  const targetCredits = maxCredits || minCredits || 1;
-  const earnedPercent = Math.min((earnedCredits / targetCredits) * 100, 100);
-  const plannedPercent = Math.min(
-    ((earnedCredits + plannedCredits) / targetCredits) * 100 - earnedPercent,
-    100 - earnedPercent
-  );
+  // Total credits for display
+  const totalCredits = earnedCredits + plannedCredits;
+  const targetCredits = maxCredits || minCredits || 0;
 
-  // Status indicators using HSG colors
-  const statusColor = isComplete
-    ? "bg-hsg-50 border-hsg-300"
-    : isOverfilled
-    ? "bg-amber-50 border-amber-300"
-    : "bg-stone-100 border-stone-200";
+  // Calculate fill percentage for visual progress
+  const fillPercentage = targetCredits > 0
+    ? Math.min(100, Math.round((totalCredits / targetCredits) * 100))
+    : 0;
 
   // Truncate long names
   const displayName = name.length > 22 ? name.substring(0, 20) + "..." : name;
@@ -51,106 +44,97 @@ const CategoryHeader = ({
 
   // Collapsed view - vertical name with expand button
   if (isCollapsed) {
-    // Get first few characters or abbreviation for collapsed view
     const abbreviation = name.length > 10 ? name.substring(0, 8) + "…" : name;
 
     return (
       <div
-        className={`${statusColor} border-b-2 flex flex-col items-center justify-between min-h-[85px] py-1 cursor-pointer hover:bg-stone-200 transition-colors ${roundedClasses}`}
+        className={`relative border-b border-gray-200 min-h-[70px] py-1 cursor-pointer overflow-hidden transition-colors ${roundedClasses}`}
+        style={{ backgroundColor: '#f9fafb' }}
         onClick={onToggleCollapse}
         title={`${name} (click to expand)`}
       >
-        {/* Vertical rotated name */}
+        {/* Progress fill background */}
         <div
-          className="text-[9px] font-medium text-gray-600 whitespace-nowrap overflow-hidden"
-          style={{
-            writingMode: "vertical-rl",
-            textOrientation: "mixed",
-            transform: "rotate(180deg)",
-            maxHeight: "60px",
-          }}
-        >
-          {abbreviation}
+          className={`absolute inset-y-0 left-0 transition-all duration-300 ${
+            isComplete ? 'bg-green-100' : 'bg-gray-200'
+          }`}
+          style={{ width: `${fillPercentage}%` }}
+        />
+
+        {/* Content layer */}
+        <div className="relative z-10 flex flex-col items-center justify-between h-full min-h-[62px]">
+          {/* Vertical rotated name */}
+          <div
+            className="text-[9px] font-medium text-gray-600 whitespace-nowrap overflow-hidden"
+            style={{
+              writingMode: "vertical-rl",
+              textOrientation: "mixed",
+              transform: "rotate(180deg)",
+              maxHeight: "50px",
+            }}
+          >
+            {abbreviation}
+          </div>
+
+          {/* Expand icon */}
+          <ChevronRightIcon className="w-3 h-3 text-gray-500" />
+
+          {/* Completion indicator via green dot */}
+          {isComplete && (
+            <div className="w-2 h-2 rounded-full bg-green-600" title="Complete" />
+          )}
         </div>
-
-        {/* Expand icon */}
-        <ChevronRightIcon className="w-3 h-3 text-gray-500" />
-
-        {/* Status indicator dot */}
-        {isComplete && (
-          <div className="w-2 h-2 rounded-full bg-hsg-600" title="Complete" />
-        )}
       </div>
     );
   }
 
-  // Expanded view (normal)
+  // Expanded view with fill progress indicator
   return (
     <div
-      className={`p-2 ${statusColor} border-b-2 flex flex-col justify-between min-h-[85px] ${roundedClasses}`}
+      className={`relative p-2 border-b border-gray-200 flex flex-col justify-between min-h-[70px] overflow-hidden ${roundedClasses}`}
+      style={{ backgroundColor: '#f9fafb' }}
       title={name}
     >
-      {/* Header row with name and collapse button */}
-      <div className="flex items-start justify-between gap-1">
-        <div className="text-xs font-semibold text-gray-800 leading-tight flex-1">
-          {displayName}
+      {/* Progress fill background */}
+      <div
+        className={`absolute inset-y-0 left-0 transition-all duration-300 ${
+          isComplete ? 'bg-green-200' : 'bg-gray-200'
+        }`}
+        style={{ width: `${fillPercentage}%` }}
+      />
+
+      {/* Content layer */}
+      <div className="relative z-10 flex flex-col justify-between h-full">
+        {/* Header row with name and collapse button */}
+        <div className="flex items-start justify-between gap-1">
+          <div className="text-xs font-semibold text-gray-800 leading-tight flex-1">
+            {displayName}
+          </div>
+          <button
+            onClick={onToggleCollapse}
+            className="p-0.5 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
+            title="Collapse column"
+          >
+            <ChevronLeftIcon className="w-3 h-3 text-gray-500" />
+          </button>
         </div>
-        <button
-          onClick={onToggleCollapse}
-          className="p-0.5 hover:bg-stone-200 rounded transition-colors flex-shrink-0"
-          title="Collapse column"
-        >
-          <ChevronLeftIcon className="w-3 h-3 text-gray-500" />
-        </button>
-      </div>
 
-      {/* Credit info */}
-      <div className="text-[10px] mb-1.5">
-        <span className="font-medium text-hsg-700">{earnedCredits}</span>
-        {plannedCredits > 0 && (
-          <span className="text-blue-600 font-medium">+{plannedCredits}</span>
-        )}
-        <span className="text-gray-500">
-          {" / "}
-          {minCredits === maxCredits ? (
-            <>{maxCredits}</>
-          ) : (
-            <>
-              {minCredits}-{maxCredits}
-            </>
+        {/* Credit info - simplified X/Y ECTS format */}
+        <div className="flex items-center justify-between mt-auto">
+          <div className="text-[10px] text-gray-700">
+            <span className={isComplete ? "font-semibold text-green-700" : "font-medium"}>
+              {totalCredits}
+            </span>
+            <span className="text-gray-500">
+              {" / "}
+              {targetCredits > 0 ? targetCredits : "?"}
+            </span>
+            <span className="text-gray-500 ml-0.5">ECTS</span>
+          </div>
+          {isComplete && (
+            <div className="w-2 h-2 rounded-full bg-green-600" title="Complete" />
           )}
-          <span className="text-[9px] ml-0.5">ECTS</span>
-        </span>
-      </div>
-
-      {/* Mini progress bar */}
-      <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        {/* Earned segment */}
-        <div
-          className="h-full bg-hsg-600 float-left transition-all duration-300"
-          style={{ width: `${earnedPercent}%` }}
-        />
-        {/* Planned segment */}
-        {plannedCredits > 0 && (
-          <div
-            className="h-full bg-blue-400 float-left transition-all duration-300"
-            style={{ width: `${plannedPercent}%` }}
-          />
-        )}
-      </div>
-
-      {/* Status icons */}
-      <div className="flex justify-end mt-1">
-        {isComplete && (
-          <span className="text-hsg-700 text-xs font-bold" title="Requirement fulfilled">
-            ✓
-          </span>
-        )}
-        {isOverfilled && !isComplete && (
-          <span className="text-amber-600 text-xs" title="Exceeds maximum">
-            !
-          </span>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -171,6 +155,13 @@ CategoryHeader.propTypes = {
   isLast: PropTypes.bool,
   isCollapsed: PropTypes.bool,
   onToggleCollapse: PropTypes.func,
+};
+
+CategoryHeader.defaultProps = {
+  isFirst: false,
+  isLast: false,
+  isCollapsed: false,
+  onToggleCollapse: () => {},
 };
 
 export default CategoryHeader;

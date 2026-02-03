@@ -29,75 +29,56 @@ const ProgramHeader = ({ program }) => {
 
   return (
     <div className="space-y-3">
-      {/* Title and stats row */}
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="text-xl font-bold text-gray-900">{name}</h1>
-        <div className="text-sm text-gray-600">
-          <span className="font-semibold text-hsg-700">{totalEarned}</span>
-          {totalPlanned > 0 && (
-            <>
-              {" + "}
-              <span className="font-semibold text-blue-600">{totalPlanned}</span>
-              <span className="text-gray-500"> planned</span>
-            </>
-          )}
-          {" / "}
-          <span className="font-semibold">{totalRequired}</span>
-          <span className="text-gray-500"> ECTS</span>
-          <span className="ml-2 text-gray-400">({completionPercentage}%)</span>
-        </div>
+      {/* Title - matches StudyOverview header style */}
+      <div className="py-2 pl-2 text-xl font-bold bg-gray-100 rounded">
+        {name}
       </div>
 
-      {/* Progress bar */}
-      <div className="relative">
-        <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+      {/* Progress section */}
+      <div className="px-2">
+        {/* Credits summary */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-sm text-gray-600">
+            <span className="font-semibold text-green-700">{totalEarned}</span>
+            {totalPlanned > 0 && (
+              <>
+                <span className="text-gray-400"> + </span>
+                <span className="font-semibold text-gray-500">{totalPlanned}</span>
+                <span className="text-gray-400"> planned</span>
+              </>
+            )}
+            <span className="text-gray-400"> / </span>
+            <span className="font-semibold">{totalRequired}</span>
+            <span className="text-gray-500"> ECTS</span>
+          </div>
+          <span className="text-sm font-medium text-gray-500">{completionPercentage}%</span>
+        </div>
+
+        {/* Progress bar - simplified without milestone markers */}
+        <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden flex">
           {/* Earned (completed) segment */}
           <div
-            className="absolute h-full bg-hsg-600 rounded-l-full transition-all duration-500"
+            className="h-full bg-green-600 transition-all duration-500"
             style={{ width: `${earnedPercent}%` }}
             title={`${totalEarned} ECTS completed`}
           />
           {/* Planned segment */}
           {totalPlanned > 0 && (
             <div
-              className="absolute h-full bg-blue-400 transition-all duration-500"
-              style={{
-                left: `${earnedPercent}%`,
-                width: `${plannedPercent}%`,
-              }}
+              className="h-full bg-gray-400 transition-all duration-500"
+              style={{ width: `${plannedPercent}%` }}
               title={`${totalPlanned} ECTS planned`}
             />
           )}
         </div>
 
-        {/* Milestone markers */}
-        <div className="absolute top-0 h-3 w-full pointer-events-none">
-          {/* 50% marker */}
-          <div
-            className="absolute h-full w-px bg-gray-400/50"
-            style={{ left: "50%" }}
-          />
-          {/* 100% marker */}
-          <div
-            className="absolute h-full w-px bg-gray-500"
-            style={{ left: "100%" }}
-          />
-        </div>
+        {/* Completion status */}
+        {estimatedCompletion === "Completed" && (
+          <div className="text-xs text-green-700 font-medium mt-2">
+            All requirements completed
+          </div>
+        )}
       </div>
-
-      {/* Estimated completion */}
-      {estimatedCompletion && estimatedCompletion !== "Completed" && (
-        <div className="text-xs text-gray-500">
-          Estimated completion:{" "}
-          <span className="font-medium text-gray-700">{estimatedCompletion}</span>
-        </div>
-      )}
-      {estimatedCompletion === "Completed" && (
-        <div className="text-xs text-hsg-700 font-medium flex items-center gap-1">
-          <span>✓</span>
-          <span>All requirements completed</span>
-        </div>
-      )}
     </div>
   );
 };

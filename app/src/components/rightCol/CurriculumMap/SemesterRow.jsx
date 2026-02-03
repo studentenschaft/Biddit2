@@ -11,27 +11,25 @@ import PropTypes from "prop-types";
 const SemesterRow = ({ semester, isLast }) => {
   const { key, status, totalCredits, plannedCredits } = semester;
 
-  // Status-based styling using HSG colors
+  // Status-based styling using unified green theme
+  // Using full opacity for WCAG contrast compliance
   const statusStyles = {
     completed: {
-      bg: "bg-hsg-50",
-      border: "border-l-hsg-600",
-      icon: "✓",
-      iconColor: "text-hsg-700",
+      bg: "bg-green-50",
+      border: "border-l-green-600",
+      textColor: "text-green-700",
       label: "Completed",
     },
     current: {
       bg: "bg-amber-50",
       border: "border-l-amber-500",
-      icon: "●",
-      iconColor: "text-amber-600",
+      textColor: "text-amber-700",
       label: "Current",
     },
     future: {
       bg: "bg-gray-50",
       border: "border-l-gray-300",
-      icon: "○",
-      iconColor: "text-gray-400",
+      textColor: "text-gray-600",
       label: "Planned",
     },
   };
@@ -43,35 +41,27 @@ const SemesterRow = ({ semester, isLast }) => {
 
   return (
     <div
-      className={`${style.bg} ${style.border} ${roundedClass} border-l-4 p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[75px]`}
+      className={`${style.bg} ${style.border} ${roundedClass} border-l-4 p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-200`}
     >
-      {/* Semester key and status icon */}
-      <div className="flex items-center gap-1.5">
-        <span className="font-bold text-sm text-gray-800">{key}</span>
-        <span
-          className={`${style.iconColor} text-xs`}
-          title={style.label}
-        >
-          {style.icon}
-        </span>
-      </div>
+      {/* Semester key */}
+      <div className="font-bold text-sm text-gray-800">{key}</div>
 
       {/* Credit summary */}
-      <div className="text-[10px] text-gray-600 mt-0.5">
+      <div className="text-[10px] text-gray-700 mt-0.5">
         {totalCredits > 0 ? (
           <>
-            <span className="font-semibold">{totalCredits}</span>
+            <span className={`font-semibold ${style.textColor}`}>{totalCredits}</span>
             <span className="text-gray-500 ml-0.5">ECTS</span>
           </>
         ) : (
-          <span className="text-gray-400 italic">No courses</span>
+          <span className="text-gray-500">—</span>
         )}
       </div>
 
-      {/* Breakdown for non-completed semesters */}
+      {/* Planned credits indicator for non-completed semesters */}
       {status !== "completed" && plannedCredits > 0 && (
-        <div className="text-[9px] text-blue-600 mt-0.5">
-          {plannedCredits} planned
+        <div className="text-[9px] text-gray-500 mt-0.5">
+          +{plannedCredits} planned
         </div>
       )}
     </div>

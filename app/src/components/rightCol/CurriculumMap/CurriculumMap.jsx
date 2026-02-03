@@ -55,9 +55,9 @@ const CurriculumMap = () => {
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-pulse">
-              <div className="h-8 bg-stone-200 rounded w-64 mx-auto mb-4"></div>
-              <div className="h-4 bg-stone-200 rounded w-48 mx-auto mb-2"></div>
-              <div className="h-4 bg-stone-200 rounded w-56 mx-auto"></div>
+              <div className="h-8 bg-gray-200 rounded w-64 mx-auto mb-4"></div>
+              <div className="h-4 bg-gray-200 rounded w-48 mx-auto mb-2"></div>
+              <div className="h-4 bg-gray-200 rounded w-56 mx-auto"></div>
             </div>
             <LoadingText>Loading curriculum data...</LoadingText>
           </div>
@@ -90,7 +90,7 @@ const CurriculumMap = () => {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header with program info and progress */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-stone-200 bg-white">
+      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
         <ProgramHeader program={curriculumData.program} />
       </div>
 
@@ -106,7 +106,7 @@ const CurriculumMap = () => {
       </div>
 
       {/* Legend at bottom */}
-      <div className="flex-shrink-0 border-t border-stone-200 bg-stone-50">
+      <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
         <CategoryLegend />
       </div>
     </div>

@@ -21,6 +21,7 @@ const PlanCell = ({
   isLastRow,
   isLastCol,
   isCollapsed,
+  isCategoryComplete,
 }) => {
   // Completed semesters cannot be drop targets
   const canDrop = semesterStatus !== "completed";
@@ -36,41 +37,57 @@ const PlanCell = ({
     disabled: !canDrop,
   });
 
-  // Cell background based on semester status (HSG colors)
-  const statusBg = {
-    completed: "bg-hsg-50/50",
-    current: "bg-amber-50/50",
-    future: "bg-white",
+  // Cell background based on category completion (column-wide) or semester status (row)
+  // Category completion takes precedence for visual feedback
+  const getCellBackground = () => {
+    if (isCategoryComplete) {
+      return "bg-green-100"; // Column-wide green when category requirements met
+    }
+    // Fall back to semester status colors
+    const statusBg = {
+      completed: "bg-green-50",
+      current: "bg-amber-50",
+      future: "bg-white",
+    };
+    return statusBg[semesterStatus] || "bg-white";
   };
+  const cellBackground = getCellBackground();
 
   const hasConflicts = validations?.conflicts?.length > 0;
   const hasWarnings = validations?.warnings?.length > 0;
 
-  // Visual feedback for drag-over states
+  // Visual feedback for drag-over states (uses ring to layer on top of border)
   const getDragOverClasses = () => {
     if (!isOver || !active) return "";
 
     if (canDrop) {
       // Valid drop target - green highlight
-      return "ring-2 ring-hsg-500 bg-hsg-50/50";
+      return "ring-2 ring-green-500 ring-inset bg-green-100";
     } else {
       // Invalid drop target (completed semester) - red highlight
-      return "ring-2 ring-red-400 bg-red-50/30";
+      return "ring-2 ring-red-400 ring-inset bg-red-50";
     }
   };
 
-  // Border styling for validation issues
-  const borderClass = hasConflicts
-    ? "border-red-400 border-2"
-    : hasWarnings
-    ? "border-amber-400 border-2"
-    : "border-stone-200 border";
+  // Validation styling - uses ring-inset to compose with drag-over feedback
+  const getValidationClasses = () => {
+    if (hasConflicts) return "ring-2 ring-red-400 ring-inset";
+    if (hasWarnings) return "ring-2 ring-amber-400 ring-inset";
+    return "";
+  };
+
+  // Base border for cell structure
+  const borderClass = "border border-gray-200";
+  const validationClass = getValidationClasses();
 
   // Border radius for bottom-right corner
   const roundedClass = isLastRow && isLastCol ? "rounded-br-lg" : "";
 
-  // Drag-over visual feedback
+  // Drag-over visual feedback (takes precedence over validation styling)
   const dragOverClass = getDragOverClasses();
+
+  // Combined ring class: drag-over takes precedence, otherwise show validation
+  const ringClass = dragOverClass || validationClass;
 
   // Collapsed view - show just a count badge
   if (isCollapsed) {
@@ -80,7 +97,7 @@ const PlanCell = ({
     return (
       <div
         ref={setNodeRef}
-        className={`${statusBg[semesterStatus] || "bg-white"} ${borderClass} ${roundedClass} ${dragOverClass} p-1 min-h-[75px] flex flex-col items-center justify-center transition-colors`}
+        className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} p-1 min-h-[75px] flex flex-col items-center justify-center transition-colors`}
         data-semester={semesterKey}
         data-category={categoryPath}
         title={`${courseCount} course${courseCount !== 1 ? "s" : ""}, ${totalCredits} ECTS`}
@@ -100,7 +117,7 @@ const PlanCell = ({
   return (
     <div
       ref={setNodeRef}
-      className={`${statusBg[semesterStatus] || "bg-white"} ${borderClass} ${roundedClass} ${dragOverClass} p-1.5 min-h-[75px] flex flex-col gap-1 transition-colors`}
+      className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} p-1.5 min-h-[75px] flex flex-col gap-1 transition-colors`}
       data-semester={semesterKey}
       data-category={categoryPath}
     >
@@ -164,6 +181,7 @@ PlanCell.propTypes = {
   isLastRow: PropTypes.bool,
   isLastCol: PropTypes.bool,
   isCollapsed: PropTypes.bool,
+  isCategoryComplete: PropTypes.bool,
 };
 
 export default PlanCell;

@@ -6,11 +6,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
+import { RecoilRoot } from 'recoil';
 import PlanItem from '../PlanItem';
 
-// Wrapper to provide DndContext
-const DndWrapper = ({ children }) => (
-  <DndContext>{children}</DndContext>
+// Wrapper to provide DndContext and RecoilRoot
+const TestWrapper = ({ children }) => (
+  <RecoilRoot>
+    <DndContext>{children}</DndContext>
+  </RecoilRoot>
 );
 
 describe('PlanItem', () => {
@@ -29,9 +32,9 @@ describe('PlanItem', () => {
   describe('rendering', () => {
     it('renders course name and credits', () => {
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={defaultItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       expect(screen.getByText('Introduction to Testing')).toBeInTheDocument();
@@ -45,9 +48,9 @@ describe('PlanItem', () => {
       };
 
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={longNameItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       // Name should be truncated to 26 chars + "..."
@@ -63,9 +66,9 @@ describe('PlanItem', () => {
       };
 
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={gradedItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       expect(screen.getByText('5.5')).toBeInTheDocument();
@@ -78,9 +81,9 @@ describe('PlanItem', () => {
       };
 
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={decimalCreditsItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       expect(screen.getByText('4.5 ECTS')).toBeInTheDocument();
@@ -96,14 +99,14 @@ describe('PlanItem', () => {
       };
 
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={completedItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-hsg-100');
-      expect(itemDiv).toHaveClass('border-hsg-600');
+      expect(itemDiv).toHaveClass('bg-green-100');
+      expect(itemDiv).toHaveClass('border-green-600');
     });
 
     it('applies enrolled styling for enrolled courses', () => {
@@ -113,26 +116,26 @@ describe('PlanItem', () => {
       };
 
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={enrolledItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-amber-100');
-      expect(itemDiv).toHaveClass('border-amber-500');
+      expect(itemDiv).toHaveClass('bg-green-50');
+      expect(itemDiv).toHaveClass('border-green-400');
     });
 
     it('applies planned styling for planned courses', () => {
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={defaultItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-blue-100');
-      expect(itemDiv).toHaveClass('border-blue-400');
+      expect(itemDiv).toHaveClass('bg-gray-100');
+      expect(itemDiv).toHaveClass('border-gray-300');
     });
 
     it('applies placeholder styling for placeholders', () => {
@@ -143,9 +146,9 @@ describe('PlanItem', () => {
       };
 
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={placeholderItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
@@ -157,9 +160,9 @@ describe('PlanItem', () => {
   describe('draggability', () => {
     it('shows grab cursor for planned items', () => {
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={defaultItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
@@ -174,9 +177,9 @@ describe('PlanItem', () => {
       };
 
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={completedItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
@@ -190,9 +193,9 @@ describe('PlanItem', () => {
       };
 
       const { container } = render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={enrolledItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       const itemDiv = container.firstChild;
@@ -201,9 +204,9 @@ describe('PlanItem', () => {
 
     it('shows drag handle for draggable items', () => {
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={defaultItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       // Drag handle indicator (⠿) should be present
@@ -218,70 +221,33 @@ describe('PlanItem', () => {
       };
 
       render(
-        <DndWrapper>
+        <TestWrapper>
           <PlanItem item={completedItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
       expect(screen.queryByText('⠿')).not.toBeInTheDocument();
     });
   });
 
-  describe('status icons', () => {
-    it('shows checkmark for completed items', () => {
+  describe('visual styling', () => {
+    it('uses color-based status indication instead of icons', () => {
       const completedItem = {
         ...defaultItem,
         status: 'completed',
         isCompleted: true,
       };
 
-      render(
-        <DndWrapper>
+      const { container } = render(
+        <TestWrapper>
           <PlanItem item={completedItem} semesterKey="FS26" />
-        </DndWrapper>
+        </TestWrapper>
       );
 
-      expect(screen.getByText('✓')).toBeInTheDocument();
-    });
-
-    it('shows filled circle for enrolled items', () => {
-      const enrolledItem = {
-        ...defaultItem,
-        status: 'enrolled',
-      };
-
-      render(
-        <DndWrapper>
-          <PlanItem item={enrolledItem} semesterKey="FS26" />
-        </DndWrapper>
-      );
-
-      expect(screen.getByText('●')).toBeInTheDocument();
-    });
-
-    it('shows empty circle for planned items', () => {
-      render(
-        <DndWrapper>
-          <PlanItem item={defaultItem} semesterKey="FS26" />
-        </DndWrapper>
-      );
-
-      expect(screen.getByText('○')).toBeInTheDocument();
-    });
-
-    it('shows ellipsis for placeholder items', () => {
-      const placeholderItem = {
-        ...defaultItem,
-        isPlaceholder: true,
-      };
-
-      render(
-        <DndWrapper>
-          <PlanItem item={placeholderItem} semesterKey="FS26" />
-        </DndWrapper>
-      );
-
-      expect(screen.getByText('...')).toBeInTheDocument();
+      // Status is indicated through colors, not icons
+      const itemDiv = container.firstChild;
+      expect(itemDiv).toHaveClass('bg-green-100');
+      expect(itemDiv).toHaveClass('border-green-600');
     });
   });
 });
