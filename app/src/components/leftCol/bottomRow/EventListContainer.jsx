@@ -26,6 +26,10 @@ import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
 
+// DnD Kit for drag-and-drop to CurriculumMap
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+
 // Simplified data management hooks
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
@@ -198,45 +202,70 @@ export default function EventListContainer({
   });
 
   // Row renderer - simplified to use only filtered courses
-  const Row = ({ index, style }) => {
-    const event = filteredCourses[index];
+  // Now includes drag capability for CurriculumMap integration
+  const Row = ({ index, style, data }) => {
+    const event = data.filteredCourses[index];
+    const courseId = event?.courseNumber || event?.id || `row-${index}`;
 
+    // useDraggable hook for drag-and-drop (must be called unconditionally)
+    const { attributes, listeners, setNodeRef, transform, isDragging } =
+      useDraggable({
+        id: `eventlist-${courseId}`,
+        data: {
+          type: "eventlist-course",
+          course: event,
+          semesterKey: data.selectedSemesterShortName,
+        },
+        disabled: !event, // Disable dragging if no event
+      });
+
+    // Early return after hooks
     if (!event) {
       return null;
     }
 
+    // Apply transform during drag
+    const dragStyle = transform
+      ? { transform: CSS.Translate.toString(transform) }
+      : {};
+
     const isSelected = isEventOrNestedCourseSelected(event);
 
     // For projected semesters, we should not show any enrolled courses as locked
-    const isEnrolled = event.enrolled && !selectedSemester?.isProjected;
+    const isEnrolled = event.enrolled && !data.selectedSemester?.isProjected;
 
     // For projected semesters, check if course was previously enrolled (for visual indication)
     const wasPreviouslyEnrolled =
-      event.enrolled && selectedSemester?.isProjected;
+      event.enrolled && data.selectedSemester?.isProjected;
 
     return (
       <div
+        ref={setNodeRef}
         key={index}
-        className="flex w-full h-full overflow-visible pb-2.5"
-        style={style}
+        className={`flex w-full h-full overflow-visible pb-2.5 ${
+          isDragging ? "opacity-50" : ""
+        }`}
+        style={{ ...style, ...dragStyle }}
         title={
           wasPreviouslyEnrolled
             ? "This course was enrolled in a previous semester and probably should not be taken again unless retaking"
             : ""
         }
       >
-        {/* Course Info */}
+        {/* Course Info - draggable area */}
         <div
+          {...listeners}
+          {...attributes}
           onClick={() => {
-            updateSelectedCourseInfo(event);
-            setSelectedTabState(0);
-            setIsLeftViewVisibleState(false);
+            data.updateSelectedCourseInfo(event);
+            data.setSelectedTabState(0);
+            data.setIsLeftViewVisibleState(false);
           }}
-          className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition duration-500 ease-in-out ${
+          className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-grab hover:shadow-md transition duration-500 ease-in-out ${
             wasPreviouslyEnrolled
               ? "bg-gray-100 text-gray-500"
               : "bg-white text-gray-800"
-          }`}
+          } ${isDragging ? "cursor-grabbing" : ""}`}
         >
           <div className="pb-2 font-semibold">
             <p className="truncate">
@@ -269,7 +298,7 @@ export default function EventListContainer({
         {/* Add/Remove Button */}
         <button
           id="select_course"
-          onClick={() => addOrRemoveCourse(event)}
+          onClick={() => data.addOrRemoveCourse(event)}
           disabled={isEnrolled}
           data-tooltip-id={isEnrolled ? "enrolled-tooltip" : undefined}
           data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
@@ -293,7 +322,7 @@ export default function EventListContainer({
             <LockOpen
               clg="w-6 h-6 "
               event={event}
-              selectedCourseIds={selectedCourseIds}
+              selectedCourseIds={data.selectedCourseIds}
               setSelectedCourseIds={null} // Not needed anymore
             />
           ) : (
@@ -311,6 +340,7 @@ export default function EventListContainer({
   Row.propTypes = {
     index: PropTypes.number.isRequired,
     style: PropTypes.object.isRequired,
+    data: PropTypes.object.isRequired,
   };
 
   const LoadingRow = ({ style }) => (
@@ -339,6 +369,18 @@ export default function EventListContainer({
     style: PropTypes.object.isRequired,
   };
 
+  // Prepare itemData for Row component (includes all needed callbacks and state)
+  const itemData = {
+    filteredCourses,
+    selectedSemesterShortName,
+    selectedSemester,
+    selectedCourseIds,
+    updateSelectedCourseInfo,
+    setSelectedTabState,
+    setIsLeftViewVisibleState,
+    addOrRemoveCourse,
+  };
+
   return (
     <Suspense
       fallback={<LoadingText>Loading your data from unisg.ch...</LoadingText>}
@@ -351,15 +393,16 @@ export default function EventListContainer({
             itemCount={isLoading ? 1 : filteredCourses?.length || 1}
             itemSize={75}
             width={width}
+            itemData={itemData}
           >
-            {({ index, style }) => {
+            {({ index, style, data }) => {
               if (isLoading) {
                 return <LoadingRow style={style} />;
               }
               if (!filteredCourses || filteredCourses.length === 0) {
                 return <NoCoursesRow style={style} />;
               }
-              return <Row index={index} style={style} />;
+              return <Row index={index} style={style} data={data} />;
             }}
           </FixedSizeList>
         )}

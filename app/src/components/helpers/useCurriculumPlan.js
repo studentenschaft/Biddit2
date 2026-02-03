@@ -1,0 +1,337 @@
+import { useCallback } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  curriculumPlanState,
+  createCoursePlanItem,
+  compareSemesters,
+} from "../recoil/curriculumPlanAtom";
+import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
+import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+
+/**
+ * Check if a stored course matches a given courseId.
+ * Handles inconsistent ID field usage across the codebase.
+ */
+const courseMatchesId = (storedCourse, courseId) => {
+  if (!storedCourse || !courseId) return false;
+  const storedId = storedCourse.id || storedCourse.courseNumber || storedCourse.courseId;
+  return storedId === courseId;
+};
+
+/**
+ * useCurriculumPlan Hook
+ *
+ * Manages curriculum plan state operations for the Curriculum Map.
+ * Handles the distinction between:
+ * - Current/next semester: Updates localSelectedCoursesSemKeyState (syncs to backend)
+ * - Future semesters: Updates curriculumPlanState (local-only)
+ *
+ * Key operations:
+ * - moveCourse: Move a course between semester/category cells
+ * - addCourse: Add a course from CoursePicker to the grid
+ * - removeCourse: Remove a course from the plan
+ */
+export const useCurriculumPlan = () => {
+  const [, setCurriculumPlan] = useRecoilState(curriculumPlanState);
+  const [, setLocalSelectedCourses] = useRecoilState(
+    localSelectedCoursesSemKeyState
+  );
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
+
+  /**
+   * Determine if a semester is "current or next" (eligible for wishlist sync)
+   * vs "future" (local plan only)
+   */
+  const isSemesterSyncable = useCallback((semesterKey) => {
+    const now = new Date();
+    const currentYear = now.getFullYear() % 100;
+    const currentMonth = now.getMonth();
+
+    // Determine current semester
+    const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+    const currentSemYear =
+      isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+    const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
+
+    // Determine next semester
+    const nextSemType = isCurrentlyHS ? "FS" : "HS";
+    const nextSemYear = isCurrentlyHS ? currentSemYear + 1 : currentSemYear;
+    const nextSemKey = `${nextSemType}${nextSemYear}`;
+
+    // Syncable if it's current or next semester
+    return semesterKey === currentSemKey || semesterKey === nextSemKey;
+  }, []);
+
+  /**
+   * Get the current semester key
+   */
+  const getCurrentSemesterKey = useCallback(() => {
+    const now = new Date();
+    const currentYear = now.getFullYear() % 100;
+    const currentMonth = now.getMonth();
+    const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+    const currentSemYear =
+      isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+    return `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
+  }, []);
+
+  /**
+   * Check if a semester is in the past (completed)
+   */
+  const isSemesterCompleted = useCallback(
+    (semesterKey) => {
+      const currentKey = getCurrentSemesterKey();
+      return compareSemesters(semesterKey, currentKey) < 0;
+    },
+    [getCurrentSemesterKey]
+  );
+
+  /**
+   * Move a course from one cell to another
+   *
+   * @param {string} courseId - The course ID to move
+   * @param {string} fromSemester - Source semester key
+   * @param {string} toSemester - Target semester key
+   * @param {string} toCategoryPath - Target category path
+   * @param {string} source - Where the course came from ("wishlist" | "plan")
+   * @returns {boolean} - Whether the move was successful
+   */
+  const moveCourse = useCallback(
+    (courseId, fromSemester, toSemester, toCategoryPath, source) => {
+      // Prevent moves to completed semesters
+      if (isSemesterCompleted(toSemester)) {
+        console.warn("[useCurriculumPlan] Cannot move to completed semester");
+        return false;
+      }
+
+      const toIsSyncable = isSemesterSyncable(toSemester);
+      const fromIsSyncable = isSemesterSyncable(fromSemester);
+      const isSameSemester = fromSemester === toSemester;
+
+      // Get full course data for enrichment
+      const availableCourses =
+        unifiedCourseData.semesters?.[fromSemester]?.available || [];
+      const courseData = availableCourses.find(
+        (c) => c.courseNumber === courseId || c.id === courseId
+      );
+
+      // Same-semester category move: just update categoryPath
+      if (isSameSemester) {
+        if (source === "wishlist" || fromIsSyncable) {
+          setLocalSelectedCourses((prev) => {
+            const semesterCourses = prev[fromSemester] || [];
+            return {
+              ...prev,
+              [fromSemester]: semesterCourses.map((c) =>
+                courseMatchesId(c, courseId)
+                  ? { ...c, categoryPath: toCategoryPath }
+                  : c
+              ),
+            };
+          });
+        } else {
+          setCurriculumPlan((prev) => ({
+            ...prev,
+            plannedItems: {
+              ...prev.plannedItems,
+              [fromSemester]: (prev.plannedItems[fromSemester] || []).map(
+                (item) =>
+                  item.courseId === courseId
+                    ? { ...item, categoryPath: toCategoryPath }
+                    : item
+              ),
+            },
+          }));
+        }
+        return true;
+      }
+
+      // Cross-semester move: remove from source and add to destination
+      // Remove from source
+      if (source === "wishlist" || fromIsSyncable) {
+        setLocalSelectedCourses((prev) => {
+          const semesterCourses = prev[fromSemester] || [];
+          return {
+            ...prev,
+            [fromSemester]: semesterCourses.filter(
+              (c) => !courseMatchesId(c, courseId)
+            ),
+          };
+        });
+      } else {
+        // Remove from curriculum plan
+        setCurriculumPlan((prev) => ({
+          ...prev,
+          plannedItems: {
+            ...prev.plannedItems,
+            [fromSemester]: (prev.plannedItems[fromSemester] || []).filter(
+              (item) => item.courseId !== courseId
+            ),
+          },
+        }));
+      }
+
+      // Add to destination
+      if (toIsSyncable) {
+        // Add to wishlist (localSelectedCoursesSemKey)
+        setLocalSelectedCourses((prev) => {
+          const semesterCourses = prev[toSemester] || [];
+          // Avoid duplicates using normalized ID matching
+          if (semesterCourses.some((c) => courseMatchesId(c, courseId))) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [toSemester]: [
+              ...semesterCourses,
+              {
+                id: courseId,
+                courseNumber: courseId,
+                shortName: courseData?.shortName || courseId,
+                credits: courseData?.credits,
+                classification: courseData?.classification,
+                calendarEntry: courseData?.calendarEntry,
+                categoryPath: toCategoryPath, // Store category path for correct grid placement
+              },
+            ],
+          };
+        });
+      } else {
+        // Add to curriculum plan
+        setCurriculumPlan((prev) => ({
+          ...prev,
+          plannedItems: {
+            ...prev.plannedItems,
+            [toSemester]: [
+              ...(prev.plannedItems[toSemester] || []),
+              createCoursePlanItem(courseId, toCategoryPath),
+            ],
+          },
+        }));
+      }
+
+      return true;
+    },
+    [
+      isSemesterCompleted,
+      isSemesterSyncable,
+      unifiedCourseData,
+      setLocalSelectedCourses,
+      setCurriculumPlan,
+    ]
+  );
+
+  /**
+   * Add a course from CoursePicker to the grid
+   *
+   * @param {object} course - The course object from available courses
+   * @param {string} semesterKey - Target semester key
+   * @param {string} categoryPath - Target category path
+   * @returns {boolean} - Whether the add was successful
+   */
+  const addCourse = useCallback(
+    (course, semesterKey, categoryPath) => {
+      // Prevent adds to completed semesters
+      if (isSemesterCompleted(semesterKey)) {
+        console.warn("[useCurriculumPlan] Cannot add to completed semester");
+        return false;
+      }
+
+      const courseId = course.courseNumber || course.id;
+      const isSyncable = isSemesterSyncable(semesterKey);
+
+      if (isSyncable) {
+        // Add to wishlist
+        setLocalSelectedCourses((prev) => {
+          const semesterCourses = prev[semesterKey] || [];
+          // Avoid duplicates using normalized ID matching
+          if (semesterCourses.some((c) => courseMatchesId(c, courseId))) {
+            return prev;
+          }
+          return {
+            ...prev,
+            [semesterKey]: [
+              ...semesterCourses,
+              {
+                id: courseId,
+                courseNumber: courseId,
+                shortName: course.shortName,
+                credits: course.credits,
+                classification: course.classification,
+                calendarEntry: course.calendarEntry,
+                categoryPath: categoryPath, // Store category path for correct grid placement
+              },
+            ],
+          };
+        });
+      } else {
+        // Add to curriculum plan
+        setCurriculumPlan((prev) => {
+          const existingItems = prev.plannedItems[semesterKey] || [];
+          // Avoid duplicates
+          if (existingItems.some((item) => item.courseId === courseId)) {
+            return prev;
+          }
+          return {
+            ...prev,
+            plannedItems: {
+              ...prev.plannedItems,
+              [semesterKey]: [
+                ...existingItems,
+                createCoursePlanItem(courseId, categoryPath),
+              ],
+            },
+          };
+        });
+      }
+
+      return true;
+    },
+    [isSemesterCompleted, isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan]
+  );
+
+  /**
+   * Remove a course from the plan
+   *
+   * @param {string} courseId - The course ID to remove
+   * @param {string} semesterKey - The semester to remove from
+   * @param {string} source - Where the course is ("wishlist" | "plan")
+   * @returns {boolean} - Whether the removal was successful
+   */
+  const removeCourse = useCallback(
+    (courseId, semesterKey, source) => {
+      if (source === "wishlist" || isSemesterSyncable(semesterKey)) {
+        setLocalSelectedCourses((prev) => ({
+          ...prev,
+          [semesterKey]: (prev[semesterKey] || []).filter(
+            (c) => !courseMatchesId(c, courseId)
+          ),
+        }));
+      } else {
+        setCurriculumPlan((prev) => ({
+          ...prev,
+          plannedItems: {
+            ...prev.plannedItems,
+            [semesterKey]: (prev.plannedItems[semesterKey] || []).filter(
+              (item) => item.courseId !== courseId
+            ),
+          },
+        }));
+      }
+
+      return true;
+    },
+    [isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan]
+  );
+
+  return {
+    moveCourse,
+    addCourse,
+    removeCourse,
+    isSemesterSyncable,
+    isSemesterCompleted,
+    getCurrentSemesterKey,
+  };
+};
+
+export default useCurriculumPlan;

@@ -1,0 +1,116 @@
+/**
+ * CurriculumMap.jsx
+ *
+ * Main container for the long-term curriculum planning view.
+ * Displays a 2D grid with semesters as rows and requirement categories as columns,
+ * showing completed, enrolled, and planned courses in their appropriate cells.
+ * Features nested/hierarchical category headers matching university curriculum structure.
+ *
+ * Drag-and-drop: DndContext is provided at the parent level (Biddit2.jsx) to enable
+ * cross-component dragging from EventListContainer to CurriculumMap.
+ */
+
+import { useRecoilValue } from "recoil";
+import { useState, useEffect } from "react";
+import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
+import { authTokenState } from "../../recoil/authAtom";
+import { useScorecardFetching } from "../../helpers/useScorecardFetching";
+import { useInitializeScoreCards } from "../../helpers/useInitializeScorecards";
+import { useErrorHandler } from "../../errorHandling/useErrorHandler";
+import LoadingText from "../../common/LoadingText";
+import CurriculumGrid from "./CurriculumGrid";
+import ProgramHeader from "./ProgramHeader";
+import CategoryLegend from "./CategoryLegend";
+
+const CurriculumMap = () => {
+  const curriculumData = useRecoilValue(curriculumMapSelector);
+  const authToken = useRecoilValue(authTokenState);
+  const scorecardFetching = useScorecardFetching();
+  const handleError = useErrorHandler();
+  const [fetchAttempted, setFetchAttempted] = useState(false);
+
+  // Initialize scorecard data
+  useInitializeScoreCards(handleError);
+
+  // Auto-fetch if needed
+  useEffect(() => {
+    const fetchIfNeeded = async () => {
+      if (!curriculumData.isLoaded && !fetchAttempted && authToken) {
+        setFetchAttempted(true);
+        try {
+          await scorecardFetching.fetchAll(authToken);
+        } catch (error) {
+          console.error("[CurriculumMap] Error fetching scorecard:", error);
+        }
+      }
+    };
+    fetchIfNeeded();
+  }, [curriculumData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
+
+  // Loading state
+  if (!curriculumData.isLoaded) {
+    return (
+      <div className="flex flex-col h-full px-6 py-4">
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Curriculum Map</h1>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-pulse">
+              <div className="h-8 bg-stone-200 rounded w-64 mx-auto mb-4"></div>
+              <div className="h-4 bg-stone-200 rounded w-48 mx-auto mb-2"></div>
+              <div className="h-4 bg-stone-200 rounded w-56 mx-auto"></div>
+            </div>
+            <LoadingText>Loading curriculum data...</LoadingText>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No program data
+  if (!curriculumData.program) {
+    return (
+      <div className="flex flex-col h-full px-6 py-4">
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">Curriculum Map</h1>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center py-8 bg-gradient-to-br from-hsg-50 to-blue-50 rounded-lg border border-hsg-200 max-w-md p-6">
+            <div className="text-5xl mb-4">📋</div>
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              No Academic Data Found
+            </h3>
+            <p className="text-gray-600">
+              Load your study data from the Study Overview tab to see your
+              curriculum map.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header with program info and progress */}
+      <div className="flex-shrink-0 px-6 py-4 border-b border-stone-200 bg-white">
+        <ProgramHeader program={curriculumData.program} />
+      </div>
+
+      {/* Main content area: grid (courses are dragged from EventListContainer) */}
+      <div className="flex-1 overflow-auto px-6 py-4">
+        <CurriculumGrid
+          categories={curriculumData.flatCategories}
+          categoryHierarchy={curriculumData.categoryHierarchy}
+          semesters={curriculumData.semesters}
+          coursesBySemesterAndCategory={curriculumData.coursesBySemesterAndCategory}
+          validations={curriculumData.validations}
+        />
+      </div>
+
+      {/* Legend at bottom */}
+      <div className="flex-shrink-0 border-t border-stone-200 bg-stone-50">
+        <CategoryLegend />
+      </div>
+    </div>
+  );
+};
+
+export default CurriculumMap;
