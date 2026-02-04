@@ -1,6 +1,6 @@
-import '@testing-library/jest-dom';
-import { server } from './mocks/server';
-import { resetErrorMode } from './mocks/handlers';
+import "@testing-library/jest-dom";
+import { server } from "./mocks/server";
+import { resetErrorMode } from "./mocks/handlers";
 
 /**
  * Global test setup for Vitest
@@ -10,7 +10,7 @@ import { resetErrorMode } from './mocks/handlers';
 // Start MSW server before all tests
 beforeAll(() => {
   server.listen({
-    onUnhandledRequest: 'warn',
+    onUnhandledRequest: "warn",
   });
 });
 
@@ -26,7 +26,7 @@ afterAll(() => {
 });
 
 // Mock navigator.onLine for offline testing
-Object.defineProperty(navigator, 'onLine', {
+Object.defineProperty(navigator, "onLine", {
   writable: true,
   value: true,
 });

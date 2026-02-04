@@ -87,9 +87,12 @@ export const AppStateProvider = ({ children }) => {
   return (
     <AppStateContext.Provider value={contextValue}>
       {children}
-      
+
       {/* Blocking modals - rendered at app root level */}
-      <OfflineModal isVisible={isOffline && !isSessionExpired} onRefresh={handleRefresh} />
+      <OfflineModal
+        isVisible={isOffline && !isSessionExpired}
+        onRefresh={handleRefresh}
+      />
       <SessionExpiredModal isVisible={isSessionExpired} />
     </AppStateContext.Provider>
   );

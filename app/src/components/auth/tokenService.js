@@ -17,7 +17,9 @@ export const addSessionEventListener = (callback) => {
 };
 
 const emitSessionEvent = (eventType, data = {}) => {
-  sessionEventListeners.forEach((callback) => callback({ type: eventType, ...data }));
+  sessionEventListeners.forEach((callback) =>
+    callback({ type: eventType, ...data }),
+  );
 };
 
 /**
@@ -54,24 +56,27 @@ export const getRefreshToken = async () => {
         emitSessionEvent("SESSION_EXPIRED");
         return null;
       }
-      
+
       // Handle BrowserAuthError (includes monitor_window_timeout, popup_window_error, etc.)
       // For these, try popup recovery since the session might still be valid
       if (silentError instanceof BrowserAuthError) {
-        console.warn("Browser auth error during silent acquisition:", silentError.errorCode);
+        console.warn(
+          "Browser auth error during silent acquisition:",
+          silentError.errorCode,
+        );
         return await attemptPopupRecovery();
       }
-      
+
       throw silentError;
     }
   } catch (error) {
     console.error("Failed to refresh token:", error);
     sessionDeathCount++;
-    
+
     if (sessionDeathCount >= MAX_SESSION_FAILURES) {
       emitSessionEvent("SESSION_EXPIRED");
     }
-    
+
     return null;
   }
 };
@@ -91,11 +96,11 @@ const attemptPopupRecovery = async () => {
   } catch (popupError) {
     console.warn("Popup recovery failed:", popupError);
     sessionDeathCount++;
-    
+
     if (sessionDeathCount >= MAX_SESSION_FAILURES) {
       emitSessionEvent("SESSION_EXPIRED");
     }
-    
+
     return null;
   }
 };
@@ -119,10 +124,14 @@ export const clearSessionAndRedirect = () => {
   accounts.forEach((account) => {
     msalInstance.setActiveAccount(null);
   });
-  
+
   // Clear all MSAL-related localStorage entries
   Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith("msal.") || key.includes("login.windows.net") || key.includes("login.microsoftonline.com")) {
+    if (
+      key.startsWith("msal.") ||
+      key.includes("login.windows.net") ||
+      key.includes("login.microsoftonline.com")
+    ) {
       localStorage.removeItem(key);
     }
   });

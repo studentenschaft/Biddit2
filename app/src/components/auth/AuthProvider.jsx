@@ -38,11 +38,14 @@ export const AuthProvider = ({ children }) => {
             scopes: apiScopes,
           });
           // Note: redirect will navigate away, so no token return here
-        } 
+        }
         // Handle BrowserAuthError (includes monitor_window_timeout)
         // This is for recovery when silent fails due to iframe issues - try popup first
         else if (error instanceof BrowserAuthError) {
-          console.warn("Browser auth error, trying popup recovery:", error.errorCode);
+          console.warn(
+            "Browser auth error, trying popup recovery:",
+            error.errorCode,
+          );
           try {
             const response = await msalInstance.acquireTokenPopup({
               scopes: apiScopes,
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     },
-    [setAuthToken]
+    [setAuthToken],
   );
 
   // Initialize MSAL instance once using shared initializer

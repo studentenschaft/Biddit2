@@ -1,11 +1,16 @@
 /**
  * MSW Server setup for Node.js test environment (Vitest)
- * 
+ *
  * This server is only used during tests, not in development or production.
  */
 
-import { setupServer } from 'msw/node';
-import { handlers, setErrorMode, resetErrorMode, ErrorSimulation } from './handlers';
+import { setupServer } from "msw/node";
+import {
+  handlers,
+  setErrorMode,
+  resetErrorMode,
+  ErrorSimulation,
+} from "./handlers";
 
 /**
  * Create MSW server with all handlers
@@ -22,7 +27,7 @@ export { setErrorMode, resetErrorMode, ErrorSimulation };
  */
 export const setupMswServer = () => {
   beforeAll(() => {
-    server.listen({ onUnhandledRequest: 'warn' });
+    server.listen({ onUnhandledRequest: "warn" });
   });
 
   afterEach(() => {

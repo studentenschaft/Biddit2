@@ -1,21 +1,21 @@
 // errorHandlingService.js
 
-import { toast } from 'react-toastify';
-import ErrorToast from './ErrorToast';
-import { v4 as uuidv4 } from 'uuid'; // Ensure uuid is installed
-import { sanitizeHeaders } from '../helpers/sanitizeHeaders';
+import { toast } from "react-toastify";
+import ErrorToast from "./ErrorToast";
+import { v4 as uuidv4 } from "uuid"; // Ensure uuid is installed
+import { sanitizeHeaders } from "../helpers/sanitizeHeaders";
 
 /**
  * Error classification types
  */
 const ErrorType = {
-  NETWORK: 'NETWORK',           // No internet connection
-  TIMEOUT: 'TIMEOUT',           // Request timeout
-  AUTH: 'AUTH',                 // Authentication errors (401, token issues)
-  SERVER: 'SERVER',             // Server errors (5xx)
-  CLIENT: 'CLIENT',             // Client errors (4xx except 401)
-  MSAL: 'MSAL',                 // MSAL/Azure AD errors
-  UNKNOWN: 'UNKNOWN',           // Unknown errors
+  NETWORK: "NETWORK", // No internet connection
+  TIMEOUT: "TIMEOUT", // Request timeout
+  AUTH: "AUTH", // Authentication errors (401, token issues)
+  SERVER: "SERVER", // Server errors (5xx)
+  CLIENT: "CLIENT", // Client errors (4xx except 401)
+  MSAL: "MSAL", // MSAL/Azure AD errors
+  UNKNOWN: "UNKNOWN", // Unknown errors
 };
 
 /**
@@ -26,10 +26,10 @@ const ErrorType = {
 const classifyError = (error) => {
   const statusCode = error.response?.status;
   const errorCode = error.code;
-  const errorMessage = error.message || '';
+  const errorMessage = error.message || "";
 
   // Network errors - handled by offline modal
-  if (errorCode === 'ERR_NETWORK' || error._isNetworkError) {
+  if (errorCode === "ERR_NETWORK" || error._isNetworkError) {
     return {
       type: ErrorType.NETWORK,
       isRecoverable: true,
@@ -39,12 +39,12 @@ const classifyError = (error) => {
 
   // MSAL/Authentication errors - check BEFORE timeout since MSAL errors may contain "timeout"
   if (
-    errorMessage.includes('monitor_window_timeout') ||
-    errorMessage.includes('popup_window_error') ||
-    errorMessage.includes('interaction_in_progress') ||
-    errorMessage.includes('Token acquisition') ||
-    error.name === 'BrowserAuthError' ||
-    error.name === 'InteractionRequiredAuthError'
+    errorMessage.includes("monitor_window_timeout") ||
+    errorMessage.includes("popup_window_error") ||
+    errorMessage.includes("interaction_in_progress") ||
+    errorMessage.includes("Token acquisition") ||
+    error.name === "BrowserAuthError" ||
+    error.name === "InteractionRequiredAuthError"
   ) {
     return {
       type: ErrorType.MSAL,
@@ -54,7 +54,11 @@ const classifyError = (error) => {
   }
 
   // Timeout errors - may be recoverable with retry (check AFTER MSAL)
-  if (errorCode === 'ECONNABORTED' || errorMessage.includes('timeout') || error._isTimeoutError) {
+  if (
+    errorCode === "ECONNABORTED" ||
+    errorMessage.includes("timeout") ||
+    error._isTimeoutError
+  ) {
     return {
       type: ErrorType.TIMEOUT,
       isRecoverable: !error._isMaxRetriesExceeded,
@@ -100,7 +104,10 @@ const classifyError = (error) => {
 export const errorHandlingService = {
   handleError: (error, user = null) => {
     const errorId = uuidv4();
-    const errorMessage = error.response?.data?.message || error.message || 'An unexpected error occurred';
+    const errorMessage =
+      error.response?.data?.message ||
+      error.message ||
+      "An unexpected error occurred";
     const statusCode = error.response?.status;
     const timestamp = new Date().toISOString();
 
@@ -129,7 +136,7 @@ export const errorHandlingService = {
     };
 
     // Always log the error for debugging
-    console.error('Caught error:', errorDetails);
+    console.error("Caught error:", errorDetails);
 
     // Only show toast for non-recoverable errors that should be shown
     if (classification.shouldShowToast) {
@@ -144,7 +151,9 @@ export const errorHandlingService = {
       });
     } else if (classification.isRecoverable) {
       // Log recoverable errors silently
-      console.log(`Recoverable error (${classification.type}): ${errorMessage}`);
+      console.log(
+        `Recoverable error (${classification.type}): ${errorMessage}`,
+      );
     }
 
     return classification;
@@ -162,14 +171,18 @@ export const errorHandlingService = {
   ErrorType,
 
   formatError: (error) => {
-    if (typeof error === 'string') {
+    if (typeof error === "string") {
       return error;
     } else if (error instanceof Error) {
-      return JSON.stringify({
-        name: error.name,
-        message: error.message,
-        stack: error.stack,
-      }, null, 2);
+      return JSON.stringify(
+        {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+        },
+        null,
+        2,
+      );
     } else {
       return JSON.stringify(error, null, 2);
     }

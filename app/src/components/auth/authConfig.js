@@ -19,8 +19,8 @@ export const msalConfig = {
       window.location.hostname === "localhost"
         ? "http://localhost:3000/"
         : window.location.hostname === "dev-biddit.netlify.app"
-        ? "https://dev-biddit.netlify.app/"
-        : "https://biddit.app/",
+          ? "https://dev-biddit.netlify.app/"
+          : "https://biddit.app/",
   },
   cache: {
     cacheLocation: "localStorage", // Configures cache location. "sessionStorage" is more secure, but "localStorage" gives you SSO between tabs.
@@ -79,7 +79,9 @@ export const initializeMsalInstance = async () => {
 /**
  * API scopes required for accessing university integration APIs
  */
-export const apiScopes = ["https://integration.unisg.ch/api/user_impersonation"];
+export const apiScopes = [
+  "https://integration.unisg.ch/api/user_impersonation",
+];
 
 /**
  * Scopes you add here will be prompted for user consent during sign-in.

@@ -81,9 +81,7 @@ const SessionExpiredModal = ({ isVisible }) => {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-orange-100 text-orange-600">
             <span className="text-3xl font-bold">{countdown}</span>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            Redirecting to login...
-          </p>
+          <p className="text-sm text-gray-500 mt-2">Redirecting to login...</p>
         </div>
 
         {/* Progress bar */}

@@ -1,6 +1,10 @@
 import axios from "axios";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-import { getRefreshToken, handleAuthFailure, addSessionEventListener } from "../auth/tokenService";
+import {
+  getRefreshToken,
+  handleAuthFailure,
+  addSessionEventListener,
+} from "../auth/tokenService";
 
 // Configuration constants
 const MAX_RETRIES = 3;
@@ -17,17 +21,17 @@ const isRetryableError = (error) => {
   if (!error.response && error.code === "ERR_NETWORK") {
     return true;
   }
-  
+
   // Timeout errors
   if (error.code === "ECONNABORTED" || error.message?.includes("timeout")) {
     return true;
   }
-  
+
   // Server errors (5xx) are retryable
   if (error.response?.status >= 500 && error.response?.status < 600) {
     return true;
   }
-  
+
   return false;
 };
 
@@ -50,7 +54,9 @@ export const addNetworkEventListener = (callback) => {
 };
 
 const emitNetworkEvent = (eventType, data = {}) => {
-  networkEventListeners.forEach((callback) => callback({ type: eventType, ...data }));
+  networkEventListeners.forEach((callback) =>
+    callback({ type: eventType, ...data }),
+  );
 };
 
 /**
@@ -63,7 +69,7 @@ class ApiClient {
     this.isRefreshing = false;
     this.refreshSubscribers = [];
     this.consecutiveAuthFailures = 0;
-    
+
     // Create axios instance with default config
     this.client = axios.create({
       timeout: REQUEST_TIMEOUT,
@@ -77,7 +83,7 @@ class ApiClient {
           emitNetworkEvent("OFFLINE");
           return Promise.reject(new Error("No network connection"));
         }
-        
+
         // Add default headers for SHSG API
         const defaultHeaders = {
           "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
@@ -87,15 +93,15 @@ class ApiClient {
         };
 
         config.headers = { ...defaultHeaders, ...config.headers };
-        
+
         // Initialize retry count
         config._retryCount = config._retryCount || 0;
-        
+
         return config;
       },
       (error) => {
         return Promise.reject(error);
-      }
+      },
     );
 
     // Response interceptor for handling errors with retry logic
@@ -107,7 +113,7 @@ class ApiClient {
       },
       async (error) => {
         const originalRequest = error.config;
-        
+
         // Handle offline scenario
         if (!isOnline()) {
           emitNetworkEvent("OFFLINE");
@@ -121,23 +127,31 @@ class ApiClient {
         }
 
         // Handle retryable errors with exponential backoff
-        if (isRetryableError(error) && originalRequest._retryCount < MAX_RETRIES) {
+        if (
+          isRetryableError(error) &&
+          originalRequest._retryCount < MAX_RETRIES
+        ) {
           return this.retryWithBackoff(error, originalRequest);
         }
 
         // For non-retryable errors or max retries exceeded
         // Mark the error so ErrorHandlingService can classify it
-        error._isMaxRetriesExceeded = originalRequest._retryCount >= MAX_RETRIES;
+        error._isMaxRetriesExceeded =
+          originalRequest._retryCount >= MAX_RETRIES;
         error._isNetworkError = error.code === "ERR_NETWORK";
-        error._isTimeoutError = error.code === "ECONNABORTED" || error.message?.includes("timeout");
-        
+        error._isTimeoutError =
+          error.code === "ECONNABORTED" || error.message?.includes("timeout");
+
         // Only show error for non-recoverable errors
-        if (!error._isNetworkError || originalRequest._retryCount >= MAX_RETRIES) {
+        if (
+          !error._isNetworkError ||
+          originalRequest._retryCount >= MAX_RETRIES
+        ) {
           errorHandlingService.handleError(error);
         }
-        
+
         return Promise.reject(error);
-      }
+      },
     );
   }
 
@@ -147,11 +161,13 @@ class ApiClient {
   async handle401Error(error, originalRequest) {
     originalRequest._retry = true;
     this.consecutiveAuthFailures++;
-    
+
     // If we've had 3 consecutive auth failures, session is definitely dead
     if (this.consecutiveAuthFailures >= 3) {
       console.error("3 consecutive auth failures - session is dead");
-      handleAuthFailure(new Error("Session expired after multiple auth failures"));
+      handleAuthFailure(
+        new Error("Session expired after multiple auth failures"),
+      );
       return Promise.reject(error);
     }
 
@@ -170,13 +186,13 @@ class ApiClient {
       if (newToken) {
         // Reset consecutive failures on successful refresh
         this.consecutiveAuthFailures = 0;
-        
+
         // Update the authorization header and retry the request
         originalRequest.headers.Authorization = `Bearer ${newToken}`;
-        
+
         // Process queued requests
         this.processQueue(newToken);
-        
+
         return this.client(originalRequest);
       } else {
         // Token refresh returned null - session might be expired
@@ -218,17 +234,20 @@ class ApiClient {
     originalRequest._retryCount++;
     const retryCount = originalRequest._retryCount;
     const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1); // 1s, 2s, 4s
-    
-    console.log(`Retrying request (${retryCount}/${MAX_RETRIES}) after ${delay}ms:`, originalRequest.url);
-    
+
+    console.log(
+      `Retrying request (${retryCount}/${MAX_RETRIES}) after ${delay}ms:`,
+      originalRequest.url,
+    );
+
     await new Promise((resolve) => setTimeout(resolve, delay));
-    
+
     // Check if we're online before retrying
     if (!isOnline()) {
       emitNetworkEvent("OFFLINE");
       return Promise.reject(error);
     }
-    
+
     return this.client(originalRequest);
   }
 
