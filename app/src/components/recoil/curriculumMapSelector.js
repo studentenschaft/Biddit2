@@ -4,6 +4,7 @@ import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
 import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
 import { curriculumPlanState, sortSemesters, parseSemesterKey } from "./curriculumPlanAtom";
 import { findMainProgram } from "../helpers/academicDataTransformers";
+import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 
 /**
  * Normalize semester key by removing spaces (e.g., "FS 25" -> "FS25")
@@ -651,6 +652,41 @@ export const curriculumMapSelector = selector({
         });
       }
     );
+
+    // Apply exercise group credit normalization per semester
+    // When a main course and its exercise group are both present,
+    // the exercise group credits should be zeroed to avoid double-counting
+    sortedSemesters.forEach((semKey) => {
+      // Collect all courses in this semester across all categories
+      const allSemesterCourses = Object.values(
+        coursesBySemesterAndCategory[semKey] || {}
+      ).flat();
+
+      if (allSemesterCourses.length === 0) return;
+
+      // Process to zero exercise group credits where appropriate
+      const processedCourses = processExerciseGroupECTS(allSemesterCourses);
+
+      // Create a map of processed credits by course id for fast lookup
+      const processedCreditsMap = new Map();
+      processedCourses.forEach((course) => {
+        const courseId = course.id || course.courseId;
+        if (courseId) {
+          processedCreditsMap.set(courseId, course.credits);
+        }
+      });
+
+      // Update credits in the original grid structure
+      Object.keys(coursesBySemesterAndCategory[semKey]).forEach((catPath) => {
+        coursesBySemesterAndCategory[semKey][catPath] = coursesBySemesterAndCategory[semKey][catPath].map((course) => {
+          const courseId = course.id || course.courseId;
+          if (courseId && processedCreditsMap.has(courseId)) {
+            return { ...course, credits: processedCreditsMap.get(courseId) };
+          }
+          return course;
+        });
+      });
+    });
 
     // Calculate semester-level stats
     const semesters = sortedSemesters.map((semKey) => {
