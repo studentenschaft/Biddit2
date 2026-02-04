@@ -15,6 +15,7 @@ const CategoryHeader = ({
   isLast,
   isCollapsed,
   onToggleCollapse,
+  isParentComplete = false,
 }) => {
   const {
     name,
@@ -24,6 +25,9 @@ const CategoryHeader = ({
     plannedCredits = 0,
     isComplete,
   } = category;
+
+  // Column is highlighted if this category OR its parent is complete
+  const isHighlighted = isComplete || isParentComplete;
 
   // Total credits for display
   const totalCredits = earnedCredits + plannedCredits;
@@ -53,12 +57,12 @@ const CategoryHeader = ({
         onClick={onToggleCollapse}
         title={`${name} (click to expand)`}
       >
-        {/* Progress fill background */}
+        {/* Progress fill background - highlighted if this or parent is complete */}
         <div
           className={`absolute inset-y-0 left-0 transition-all duration-300 ${
-            isComplete ? 'bg-green-100' : 'bg-gray-200'
+            isHighlighted ? 'bg-green-100' : 'bg-gray-200'
           }`}
-          style={{ width: `${fillPercentage}%` }}
+          style={{ width: isHighlighted ? '100%' : `${fillPercentage}%` }}
         />
 
         {/* Content layer */}
@@ -79,7 +83,7 @@ const CategoryHeader = ({
           {/* Expand icon */}
           <ChevronRightIcon className="w-3 h-3 text-gray-500" />
 
-          {/* Completion indicator via green dot */}
+          {/* Completion indicator via green dot - only for this category's own completion */}
           {isComplete && (
             <div className="w-2 h-2 rounded-full bg-green-600" title="Complete" />
           )}
@@ -95,12 +99,12 @@ const CategoryHeader = ({
       style={{ backgroundColor: '#f9fafb' }}
       title={name}
     >
-      {/* Progress fill background */}
+      {/* Progress fill background - highlighted if this or parent is complete */}
       <div
         className={`absolute inset-y-0 left-0 transition-all duration-300 ${
-          isComplete ? 'bg-green-200' : 'bg-gray-200'
+          isHighlighted ? 'bg-green-100' : 'bg-gray-200'
         }`}
-        style={{ width: `${fillPercentage}%` }}
+        style={{ width: isHighlighted ? '100%' : `${fillPercentage}%` }}
       />
 
       {/* Content layer */}
@@ -155,6 +159,7 @@ CategoryHeader.propTypes = {
   isLast: PropTypes.bool,
   isCollapsed: PropTypes.bool,
   onToggleCollapse: PropTypes.func,
+  isParentComplete: PropTypes.bool,
 };
 
 CategoryHeader.defaultProps = {
@@ -162,6 +167,7 @@ CategoryHeader.defaultProps = {
   isLast: false,
   isCollapsed: false,
   onToggleCollapse: () => {},
+  isParentComplete: false,
 };
 
 export default CategoryHeader;

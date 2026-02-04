@@ -285,6 +285,13 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
     const isLeaf = descendantLeaves.length === 0;
     const leaves = isLeaf ? [groupCat] : descendantLeaves;
 
+    // Calculate aggregated credits from all leaf children
+    const earnedCredits = leaves.reduce((sum, leaf) => sum + (leaf.earnedCredits || 0), 0);
+    const plannedCredits = leaves.reduce((sum, leaf) => sum + (leaf.plannedCredits || 0), 0);
+    const totalCredits = earnedCredits + plannedCredits;
+    const targetCredits = groupCat.maxCredits || groupCat.minCredits || 0;
+    const isComplete = targetCredits > 0 && earnedCredits >= targetCredits;
+
     return {
       id: groupCat.id,
       name: groupCat.name,
@@ -293,6 +300,10 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
       isLeaf,
       minCredits: groupCat.minCredits,
       maxCredits: groupCat.maxCredits,
+      earnedCredits,
+      plannedCredits,
+      totalCredits,
+      isComplete,
       children: leaves.map((leaf) => ({
         id: leaf.id,
         name: leaf.name,
@@ -429,6 +440,7 @@ export const curriculumMapSelector = selector({
         const matchedCat = flatCategories.find(
           (c) => c.path === catPath || catPath.startsWith(c.path)
         );
+
         if (matchedCat) {
           coursesBySemesterAndCategory[semKey][matchedCat.path].push({
             ...course,
@@ -664,16 +676,20 @@ export const curriculumMapSelector = selector({
     });
 
     // Calculate category-level credit totals
+    // Use API's earnedCredits (from sumOfCredits) as source of truth - it handles
+    // all completion scenarios including pass/fail, credited courses, etc.
+    // Only calculate plannedCredits from non-transcript sources (wishlist, plan)
     const categoriesWithCredits = flatCategories.map((cat) => {
-      let earnedCredits = 0;
+      // Start with API-provided earned credits
+      const earnedCredits = cat.earnedCredits || 0;
       let plannedCredits = 0;
 
+      // Calculate planned credits from non-completed courses (wishlist, enrolled, plan)
       sortedSemesters.forEach((semKey) => {
         const courses = coursesBySemesterAndCategory[semKey]?.[cat.path] || [];
         courses.forEach((course) => {
-          if (course.isCompleted) {
-            earnedCredits += course.credits || 0;
-          } else {
+          // Only count non-transcript sources as planned
+          if (course.source !== "transcript") {
             plannedCredits += course.credits || 0;
           }
         });
@@ -684,8 +700,8 @@ export const curriculumMapSelector = selector({
         earnedCredits,
         plannedCredits,
         totalCredits: earnedCredits + plannedCredits,
-        isComplete: earnedCredits >= cat.maxCredits,
-        isOverfilled: earnedCredits + plannedCredits > cat.maxCredits,
+        isComplete: earnedCredits >= (cat.maxCredits || cat.minCredits || 0),
+        isOverfilled: earnedCredits + plannedCredits > (cat.maxCredits || 0),
       };
     });
 

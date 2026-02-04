@@ -103,6 +103,23 @@ const CurriculumGrid = ({
   // Use hierarchy if available, otherwise fall back to flat structure
   const hasHierarchy = categoryHierarchy?.length > 0;
 
+  // Build lookup map for parent completion status
+  // If a parent is complete, all its children should show as highlighted
+  const parentCompletionMap = useMemo(() => {
+    const map = {};
+    if (categoryHierarchy) {
+      categoryHierarchy.forEach((parent) => {
+        if (parent.isComplete) {
+          // Mark all children of this parent as having a complete parent
+          parent.children?.forEach((child) => {
+            map[child.path] = true;
+          });
+        }
+      });
+    }
+    return map;
+  }, [categoryHierarchy]);
+
   // Calculate total leaf columns for grid
   const leafCategories = categories;
   const minCategoryWidth = 140;
@@ -137,22 +154,36 @@ const CurriculumGrid = ({
             {categoryHierarchy.map((parent) => {
               const isParentCollapsed = collapsedParents.has(parent.id);
               const childPaths = parent.children?.map((c) => c.path) || [];
+              const targetCredits = parent.maxCredits || parent.minCredits || 0;
 
               return (
                 <div
                   key={parent.id}
-                  className={`bg-gray-100 border-b border-gray-200 p-2 flex items-center gap-2 ${
+                  className={`relative border-b border-gray-200 p-2 flex items-center gap-2 overflow-hidden ${
                     isParentCollapsed ? "justify-center" : "justify-between"
                   }`}
                   style={{
                     gridColumn: `span ${parent.colspan}`,
+                    backgroundColor: '#f3f4f6', // gray-100 base
                   }}
                 >
+                  {/* Progress fill background for parent */}
+                  {targetCredits > 0 && (
+                    <div
+                      className={`absolute inset-y-0 left-0 transition-all duration-300 ${
+                        parent.isComplete ? 'bg-green-100' : 'bg-gray-200'
+                      }`}
+                      style={{
+                        width: `${Math.min(100, Math.round(((parent.earnedCredits || 0) / targetCredits) * 100))}%`,
+                      }}
+                    />
+                  )}
+
                   {isParentCollapsed ? (
                     // Collapsed parent view
                     <button
                       onClick={() => toggleParentCollapse(parent.id, childPaths)}
-                      className="flex items-center gap-1 hover:bg-gray-200 rounded px-1 py-0.5 transition-colors"
+                      className="relative z-10 flex items-center gap-1 hover:bg-gray-200 rounded px-1 py-0.5 transition-colors"
                       title={`Expand ${parent.name}`}
                     >
                       <ChevronRightIcon className="w-4 h-4 text-gray-600" />
@@ -164,10 +195,20 @@ const CurriculumGrid = ({
                     </button>
                   ) : (
                     // Expanded parent view
-                    <>
-                      <span className="font-bold text-sm text-gray-800 truncate">
-                        {parent.name}
-                      </span>
+                    <div className="relative z-10 flex items-center justify-between w-full gap-2">
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-sm text-gray-800 truncate">
+                          {parent.name}
+                        </span>
+                        {targetCredits > 0 && (
+                          <span className="text-[10px] text-gray-600">
+                            <span className={parent.isComplete ? "font-semibold text-green-700" : "font-medium"}>
+                              {parent.earnedCredits || 0}
+                            </span>
+                            <span className="text-gray-500"> / {targetCredits} ECTS</span>
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={() => toggleParentCollapse(parent.id, childPaths)}
                         className="p-1 hover:bg-gray-200 rounded transition-colors flex-shrink-0"
@@ -175,7 +216,7 @@ const CurriculumGrid = ({
                       >
                         <ChevronLeftIcon className="w-4 h-4 text-gray-600" />
                       </button>
-                    </>
+                    </div>
                   )}
                 </div>
               );
@@ -202,6 +243,7 @@ const CurriculumGrid = ({
             isLast={idx === leafCategories.length - 1 && !showParentHeaders}
             isCollapsed={isCategoryCollapsed(category.path)}
             onToggleCollapse={() => toggleCategoryCollapse(category.path)}
+            isParentComplete={parentCompletionMap[category.path] || false}
           />
         ))}
 
@@ -233,6 +275,9 @@ const CurriculumGrid = ({
                 ),
               };
 
+              // Category is highlighted if it or its parent is complete
+              const isColumnComplete = category.isComplete || parentCompletionMap[category.path];
+
               return (
                 <PlanCell
                   key={`${semester.key}-${category.path}`}
@@ -244,7 +289,7 @@ const CurriculumGrid = ({
                   isLastRow={semIdx === semesters.length - 1}
                   isLastCol={catIdx === leafCategories.length - 1}
                   isCollapsed={isCategoryCollapsed(category.path)}
-                  isCategoryComplete={category.isComplete}
+                  isCategoryComplete={isColumnComplete}
                 />
               );
             })}
