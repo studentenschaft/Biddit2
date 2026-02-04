@@ -1,9 +1,9 @@
 import {
-  PublicClientApplication,
   EventType,
   InteractionRequiredAuthError,
+  BrowserAuthError,
 } from "@azure/msal-browser";
-import { msalConfig } from "./authConfig";
+import { msalInstance, initializeMsalInstance, apiScopes } from "./authConfig";
 import { MsalProvider } from "@azure/msal-react";
 import PropTypes from "prop-types";
 import { useRecoilState } from "recoil";
@@ -13,7 +13,7 @@ import { useCallback, useEffect } from "react";
 // custom error handler
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const msalInstance = new PublicClientApplication(msalConfig);
+// Use shared MSAL instance from authConfig (no longer creating a new one here)
 
 export const AuthProvider = ({ children }) => {
   const [, setAuthToken] = useRecoilState(authTokenState);
@@ -27,18 +27,32 @@ export const AuthProvider = ({ children }) => {
       try {
         const response = await msalInstance.acquireTokenSilent({
           account,
-          scopes: ["https://integration.unisg.ch/api/user_impersonation"],
+          scopes: apiScopes,
         });
         setAuthToken(response.accessToken);
       } catch (error) {
+        // Handle InteractionRequiredAuthError - use redirect (full page) for proper login flow
         if (error instanceof InteractionRequiredAuthError) {
+          console.log("Interaction required, redirecting to login...");
+          await msalInstance.acquireTokenRedirect({
+            scopes: apiScopes,
+          });
+          // Note: redirect will navigate away, so no token return here
+        } 
+        // Handle BrowserAuthError (includes monitor_window_timeout)
+        // This is for recovery when silent fails due to iframe issues - try popup first
+        else if (error instanceof BrowserAuthError) {
+          console.warn("Browser auth error, trying popup recovery:", error.errorCode);
           try {
-            const response = await msalInstance.acquireTokenRedirect({
-              scopes: ["https://integration.unisg.ch/api/user_impersonation"],
+            const response = await msalInstance.acquireTokenPopup({
+              scopes: apiScopes,
             });
             setAuthToken(response.accessToken);
-          } catch (err) {
-            console.error("Token acquisition via redirect failed:", err);
+          } catch (popupError) {
+            console.warn("Popup failed, falling back to redirect:", popupError);
+            await msalInstance.acquireTokenRedirect({
+              scopes: apiScopes,
+            });
           }
         } else {
           console.error("Silent token acquisition failed:", error);
@@ -49,10 +63,10 @@ export const AuthProvider = ({ children }) => {
     [setAuthToken]
   );
 
-  // Initialize MSAL instance once
+  // Initialize MSAL instance once using shared initializer
   useEffect(() => {
     const initializeMsal = async () => {
-      await msalInstance.initialize();
+      await initializeMsalInstance();
       const account = msalInstance.getAllAccounts()[0];
       if (account) {
         msalInstance.setActiveAccount(account);

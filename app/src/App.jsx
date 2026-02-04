@@ -22,6 +22,7 @@ import { Biddit2 } from "./pages/Biddit2.jsx";
 import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
+import { AppStateProvider } from "./components/common/AppStateProvider.jsx";
 
 // Initialize GA4 with Measurement ID and enable debug mode (for now)
 const GA_MEASUREMENT_ID = "G-BMG2V9ZX73";
@@ -57,47 +58,49 @@ const App = () => {
   }, []);
   return (
     <ErrorBoundary>
-      <div className="App">
-        <BrowserRouter>
-          <TrackPageView /> {/* Tracks active users & page views */}
-          <AuthenticatedTemplate>
-            <StudyondBanner />
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <ErrorBoundary>
-                    <Biddit2 />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/biddit2"
-                element={
-                  <ErrorBoundary>
-                    <Biddit2 />
-                  </ErrorBoundary>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </AuthenticatedTemplate>
-          <UnauthenticatedTemplate>
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <ErrorBoundary>
-                    <Login />
-                  </ErrorBoundary>
-                }
-              />
-              <Route path="*" element={<Navigate to="/login" />} />
-            </Routes>
-          </UnauthenticatedTemplate>
-        </BrowserRouter>
-        <ToastContainer />
-      </div>
+      <AppStateProvider>
+        <div className="App">
+          <BrowserRouter>
+            <TrackPageView /> {/* Tracks active users & page views */}
+            <AuthenticatedTemplate>
+              <StudyondBanner />
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <ErrorBoundary>
+                      <Biddit2 />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/biddit2"
+                  element={
+                    <ErrorBoundary>
+                      <Biddit2 />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </AuthenticatedTemplate>
+            <UnauthenticatedTemplate>
+              <Routes>
+                <Route
+                  path="/login"
+                  element={
+                    <ErrorBoundary>
+                      <Login />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/login" />} />
+              </Routes>
+            </UnauthenticatedTemplate>
+          </BrowserRouter>
+          <ToastContainer />
+        </div>
+      </AppStateProvider>
     </ErrorBoundary>
   );
 };
