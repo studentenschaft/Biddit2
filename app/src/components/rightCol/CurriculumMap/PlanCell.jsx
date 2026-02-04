@@ -6,11 +6,14 @@
  * Uses HSG color palette for background colors based on semester status.
  *
  * Phase 2: Drop target for drag-and-drop. Completed semesters are invalid targets.
+ * Phase 3: Click-to-add placeholder functionality for future semesters.
  */
 
+import { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useDroppable } from "@dnd-kit/core";
 import PlanItem from "./PlanItem";
+import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
 
 const PlanCell = ({
   semesterKey,
@@ -23,6 +26,43 @@ const PlanCell = ({
   isCollapsed,
   isCategoryComplete,
 }) => {
+  const { addPlaceholder } = useCurriculumPlan();
+
+  // Placeholder form state
+  const [showPlaceholderForm, setShowPlaceholderForm] = useState(false);
+  const [placeholderCredits, setPlaceholderCredits] = useState(3);
+  const [placeholderLabel, setPlaceholderLabel] = useState("");
+  const formRef = useRef(null);
+
+  // Close form when clicking outside
+  useEffect(() => {
+    if (!showPlaceholderForm) return;
+
+    const handleClickOutside = (e) => {
+      if (formRef.current && !formRef.current.contains(e.target)) {
+        setShowPlaceholderForm(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showPlaceholderForm]);
+
+  const handleAddPlaceholder = (e) => {
+    e.preventDefault();
+    if (addPlaceholder(semesterKey, categoryPath, placeholderCredits, placeholderLabel || "TBD")) {
+      setShowPlaceholderForm(false);
+      setPlaceholderCredits(3);
+      setPlaceholderLabel("");
+    }
+  };
+
+  const handlePlusClick = () => {
+    if (semesterStatus === "future") {
+      setShowPlaceholderForm(true);
+    }
+  };
+
   // Completed semesters cannot be drop targets
   const canDrop = semesterStatus !== "completed";
 
@@ -130,11 +170,75 @@ const PlanCell = ({
         />
       ))}
 
-      {/* Empty state - subtle indicator for future semesters */}
-      {courses.length === 0 && semesterStatus === "future" && (
+      {/* Add more button for cells with courses (future semesters only) */}
+      {courses.length > 0 && semesterStatus === "future" && !showPlaceholderForm && (
+        <button
+          onClick={handlePlusClick}
+          className="text-gray-300 text-xs hover:text-gray-500 hover:bg-gray-100 rounded px-1 py-0.5 transition-colors self-start"
+          title="Add placeholder course"
+        >
+          + Add
+        </button>
+      )}
+
+      {/* Empty state - clickable add placeholder for future semesters */}
+      {courses.length === 0 && semesterStatus === "future" && !showPlaceholderForm && (
         <div className="flex-1 flex items-center justify-center">
-          <span className="text-gray-300 text-lg">+</span>
+          <button
+            onClick={handlePlusClick}
+            className="text-gray-300 text-lg hover:text-gray-500 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center transition-colors"
+            title="Add placeholder course"
+          >
+            +
+          </button>
         </div>
+      )}
+
+      {/* Placeholder form */}
+      {showPlaceholderForm && (
+        <form
+          ref={formRef}
+          onSubmit={handleAddPlaceholder}
+          className="bg-white border border-gray-300 rounded-md p-2 shadow-sm space-y-2"
+        >
+          <div>
+            <label className="block text-[10px] text-gray-600 mb-0.5">Credits (ECTS)</label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={placeholderCredits}
+              onChange={(e) => setPlaceholderCredits(Number(e.target.value))}
+              className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] text-gray-600 mb-0.5">Label (optional)</label>
+            <input
+              type="text"
+              value={placeholderLabel}
+              onChange={(e) => setPlaceholderLabel(e.target.value)}
+              placeholder="e.g., Elective"
+              className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+          <div className="flex gap-1">
+            <button
+              type="submit"
+              className="flex-1 bg-blue-500 text-white text-xs px-2 py-1 rounded hover:bg-blue-600 transition-colors"
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowPlaceholderForm(false)}
+              className="flex-1 bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded hover:bg-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
       )}
 
       {/* Validation badges */}

@@ -199,3 +199,20 @@ export const compareSemesters = (a, b) => {
 export const sortSemesters = (semesterKeys) => {
   return [...semesterKeys].sort(compareSemesters);
 };
+
+/**
+ * Helper: Get the next semester key in sequence
+ * @param {string} semesterKey - Current semester key (e.g., "FS27")
+ * @returns {string} - Next semester key (e.g., "HS27")
+ */
+export const getNextSemesterKey = (semesterKey) => {
+  const { type, year } = parseSemesterKey(semesterKey);
+
+  if (type === 'FS') {
+    // FS -> HS of same year
+    return `HS${year}`;
+  } else {
+    // HS -> FS of next year
+    return `FS${year + 1}`;
+  }
+};

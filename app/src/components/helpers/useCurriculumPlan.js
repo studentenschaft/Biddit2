@@ -3,7 +3,9 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import {
   curriculumPlanState,
   createCoursePlanItem,
+  createPlaceholderItem,
   compareSemesters,
+  getNextSemesterKey,
 } from "../recoil/curriculumPlanAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
@@ -324,10 +326,102 @@ export const useCurriculumPlan = () => {
     [isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan]
   );
 
+  /**
+   * Add a new semester to the plan (for future planning)
+   * Creates an empty semester entry that will appear in the grid
+   *
+   * @param {string} lastSemesterKey - The last semester currently in the grid
+   * @returns {string} - The newly added semester key
+   */
+  const addSemester = useCallback(
+    (lastSemesterKey) => {
+      const newSemesterKey = getNextSemesterKey(lastSemesterKey);
+
+      // Add empty entry to curriculum plan to make it appear in the grid
+      setCurriculumPlan((prev) => {
+        // Don't add if already exists
+        if (prev.plannedItems[newSemesterKey]) {
+          return prev;
+        }
+        return {
+          ...prev,
+          plannedItems: {
+            ...prev.plannedItems,
+            [newSemesterKey]: [], // Empty array - will show in grid
+          },
+        };
+      });
+
+      return newSemesterKey;
+    },
+    [setCurriculumPlan]
+  );
+
+  /**
+   * Add a placeholder item to a future semester cell
+   * Placeholders represent generic credit allocations without specific courses
+   *
+   * @param {string} semesterKey - Target semester key
+   * @param {string} categoryPath - Target category path
+   * @param {number} credits - Number of credits for the placeholder
+   * @param {string} label - Display label (defaults to "TBD")
+   * @returns {boolean} - Whether the add was successful
+   */
+  const addPlaceholder = useCallback(
+    (semesterKey, categoryPath, credits, label = "TBD") => {
+      if (isSemesterCompleted(semesterKey)) {
+        console.warn("[useCurriculumPlan] Cannot add placeholder to completed semester");
+        return false;
+      }
+
+      // Placeholders only go to curriculum plan (not wishlist sync)
+      setCurriculumPlan((prev) => ({
+        ...prev,
+        plannedItems: {
+          ...prev.plannedItems,
+          [semesterKey]: [
+            ...(prev.plannedItems[semesterKey] || []),
+            createPlaceholderItem(categoryPath, credits, label),
+          ],
+        },
+      }));
+
+      return true;
+    },
+    [isSemesterCompleted, setCurriculumPlan]
+  );
+
+  /**
+   * Remove a placeholder item from the plan
+   *
+   * @param {string} placeholderId - The placeholder ID to remove
+   * @param {string} semesterKey - The semester to remove from
+   * @returns {boolean} - Whether the removal was successful
+   */
+  const removePlaceholder = useCallback(
+    (placeholderId, semesterKey) => {
+      setCurriculumPlan((prev) => ({
+        ...prev,
+        plannedItems: {
+          ...prev.plannedItems,
+          [semesterKey]: (prev.plannedItems[semesterKey] || []).filter(
+            (item) => item.id !== placeholderId
+          ),
+        },
+      }));
+
+      return true;
+    },
+    [setCurriculumPlan]
+  );
+
   return {
     moveCourse,
     addCourse,
     removeCourse,
+    addSemester,
+    addPlaceholder,
+    removePlaceholder,
     isSemesterSyncable,
     isSemesterCompleted,
     getCurrentSemesterKey,

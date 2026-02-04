@@ -15,7 +15,7 @@ import { XIcon } from "@heroicons/react/solid";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
 
 const PlanItem = ({ item, semesterKey }) => {
-  const { removeCourse } = useCurriculumPlan();
+  const { removeCourse, removePlaceholder } = useCurriculumPlan();
   const {
     id,
     courseId,
@@ -30,15 +30,15 @@ const PlanItem = ({ item, semesterKey }) => {
     categoryPath,
   } = item;
 
-  // Only planned items (not completed, not enrolled) are draggable
+  // Only planned items (not completed, not enrolled, not placeholders) are draggable
   const isDraggable =
     !isCompleted &&
     !isPlaceholder &&
     status !== "completed" &&
     status !== "enrolled";
 
-  // Items can be removed if they are draggable (planned/wishlist items)
-  const isRemovable = isDraggable;
+  // Items can be removed if they are draggable OR if they are placeholders
+  const isRemovable = isDraggable || isPlaceholder;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -135,9 +135,13 @@ const PlanItem = ({ item, semesterKey }) => {
     }
 
     try {
-      removeCourse(itemId, semesterKey, source || "wishlist");
+      if (isPlaceholder) {
+        removePlaceholder(itemId, semesterKey);
+      } else {
+        removeCourse(itemId, semesterKey, source || "wishlist");
+      }
     } catch (error) {
-      console.error("[PlanItem] Failed to remove course:", error);
+      console.error("[PlanItem] Failed to remove item:", error);
     }
   };
 

@@ -12,10 +12,11 @@
 
 import { useState, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
+import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/solid";
 import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
+import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
 
 const CurriculumGrid = ({
   categories,
@@ -28,6 +29,9 @@ const CurriculumGrid = ({
   const [collapsedCategories, setCollapsedCategories] = useState(new Set());
   // Track which parent category groups are collapsed
   const [collapsedParents, setCollapsedParents] = useState(new Set());
+
+  // Hook for adding semesters
+  const { addSemester } = useCurriculumPlan();
 
   const toggleCategoryCollapse = useCallback((categoryPath) => {
     setCollapsedCategories((prev) => {
@@ -286,7 +290,7 @@ const CurriculumGrid = ({
                   courses={courses}
                   semesterStatus={semester.status}
                   validations={cellValidations}
-                  isLastRow={semIdx === semesters.length - 1}
+                  isLastRow={false}
                   isLastCol={catIdx === leafCategories.length - 1}
                   isCollapsed={isCategoryCollapsed(category.path)}
                   isCategoryComplete={isColumnComplete}
@@ -294,6 +298,39 @@ const CurriculumGrid = ({
               );
             })}
           </>
+        ))}
+
+        {/* Add Semester row */}
+        <div
+          className="bg-gray-50 border-b border-gray-200 p-2 sticky left-0 z-10 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center min-h-[50px]"
+          onClick={() => {
+            const lastSemester = semesters[semesters.length - 1];
+            if (lastSemester) {
+              addSemester(lastSemester.key);
+            }
+          }}
+          title="Add next semester"
+        >
+          <div className="flex items-center gap-1.5 text-gray-600">
+            <PlusIcon className="w-4 h-4" />
+            <span className="text-xs font-medium">Add Semester</span>
+          </div>
+        </div>
+        {/* Empty cells for the add semester row */}
+        {leafCategories.map((category, catIdx) => (
+          <div
+            key={`add-row-${category.path}`}
+            className="bg-gray-50 border border-gray-200 min-h-[50px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
+            onClick={() => {
+              const lastSemester = semesters[semesters.length - 1];
+              if (lastSemester) {
+                addSemester(lastSemester.key);
+              }
+            }}
+            title="Add next semester"
+          >
+            <PlusIcon className="w-4 h-4 text-gray-300" />
+          </div>
         ))}
       </div>
     </div>

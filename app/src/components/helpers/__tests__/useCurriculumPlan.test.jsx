@@ -6,7 +6,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { RecoilRoot } from 'recoil';
-import React from 'react';
 
 // Helper for semester comparison (extracted from the hook logic)
 const compareSemesters = (a, b) => {
@@ -95,6 +94,36 @@ describe('useCurriculumPlan utilities', () => {
     it('handles September correctly (start of HS)', () => {
       vi.setSystemTime(new Date('2026-09-15'));
       expect(getCurrentSemesterKey()).toBe('HS26');
+    });
+  });
+
+  describe('getNextSemesterKey logic', () => {
+    const getNextSemesterKey = (semesterKey) => {
+      const type = semesterKey.substring(0, 2);
+      const year = parseInt(semesterKey.substring(2), 10);
+      if (type === 'FS') {
+        return `HS${year}`;
+      } else {
+        return `FS${year + 1}`;
+      }
+    };
+
+    it('returns HS of same year after FS', () => {
+      expect(getNextSemesterKey('FS27')).toBe('HS27');
+      expect(getNextSemesterKey('FS25')).toBe('HS25');
+    });
+
+    it('returns FS of next year after HS', () => {
+      expect(getNextSemesterKey('HS27')).toBe('FS28');
+      expect(getNextSemesterKey('HS25')).toBe('FS26');
+    });
+
+    it('handles sequence correctly', () => {
+      let sem = 'FS25';
+      sem = getNextSemesterKey(sem); expect(sem).toBe('HS25');
+      sem = getNextSemesterKey(sem); expect(sem).toBe('FS26');
+      sem = getNextSemesterKey(sem); expect(sem).toBe('HS26');
+      sem = getNextSemesterKey(sem); expect(sem).toBe('FS27');
     });
   });
 
@@ -321,6 +350,73 @@ describe('useCurriculumPlan hook integration', () => {
     let success;
     act(() => {
       success = result.current.removeCourse('ABC123', 'FS26', 'wishlist');
+    });
+
+    expect(success).toBe(true);
+  });
+
+  it('addPlaceholder is defined and is a function', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    expect(result.current.addPlaceholder).toBeDefined();
+    expect(typeof result.current.addPlaceholder).toBe('function');
+  });
+
+  it('removePlaceholder is defined and is a function', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    expect(result.current.removePlaceholder).toBeDefined();
+    expect(typeof result.current.removePlaceholder).toBe('function');
+  });
+
+  it('addPlaceholder rejects completed semesters', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    const success = result.current.addPlaceholder('HS25', 'Core/Electives', 6, 'Elective');
+
+    expect(success).toBe(false);
+  });
+
+  it('addPlaceholder accepts future semesters', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    let success;
+    act(() => {
+      success = result.current.addPlaceholder('HS27', 'Core/Electives', 6, 'Elective');
+    });
+
+    expect(success).toBe(true);
+  });
+
+  it('addPlaceholder uses default label when not provided', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    let success;
+    act(() => {
+      success = result.current.addPlaceholder('HS27', 'Core/Electives', 3);
+    });
+
+    expect(success).toBe(true);
+  });
+
+  it('removePlaceholder returns true', async () => {
+    const { useCurriculumPlan } = await import('../useCurriculumPlan');
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    let success;
+    act(() => {
+      success = result.current.removePlaceholder('placeholder-123', 'FS27');
     });
 
     expect(success).toBe(true);
