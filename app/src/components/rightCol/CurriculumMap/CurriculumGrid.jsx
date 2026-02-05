@@ -293,6 +293,8 @@ const CurriculumGrid = ({
                   isLastCol={catIdx === leafCategories.length - 1}
                   isCollapsed={isCategoryCollapsed(category.path)}
                   isCategoryComplete={isColumnComplete}
+                  categoryName={category.name}
+                  validClassifications={category.validClassifications}
                 />
               );
             })}

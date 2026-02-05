@@ -14,6 +14,7 @@ import PropTypes from "prop-types";
 import { useDroppable } from "@dnd-kit/core";
 import PlanItem from "./PlanItem";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { doesClassificationMatchCategory } from "../../recoil/curriculumMapSelector";
 
 const PlanCell = ({
   semesterKey,
@@ -24,6 +25,8 @@ const PlanCell = ({
   isLastCol,
   isCollapsed,
   isCategoryComplete,
+  categoryName,
+  validClassifications,
 }) => {
   const { addPlaceholder } = useCurriculumPlan();
 
@@ -76,6 +79,19 @@ const PlanCell = ({
     disabled: !canDrop,
   });
 
+  // Determine if this column is the suggested drop target for the active drag
+  const isSuggestedTarget = (() => {
+    if (!active || !canDrop) return false;
+    const dragData = active.data.current;
+    const classification =
+      dragData?.type === "eventlist-course"
+        ? dragData.course?.classification
+        : dragData?.type === "grid-course"
+          ? dragData.item?.classification
+          : null;
+    return doesClassificationMatchCategory(classification, categoryName, validClassifications);
+  })();
+
   // Cell background based on category completion (column-wide) or semester status (row)
   // Category completion takes precedence for visual feedback
   const getCellBackground = () => {
@@ -108,6 +124,12 @@ const PlanCell = ({
     }
   };
 
+  // Suggestion highlight — subtle blue for the matching category column
+  const getSuggestionClass = () => {
+    if (!isSuggestedTarget || isOver) return "";
+    return "ring-2 ring-blue-300 ring-inset bg-blue-50/50";
+  };
+
   // Validation styling - uses ring-inset to compose with drag-over feedback
   const getValidationClasses = () => {
     if (hasConflicts) return "ring-2 ring-red-400 ring-inset";
@@ -124,9 +146,10 @@ const PlanCell = ({
 
   // Drag-over visual feedback (takes precedence over validation styling)
   const dragOverClass = getDragOverClasses();
+  const suggestionClass = getSuggestionClass();
 
-  // Combined ring class: drag-over takes precedence, otherwise show validation
-  const ringClass = dragOverClass || validationClass;
+  // Combined ring class: drag-over > suggestion > validation
+  const ringClass = dragOverClass || suggestionClass || validationClass;
 
   // Collapsed view - show just a count badge
   if (isCollapsed) {
@@ -284,6 +307,8 @@ PlanCell.propTypes = {
   isLastCol: PropTypes.bool.isRequired,
   isCollapsed: PropTypes.bool.isRequired,
   isCategoryComplete: PropTypes.bool.isRequired,
+  categoryName: PropTypes.string.isRequired,
+  validClassifications: PropTypes.arrayOf(PropTypes.string),
 };
 
 export default PlanCell;

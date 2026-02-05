@@ -8,6 +8,8 @@
 
 import PropTypes from "prop-types";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
+import { useDndContext } from "@dnd-kit/core";
+import { doesClassificationMatchCategory } from "../../recoil/curriculumMapSelector";
 
 const CategoryHeader = ({
   category,
@@ -24,7 +26,22 @@ const CategoryHeader = ({
     earnedCredits = 0,
     plannedCredits = 0,
     isComplete,
+    validClassifications,
   } = category;
+
+  // Drag-aware suggestion highlight for the column header
+  const { active } = useDndContext();
+  const isSuggestedTarget = (() => {
+    if (!active) return false;
+    const dragData = active.data.current;
+    const classification =
+      dragData?.type === "eventlist-course"
+        ? dragData.course?.classification
+        : dragData?.type === "grid-course"
+          ? dragData.item?.classification
+          : null;
+    return doesClassificationMatchCategory(classification, name, validClassifications);
+  })();
 
   // Column is highlighted if this category OR its parent is complete
   const isHighlighted = isComplete || isParentComplete;
@@ -46,13 +63,17 @@ const CategoryHeader = ({
     isLast ? "rounded-tr-lg" : ""
   }`;
 
+  const suggestionClass = isSuggestedTarget
+    ? "ring-2 ring-blue-300 ring-inset"
+    : "";
+
   // Collapsed view - vertical name with expand button
   if (isCollapsed) {
     const abbreviation = name.length > 10 ? name.substring(0, 8) + "…" : name;
 
     return (
       <div
-        className={`relative border-b border-gray-200 min-h-[70px] py-1 cursor-pointer overflow-hidden transition-colors ${roundedClasses}`}
+        className={`relative border-b border-gray-200 min-h-[70px] py-1 cursor-pointer overflow-hidden transition-colors ${roundedClasses} ${suggestionClass}`}
         style={{ backgroundColor: '#f9fafb' }}
         onClick={onToggleCollapse}
         title={`${name} (click to expand)`}
@@ -95,7 +116,7 @@ const CategoryHeader = ({
   // Expanded view with fill progress indicator
   return (
     <div
-      className={`relative p-2 border-b border-gray-200 flex flex-col justify-between min-h-[70px] overflow-hidden ${roundedClasses}`}
+      className={`relative p-2 border-b border-gray-200 flex flex-col justify-between min-h-[70px] overflow-hidden ${roundedClasses} ${suggestionClass}`}
       style={{ backgroundColor: '#f9fafb' }}
       title={name}
     >
@@ -154,6 +175,7 @@ CategoryHeader.propTypes = {
     plannedCredits: PropTypes.number,
     isComplete: PropTypes.bool,
     isOverfilled: PropTypes.bool,
+    validClassifications: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
   isFirst: PropTypes.bool,
   isLast: PropTypes.bool,

@@ -790,6 +790,32 @@ export const curriculumProgramSelector = selector({
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// Classification matching — exported for drag-and-drop suggestion highlighting
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Check if a course classification matches a specific category.
+ * Uses the same matching logic as matchClassificationToCategory:
+ * 1. Direct name match (case-insensitive)
+ * 2. Fuzzy keyword match via validClassifications
+ *
+ * @param {string} classification - The course's classification string
+ * @param {string} categoryName - The category name to check against
+ * @param {string[]} validClassifications - The category's valid classification keywords
+ * @returns {boolean}
+ */
+export const doesClassificationMatchCategory = (classification, categoryName, validClassifications) => {
+  if (!classification || !validClassifications) return false;
+  const lower = classification.toLowerCase();
+  return (
+    categoryName.toLowerCase() === lower ||
+    validClassifications.some(
+      (vc) => vc.toLowerCase() === lower || lower.includes(vc.toLowerCase())
+    )
+  );
+};
+
+// ────────────────────────────────────────────────────────────────────────────
 // Exported for testing
 // ────────────────────────────────────────────────────────────────────────────
 
