@@ -610,7 +610,7 @@ export const curriculumMapSelector = selector({
               coursesBySemesterAndCategory[semKey][targetCatPath].push({
                 id: item.courseId,
                 courseId: item.courseId,
-                name: fullCourse?.shortName || item.courseId,
+                name: fullCourse?.shortName || item.shortName || item.courseId,
                 credits: fullCourse
                   ? (fullCourse.credits || 300) / 100
                   : 3,

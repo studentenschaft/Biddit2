@@ -184,7 +184,7 @@ export const useCurriculumPlan = () => {
             ...prev.plannedItems,
             [toSemester]: [
               ...(prev.plannedItems[toSemester] || []),
-              createCoursePlanItem(courseId, toCategoryPath),
+              createCoursePlanItem(courseId, toCategoryPath, courseData?.shortName),
             ],
           },
         }));
@@ -260,7 +260,7 @@ export const useCurriculumPlan = () => {
               ...prev.plannedItems,
               [semesterKey]: [
                 ...existingItems,
-                createCoursePlanItem(courseId, categoryPath),
+                createCoursePlanItem(courseId, categoryPath, course.shortName),
               ],
             },
           };
@@ -374,6 +374,64 @@ export const useCurriculumPlan = () => {
   );
 
   /**
+   * Move a placeholder item between cells
+   *
+   * @param {string} placeholderId - The placeholder ID to move
+   * @param {string} fromSemester - Source semester key
+   * @param {string} toSemester - Target semester key
+   * @param {string} toCategoryPath - Target category path
+   * @returns {boolean} - Whether the move was successful
+   */
+  const movePlaceholder = useCallback(
+    (placeholderId, fromSemester, toSemester, toCategoryPath) => {
+      if (isSemesterCompleted(toSemester)) {
+        if (import.meta.env.DEV) {
+          console.warn("[useCurriculumPlan] Cannot move placeholder to completed semester");
+        }
+        return false;
+      }
+
+      const isSameSemester = fromSemester === toSemester;
+
+      setCurriculumPlan((prev) => {
+        const sourceItems = prev.plannedItems[fromSemester] || [];
+        const placeholder = sourceItems.find((item) => item.id === placeholderId);
+
+        if (!placeholder) return prev;
+
+        if (isSameSemester) {
+          // Same-semester: update categoryPath in place
+          return {
+            ...prev,
+            plannedItems: {
+              ...prev.plannedItems,
+              [fromSemester]: sourceItems.map((item) =>
+                item.id === placeholderId
+                  ? { ...item, categoryPath: toCategoryPath }
+                  : item
+              ),
+            },
+          };
+        }
+
+        // Cross-semester: remove from source, add to destination
+        const destItems = prev.plannedItems[toSemester] || [];
+        return {
+          ...prev,
+          plannedItems: {
+            ...prev.plannedItems,
+            [fromSemester]: sourceItems.filter((item) => item.id !== placeholderId),
+            [toSemester]: [...destItems, { ...placeholder, categoryPath: toCategoryPath }],
+          },
+        };
+      });
+
+      return true;
+    },
+    [isSemesterCompleted, setCurriculumPlan]
+  );
+
+  /**
    * Remove a placeholder item from the plan
    *
    * @param {string} placeholderId - The placeholder ID to remove
@@ -403,6 +461,7 @@ export const useCurriculumPlan = () => {
     removeCourse,
     addSemester,
     addPlaceholder,
+    movePlaceholder,
     removePlaceholder,
     isSemesterSyncable,
     isSemesterCompleted,

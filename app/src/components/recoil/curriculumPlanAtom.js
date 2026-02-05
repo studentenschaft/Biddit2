@@ -128,10 +128,11 @@ export const generatePlaceholderId = () => {
 /**
  * Helper: Create a course plan item
  */
-export const createCoursePlanItem = (courseId, categoryPath) => ({
+export const createCoursePlanItem = (courseId, categoryPath, shortName = null) => ({
   type: "course",
   courseId,
   categoryPath,
+  ...(shortName && { shortName }),
   addedAt: new Date().toISOString(),
 });
 

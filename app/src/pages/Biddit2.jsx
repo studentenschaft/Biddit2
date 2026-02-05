@@ -77,7 +77,7 @@ export default function Biddit2() {
   // Drag-and-drop state for cross-component dragging
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [activeDragType, setActiveDragType] = useState(null);
-  const { addCourse, moveCourse, removeCourse } = useCurriculumPlan();
+  const { addCourse, moveCourse, removeCourse, movePlaceholder, removePlaceholder } = useCurriculumPlan();
 
   // Configure drag sensors with activation constraint to prevent accidental drags
   const sensors = useSensors(
@@ -121,8 +121,12 @@ export default function Biddit2() {
       // If dragging a grid course and dropped outside any target, remove it
       if (dragData?.type === "grid-course") {
         const { item, semesterKey: sourceSemester, source } = dragData;
-        const courseId = item.courseId || item.id;
-        removeCourse(courseId, sourceSemester, source || "wishlist");
+        if (item.isPlaceholder) {
+          removePlaceholder(item.id, sourceSemester);
+        } else {
+          const courseId = item.courseId || item.id;
+          removeCourse(courseId, sourceSemester, source || "wishlist");
+        }
       }
       return;
     }
@@ -135,8 +139,12 @@ export default function Biddit2() {
     // Handle grid course dropped on non-grid target (remove it)
     if (dragData?.type === "grid-course" && !isValidGridCell) {
       const { item, semesterKey: sourceSemester, source } = dragData;
-      const courseId = item.courseId || item.id;
-      removeCourse(courseId, sourceSemester, source || "wishlist");
+      if (item.isPlaceholder) {
+        removePlaceholder(item.id, sourceSemester);
+      } else {
+        const courseId = item.courseId || item.id;
+        removeCourse(courseId, sourceSemester, source || "wishlist");
+      }
       return;
     }
 
@@ -145,7 +153,9 @@ export default function Biddit2() {
 
     // Reject drops to completed semesters
     if (dropData.canDrop === false || dropData.semesterStatus === "completed") {
-      console.log("[Biddit2] Drop rejected: completed semester");
+      if (import.meta.env.DEV) {
+        console.log("[Biddit2] Drop rejected: completed semester");
+      }
       return;
     }
 
@@ -172,10 +182,14 @@ export default function Biddit2() {
         return;
       }
 
-      const courseId = item.courseId || item.id;
-      moveCourse(courseId, sourceSemester, targetSemester, targetCategory, source);
+      if (item.isPlaceholder) {
+        movePlaceholder(item.id, sourceSemester, targetSemester, targetCategory);
+      } else {
+        const courseId = item.courseId || item.id;
+        moveCourse(courseId, sourceSemester, targetSemester, targetCategory, source);
+      }
     }
-  }, [addCourse, moveCourse, removeCourse]);
+  }, [addCourse, moveCourse, removeCourse, movePlaceholder, removePlaceholder]);
 
   /**
    * Handle drag cancel

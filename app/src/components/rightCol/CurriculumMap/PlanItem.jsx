@@ -30,10 +30,9 @@ const PlanItem = ({ item, semesterKey }) => {
     categoryPath,
   } = item;
 
-  // Only planned items (not completed, not enrolled, not placeholders) are draggable
+  // Planned items and placeholders are draggable (not completed, not enrolled)
   const isDraggable =
     !isCompleted &&
-    !isPlaceholder &&
     status !== "completed" &&
     status !== "enrolled";
 
@@ -167,7 +166,7 @@ const PlanItem = ({ item, semesterKey }) => {
       style={style}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
       className={`group ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text} ${cursorClass} ${opacityClass} border rounded px-2 py-1 text-xs transition-all hover:shadow-sm select-none`}
-      title={`${name} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${
+      title={`${name}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${
         isDraggable ? "\nDrag to move" : ""
       }`}
     >
