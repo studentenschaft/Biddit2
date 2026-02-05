@@ -10,14 +10,14 @@
  * Data source: unifiedCourseDataState.semesters[semKey].available
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useRecoilValue } from "recoil";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { localSelectedCoursesSemKeyState } from "../../recoil/localSelectedCoursesSemKeyAtom";
-import { curriculumPlanState, sortSemesters } from "../../recoil/curriculumPlanAtom";
+import { curriculumPlanState, filterCurrentAndFutureSemesters } from "../../recoil/curriculumPlanAtom";
 
 /**
  * PickerCourseCard - A draggable course card in the picker
@@ -102,47 +102,21 @@ const CoursePicker = ({ futureSemesters = [] }) => {
   const [selectedSemester, setSelectedSemester] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Get available semesters (only future ones with data)
+  // Get available semesters (only current and future ones with data)
   const availableSemesters = useMemo(() => {
     if (!unifiedCourseData.semesters) return [];
 
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    const currentMonth = now.getMonth();
-    const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
-    const currentSemYear =
-      isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
-    const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
-
-    // Get all semesters from data that are current or future
     const semestersWithData = Object.keys(unifiedCourseData.semesters).filter(
-      (semKey) => {
-        const semData = unifiedCourseData.semesters[semKey];
-        return semData?.available?.length > 0;
-      }
+      (semKey) => unifiedCourseData.semesters[semKey]?.available?.length > 0
     );
 
-    // Also include semesters passed as props (from curriculum map)
-    const allSemesters = new Set([...semestersWithData, ...futureSemesters]);
-
-    // Filter to current and future only
-    return sortSemesters(Array.from(allSemesters)).filter((semKey) => {
-      // Simple comparison: current and future semesters
-      const semType = semKey.substring(0, 2);
-      const semYear = parseInt(semKey.substring(2), 10);
-      const currentType = isCurrentlyHS ? "HS" : "FS";
-
-      if (semYear > currentSemYear) return true;
-      if (semYear < currentSemYear) return false;
-      // Same year
-      if (semKey === currentSemKey) return true;
-      if (semType === "HS" && currentType === "FS") return true;
-      return false;
-    });
+    // Merge data semesters with prop-provided future semesters, then filter
+    const allSemesters = [...new Set([...semestersWithData, ...futureSemesters])];
+    return filterCurrentAndFutureSemesters(allSemesters);
   }, [unifiedCourseData.semesters, futureSemesters]);
 
   // Auto-select first available semester
-  useMemo(() => {
+  useEffect(() => {
     if (!selectedSemester && availableSemesters.length > 0) {
       setSelectedSemester(availableSemesters[0]);
     }

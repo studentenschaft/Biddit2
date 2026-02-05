@@ -4,8 +4,10 @@ import {
   curriculumPlanState,
   createCoursePlanItem,
   createPlaceholderItem,
-  compareSemesters,
   getNextSemesterKey,
+  getCurrentSemesterInfo,
+  isSemesterSyncable as checkSemesterSyncable,
+  isSemesterCompleted as checkSemesterCompleted,
 } from "../recoil/curriculumPlanAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
@@ -45,48 +47,22 @@ export const useCurriculumPlan = () => {
    * vs "future" (local plan only)
    */
   const isSemesterSyncable = useCallback((semesterKey) => {
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    const currentMonth = now.getMonth();
-
-    // Determine current semester
-    const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
-    const currentSemYear =
-      isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
-    const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
-
-    // Determine next semester
-    const nextSemType = isCurrentlyHS ? "FS" : "HS";
-    const nextSemYear = isCurrentlyHS ? currentSemYear + 1 : currentSemYear;
-    const nextSemKey = `${nextSemType}${nextSemYear}`;
-
-    // Syncable if it's current or next semester
-    return semesterKey === currentSemKey || semesterKey === nextSemKey;
+    return checkSemesterSyncable(semesterKey);
   }, []);
 
   /**
    * Get the current semester key
    */
   const getCurrentSemesterKey = useCallback(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear() % 100;
-    const currentMonth = now.getMonth();
-    const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
-    const currentSemYear =
-      isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
-    return `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
+    return getCurrentSemesterInfo().currentSemKey;
   }, []);
 
   /**
    * Check if a semester is in the past (completed)
    */
-  const isSemesterCompleted = useCallback(
-    (semesterKey) => {
-      const currentKey = getCurrentSemesterKey();
-      return compareSemesters(semesterKey, currentKey) < 0;
-    },
-    [getCurrentSemesterKey]
-  );
+  const isSemesterCompleted = useCallback((semesterKey) => {
+    return checkSemesterCompleted(semesterKey);
+  }, []);
 
   /**
    * Move a course from one cell to another
@@ -102,7 +78,9 @@ export const useCurriculumPlan = () => {
     (courseId, fromSemester, toSemester, toCategoryPath, source) => {
       // Prevent moves to completed semesters
       if (isSemesterCompleted(toSemester)) {
-        console.warn("[useCurriculumPlan] Cannot move to completed semester");
+        if (import.meta.env.DEV) {
+          console.warn("[useCurriculumPlan] Cannot move to completed semester");
+        }
         return false;
       }
 
@@ -235,7 +213,9 @@ export const useCurriculumPlan = () => {
     (course, semesterKey, categoryPath) => {
       // Prevent adds to completed semesters
       if (isSemesterCompleted(semesterKey)) {
-        console.warn("[useCurriculumPlan] Cannot add to completed semester");
+        if (import.meta.env.DEV) {
+          console.warn("[useCurriculumPlan] Cannot add to completed semester");
+        }
         return false;
       }
 
@@ -370,7 +350,9 @@ export const useCurriculumPlan = () => {
   const addPlaceholder = useCallback(
     (semesterKey, categoryPath, credits, label = "TBD") => {
       if (isSemesterCompleted(semesterKey)) {
-        console.warn("[useCurriculumPlan] Cannot add placeholder to completed semester");
+        if (import.meta.env.DEV) {
+          console.warn("[useCurriculumPlan] Cannot add placeholder to completed semester");
+        }
         return false;
       }
 

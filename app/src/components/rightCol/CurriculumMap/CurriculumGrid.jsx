@@ -290,7 +290,6 @@ const CurriculumGrid = ({
                   courses={courses}
                   semesterStatus={semester.status}
                   validations={cellValidations}
-                  isLastRow={false}
                   isLastCol={catIdx === leafCategories.length - 1}
                   isCollapsed={isCategoryCollapsed(category.path)}
                   isCategoryComplete={isColumnComplete}

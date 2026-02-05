@@ -2,33 +2,63 @@ import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
 import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
-import { curriculumPlanState, sortSemesters, parseSemesterKey } from "./curriculumPlanAtom";
+import {
+  curriculumPlanState,
+  sortSemesters,
+  parseSemesterKey,
+  getSemesterStatus,
+} from "./curriculumPlanAtom";
 import { findMainProgram } from "../helpers/academicDataTransformers";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 
+// ────────────────────────────────────────────────────────────────────────────
+// Pure helper functions
+// ────────────────────────────────────────────────────────────────────────────
+
 /**
  * Normalize semester key by removing spaces (e.g., "FS 25" -> "FS25")
- * This handles inconsistency between scorecard API (with spaces) and internal state (without)
+ * Handles inconsistency between scorecard API (with spaces) and internal state (without)
  */
 const normalizeSemesterKey = (semester) => {
   return semester ? semester.replace(/\s+/g, "") : "";
 };
 
 /**
- * Curriculum Map Selector
- *
- * Combines data from multiple sources into a unified grid-ready structure:
- * 1. Scorecard hierarchy (categories & credit requirements) from transcript
- * 2. Completed courses from transcript
- * 3. Current wishlist courses from localSelectedCoursesSemKeyState
- * 4. Future planned items from curriculumPlanState
- *
- * Output is optimized for rendering a 2D grid: rows = semesters, columns = categories
+ * Extract classification values that should map to a category.
+ * Uses category name/description patterns to infer valid classifications.
  */
+const extractClassifications = (categoryItem) => {
+  const classifications = [];
+  const name = (categoryItem.description || categoryItem.shortName || "").toLowerCase();
+
+  const patterns = [
+    { keywords: ["compulsory", "pflicht", "mandatory"], values: ["compulsory", "pflicht", "Pflichtbereich", "mandatory", "Pflicht"] },
+    { keywords: ["context", "kontext"], values: ["context", "kontext", "Contextual Studies", "Kontextstudium"] },
+    { keywords: ["focus", "schwerpunkt", "major", "concentration"], values: ["focus", "schwerpunkt", "Focus Area", "Major", "Concentration", "Schwerpunktfächer"] },
+    { keywords: ["method", "forschung", "research"], values: ["method", "forschung", "Research Methods", "Forschungsmethoden"] },
+    { keywords: ["thesis", "arbeit", "dissertation"], values: ["thesis", "masterarbeit", "bachelorarbeit", "Thesis", "Master Thesis", "Bachelor Thesis"] },
+    { keywords: ["project", "projekt"], values: ["project", "projekt", "Projects", "Projekte"] },
+    { keywords: ["core", "kern", "foundation"], values: ["core", "kern", "Core", "Foundation", "Kernbereich"] },
+    { keywords: ["seminar"], values: ["seminar", "Seminar", "Seminare"] },
+    { keywords: ["integration", "capstone"], values: ["integration", "capstone", "Integrationsfächer", "Capstone"] },
+  ];
+
+  for (const { keywords, values } of patterns) {
+    if (keywords.some((kw) => name.includes(kw))) {
+      classifications.push(...values);
+    }
+  }
+
+  // "elective"/"wahl" must exclude "pflicht" to avoid matching "Wahlpflicht"
+  if ((name.includes("elective") || name.includes("wahl")) && !name.includes("pflicht")) {
+    classifications.push("elective", "wahl", "Wahlbereich", "Elective", "Wahl");
+  }
+
+  return classifications;
+};
 
 /**
- * Extract the hierarchical category structure from scorecard
- * Recursively processes the scorecard items to build a flat + hierarchical structure
+ * Recursively extract category structure from scorecard items
  */
 const extractCategoryHierarchy = (items, parentPath = "", level = 0) => {
   const categories = [];
@@ -46,14 +76,11 @@ const extractCategoryHierarchy = (items, parentPath = "", level = 0) => {
         minCredits: parseFloat(item.minCredits) || 0,
         maxCredits: parseFloat(item.maxCredits) || 0,
         earnedCredits: parseFloat(item.sumOfCredits) || 0,
-        // Classification values that map to this category
         validClassifications: extractClassifications(item),
-        // Will be populated when processing courses
         plannedCredits: 0,
         children: [],
       };
 
-      // Recursively process children
       if (item.items && Array.isArray(item.items)) {
         category.children = extractCategoryHierarchy(item.items, path, level + 1);
       }
@@ -66,50 +93,6 @@ const extractCategoryHierarchy = (items, parentPath = "", level = 0) => {
 };
 
 /**
- * Extract classification values that should map to this category
- * Uses category name/description patterns to infer valid classifications
- */
-const extractClassifications = (categoryItem) => {
-  const classifications = [];
-  const name = (categoryItem.description || categoryItem.shortName || "").toLowerCase();
-
-  // Map common category names to course classification values
-  // Each pattern maps category keywords -> possible course classification values
-  if (name.includes("compulsory") || name.includes("pflicht") || name.includes("mandatory")) {
-    classifications.push("compulsory", "pflicht", "Pflichtbereich", "mandatory", "Pflicht");
-  }
-  if (name.includes("elective") || name.includes("wahl") && !name.includes("pflicht")) {
-    classifications.push("elective", "wahl", "Wahlbereich", "Elective", "Wahl");
-  }
-  if (name.includes("context") || name.includes("kontext")) {
-    classifications.push("context", "kontext", "Contextual Studies", "Kontextstudium");
-  }
-  if (name.includes("focus") || name.includes("schwerpunkt") || name.includes("major") || name.includes("concentration")) {
-    classifications.push("focus", "schwerpunkt", "Focus Area", "Major", "Concentration", "Schwerpunktfächer");
-  }
-  if (name.includes("method") || name.includes("forschung") || name.includes("research")) {
-    classifications.push("method", "forschung", "Research Methods", "Forschungsmethoden");
-  }
-  if (name.includes("thesis") || name.includes("arbeit") || name.includes("dissertation")) {
-    classifications.push("thesis", "masterarbeit", "bachelorarbeit", "Thesis", "Master Thesis", "Bachelor Thesis");
-  }
-  if (name.includes("project") || name.includes("projekt")) {
-    classifications.push("project", "projekt", "Projects", "Projekte");
-  }
-  if (name.includes("core") || name.includes("kern") || name.includes("foundation")) {
-    classifications.push("core", "kern", "Core", "Foundation", "Kernbereich");
-  }
-  if (name.includes("seminar")) {
-    classifications.push("seminar", "Seminar", "Seminare");
-  }
-  if (name.includes("integration") || name.includes("capstone")) {
-    classifications.push("integration", "capstone", "Integrationsfächer", "Capstone");
-  }
-
-  return classifications;
-};
-
-/**
  * Extract courses (non-title items) with their semester and category info
  */
 const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy = "") => {
@@ -117,7 +100,6 @@ const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy =
 
   (items || []).forEach((item) => {
     if (item.isTitle) {
-      // Recurse into subcategories
       const subPath = categoryPath
         ? `${categoryPath}/${item.description || item.shortName}`
         : item.description || item.shortName;
@@ -128,7 +110,6 @@ const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy =
         );
       }
     } else if (!item.isTitle && item.semester) {
-      // This is a course
       courses.push({
         id: item.hierarchy || item.shortName || item.description,
         courseId: item.courseNumber || item.id || item.hierarchy,
@@ -150,37 +131,6 @@ const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy =
 };
 
 /**
- * Determine semester status based on current date
- */
-const getSemesterStatus = (semesterKey) => {
-  const now = new Date();
-  const currentYear = now.getFullYear() % 100;
-  const currentMonth = now.getMonth();
-
-  // HSG: HS = September-February, FS = February-July
-  const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
-  const currentSemType = isCurrentlyHS ? "HS" : "FS";
-  const currentSemYear = isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
-  const currentSemKey = `${currentSemType}${currentSemYear}`;
-
-  const parsed = parseSemesterKey(semesterKey);
-  const parsedCurrent = parseSemesterKey(currentSemKey);
-
-  // Compare
-  if (parsed.fullYear < parsedCurrent.fullYear) return "completed";
-  if (parsed.fullYear > parsedCurrent.fullYear) return "future";
-
-  // Same year
-  if (semesterKey === currentSemKey) return "current";
-
-  // Different semester type same year: FS comes before HS
-  if (parsed.type === "FS" && parsedCurrent.type === "HS") return "completed";
-  if (parsed.type === "HS" && parsedCurrent.type === "FS") return "future";
-
-  return "completed"; // fallback
-};
-
-/**
  * Calculate the maximum depth of a category hierarchy
  */
 const getHierarchyDepth = (categories, currentDepth = 0) => {
@@ -198,45 +148,30 @@ const getHierarchyDepth = (categories, currentDepth = 0) => {
 };
 
 /**
- * Flatten categories for grid columns
- * Returns only the deepest meaningful categories (leaf nodes)
- * Tracks the GROUPING parent (level 1) for proper hierarchy display
- *
- * Special handling: If level 0 is just the program name (single category with children),
- * we skip it and use level 1 as the grouping parents instead.
- *
- * Depth is calculated dynamically - we flatten to true leaf categories
- * (those with no children), not an arbitrary depth.
+ * Flatten categories to leaf nodes for grid columns.
+ * Skips single program-wrapper roots. Tracks grouping parent for header display.
  */
 const flattenCategoriesForGrid = (categories) => {
   const flattened = [];
 
-  // Check if level 0 is just a single program wrapper (should skip it)
   const shouldSkipLevel0 =
     categories.length === 1 &&
     categories[0].children.length > 0;
 
-  // If skipping level 0, start recursion from its children at effective depth 0
   const effectiveCategories = shouldSkipLevel0 ? categories[0].children : categories;
 
   const recurse = (cats, depth, groupingParentId = null) => {
     cats.forEach((cat) => {
-      // At depth 0 (effective), this category is a grouping parent for its descendants
       const parentIdForChildren = depth === 0 ? cat.id : groupingParentId;
-
-      // A category is a leaf if it has no children - flatten to true leaves
       const isLeaf = !cat.children?.length;
 
       if (isLeaf) {
-        // This is a leaf category - add to flattened list
         flattened.push({
           ...cat,
           children: [],
-          // Track the grouping parent (null if this IS a depth-0 category with no children)
           topLevelParentId: depth === 0 ? null : groupingParentId,
         });
       } else {
-        // Go deeper, preserving the grouping parent reference
         recurse(cat.children, depth + 1, parentIdForChildren);
       }
     });
@@ -247,26 +182,20 @@ const flattenCategoriesForGrid = (categories) => {
 };
 
 /**
- * Build hierarchical category structure for nested grid headers
- * Returns grouping categories with colspan info and their leaf children
- *
- * Special handling: If level 0 is just a single program wrapper,
- * we use level 1 categories as the grouping parents instead.
+ * Build hierarchical category structure for nested grid headers.
+ * Groups leaf categories under their parent for colspan display.
  */
 const buildCategoryHierarchy = (categories, flatCategories) => {
   if (!categories?.length) return [];
 
-  // Check if level 0 is just a single program wrapper (should skip it)
   const shouldSkipLevel0 =
     categories.length === 1 &&
     categories[0].children.length > 0;
 
-  // Use effective grouping categories (level 1 if skipping program wrapper)
   const groupingCategories = shouldSkipLevel0
     ? categories[0].children
     : categories;
 
-  // Group flat categories by their grouping parent
   const categoriesByParent = {};
   flatCategories.forEach((cat) => {
     const parentId = cat.topLevelParentId || "root";
@@ -276,17 +205,11 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
     categoriesByParent[parentId].push(cat);
   });
 
-  // Build hierarchy: grouping categories that span their leaf descendants
-  const hierarchy = groupingCategories.map((groupCat) => {
-    // Find all leaf categories that descend from this grouping category
+  return groupingCategories.map((groupCat) => {
     const descendantLeaves = categoriesByParent[groupCat.id] || [];
-
-    // If this category has no descendants in the flat list,
-    // it IS itself a leaf (no subcategories)
     const isLeaf = descendantLeaves.length === 0;
     const leaves = isLeaf ? [groupCat] : descendantLeaves;
 
-    // Calculate aggregated credits from all leaf children
     const earnedCredits = leaves.reduce((sum, leaf) => sum + (leaf.earnedCredits || 0), 0);
     const plannedCredits = leaves.reduce((sum, leaf) => sum + (leaf.plannedCredits || 0), 0);
     const totalCredits = earnedCredits + plannedCredits;
@@ -317,36 +240,98 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
       })),
     };
   });
-
-  return hierarchy;
 };
 
 /**
- * Main curriculum map selector
+ * Match a course classification to a category using direct name match,
+ * then fuzzy keyword match as fallback.
+ *
+ * @returns {object|undefined} The matched category, or undefined if no match
  */
-export const curriculumMapSelector = selector({
-  key: "curriculumMapSelector",
+const matchClassificationToCategory = (classification, flatCategories) => {
+  const lowerClassification = classification.toLowerCase();
+
+  return (
+    flatCategories.find(
+      (cat) => cat.name.toLowerCase() === lowerClassification
+    ) ||
+    flatCategories.find((cat) =>
+      cat.validClassifications.some(
+        (vc) =>
+          vc.toLowerCase() === lowerClassification ||
+          lowerClassification.includes(vc.toLowerCase())
+      )
+    )
+  );
+};
+
+/**
+ * Estimate completion semester based on credits and planned courses
+ */
+const estimateCompletion = (required, earned, planned, semesters) => {
+  if (earned >= required) return "Completed";
+
+  const remaining = required - earned;
+  const avgCreditsPerSemester =
+    semesters.length > 0
+      ? semesters.reduce((sum, s) => sum + s.totalCredits, 0) / semesters.length
+      : 30;
+
+  const semestersNeeded = Math.ceil(remaining / Math.max(avgCreditsPerSemester, 15));
+  const futureSems = semesters.filter((s) => s.status === "future");
+
+  if (futureSems.length >= semestersNeeded) {
+    return futureSems[semestersNeeded - 1]?.key || "TBD";
+  }
+
+  const lastSemester = semesters[semesters.length - 1];
+  if (!lastSemester) return "TBD";
+
+  const parsed = parseSemesterKey(lastSemester.key);
+  let projectedYear = parsed.year;
+  let isHS = parsed.type === "HS";
+
+  for (let i = 0; i < semestersNeeded - futureSems.length; i++) {
+    if (!isHS) projectedYear++;
+    isHS = !isHS;
+  }
+
+  return `${isHS ? "HS" : "FS"}${projectedYear}`;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Empty state template
+// ────────────────────────────────────────────────────────────────────────────
+
+const createEmptyResult = (isLoaded, validations) => ({
+  isLoaded,
+  program: null,
+  categories: [],
+  flatCategories: [],
+  categoryHierarchy: [],
+  semesters: [],
+  coursesBySemesterAndCategory: {},
+  validations,
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Selector 1: Category structure (depends only on academic data)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Extracts the structural category data from the transcript scorecard.
+ * This only depends on unifiedAcademicDataState, so it won't recompute
+ * when courses are moved around in the grid.
+ */
+export const curriculumCategoryStructureSelector = selector({
+  key: "curriculumCategoryStructureSelector",
   get: ({ get }) => {
     const academicData = get(unifiedAcademicDataState);
-    const unifiedCourseData = get(unifiedCourseDataState);
-    const localSelectedCourses = get(localSelectedCoursesSemKeyState);
-    const curriculumPlan = get(curriculumPlanState);
 
-    // Early return if data not loaded
     if (!academicData.initialization?.isInitialized || !academicData.programs) {
-      return {
-        isLoaded: false,
-        program: null,
-        categories: [],
-        flatCategories: [],
-        categoryHierarchy: [],
-        semesters: [],
-        coursesBySemesterAndCategory: {},
-        validations: curriculumPlan.validations,
-      };
+      return { isReady: false, mainProgramId: null, rawScorecard: null, categories: [], flatCategories: [], completedCourses: [] };
     }
 
-    // Find main program
     const mainProgramId = findMainProgram(
       Object.fromEntries(
         Object.entries(academicData.programs).map(([id, p]) => [
@@ -357,27 +342,16 @@ export const curriculumMapSelector = selector({
     );
 
     if (!mainProgramId) {
-      return {
-        isLoaded: true,
-        program: null,
-        categories: [],
-        flatCategories: [],
-        categoryHierarchy: [],
-        semesters: [],
-        coursesBySemesterAndCategory: {},
-        validations: curriculumPlan.validations,
-      };
+      return { isReady: false, mainProgramId: null, rawScorecard: null, categories: [], flatCategories: [], completedCourses: [] };
     }
 
     const mainProgram = academicData.programs[mainProgramId];
     const rawScorecard = mainProgram?.transcript?.rawScorecard;
 
-    // Extract category hierarchy from scorecard
     const categories = rawScorecard?.items
       ? extractCategoryHierarchy(rawScorecard.items)
       : [];
 
-    // Debug: Log the extracted hierarchy structure
     if (import.meta.env.DEV && categories.length > 0) {
       const shouldSkipLevel0 = categories.length === 1 && categories[0].children.length > 0;
       const effectiveParents = shouldSkipLevel0 ? categories[0].children : categories;
@@ -396,16 +370,51 @@ export const curriculumMapSelector = selector({
       });
     }
 
-    // Flatten categories for grid columns (dynamically finds true leaf categories)
     const flatCategories = flattenCategoriesForGrid(categories);
 
-    // Extract completed courses from scorecard hierarchy
     const completedCourses = rawScorecard?.items
       ? extractCoursesFromHierarchy(rawScorecard.items)
       : [];
 
-    // Collect all semesters from: completed courses + wishlist + planned items
-    // IMPORTANT: Normalize all semester keys to remove spaces (scorecard API uses "FS 25", internal uses "FS25")
+    return {
+      isReady: true,
+      mainProgramId,
+      rawScorecard,
+      categories,
+      flatCategories,
+      completedCourses,
+    };
+  },
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Selector 2: Course grid assembly + stats (depends on all data sources)
+// ────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Main curriculum map selector.
+ * Combines category structure with course data from multiple sources
+ * into a grid-ready structure for rendering.
+ */
+export const curriculumMapSelector = selector({
+  key: "curriculumMapSelector",
+  get: ({ get }) => {
+    const categoryStructure = get(curriculumCategoryStructureSelector);
+    const unifiedCourseData = get(unifiedCourseDataState);
+    const localSelectedCourses = get(localSelectedCoursesSemKeyState);
+    const curriculumPlan = get(curriculumPlanState);
+
+    if (!categoryStructure.isReady) {
+      return createEmptyResult(
+        categoryStructure.mainProgramId !== null,
+        curriculumPlan.validations
+      );
+    }
+
+    const { mainProgramId, rawScorecard, categories, flatCategories, completedCourses } =
+      categoryStructure;
+
+    // ── Collect all semester keys ──────────────────────────────────────────
     const allSemesterKeys = new Set();
 
     completedCourses.forEach((c) => allSemesterKeys.add(normalizeSemesterKey(c.semester)));
@@ -417,13 +426,11 @@ export const curriculumMapSelector = selector({
       allSemesterKeys.add(normalizeSemesterKey(k))
     );
 
-    // Sort semesters chronologically
     const sortedSemesters = sortSemesters(Array.from(allSemesterKeys));
 
-    // Build the course grid: { "semesterKey": { "categoryPath": [courses] } }
+    // ── Initialize grid ───────────────────────────────────────────────────
     const coursesBySemesterAndCategory = {};
 
-    // Initialize grid structure
     sortedSemesters.forEach((semKey) => {
       coursesBySemesterAndCategory[semKey] = {};
       flatCategories.forEach((cat) => {
@@ -431,13 +438,12 @@ export const curriculumMapSelector = selector({
       });
     });
 
-    // Place completed courses into grid
+    // ── Place completed courses ───────────────────────────────────────────
     completedCourses.forEach((course) => {
       const semKey = normalizeSemesterKey(course.semester);
       const catPath = course.categoryPath;
 
       if (coursesBySemesterAndCategory[semKey]) {
-        // Find matching category
         const matchedCat = flatCategories.find(
           (c) => c.path === catPath || catPath.startsWith(c.path)
         );
@@ -445,21 +451,20 @@ export const curriculumMapSelector = selector({
         if (matchedCat) {
           coursesBySemesterAndCategory[semKey][matchedCat.path].push({
             ...course,
-            semester: semKey, // Use normalized semester key
+            semester: semKey,
             source: "transcript",
           });
         }
       }
     });
 
-    // Place wishlist courses into grid
+    // ── Place wishlist courses ────────────────────────────────────────────
     Object.entries(localSelectedCourses).forEach(([semKey, courses]) => {
       if (!coursesBySemesterAndCategory[semKey]) return;
 
       const availableCourses = unifiedCourseData.semesters?.[semKey]?.available || [];
 
       courses.forEach((course) => {
-        // Enrich with full course data if available
         const fullCourse = availableCourses.find(
           (c) =>
             c.courseNumber === course.id ||
@@ -473,31 +478,18 @@ export const curriculumMapSelector = selector({
           course.big_type ||
           "elective";
 
-        // Use stored categoryPath first (from drag-and-drop), fallback to classification match
+        // Use stored categoryPath first (from drag-and-drop), validate it exists
         let targetCatPath = course.categoryPath;
 
-        // Validate stored categoryPath exists in flatCategories
         if (targetCatPath && !flatCategories.some((cat) => cat.path === targetCatPath)) {
           targetCatPath = null;
         }
 
-        // Fallback to classification matching if no stored path
+        // Fallback to classification matching
         if (!targetCatPath) {
-          // First try direct name match (classification often equals category name exactly)
-          const matchedCat = flatCategories.find(
-            (cat) => cat.name.toLowerCase() === classification.toLowerCase()
-          ) ||
-            // Fallback to fuzzy keyword matching for edge cases
-            flatCategories.find((cat) =>
-              cat.validClassifications.some(
-                (vc) =>
-                  vc.toLowerCase() === classification.toLowerCase() ||
-                  classification.toLowerCase().includes(vc.toLowerCase())
-              )
-            );
+          const matchedCat = matchClassificationToCategory(classification, flatCategories);
           targetCatPath = matchedCat?.path || flatCategories[0]?.path;
 
-          // Debug: Log when falling back to first column (indicates classification mismatch)
           if (import.meta.env.DEV && !matchedCat) {
             console.warn(
               `[CurriculumMap] No category match for course "${course.shortName || course.id}"`,
@@ -527,7 +519,7 @@ export const curriculumMapSelector = selector({
       });
     });
 
-    // Place enrolled courses into grid (courses user is actually enrolled in, shown with lock icon)
+    // ── Place enrolled courses ────────────────────────────────────────────
     Object.entries(unifiedCourseData.semesters || {}).forEach(([semKey, semData]) => {
       const normalizedSemKey = normalizeSemesterKey(semKey);
       if (!coursesBySemesterAndCategory[normalizedSemKey]) return;
@@ -536,14 +528,12 @@ export const curriculumMapSelector = selector({
       const availableCourses = semData.available || [];
 
       enrolledIds.forEach((enrolledId) => {
-        // Skip if already added (e.g., from transcript as completed)
         const alreadyExists = Object.values(coursesBySemesterAndCategory[normalizedSemKey])
           .flat()
           .some((c) => c.id === enrolledId || c.courseId === enrolledId);
 
         if (alreadyExists) return;
 
-        // Find full course data
         const fullCourse = availableCourses.find(
           (c) => c.courseNumber === enrolledId || c.id === enrolledId
         );
@@ -552,22 +542,9 @@ export const curriculumMapSelector = selector({
 
         const classification = fullCourse.classification || fullCourse.big_type || "elective";
 
-        // Find matching category based on classification
-        // First try direct name match (classification often equals category name exactly)
-        const matchedCat = flatCategories.find(
-          (cat) => cat.name.toLowerCase() === classification.toLowerCase()
-        ) ||
-          // Fallback to fuzzy keyword matching for edge cases
-          flatCategories.find((cat) =>
-            cat.validClassifications.some(
-              (vc) =>
-                vc.toLowerCase() === classification.toLowerCase() ||
-                classification.toLowerCase().includes(vc.toLowerCase())
-            )
-          );
+        const matchedCat = matchClassificationToCategory(classification, flatCategories);
         const targetCatPath = matchedCat?.path || flatCategories[0]?.path;
 
-        // Debug: Log when falling back to first column (indicates classification mismatch)
         if (import.meta.env.DEV && !matchedCat) {
           console.warn(
             `[CurriculumMap] No category match for enrolled course "${fullCourse.shortName || enrolledId}"`,
@@ -596,11 +573,10 @@ export const curriculumMapSelector = selector({
       });
     });
 
-    // Place curriculum plan items into grid
+    // ── Place curriculum plan items ───────────────────────────────────────
     Object.entries(curriculumPlan.plannedItems || {}).forEach(
       ([semKey, items]) => {
         if (!coursesBySemesterAndCategory[semKey]) {
-          // Create entry for new future semester
           coursesBySemesterAndCategory[semKey] = {};
           flatCategories.forEach((cat) => {
             coursesBySemesterAndCategory[semKey][cat.path] = [];
@@ -624,7 +600,6 @@ export const curriculumMapSelector = selector({
                 source: "plan",
               });
             } else if (item.type === "course") {
-              // Future planned course - try to enrich
               const availableCourses =
                 unifiedCourseData.semesters?.[semKey]?.available || [];
               const fullCourse = availableCourses.find(
@@ -653,21 +628,16 @@ export const curriculumMapSelector = selector({
       }
     );
 
-    // Apply exercise group credit normalization per semester
-    // When a main course and its exercise group are both present,
-    // the exercise group credits should be zeroed to avoid double-counting
+    // ── Exercise group credit normalization ───────────────────────────────
     sortedSemesters.forEach((semKey) => {
-      // Collect all courses in this semester across all categories
       const allSemesterCourses = Object.values(
         coursesBySemesterAndCategory[semKey] || {}
       ).flat();
 
       if (allSemesterCourses.length === 0) return;
 
-      // Process to zero exercise group credits where appropriate
       const processedCourses = processExerciseGroupECTS(allSemesterCourses);
 
-      // Create a map of processed credits by course id for fast lookup
       const processedCreditsMap = new Map();
       processedCourses.forEach((course) => {
         const courseId = course.id || course.courseId;
@@ -676,7 +646,6 @@ export const curriculumMapSelector = selector({
         }
       });
 
-      // Update credits in the original grid structure
       Object.keys(coursesBySemesterAndCategory[semKey]).forEach((catPath) => {
         coursesBySemesterAndCategory[semKey][catPath] = coursesBySemesterAndCategory[semKey][catPath].map((course) => {
           const courseId = course.id || course.courseId;
@@ -688,7 +657,7 @@ export const curriculumMapSelector = selector({
       });
     });
 
-    // Calculate semester-level stats
+    // ── Calculate semester stats ──────────────────────────────────────────
     const semesters = sortedSemesters.map((semKey) => {
       const semesterCourses = Object.values(
         coursesBySemesterAndCategory[semKey] || {}
@@ -711,20 +680,14 @@ export const curriculumMapSelector = selector({
       };
     });
 
-    // Calculate category-level credit totals
-    // Use API's earnedCredits (from sumOfCredits) as source of truth - it handles
-    // all completion scenarios including pass/fail, credited courses, etc.
-    // Only calculate plannedCredits from non-transcript sources (wishlist, plan)
+    // ── Calculate category credit totals ──────────────────────────────────
     const categoriesWithCredits = flatCategories.map((cat) => {
-      // Start with API-provided earned credits
       const earnedCredits = cat.earnedCredits || 0;
       let plannedCredits = 0;
 
-      // Calculate planned credits from non-completed courses (wishlist, enrolled, plan)
       sortedSemesters.forEach((semKey) => {
         const courses = coursesBySemesterAndCategory[semKey]?.[cat.path] || [];
         courses.forEach((course) => {
-          // Only count non-transcript sources as planned
           if (course.source !== "transcript") {
             plannedCredits += course.credits || 0;
           }
@@ -741,7 +704,7 @@ export const curriculumMapSelector = selector({
       };
     });
 
-    // Calculate program-level stats
+    // ── Calculate program stats ───────────────────────────────────────────
     const totalEarned = categoriesWithCredits.reduce(
       (sum, c) => sum + c.earnedCredits,
       0
@@ -752,10 +715,9 @@ export const curriculumMapSelector = selector({
     );
     const totalRequired = parseFloat(rawScorecard?.items?.[0]?.maxCredits) || 180;
 
-    // Build hierarchical structure for nested headers
+    // ── Build hierarchy for nested headers ────────────────────────────────
     const categoryHierarchy = buildCategoryHierarchy(categories, categoriesWithCredits);
 
-    // Debug: Log hierarchy info to understand nested header behavior
     if (import.meta.env.DEV && categoryHierarchy.length > 0) {
       const hasNestedHeaders = categoryHierarchy.some(p => p.children.length > 1);
       console.log("[CurriculumMap] Hierarchy result:", {
@@ -796,44 +758,11 @@ export const curriculumMapSelector = selector({
   },
 });
 
-/**
- * Estimate completion semester based on credits and planned courses
- */
-const estimateCompletion = (required, earned, planned, semesters) => {
-  if (earned >= required) return "Completed";
+// ────────────────────────────────────────────────────────────────────────────
+// Derived convenience selectors
+// ────────────────────────────────────────────────────────────────────────────
 
-  const remaining = required - earned;
-  const avgCreditsPerSemester =
-    semesters.length > 0
-      ? semesters.reduce((sum, s) => sum + s.totalCredits, 0) / semesters.length
-      : 30;
-
-  const semestersNeeded = Math.ceil(remaining / Math.max(avgCreditsPerSemester, 15));
-  const futureSemesters = semesters.filter((s) => s.status === "future");
-
-  if (futureSemesters.length >= semestersNeeded) {
-    return futureSemesters[semestersNeeded - 1]?.key || "TBD";
-  }
-
-  // Project beyond known semesters
-  const lastSemester = semesters[semesters.length - 1];
-  if (!lastSemester) return "TBD";
-
-  const parsed = parseSemesterKey(lastSemester.key);
-  let projectedYear = parsed.year;
-  let isHS = parsed.type === "HS";
-
-  for (let i = 0; i < semestersNeeded - futureSemesters.length; i++) {
-    if (!isHS) projectedYear++;
-    isHS = !isHS;
-  }
-
-  return `${isHS ? "HS" : "FS"}${projectedYear}`;
-};
-
-/**
- * Selector for just the flat category list (useful for CoursePicker)
- */
+/** Flat category list (useful for CoursePicker) */
 export const curriculumCategoriesSelector = selector({
   key: "curriculumCategoriesSelector",
   get: ({ get }) => {
@@ -842,9 +771,7 @@ export const curriculumCategoriesSelector = selector({
   },
 });
 
-/**
- * Selector for semester list with stats
- */
+/** Semester list with stats */
 export const curriculumSemestersSelector = selector({
   key: "curriculumSemestersSelector",
   get: ({ get }) => {
@@ -853,9 +780,7 @@ export const curriculumSemestersSelector = selector({
   },
 });
 
-/**
- * Selector for program overview stats
- */
+/** Program overview stats */
 export const curriculumProgramSelector = selector({
   key: "curriculumProgramSelector",
   get: ({ get }) => {
@@ -863,3 +788,18 @@ export const curriculumProgramSelector = selector({
     return mapData.program;
   },
 });
+
+// ────────────────────────────────────────────────────────────────────────────
+// Exported for testing
+// ────────────────────────────────────────────────────────────────────────────
+
+export const _testHelpers = {
+  normalizeSemesterKey,
+  extractClassifications,
+  extractCategoryHierarchy,
+  extractCoursesFromHierarchy,
+  flattenCategoriesForGrid,
+  buildCategoryHierarchy,
+  matchClassificationToCategory,
+  estimateCompletion,
+};

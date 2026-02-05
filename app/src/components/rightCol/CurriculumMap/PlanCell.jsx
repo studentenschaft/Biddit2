@@ -21,7 +21,6 @@ const PlanCell = ({
   courses,
   semesterStatus,
   validations,
-  isLastRow,
   isLastCol,
   isCollapsed,
   isCategoryComplete,
@@ -120,8 +119,8 @@ const PlanCell = ({
   const borderClass = "border border-gray-200";
   const validationClass = getValidationClasses();
 
-  // Border radius for bottom-right corner
-  const roundedClass = isLastRow && isLastCol ? "rounded-br-lg" : "";
+  // Border radius for bottom-right corner of grid
+  const roundedClass = isLastCol ? "rounded-br-lg" : "";
 
   // Drag-over visual feedback (takes precedence over validation styling)
   const dragOverClass = getDragOverClasses();
@@ -282,10 +281,9 @@ PlanCell.propTypes = {
     conflicts: PropTypes.array,
     warnings: PropTypes.array,
   }),
-  isLastRow: PropTypes.bool,
-  isLastCol: PropTypes.bool,
-  isCollapsed: PropTypes.bool,
-  isCategoryComplete: PropTypes.bool,
+  isLastCol: PropTypes.bool.isRequired,
+  isCollapsed: PropTypes.bool.isRequired,
+  isCategoryComplete: PropTypes.bool.isRequired,
 };
 
 export default PlanCell;

@@ -23,8 +23,9 @@ describe('PlanCell', () => {
     courses: [],
     semesterStatus: 'future',
     validations: null,
-    isLastRow: false,
     isLastCol: false,
+    isCollapsed: false,
+    isCategoryComplete: false,
   };
 
   describe('rendering', () => {

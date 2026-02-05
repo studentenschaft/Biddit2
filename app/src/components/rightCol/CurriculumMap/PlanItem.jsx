@@ -125,12 +125,16 @@ const PlanItem = ({ item, semesterKey }) => {
     const itemId = id || courseId;
 
     if (!itemId) {
-      console.warn("[PlanItem] Cannot remove: missing item ID");
+      if (import.meta.env.DEV) {
+        console.warn("[PlanItem] Cannot remove: missing item ID");
+      }
       return;
     }
 
     if (!semesterKey) {
-      console.warn("[PlanItem] Cannot remove: missing semester key");
+      if (import.meta.env.DEV) {
+        console.warn("[PlanItem] Cannot remove: missing semester key");
+      }
       return;
     }
 
@@ -141,7 +145,9 @@ const PlanItem = ({ item, semesterKey }) => {
         removeCourse(itemId, semesterKey, source || "wishlist");
       }
     } catch (error) {
-      console.error("[PlanItem] Failed to remove item:", error);
+      if (import.meta.env.DEV) {
+        console.error("[PlanItem] Failed to remove item:", error);
+      }
     }
   };
 
