@@ -92,16 +92,11 @@ const PlanCell = ({
     return doesClassificationMatchCategory(classification, categoryName, validClassifications);
   })();
 
-  // Cell background based on category completion (column-wide) or semester status (row)
-  // Category completion takes precedence for visual feedback
+  // Cell background based on semester status (row)
   const getCellBackground = () => {
-    if (isCategoryComplete) {
-      return "bg-green-100"; // Column-wide green when category requirements met
-    }
-    // Fall back to semester status colors
     const statusBg = {
       completed: "bg-green-50",
-      current: "bg-amber-50",
+      current: "bg-green-50",
       future: "bg-white",
     };
     return statusBg[semesterStatus] || "bg-white";
@@ -138,7 +133,7 @@ const PlanCell = ({
   };
 
   // Base border for cell structure
-  const borderClass = "border border-gray-200";
+  const borderClass = "border-b border-r border-gray-100";
   const validationClass = getValidationClasses();
 
   // Border radius for bottom-right corner of grid

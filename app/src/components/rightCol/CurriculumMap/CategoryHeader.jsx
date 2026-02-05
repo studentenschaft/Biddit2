@@ -73,7 +73,7 @@ const CategoryHeader = ({
 
     return (
       <div
-        className={`relative border-b border-gray-200 min-h-[70px] py-1 cursor-pointer overflow-hidden transition-colors ${roundedClasses} ${suggestionClass}`}
+        className={`relative border-b border-gray-100 min-h-[70px] py-1 cursor-pointer overflow-hidden transition-colors ${roundedClasses} ${suggestionClass}`}
         style={{ backgroundColor: '#f9fafb' }}
         onClick={onToggleCollapse}
         title={`${name} (click to expand)`}
@@ -116,7 +116,7 @@ const CategoryHeader = ({
   // Expanded view with fill progress indicator
   return (
     <div
-      className={`relative p-2 border-b border-gray-200 flex flex-col justify-between min-h-[70px] overflow-hidden ${roundedClasses} ${suggestionClass}`}
+      className={`relative p-2 border-b border-gray-100 flex flex-col justify-between min-h-[70px] overflow-hidden ${roundedClasses} ${suggestionClass}`}
       style={{ backgroundColor: '#f9fafb' }}
       title={name}
     >

@@ -61,24 +61,25 @@ const PlanItem = ({ item, semesterKey }) => {
   // Style variants based on course status (unified green theme)
   const statusStyles = {
     completed: {
-      bg: "bg-green-100",
-      border: "border-green-600",
+      bg: "bg-green-200",
       text: "text-green-900",
+      shadow: "shadow-sm hover:shadow-md",
     },
     enrolled: {
-      bg: "bg-green-50",
-      border: "border-green-400",
+      bg: "bg-green-100",
       text: "text-green-800",
+      shadow: "shadow-sm hover:shadow-md",
     },
     planned: {
       bg: "bg-gray-100",
-      border: "border-gray-300",
       text: "text-gray-800",
+      shadow: "shadow-sm hover:shadow-md",
     },
     placeholder: {
       bg: "bg-gray-50",
-      border: "border-gray-300 border-dashed",
+      border: "border border-dashed border-gray-300",
       text: "text-gray-500",
+      shadow: "",
     },
   };
 
@@ -165,7 +166,7 @@ const PlanItem = ({ item, semesterKey }) => {
       ref={setNodeRef}
       style={style}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
-      className={`group ${statusStyle.bg} ${statusStyle.border} ${statusStyle.text} ${cursorClass} ${opacityClass} border rounded px-2 py-1 text-xs transition-all hover:shadow-sm select-none`}
+      className={`group ${statusStyle.bg} ${statusStyle.border || ""} ${statusStyle.text} ${statusStyle.shadow} ${cursorClass} ${opacityClass} rounded-md px-2 py-1 text-xs transition-all select-none`}
       title={`${name}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${
         isDraggable ? "\nDrag to move" : ""
       }`}

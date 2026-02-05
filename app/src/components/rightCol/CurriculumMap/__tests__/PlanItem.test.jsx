@@ -105,8 +105,7 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-green-100');
-      expect(itemDiv).toHaveClass('border-green-600');
+      expect(itemDiv).toHaveClass('bg-green-200');
     });
 
     it('applies enrolled styling for enrolled courses', () => {
@@ -122,8 +121,7 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-green-50');
-      expect(itemDiv).toHaveClass('border-green-400');
+      expect(itemDiv).toHaveClass('bg-green-100');
     });
 
     it('applies planned styling for planned courses', () => {
@@ -135,7 +133,6 @@ describe('PlanItem', () => {
 
       const itemDiv = container.firstChild;
       expect(itemDiv).toHaveClass('bg-gray-100');
-      expect(itemDiv).toHaveClass('border-gray-300');
     });
 
     it('applies placeholder styling for placeholders', () => {
@@ -246,8 +243,7 @@ describe('PlanItem', () => {
 
       // Status is indicated through colors, not icons
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-green-100');
-      expect(itemDiv).toHaveClass('border-green-600');
+      expect(itemDiv).toHaveClass('bg-green-200');
     });
   });
 });

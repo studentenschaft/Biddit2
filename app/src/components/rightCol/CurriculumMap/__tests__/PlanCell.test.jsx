@@ -99,7 +99,7 @@ describe('PlanCell', () => {
       );
 
       const cell = container.firstChild;
-      expect(cell).toHaveClass('bg-amber-50');
+      expect(cell).toHaveClass('bg-green-50');
     });
 
     it('applies white background for future semesters', () => {

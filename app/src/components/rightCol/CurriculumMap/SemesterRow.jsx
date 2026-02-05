@@ -16,19 +16,16 @@ const SemesterRow = ({ semester, isLast }) => {
   const statusStyles = {
     completed: {
       bg: "bg-green-50",
-      border: "border-l-green-600",
       textColor: "text-green-700",
       label: "Completed",
     },
     current: {
-      bg: "bg-amber-50",
-      border: "border-l-amber-500",
-      textColor: "text-amber-700",
+      bg: "bg-green-50",
+      textColor: "text-green-700",
       label: "Current",
     },
     future: {
       bg: "bg-gray-50",
-      border: "border-l-gray-300",
       textColor: "text-gray-600",
       label: "Planned",
     },
@@ -41,7 +38,7 @@ const SemesterRow = ({ semester, isLast }) => {
 
   return (
     <div
-      className={`${style.bg} ${style.border} ${roundedClass} border-l-4 p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-200`}
+      className={`${style.bg} ${roundedClass} p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
     >
       {/* Semester key */}
       <div className="font-bold text-sm text-gray-800">{key}</div>

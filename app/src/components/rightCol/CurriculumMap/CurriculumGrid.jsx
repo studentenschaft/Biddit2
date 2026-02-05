@@ -152,7 +152,7 @@ const CurriculumGrid = ({
         {showParentHeaders && (
           <>
             {/* Corner cell for parent row */}
-            <div className="bg-gray-100 p-2 sticky left-0 z-20 border-b border-gray-200" />
+            <div className="bg-gray-100 p-2 sticky left-0 z-20 border-b border-gray-100" />
 
             {/* Parent category headers with colspan and collapse toggle */}
             {categoryHierarchy.map((parent) => {
@@ -163,7 +163,7 @@ const CurriculumGrid = ({
               return (
                 <div
                   key={parent.id}
-                  className={`relative border-b border-gray-200 p-2 flex items-center gap-2 overflow-hidden ${
+                  className={`relative border-b border-gray-100 p-2 flex items-center gap-2 overflow-hidden ${
                     isParentCollapsed ? "justify-center" : "justify-between"
                   }`}
                   style={{
@@ -230,7 +230,7 @@ const CurriculumGrid = ({
 
         {/* Leaf category header row */}
         <div
-          className={`bg-gray-50 p-2 sticky left-0 z-20 border-b border-gray-200 ${
+          className={`bg-gray-50 p-2 sticky left-0 z-20 border-b border-gray-100 ${
             showParentHeaders ? "" : "rounded-tl-lg"
           }`}
         >
@@ -303,7 +303,7 @@ const CurriculumGrid = ({
 
         {/* Add Semester row */}
         <div
-          className="bg-gray-50 border-b border-gray-200 p-2 sticky left-0 z-10 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center min-h-[50px]"
+          className="bg-gray-50 border-b border-gray-100 p-2 sticky left-0 z-10 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center min-h-[50px]"
           onClick={() => {
             const lastSemester = semesters[semesters.length - 1];
             if (lastSemester) {
@@ -321,7 +321,7 @@ const CurriculumGrid = ({
         {leafCategories.map((category, catIdx) => (
           <div
             key={`add-row-${category.path}`}
-            className="bg-gray-50 border border-gray-200 min-h-[50px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
+            className="bg-gray-50 border-b border-r border-gray-100 min-h-[50px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
             onClick={() => {
               const lastSemester = semesters[semesters.length - 1];
               if (lastSemester) {
