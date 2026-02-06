@@ -1,16 +1,15 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRecoilValue } from "recoil";
-import { planListSelector, planCountSelector } from "../../recoil/curriculumPlansSelectors";
+import { planListSelector } from "../../recoil/curriculumPlansSelectors";
 import usePlanManager from "../../helpers/usePlanManager";
 
 const PlanSwitcher = () => {
   const plans = useRecoilValue(planListSelector);
-  const planCount = useRecoilValue(planCountSelector);
   const { switchPlan, createPlan, deletePlan, renamePlan, duplicatePlan } = usePlanManager();
 
   const [editingId, setEditingId] = useState(null);
   const [editingName, setEditingName] = useState("");
-  const [contextMenu, setContextMenu] = useState(null); // { planId, x, y }
+  const [contextMenu, setContextMenu] = useState(null); // { planId, name, x, y }
   const [deleteConfirm, setDeleteConfirm] = useState(null); // planId
 
   const editInputRef = useRef(null);
@@ -37,59 +36,50 @@ const PlanSwitcher = () => {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [contextMenu]);
 
-  const startRename = useCallback((planId, currentName) => {
+  const startRename = (planId, currentName) => {
     setEditingId(planId);
     setEditingName(currentName);
     setContextMenu(null);
-  }, []);
+  };
 
-  const commitRename = useCallback(() => {
+  const commitRename = () => {
     if (editingId && editingName.trim()) {
       renamePlan(editingId, editingName.trim());
     }
     setEditingId(null);
     setEditingName("");
-  }, [editingId, editingName, renamePlan]);
+  };
 
-  const handleRenameKeyDown = useCallback(
-    (e) => {
-      if (e.key === "Enter") commitRename();
-      if (e.key === "Escape") {
-        setEditingId(null);
-        setEditingName("");
-      }
-    },
-    [commitRename]
-  );
+  const handleRenameKeyDown = (e) => {
+    if (e.key === "Enter") commitRename();
+    if (e.key === "Escape") {
+      setEditingId(null);
+      setEditingName("");
+    }
+  };
 
-  const handleContextMenu = useCallback((e, planId) => {
+  const handleContextMenu = (e, planId, planName) => {
     e.preventDefault();
-    setContextMenu({ planId, x: e.clientX, y: e.clientY });
+    setContextMenu({ planId, name: planName, x: e.clientX, y: e.clientY });
     setDeleteConfirm(null);
-  }, []);
+  };
 
-  const handleCreatePlan = useCallback(async () => {
+  const handleCreatePlan = async () => {
     const activePlan = plans.find((p) => p.isActive);
     const baseName = activePlan ? activePlan.name : "Plan";
     await createPlan(`${baseName} (copy)`);
-  }, [createPlan, plans]);
+  };
 
-  const handleDuplicate = useCallback(
-    async (planId) => {
-      await duplicatePlan(planId);
-      setContextMenu(null);
-    },
-    [duplicatePlan]
-  );
+  const handleDuplicate = async (planId) => {
+    await duplicatePlan(planId);
+    setContextMenu(null);
+  };
 
-  const handleDelete = useCallback(
-    async (planId) => {
-      await deletePlan(planId);
-      setContextMenu(null);
-      setDeleteConfirm(null);
-    },
-    [deletePlan]
-  );
+  const handleDelete = async (planId) => {
+    await deletePlan(planId);
+    setContextMenu(null);
+    setDeleteConfirm(null);
+  };
 
   return (
     <div className="flex items-center gap-1 mt-3 pb-1">
@@ -118,7 +108,7 @@ const PlanSwitcher = () => {
               key={plan.id}
               onClick={() => !plan.isActive && switchPlan(plan.id)}
               onDoubleClick={() => startRename(plan.id, plan.name)}
-              onContextMenu={(e) => handleContextMenu(e, plan.id)}
+              onContextMenu={(e) => handleContextMenu(e, plan.id, plan.name)}
               className={`
                 px-3 py-1 text-sm rounded truncate max-w-[180px] transition-colors
                 ${
@@ -160,10 +150,7 @@ const PlanSwitcher = () => {
         >
           <button
             className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-            onClick={() => {
-              const plan = plans.find((p) => p.id === contextMenu.planId);
-              if (plan) startRename(plan.id, plan.name);
-            }}
+            onClick={() => startRename(contextMenu.planId, contextMenu.name)}
           >
             Rename
           </button>
@@ -173,7 +160,7 @@ const PlanSwitcher = () => {
           >
             Duplicate
           </button>
-          {planCount > 1 && (
+          {plans.length > 1 && (
             <>
               <div className="border-t border-gray-100 my-1" />
               {deleteConfirm === contextMenu.planId ? (

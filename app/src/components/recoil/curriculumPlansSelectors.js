@@ -28,13 +28,3 @@ export const activePlanMetadataSelector = selector({
   },
 });
 
-/**
- * Total number of plans (for conditional UI like hiding delete on last plan).
- */
-export const planCountSelector = selector({
-  key: "planCountSelector",
-  get: ({ get }) => {
-    const registry = get(curriculumPlansRegistryState);
-    return Object.keys(registry.plans).length;
-  },
-});

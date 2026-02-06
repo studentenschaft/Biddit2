@@ -1,7 +1,9 @@
-import { useCallback } from "react";
 import { useRecoilCallback } from "recoil";
 import { toast } from "react-toastify";
-import { curriculumPlanState } from "../recoil/curriculumPlanAtom";
+import {
+  curriculumPlanState,
+  getDefaultPlanState,
+} from "../recoil/curriculumPlanAtom";
 import {
   curriculumPlansRegistryState,
   generatePlanId,
@@ -74,18 +76,10 @@ const usePlanManager = () => {
         if (targetData) {
           set(curriculumPlanState, targetData);
         } else {
-          // First time switching to a plan that was just created (data is in ACTIVE_PLAN_KEY)
-          // or the default plan on first migration — keep atom as-is if no stored data
           if (import.meta.env.DEV) {
             console.log(`[usePlanManager] No stored data for ${targetPlanId}, loading defaults`);
           }
-          set(curriculumPlanState, {
-            plannedItems: {},
-            specialization: null,
-            validations: { conflicts: [], categoryWarnings: [], availabilityWarnings: [] },
-            syncStatus: { lastSynced: null, pendingChanges: [], syncError: null },
-            lastModified: null,
-          });
+          set(curriculumPlanState, getDefaultPlanState());
         }
 
         // Step 4: update registry
@@ -103,105 +97,14 @@ const usePlanManager = () => {
   );
 
   /**
-   * Create a new plan by duplicating the current plan's data.
-   * Automatically switches to the new plan.
-   */
-  const createPlan = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (name = "New Plan") => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
-        const currentData = await snapshot.getPromise(curriculumPlanState);
-        const newId = generatePlanId();
-        const now = new Date().toISOString();
-
-        // Save current plan data under its storage key before switching away
-        savePlanToStorage(registry.activePlanId, currentData);
-
-        // Save duplicated data under new plan's key, then load it into the atom
-        const clonedData = JSON.parse(JSON.stringify(currentData));
-        clonedData.lastModified = now;
-        savePlanToStorage(newId, clonedData);
-        set(curriculumPlanState, clonedData);
-
-        // Update registry: add new plan and make it active
-        set(curriculumPlansRegistryState, {
-          ...registry,
-          activePlanId: newId,
-          plans: {
-            ...registry.plans,
-            [registry.activePlanId]: {
-              ...registry.plans[registry.activePlanId],
-              lastModified: now,
-            },
-            [newId]: { id: newId, name, createdAt: now, lastModified: now },
-          },
-        });
-
-        return newId;
-      },
-    []
-  );
-
-  /**
-   * Delete a plan. Cannot delete the last remaining plan.
-   * If deleting the active plan, switches to the first available plan first.
-   */
-  const deletePlan = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (planId) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
-        const planIds = Object.keys(registry.plans);
-        if (planIds.length <= 1) return;
-
-        const removePlanEntry = (reg) =>
-          Object.fromEntries(Object.entries(reg.plans).filter(([id]) => id !== planId));
-
-        // If deleting the active plan, switch to another first
-        if (planId === registry.activePlanId) {
-          const otherPlanId = planIds.find((id) => id !== planId);
-          await switchPlan(otherPlanId);
-          const updatedRegistry = await snapshot.getPromise(curriculumPlansRegistryState);
-          set(curriculumPlansRegistryState, { ...updatedRegistry, plans: removePlanEntry(updatedRegistry) });
-        } else {
-          set(curriculumPlansRegistryState, { ...registry, plans: removePlanEntry(registry) });
-        }
-
-        removePlanFromStorage(planId);
-      },
-    [switchPlan]
-  );
-
-  /**
-   * Rename a plan in the registry.
-   */
-  const renamePlan = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (planId, newName) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
-        if (!registry.plans[planId]) return;
-
-        set(curriculumPlansRegistryState, {
-          ...registry,
-          plans: {
-            ...registry.plans,
-            [planId]: {
-              ...registry.plans[planId],
-              name: newName,
-              lastModified: new Date().toISOString(),
-            },
-          },
-        });
-      },
-    []
-  );
-
-  /**
    * Duplicate a specific plan (can be active or inactive).
    * The duplicate becomes the new active plan.
+   * @param {string} planId - ID of the plan to duplicate
+   * @param {string} [name] - Name for the new plan (defaults to "${sourceName} (copy)")
    */
   const duplicatePlan = useRecoilCallback(
     ({ snapshot, set }) =>
-      async (planId) => {
+      async (planId, name) => {
         const registry = await snapshot.getPromise(curriculumPlansRegistryState);
         if (!registry.plans[planId]) return;
 
@@ -243,7 +146,7 @@ const usePlanManager = () => {
             },
             [newId]: {
               id: newId,
-              name: `${sourceName} (copy)`,
+              name: name ?? `${sourceName} (copy)`,
               createdAt: now,
               lastModified: now,
             },
@@ -255,13 +158,87 @@ const usePlanManager = () => {
     []
   );
 
-  return {
-    switchPlan: useCallback((...args) => switchPlan(...args), [switchPlan]),
-    createPlan: useCallback((...args) => createPlan(...args), [createPlan]),
-    deletePlan: useCallback((...args) => deletePlan(...args), [deletePlan]),
-    renamePlan: useCallback((...args) => renamePlan(...args), [renamePlan]),
-    duplicatePlan: useCallback((...args) => duplicatePlan(...args), [duplicatePlan]),
-  };
+  /**
+   * Create a new plan by duplicating the active plan's data.
+   * Delegates to duplicatePlan with an explicit name.
+   */
+  const createPlan = useRecoilCallback(
+    ({ snapshot }) =>
+      async (name = "New Plan") => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        return duplicatePlan(registry.activePlanId, name);
+      },
+    [duplicatePlan]
+  );
+
+  /**
+   * Delete a plan. Cannot delete the last remaining plan.
+   * If deleting the active plan, atomically switches to another plan
+   * in the same callback to avoid stale snapshot issues.
+   */
+  const deletePlan = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (planId) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const planIds = Object.keys(registry.plans);
+        if (planIds.length <= 1) return;
+
+        const remainingPlans = Object.fromEntries(
+          Object.entries(registry.plans).filter(([id]) => id !== planId)
+        );
+
+        if (planId === registry.activePlanId) {
+          // Deleting the active plan: save current, load another, update registry — all in one batch
+          const currentData = await snapshot.getPromise(curriculumPlanState);
+          savePlanToStorage(registry.activePlanId, currentData);
+
+          const otherPlanId = planIds.find((id) => id !== planId);
+          const targetData = loadPlanFromStorage(otherPlanId);
+
+          set(curriculumPlanState, targetData ?? getDefaultPlanState());
+
+          const now = new Date().toISOString();
+          set(curriculumPlansRegistryState, {
+            activePlanId: otherPlanId,
+            plans: {
+              ...remainingPlans,
+              [otherPlanId]: { ...remainingPlans[otherPlanId], lastModified: now },
+            },
+          });
+        } else {
+          set(curriculumPlansRegistryState, { ...registry, plans: remainingPlans });
+        }
+
+        removePlanFromStorage(planId);
+      },
+    []
+  );
+
+  /**
+   * Rename a plan in the registry.
+   */
+  const renamePlan = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (planId, newName) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        if (!registry.plans[planId]) return;
+
+        set(curriculumPlansRegistryState, {
+          ...registry,
+          plans: {
+            ...registry.plans,
+            [planId]: {
+              ...registry.plans[planId],
+              name: newName,
+              lastModified: new Date().toISOString(),
+            },
+          },
+        });
+      },
+    []
+  );
+
+  return { switchPlan, createPlan, deletePlan, renamePlan, duplicatePlan };
 };
 
 export default usePlanManager;

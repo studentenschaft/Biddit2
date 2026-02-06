@@ -45,39 +45,31 @@ const loadFromStorage = () => {
 };
 
 /**
+ * Canonical default state shape for a curriculum plan.
+ * Used by getInitialState() and as the fallback in usePlanManager.switchPlan.
+ */
+export const getDefaultPlanState = () => ({
+  plannedItems: {},
+  specialization: null,
+  validations: {
+    conflicts: [],
+    categoryWarnings: [],
+    availabilityWarnings: [],
+  },
+  syncStatus: {
+    lastSynced: null,
+    pendingChanges: [],
+    syncError: null,
+  },
+  lastModified: null,
+});
+
+/**
  * Get initial state, merging localStorage with defaults
  */
 const getInitialState = () => {
   const stored = loadFromStorage();
-  const defaults = {
-    // Planned items per semester (courses and placeholders for future semesters)
-    // Format: { "FS25": [{ type, courseId/id, categoryPath, credits, label?, addedAt }] }
-    plannedItems: {},
-
-    // User's chosen specialization/focus area (if program has tracks)
-    // MVP: null (defer specialization handling)
-    specialization: null,
-
-    // Cached validation results (updated by curriculumValidationSelector)
-    validations: {
-      // Schedule conflicts within a semester
-      conflicts: [],
-      // Category credit limit warnings
-      categoryWarnings: [],
-      // Course not offered in planned semester warnings
-      availabilityWarnings: [],
-    },
-
-    // Synchronization state with backend
-    syncStatus: {
-      lastSynced: null,
-      pendingChanges: [],
-      syncError: null,
-    },
-
-    // Metadata
-    lastModified: null,
-  };
+  const defaults = getDefaultPlanState();
 
   if (stored) {
     return {
