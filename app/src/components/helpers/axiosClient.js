@@ -232,7 +232,9 @@ class ApiClient {
   async retryWithBackoff(error, originalRequest) {
     originalRequest._retryCount++;
     const retryCount = originalRequest._retryCount;
-    const delay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1); // 1s, 2s, 4s
+    const baseDelay = INITIAL_RETRY_DELAY * Math.pow(2, retryCount - 1);
+    const jitter = baseDelay * 0.5 * Math.random();
+    const delay = baseDelay + jitter; // e.g. 1-1.5s, 2-3s, 4-6s
 
     console.log(
       `Retrying request (${retryCount}/${MAX_RETRIES}) after ${delay}ms:`,
