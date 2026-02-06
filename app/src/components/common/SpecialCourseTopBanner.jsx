@@ -35,9 +35,8 @@ const SpecialCourseTopBanner = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <p className="text-sm font-medium sm:text-base">
           <span className="mr-2 font-semibold">Special Master Course Announcement</span>
-          <span className="hidden sm:inline">
-            — "Das ethische Unternehmen?" (Kontextstudium Master) will appear in Bidding Round 3 due to a technical issue. Don't
-  miss it!
+          <span>
+            — "Das ethische Unternehmen?" (Kontextstudium Master) will appear in Bidding Round 3 due to a technical issue. Don't miss it!
           </span>
           <a
             href="https://courses.unisg.ch/event/events/by-term/bcfa3ae5-e57c-4b67-b89c-92e887a85405/15167775"
