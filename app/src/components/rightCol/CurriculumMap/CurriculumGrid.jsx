@@ -17,6 +17,7 @@ import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 
 const CurriculumGrid = ({
   categories,
@@ -32,6 +33,10 @@ const CurriculumGrid = ({
 
   // Hook for adding semesters
   const { addSemester } = useCurriculumPlan();
+
+  // Scroll affordance — gradient fades indicating hidden content
+  const { scrollContainerRef, canScrollLeft, canScrollRight } =
+    useHorizontalScrollAffordance();
 
   const toggleCategoryCollapse = useCallback((categoryPath) => {
     setCollapsedCategories((prev) => {
@@ -143,11 +148,15 @@ const CurriculumGrid = ({
     hasHierarchy && categoryHierarchy.some((parent) => parent.children.length > 1);
 
   return (
-    <div className="overflow-x-auto scrollbar-thin-visible rounded-lg ring-1 ring-black ring-opacity-5">
+    <div className="relative">
       <div
-        className="grid min-w-fit bg-white"
-        style={{ gridTemplateColumns }}
+        ref={scrollContainerRef}
+        className="overflow-x-auto scrollbar-thin-visible rounded-l-lg border-t border-b border-l border-black/5"
       >
+        <div
+          className="grid min-w-fit bg-white"
+          style={{ gridTemplateColumns }}
+        >
         {/* Parent header row (only if hierarchy exists with multiple children) */}
         {showParentHeaders && (
           <>
@@ -334,6 +343,32 @@ const CurriculumGrid = ({
           </div>
         ))}
       </div>
+    </div>
+
+      {/* Right fade — visible when more content exists to the right */}
+      <div
+        className={`absolute top-0 right-0 bottom-0 w-16 pointer-events-none
+          rounded-r-lg transition-opacity duration-300
+          ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+        style={{
+          background:
+            "linear-gradient(to left, rgba(255,255,255,1), transparent)",
+        }}
+        aria-hidden="true"
+      />
+
+      {/* Left fade — visible when scrolled past the start, offset past sticky semester column */}
+      <div
+        className={`absolute top-0 bottom-0 w-14 pointer-events-none
+          transition-opacity duration-300
+          ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+        style={{
+          left: `${semesterColWidth}px`,
+          background:
+            "linear-gradient(to right, rgba(255,255,255,1), transparent)",
+        }}
+        aria-hidden="true"
+      />
     </div>
   );
 };

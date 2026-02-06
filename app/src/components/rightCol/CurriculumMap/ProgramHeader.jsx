@@ -7,6 +7,8 @@
  */
 
 import PropTypes from "prop-types";
+import { InformationCircleIcon } from "@heroicons/react/outline";
+import { Tooltip as ReactTooltip } from "react-tooltip";
 
 const ProgramHeader = ({ program }) => {
   if (!program) return null;
@@ -30,8 +32,12 @@ const ProgramHeader = ({ program }) => {
   return (
     <div className="space-y-3">
       {/* Title - matches StudyOverview header style */}
-      <div className="py-2 pl-2 text-xl font-bold bg-gray-100 rounded">
+      <div className="py-2 pl-2 pr-3 text-xl font-bold bg-gray-100 rounded flex items-center justify-between">
         {name}
+        <InformationCircleIcon
+          className="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-help flex-shrink-0 ml-2"
+          data-tooltip-id="curriculum-map-help"
+        />
       </div>
 
       {/* Progress section */}
@@ -79,6 +85,35 @@ const ProgramHeader = ({ program }) => {
           </div>
         )}
       </div>
+
+      <ReactTooltip
+        id="curriculum-map-help"
+        place="bottom"
+        style={{
+          backgroundColor: "#f9fafb",
+          color: "#111827",
+          border: "1px solid #d1d5db",
+          borderRadius: "0.5rem",
+          fontSize: "0.8125rem",
+          maxWidth: "340px",
+          padding: "12px 16px",
+          zIndex: 50,
+        }}
+        render={() => (
+          <div>
+            <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+              How This Works
+            </div>
+            <ul style={{ margin: 0, paddingLeft: "16px", lineHeight: "1.6" }}>
+              <li>Drag courses from the list on the left into any future semester cell</li>
+              <li>Click &quot;+&quot; in an empty cell to add a placeholder</li>
+              <li>Create multiple plans with the tabs below to compare study paths</li>
+              <li>Right-click a plan tab to rename, duplicate, or delete</li>
+              <li>Completed and enrolled courses appear automatically from your transcript</li>
+            </ul>
+          </div>
+        )}
+      />
     </div>
   );
 };
