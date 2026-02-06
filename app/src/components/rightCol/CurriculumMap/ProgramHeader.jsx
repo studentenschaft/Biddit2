@@ -7,7 +7,7 @@
  */
 
 import PropTypes from "prop-types";
-import { InformationCircleIcon } from "@heroicons/react/outline";
+import { QuestionMarkCircleIcon } from "@heroicons/react/outline";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
 const ProgramHeader = ({ program }) => {
@@ -34,10 +34,13 @@ const ProgramHeader = ({ program }) => {
       {/* Title - matches StudyOverview header style */}
       <div className="py-2 pl-2 pr-3 text-xl font-bold bg-gray-100 rounded flex items-center justify-between">
         {name}
-        <InformationCircleIcon
-          className="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-help flex-shrink-0 ml-2"
+        <button
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 cursor-help flex-shrink-0 ml-2 transition-colors"
           data-tooltip-id="curriculum-map-help"
-        />
+        >
+          <QuestionMarkCircleIcon className="h-4 w-4" />
+          How this works
+        </button>
       </div>
 
       {/* Progress section */}
@@ -101,15 +104,15 @@ const ProgramHeader = ({ program }) => {
         }}
         render={() => (
           <div>
-            <div style={{ fontWeight: 600, marginBottom: "8px" }}>
-              How This Works
-            </div>
-            <ul style={{ margin: 0, paddingLeft: "16px", lineHeight: "1.6" }}>
+            <p style={{ margin: "0 0 8px 0" }}>
+              This view allows you to plan your entire study program.
+            </p>
+            <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: "1.6", listStyleType: "disc" }}>
               <li>Drag courses from the list on the left into any future semester cell</li>
+              <li>Completed and enrolled courses appear automatically from your transcript</li>
               <li>Click &quot;+&quot; in an empty cell to add a placeholder</li>
               <li>Create multiple plans with the tabs below to compare study paths</li>
               <li>Right-click a plan tab to rename, duplicate, or delete</li>
-              <li>Completed and enrolled courses appear automatically from your transcript</li>
             </ul>
           </div>
         )}
