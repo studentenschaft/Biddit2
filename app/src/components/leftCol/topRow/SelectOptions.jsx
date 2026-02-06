@@ -121,13 +121,15 @@ export default function SelectSemester() {
         </div>
       )}
 
-      <ErrorBoundary>
-        {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
-        <EventListContainer
-          termListObject={termListObject || []}
-          selectedSemesterShortName={selectedSemesterShortName || ""}
-        />
-      </ErrorBoundary>
+      <div className="flex-1 min-h-0">
+        <ErrorBoundary>
+          {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
+          <EventListContainer
+            termListObject={termListObject || []}
+            selectedSemesterShortName={selectedSemesterShortName || ""}
+          />
+        </ErrorBoundary>
+      </div>
     </>
   );
 }

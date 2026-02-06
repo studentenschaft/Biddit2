@@ -251,8 +251,8 @@ export default function Biddit2() {
         </div>
         {/* Content */}
         <div
-          className={`w-full h-full md:w-1/3 p-4 bg-gray-100 ${
-            !isLeftViewVisibleState ? "hidden md:block" : ""
+          className={`w-full h-full md:w-1/3 p-4 bg-gray-100 overflow-hidden min-w-0 flex flex-col ${
+            !isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
           <Suspense fallback={<LoadingText>Loading Course Data...</LoadingText>}>
@@ -260,7 +260,7 @@ export default function Biddit2() {
           </Suspense>
         </div>
         <div
-          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto ${
+          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 ${
             isLeftViewVisibleState ? "hidden md:block" : ""
           }`}
         >
