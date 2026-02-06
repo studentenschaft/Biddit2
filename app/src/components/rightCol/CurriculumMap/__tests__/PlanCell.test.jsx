@@ -71,48 +71,6 @@ describe('PlanCell', () => {
       expect(screen.getByText('Course 2')).toBeInTheDocument();
     });
 
-    it('shows "+ Add" button for non-empty future cells', () => {
-      const courses = [
-        { id: '1', name: 'Course 1', credits: 6, status: 'planned' },
-      ];
-
-      render(
-        <TestWrapper>
-          <PlanCell {...defaultProps} courses={courses} />
-        </TestWrapper>
-      );
-
-      expect(screen.getByText('+ Add')).toBeInTheDocument();
-    });
-
-    it('shows "+ Add" button for non-empty current semester cells', () => {
-      const courses = [
-        { id: '1', name: 'Course 1', credits: 6, status: 'enrolled' },
-      ];
-
-      render(
-        <TestWrapper>
-          <PlanCell {...defaultProps} semesterStatus="current" courses={courses} />
-        </TestWrapper>
-      );
-
-      expect(screen.getByText('+ Add')).toBeInTheDocument();
-    });
-
-    it('does not show "+ Add" button for completed semester cells', () => {
-      const courses = [
-        { id: '1', name: 'Course 1', credits: 6, status: 'completed' },
-      ];
-
-      render(
-        <TestWrapper>
-          <PlanCell {...defaultProps} semesterStatus="completed" courses={courses} />
-        </TestWrapper>
-      );
-
-      expect(screen.queryByText('+ Add')).not.toBeInTheDocument();
-    });
-
     it('sets data attributes for cell identification', () => {
       const { container } = render(
         <TestWrapper>

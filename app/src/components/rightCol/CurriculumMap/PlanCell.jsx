@@ -62,12 +62,6 @@ const PlanCell = ({
     }
   };
 
-  const handlePlusClick = () => {
-    if (semesterStatus !== "completed") {
-      setShowPlaceholderForm(true);
-    }
-  };
-
   // Completed semesters cannot be drop targets
   const canDrop = semesterStatus !== "completed";
 
@@ -212,17 +206,6 @@ const PlanCell = ({
           onCourseClick={onCourseClick}
         />
       ))}
-
-      {/* Add more button for cells with courses (non-completed semesters) */}
-      {courses.length > 0 && canDrop && !showPlaceholderForm && (
-        <button
-          onClick={handlePlusClick}
-          className="text-gray-300 text-xs hover:text-gray-500 hover:bg-gray-100 rounded px-1 py-0.5 transition-colors self-start"
-          title="Add placeholder course"
-        >
-          + Add
-        </button>
-      )}
 
       {/* Placeholder form */}
       {showPlaceholderForm && (
