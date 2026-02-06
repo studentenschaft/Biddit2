@@ -11,6 +11,7 @@ import {
 } from "../recoil/curriculumPlanAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+import { useUnifiedCourseData } from "./useUnifiedCourseData";
 
 /**
  * Check if a stored course matches a given courseId.
@@ -41,6 +42,7 @@ export const useCurriculumPlan = () => {
     localSelectedCoursesSemKeyState
   );
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
+  const { removeSelectedCourse } = useUnifiedCourseData();
 
   /**
    * Determine if a semester is "current or next" (eligible for wishlist sync)
@@ -289,6 +291,9 @@ export const useCurriculumPlan = () => {
             (c) => !courseMatchesId(c, courseId)
           ),
         }));
+
+        // Keep unified state in sync so EventListContainer reflects the removal
+        removeSelectedCourse(semesterKey, courseId);
       } else {
         setCurriculumPlan((prev) => ({
           ...prev,
@@ -303,7 +308,7 @@ export const useCurriculumPlan = () => {
 
       return true;
     },
-    [isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan]
+    [isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan, removeSelectedCourse]
   );
 
   /**

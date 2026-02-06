@@ -501,11 +501,15 @@ export const curriculumMapSelector = selector({
         }
 
         if (targetCatPath && coursesBySemesterAndCategory[semKey][targetCatPath]) {
+          // Idempotent normalization: handles both pre-normalized (6) and raw API (600) credits
+          const rawCredits = course.credits ?? fullCourse?.credits ?? 300;
+          const normalizedCredits = rawCredits > 99 ? rawCredits / 100 : rawCredits;
+
           coursesBySemesterAndCategory[semKey][targetCatPath].push({
             id: course.id || course.courseNumber,
             courseId: course.id || course.courseNumber,
             name: course.shortName || fullCourse?.shortName || course.id,
-            credits: (course.credits ?? fullCourse?.credits ?? 300) / 100,
+            credits: normalizedCredits,
             semester: semKey,
             categoryPath: targetCatPath,
             status: "planned",

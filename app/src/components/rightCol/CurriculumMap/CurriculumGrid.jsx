@@ -12,11 +12,15 @@
 
 import { useState, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/solid";
 import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
+import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
+import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 
 const CurriculumGrid = ({
@@ -35,6 +39,24 @@ const CurriculumGrid = ({
 
   // Hook for adding semesters
   const { addSemester } = useCurriculumPlan();
+
+  // Hooks for "click course → open details" feature
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
+  const { updateSelectedCourseInfo } = useUnifiedCourseData();
+  const setSelectedTab = useSetRecoilState(selectedTabAtom);
+
+  const handleCourseClick = useCallback((item) => {
+    const semKey = item.semester;
+    const available = unifiedCourseData.semesters?.[semKey]?.available || [];
+    const fullCourse = available.find(
+      (c) => c.courseNumber === item.courseId || c.id === item.courseId
+    );
+
+    if (fullCourse) {
+      updateSelectedCourseInfo(fullCourse);
+      setSelectedTab(0);
+    }
+  }, [unifiedCourseData, updateSelectedCourseInfo, setSelectedTab]);
 
   // Scroll affordance — gradient fades indicating hidden content
   const { scrollContainerRef, canScrollLeft, canScrollRight } =
@@ -308,6 +330,7 @@ const CurriculumGrid = ({
                   validClassifications={category.validClassifications}
                   placementMode={placementMode}
                   onCellPlacement={onCellPlacement}
+                  onCourseClick={handleCourseClick}
                 />
               );
             })}

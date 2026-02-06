@@ -14,7 +14,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { XIcon } from "@heroicons/react/solid";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
 
-const PlanItem = ({ item, semesterKey }) => {
+const PlanItem = ({ item, semesterKey, onCourseClick }) => {
   const { removeCourse, removePlaceholder } = useCurriculumPlan();
   const {
     id,
@@ -151,12 +151,20 @@ const PlanItem = ({ item, semesterKey }) => {
     }
   };
 
-  // Cursor style based on draggability
+  const handleClick = () => {
+    if (!isPlaceholder && onCourseClick) {
+      onCourseClick(item);
+    }
+  };
+
+  // Cursor style: draggable items get grab cursor, placeholders get default, others get pointer
   const cursorClass = isDraggable
     ? isDragging
       ? "cursor-grabbing"
       : "cursor-grab"
-    : "cursor-default";
+    : isPlaceholder
+      ? "cursor-default"
+      : "cursor-pointer";
 
   // Opacity during drag
   const opacityClass = isDragging ? "opacity-50" : "";
@@ -166,6 +174,7 @@ const PlanItem = ({ item, semesterKey }) => {
       ref={setNodeRef}
       style={style}
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
+      onClick={handleClick}
       className={`group ${statusStyle.bg} ${statusStyle.border || ""} ${statusStyle.text} ${statusStyle.shadow} ${cursorClass} ${opacityClass} rounded-md px-2 py-1 text-xs transition-all select-none`}
       title={`${name}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${
         isDraggable ? "\nDrag to move" : ""
@@ -216,6 +225,7 @@ PlanItem.propTypes = {
     categoryPath: PropTypes.string,
   }).isRequired,
   semesterKey: PropTypes.string.isRequired,
+  onCourseClick: PropTypes.func,
 };
 
 export default PlanItem;

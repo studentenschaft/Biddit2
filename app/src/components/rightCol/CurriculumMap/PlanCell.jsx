@@ -29,6 +29,7 @@ const PlanCell = ({
   validClassifications,
   placementMode,
   onCellPlacement,
+  onCourseClick,
 }) => {
   const { addPlaceholder } = useCurriculumPlan();
 
@@ -199,6 +200,7 @@ const PlanCell = ({
           key={course.id || `${semesterKey}-${categoryPath}-${index}`}
           item={course}
           semesterKey={semesterKey}
+          onCourseClick={onCourseClick}
         />
       ))}
 
@@ -311,6 +313,7 @@ PlanCell.propTypes = {
     credits: PropTypes.number.isRequired,
   }),
   onCellPlacement: PropTypes.func,
+  onCourseClick: PropTypes.func,
 };
 
 export default PlanCell;

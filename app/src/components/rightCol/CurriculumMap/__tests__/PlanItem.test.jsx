@@ -105,7 +105,7 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-green-200');
+      expect(itemDiv).toHaveClass('bg-green-600');
     });
 
     it('applies enrolled styling for enrolled courses', () => {
@@ -166,7 +166,7 @@ describe('PlanItem', () => {
       expect(itemDiv).toHaveClass('cursor-grab');
     });
 
-    it('shows default cursor for completed items', () => {
+    it('shows pointer cursor for completed items (clickable for details)', () => {
       const completedItem = {
         ...defaultItem,
         status: 'completed',
@@ -180,10 +180,10 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('cursor-default');
+      expect(itemDiv).toHaveClass('cursor-pointer');
     });
 
-    it('shows default cursor for enrolled items', () => {
+    it('shows pointer cursor for enrolled items (clickable for details)', () => {
       const enrolledItem = {
         ...defaultItem,
         status: 'enrolled',
@@ -196,7 +196,7 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('cursor-default');
+      expect(itemDiv).toHaveClass('cursor-pointer');
     });
 
     it('shows drag handle for draggable items', () => {
@@ -243,7 +243,7 @@ describe('PlanItem', () => {
 
       // Status is indicated through colors, not icons
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('bg-green-200');
+      expect(itemDiv).toHaveClass('bg-green-600');
     });
   });
 });
