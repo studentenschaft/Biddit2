@@ -2,12 +2,15 @@
 import { useState, useMemo } from "react";
 import { useRecoilValue } from "recoil";
 import { useSetRecoilState } from "recoil";
+import { Tooltip as ReactTooltip } from "react-tooltip";
 
 // Import unified selectors
 import {
   semesterCoursesSelector,
   selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
+
+import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
@@ -24,6 +27,9 @@ export default function SemesterSummary() {
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
   const [hoveredCourse, setHoveredCourse] = useState(null);
+
+  // Get calendar entries for conflict detection
+  const calendarEntries = useRecoilValue(calendarEntriesSelector);
 
   // Use unified course data system - get selected semester from selector
   const selectedSemesterState = useRecoilValue(selectedSemesterSelector);
@@ -69,6 +75,22 @@ export default function SemesterSummary() {
   const totalEvents = currCourses.reduce((acc, curr) => {
     return acc + (curr.calendarEntry?.length || 0);
   }, 0);
+
+  // Get all unique courses that conflict with this course
+  function getConflictsForCourse(course) {
+    if (!course?.courseNumber) return [];
+    const conflicts = new Set();
+    calendarEntries.forEach((entry) => {
+      if (
+        entry.courseNumber === course.courseNumber &&
+        entry.conflictsWith &&
+        entry.conflictsWith.length > 0
+      ) {
+        entry.conflictsWith.forEach((name) => conflicts.add(name));
+      }
+    });
+    return Array.from(conflicts);
+  }
 
   function courseSelector(fullEvent) {
     if (fullEvent) {
@@ -181,6 +203,26 @@ export default function SemesterSummary() {
   } else {
     return (
       <div className="w-full px-4 py-5 sm:p-6">
+        {/* Tooltip for conflict information */}
+        <ReactTooltip
+          id="conflict-tooltip"
+          style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
+          render={({ activeAnchor }) => {
+            const conflicts = activeAnchor?.getAttribute("data-conflicts");
+            if (!conflicts) return null;
+            const conflictList = conflicts.split(", ");
+            return (
+              <div className="text-amber-300">
+                <div className="font-medium">⚠ Conflicts with:</div>
+                <ul className="list-disc list-inside text-sm">
+                  {conflictList.map((course, idx) => (
+                    <li key={idx} className="truncate">{course}</li>
+                  ))}
+                </ul>
+              </div>
+            );
+          }}
+        />
         <Heatmap
           hovered={hoveredCourse}
           setCourseOnDay={setCourseOnDay}
@@ -199,6 +241,8 @@ export default function SemesterSummary() {
           <div className="inline-block w-full h-full min-w-full align-middle">
             <div className="ring-1 ring-black ring-opacity-5 md:rounded-lg ">
               {currCourses.map((course, index) => {
+                const conflicts = getConflictsForCourse(course);
+                const hasConflicts = conflicts.length > 0;
                 return (
                   <div
                     key={index}
@@ -212,7 +256,11 @@ export default function SemesterSummary() {
                       setHoveredCourse(null);
                     }}
                   >
-                    <div className="text-center">
+                    <div
+                      className="text-center"
+                      data-tooltip-id={hasConflicts ? "conflict-tooltip" : undefined}
+                      data-conflicts={hasConflicts ? conflicts.join(", ") : undefined}
+                    >
                       <div
                         className={`flex justify-center items-center align-center h-full ${
                           course && course.overlapping
