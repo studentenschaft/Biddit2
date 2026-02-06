@@ -6,7 +6,7 @@
  * Uses HSG color palette for background colors based on semester status.
  *
  * Phase 2: Drop target for drag-and-drop. Completed semesters are invalid targets.
- * Phase 3: Click-to-add placeholder functionality for future semesters.
+ * Phase 3: Click-to-add placeholder functionality for non-completed semesters.
  */
 
 import { useState, useRef, useEffect } from "react";
@@ -63,7 +63,7 @@ const PlanCell = ({
   };
 
   const handlePlusClick = () => {
-    if (semesterStatus === "future") {
+    if (semesterStatus !== "completed") {
       setShowPlaceholderForm(true);
     }
   };
@@ -95,8 +95,9 @@ const PlanCell = ({
     return doesClassificationMatchCategory(classification, categoryName, validClassifications);
   })();
 
-  // Cell background based on semester status (row)
+  // Cell background: full category → green everywhere; otherwise by semester status
   const getCellBackground = () => {
+    if (isCategoryComplete) return "bg-green-50";
     const statusBg = {
       completed: "bg-green-50",
       current: "bg-green-50",
@@ -137,6 +138,11 @@ const PlanCell = ({
   const handleCellClick = () => {
     if (placementMode && canDrop && onCellPlacement) {
       onCellPlacement(semesterKey, categoryPath);
+      return;
+    }
+    if (isCollapsed) return;
+    if (canDrop && !showPlaceholderForm) {
+      setShowPlaceholderForm(true);
     }
   };
 
@@ -161,6 +167,9 @@ const PlanCell = ({
 
   // Combined ring class: drag-over > suggestion > placement > validation
   const ringClass = dragOverClass || suggestionClass || placementClass || validationClass;
+
+  // Cursor: pointer on clickable cells (non-completed, non-collapsed, not in placement mode)
+  const cursorClass = !isCollapsed && canDrop && !placementMode ? "cursor-pointer" : "";
 
   // Collapsed view - show just a count badge
   if (isCollapsed) {
@@ -190,7 +199,7 @@ const PlanCell = ({
     <div
       ref={setNodeRef}
       onClick={handleCellClick}
-      className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} p-1.5 min-h-[75px] flex flex-col gap-1 transition-colors`}
+      className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} ${cursorClass} p-1.5 min-h-[75px] flex flex-col gap-1 transition-colors`}
       data-semester={semesterKey}
       data-category={categoryPath}
     >
@@ -204,8 +213,8 @@ const PlanCell = ({
         />
       ))}
 
-      {/* Add more button for cells with courses (future semesters only) */}
-      {courses.length > 0 && semesterStatus === "future" && !showPlaceholderForm && (
+      {/* Add more button for cells with courses (non-completed semesters) */}
+      {courses.length > 0 && canDrop && !showPlaceholderForm && (
         <button
           onClick={handlePlusClick}
           className="text-gray-300 text-xs hover:text-gray-500 hover:bg-gray-100 rounded px-1 py-0.5 transition-colors self-start"

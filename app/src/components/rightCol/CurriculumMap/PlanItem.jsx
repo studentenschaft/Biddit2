@@ -151,7 +151,8 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
     }
   };
 
-  const handleClick = () => {
+  const handleClick = (e) => {
+    e.stopPropagation();
     if (!isPlaceholder && onCourseClick) {
       onCourseClick(item);
     }

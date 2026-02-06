@@ -225,7 +225,24 @@ export const useCurriculumPlan = () => {
       const isSyncable = isSemesterSyncable(semesterKey);
 
       if (isSyncable) {
-        // Add to wishlist
+        // Un-hide the course if it was previously removed from this plan
+        setCurriculumPlan((prev) => {
+          const semOverrides = prev.wishlistOverrides?.[semesterKey] || {};
+          const removed = semOverrides.removedCourseIds || [];
+          if (!removed.includes(courseId)) return prev;
+          return {
+            ...prev,
+            wishlistOverrides: {
+              ...prev.wishlistOverrides,
+              [semesterKey]: {
+                ...semOverrides,
+                removedCourseIds: removed.filter((id) => id !== courseId),
+              },
+            },
+          };
+        });
+
+        // Add to shared wishlist
         setLocalSelectedCourses((prev) => {
           const semesterCourses = prev[semesterKey] || [];
           // Avoid duplicates using normalized ID matching
@@ -243,7 +260,7 @@ export const useCurriculumPlan = () => {
                 credits: course.credits,
                 classification: course.classification,
                 calendarEntry: course.calendarEntry,
-                categoryPath: categoryPath, // Store category path for correct grid placement
+                categoryPath: categoryPath,
               },
             ],
           };
@@ -284,17 +301,36 @@ export const useCurriculumPlan = () => {
    */
   const removeCourse = useCallback(
     (courseId, semesterKey, source) => {
-      if (source === "wishlist" || isSemesterSyncable(semesterKey)) {
+      if (source === "wishlist" && isSemesterSyncable(semesterKey)) {
+        // Plan-specific override: hide this wishlist course from the active plan only.
+        // The shared wishlist (localSelectedCoursesSemKeyState) stays untouched so
+        // other plans still see the course.
+        setCurriculumPlan((prev) => {
+          const semOverrides = prev.wishlistOverrides?.[semesterKey] || {};
+          const existing = semOverrides.removedCourseIds || [];
+          if (existing.includes(courseId)) return prev;
+          return {
+            ...prev,
+            wishlistOverrides: {
+              ...prev.wishlistOverrides,
+              [semesterKey]: {
+                ...semOverrides,
+                removedCourseIds: [...existing, courseId],
+              },
+            },
+          };
+        });
+      } else if (isSemesterSyncable(semesterKey)) {
+        // Non-wishlist in syncable semester — remove from shared state
         setLocalSelectedCourses((prev) => ({
           ...prev,
           [semesterKey]: (prev[semesterKey] || []).filter(
             (c) => !courseMatchesId(c, courseId)
           ),
         }));
-
-        // Keep unified state in sync so EventListContainer reflects the removal
         removeSelectedCourse(semesterKey, courseId);
       } else {
+        // Future semester — remove from plan-specific plannedItems
         setCurriculumPlan((prev) => ({
           ...prev,
           plannedItems: {

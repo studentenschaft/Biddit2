@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
 import { RecoilRoot } from 'recoil';
 import PlanItem from '../PlanItem';
@@ -244,6 +244,26 @@ describe('PlanItem', () => {
       // Status is indicated through colors, not icons
       const itemDiv = container.firstChild;
       expect(itemDiv).toHaveClass('bg-green-600');
+    });
+  });
+
+  describe('click propagation', () => {
+    it('stops click propagation so parent cell handler is not triggered', () => {
+      const parentClick = vi.fn();
+
+      const { container } = render(
+        <TestWrapper>
+          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
+          <div onClick={parentClick}>
+            <PlanItem item={defaultItem} semesterKey="FS26" onCourseClick={vi.fn()} />
+          </div>
+        </TestWrapper>
+      );
+
+      const itemDiv = container.querySelector('[class*="bg-gray-100"]');
+      fireEvent.click(itemDiv);
+
+      expect(parentClick).not.toHaveBeenCalled();
     });
   });
 });

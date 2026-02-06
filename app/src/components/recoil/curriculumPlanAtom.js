@@ -50,6 +50,8 @@ const loadFromStorage = () => {
  */
 export const getDefaultPlanState = () => ({
   plannedItems: {},
+  wishlistOverrides: {},
+  // shape: { "FS26": { removedCourseIds: ["ABC123", ...] } }
   specialization: null,
   validations: {
     conflicts: [],
@@ -75,6 +77,7 @@ const getInitialState = () => {
     return {
       ...defaults,
       ...stored,
+      wishlistOverrides: stored.wishlistOverrides || defaults.wishlistOverrides,
       validations: { ...defaults.validations, ...stored.validations },
       syncStatus: { ...defaults.syncStatus, ...stored.syncStatus },
     };

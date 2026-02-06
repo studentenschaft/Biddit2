@@ -34,14 +34,14 @@ describe('PlanCell', () => {
   };
 
   describe('rendering', () => {
-    it('renders empty future cells without a "+" button', () => {
+    it('renders empty future cells without a "+" button (cell click opens form instead)', () => {
       render(
         <TestWrapper>
           <PlanCell {...defaultProps} />
         </TestWrapper>
       );
 
-      // Empty future cells no longer show a "+" — placement happens via PlaceholderCreator
+      // Empty cells don't need the "+" button — clicking the cell area opens the form
       expect(screen.queryByText('+')).not.toBeInTheDocument();
     });
 
@@ -83,6 +83,34 @@ describe('PlanCell', () => {
       );
 
       expect(screen.getByText('+ Add')).toBeInTheDocument();
+    });
+
+    it('shows "+ Add" button for non-empty current semester cells', () => {
+      const courses = [
+        { id: '1', name: 'Course 1', credits: 6, status: 'enrolled' },
+      ];
+
+      render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="current" courses={courses} />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('+ Add')).toBeInTheDocument();
+    });
+
+    it('does not show "+ Add" button for completed semester cells', () => {
+      const courses = [
+        { id: '1', name: 'Course 1', credits: 6, status: 'completed' },
+      ];
+
+      render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="completed" courses={courses} />
+        </TestWrapper>
+      );
+
+      expect(screen.queryByText('+ Add')).not.toBeInTheDocument();
     });
 
     it('sets data attributes for cell identification', () => {
@@ -310,6 +338,72 @@ describe('PlanCell', () => {
 
       // Course name should NOT be visible in collapsed view
       expect(screen.queryByText('Course 1')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('click-to-add placeholder', () => {
+    it('opens placeholder form when clicking empty area of a future cell', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="future" />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(screen.getByText('Credits (ECTS)')).toBeInTheDocument();
+    });
+
+    it('opens placeholder form when clicking empty area of a current cell', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="current" />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(screen.getByText('Credits (ECTS)')).toBeInTheDocument();
+    });
+
+    it('does NOT open placeholder form for completed cells', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="completed" />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(screen.queryByText('Credits (ECTS)')).not.toBeInTheDocument();
+    });
+
+    it('does NOT open placeholder form for collapsed cells', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} isCollapsed={true} />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(screen.queryByText('Credits (ECTS)')).not.toBeInTheDocument();
+    });
+
+    it('applies cursor-pointer on clickable cells', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="future" />
+        </TestWrapper>
+      );
+
+      expect(container.firstChild).toHaveClass('cursor-pointer');
+    });
+
+    it('does not apply cursor-pointer on completed cells', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="completed" />
+        </TestWrapper>
+      );
+
+      expect(container.firstChild).not.toHaveClass('cursor-pointer');
     });
   });
 

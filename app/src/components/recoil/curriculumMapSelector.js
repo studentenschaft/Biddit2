@@ -214,7 +214,7 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
     const plannedCredits = leaves.reduce((sum, leaf) => sum + (leaf.plannedCredits || 0), 0);
     const totalCredits = earnedCredits + plannedCredits;
     const targetCredits = groupCat.maxCredits || groupCat.minCredits || 0;
-    const isComplete = targetCredits > 0 && earnedCredits >= targetCredits;
+    const isComplete = targetCredits > 0 && (earnedCredits + plannedCredits) >= targetCredits;
 
     return {
       id: groupCat.id,
@@ -462,9 +462,15 @@ export const curriculumMapSelector = selector({
     Object.entries(localSelectedCourses).forEach(([semKey, courses]) => {
       if (!coursesBySemesterAndCategory[semKey]) return;
 
+      // Per-plan wishlist overrides: skip courses hidden in the active plan
+      const removedIds =
+        curriculumPlan.wishlistOverrides?.[semKey]?.removedCourseIds || [];
+
       const availableCourses = unifiedCourseData.semesters?.[semKey]?.available || [];
 
       courses.forEach((course) => {
+        const courseId = course.id || course.courseNumber;
+        if (removedIds.includes(courseId)) return;
         const fullCourse = availableCourses.find(
           (c) =>
             c.courseNumber === course.id ||
@@ -703,7 +709,7 @@ export const curriculumMapSelector = selector({
         earnedCredits,
         plannedCredits,
         totalCredits: earnedCredits + plannedCredits,
-        isComplete: earnedCredits >= (cat.maxCredits || cat.minCredits || 0),
+        isComplete: (earnedCredits + plannedCredits) >= (cat.maxCredits || cat.minCredits || 0),
         isOverfilled: earnedCredits + plannedCredits > (cat.maxCredits || 0),
       };
     });
