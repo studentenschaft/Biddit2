@@ -1,20 +1,10 @@
-import { createContext, useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { addNetworkEventListener } from "../helpers/axiosClient";
 import { addSessionEventListener } from "../auth/tokenService";
+import { AppStateContext } from "./AppStateContext";
 import OfflineModal from "./OfflineModal";
 import SessionExpiredModal from "./SessionExpiredModal";
-
-/**
- * Context for managing global app state modals (offline, session expired)
- * Export for use with useAppState hook
- */
-export const AppStateContext = createContext({
-  isOffline: false,
-  isSessionExpired: false,
-  setOffline: () => {},
-  setSessionExpired: () => {},
-});
 
 /**
  * Provider component that manages global app state and renders blocking modals
