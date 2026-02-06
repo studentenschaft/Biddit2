@@ -58,8 +58,8 @@ export const AppStateProvider = ({ children }) => {
     });
 
     return () => {
-      unsubscribeNetwork();
-      unsubscribeSession();
+      if (typeof unsubscribeNetwork === "function") unsubscribeNetwork();
+      if (typeof unsubscribeSession === "function") unsubscribeSession();
     };
   }, []);
 
