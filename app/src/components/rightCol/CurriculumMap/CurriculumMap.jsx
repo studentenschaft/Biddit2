@@ -97,7 +97,7 @@ const CurriculumMap = () => {
       </div>
 
       {/* Main content area: grid (courses are dragged from EventListContainer) */}
-      <div className="flex-1 overflow-auto px-6 py-4">
+      <div className="flex-1 overflow-auto scrollbar-thin-visible px-6 py-4">
         <CurriculumGrid
           categories={curriculumData.flatCategories}
           categoryHierarchy={curriculumData.categoryHierarchy}

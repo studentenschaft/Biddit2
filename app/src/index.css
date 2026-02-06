@@ -45,6 +45,25 @@
   }
 }
 
+/* Thin, always-visible scrollbar for wide grid views */
+.scrollbar-thin-visible {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+.scrollbar-thin-visible::-webkit-scrollbar {
+  height: 6px;
+}
+.scrollbar-thin-visible::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin-visible::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 3px;
+}
+.scrollbar-thin-visible::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
+}
+
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }

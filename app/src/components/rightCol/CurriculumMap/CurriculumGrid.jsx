@@ -143,7 +143,7 @@ const CurriculumGrid = ({
     hasHierarchy && categoryHierarchy.some((parent) => parent.children.length > 1);
 
   return (
-    <div className="overflow-x-auto rounded-lg ring-1 ring-black ring-opacity-5">
+    <div className="overflow-x-auto scrollbar-thin-visible rounded-lg ring-1 ring-black ring-opacity-5">
       <div
         className="grid min-w-fit bg-white"
         style={{ gridTemplateColumns }}
