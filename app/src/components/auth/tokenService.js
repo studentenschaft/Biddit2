@@ -95,10 +95,15 @@ const attemptPopupRecovery = async () => {
     return response.accessToken;
   } catch (popupError) {
     console.warn("Popup recovery failed:", popupError);
-    sessionDeathCount++;
 
-    if (sessionDeathCount >= MAX_SESSION_FAILURES) {
-      emitSessionEvent("SESSION_EXPIRED");
+    // Only count genuine auth failures toward session death.
+    // BrowserAuthErrors (popup blocked, timeout) are transient and
+    // should not force a re-login.
+    if (popupError instanceof InteractionRequiredAuthError) {
+      sessionDeathCount++;
+      if (sessionDeathCount >= MAX_SESSION_FAILURES) {
+        emitSessionEvent("SESSION_EXPIRED");
+      }
     }
 
     return null;
