@@ -206,6 +206,7 @@ class ApiClient {
       return Promise.reject(refreshError);
     } finally {
       this.isRefreshing = false;
+      this.refreshSubscribers = [];
     }
   }
 
