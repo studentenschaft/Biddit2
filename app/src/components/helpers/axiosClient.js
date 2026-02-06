@@ -3,7 +3,6 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import {
   getRefreshToken,
   handleAuthFailure,
-  addSessionEventListener,
 } from "../auth/tokenService";
 
 // Configuration constants
