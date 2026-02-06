@@ -20,6 +20,7 @@ import { useErrorHandler } from "../../errorHandling/useErrorHandler";
 import LoadingText from "../../common/LoadingText";
 import CurriculumGrid from "./CurriculumGrid";
 import ProgramHeader from "./ProgramHeader";
+import PlanSwitcher from "./PlanSwitcher";
 import CategoryLegend from "./CategoryLegend";
 
 const CurriculumMap = () => {
@@ -92,6 +93,7 @@ const CurriculumMap = () => {
       {/* Header with program info and progress */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
         <ProgramHeader program={curriculumData.program} />
+        <PlanSwitcher />
       </div>
 
       {/* Main content area: grid (courses are dragged from EventListContainer) */}

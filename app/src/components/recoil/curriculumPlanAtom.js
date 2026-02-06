@@ -20,7 +20,7 @@ import { toast } from "react-toastify";
  * 3. Combined view: curriculumMapSelector (merges both)
  */
 
-const STORAGE_KEY = 'biddit_curriculum_plan';
+export const STORAGE_KEY = 'biddit_curriculum_plan';
 
 /**
  * Load plan from localStorage
