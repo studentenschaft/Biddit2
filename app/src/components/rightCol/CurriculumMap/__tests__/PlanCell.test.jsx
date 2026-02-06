@@ -3,10 +3,11 @@
  * Tests for the droppable PlanCell component
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
 import { RecoilRoot } from 'recoil';
+import PropTypes from 'prop-types';
 import PlanCell from '../PlanCell';
 
 // Wrapper to provide DndContext and RecoilRoot (needed for PlanItem inside PlanCell)
@@ -15,6 +16,10 @@ const TestWrapper = ({ children }) => (
     <DndContext>{children}</DndContext>
   </RecoilRoot>
 );
+
+TestWrapper.propTypes = {
+  children: PropTypes.node.isRequired,
+};
 
 describe('PlanCell', () => {
   const defaultProps = {
@@ -29,15 +34,15 @@ describe('PlanCell', () => {
   };
 
   describe('rendering', () => {
-    it('renders empty state for future semesters', () => {
+    it('renders empty future cells without a "+" button', () => {
       render(
         <TestWrapper>
           <PlanCell {...defaultProps} />
         </TestWrapper>
       );
 
-      // Empty future cells show a "+" indicator
-      expect(screen.getByText('+')).toBeInTheDocument();
+      // Empty future cells no longer show a "+" — placement happens via PlaceholderCreator
+      expect(screen.queryByText('+')).not.toBeInTheDocument();
     });
 
     it('does not show empty indicator for completed semesters', () => {
@@ -64,6 +69,20 @@ describe('PlanCell', () => {
 
       expect(screen.getByText('Course 1')).toBeInTheDocument();
       expect(screen.getByText('Course 2')).toBeInTheDocument();
+    });
+
+    it('shows "+ Add" button for non-empty future cells', () => {
+      const courses = [
+        { id: '1', name: 'Course 1', credits: 6, status: 'planned' },
+      ];
+
+      render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} courses={courses} />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('+ Add')).toBeInTheDocument();
     });
 
     it('sets data attributes for cell identification', () => {
@@ -258,14 +277,14 @@ describe('PlanCell', () => {
       expect(screen.getByText('9')).toBeInTheDocument();
     });
 
-    it('shows + indicator for empty collapsed future cells', () => {
+    it('does not show + indicator for empty collapsed future cells', () => {
       render(
         <TestWrapper>
           <PlanCell {...defaultProps} isCollapsed={true} semesterStatus="future" />
         </TestWrapper>
       );
 
-      expect(screen.getByText('+')).toBeInTheDocument();
+      expect(screen.queryByText('+')).not.toBeInTheDocument();
     });
 
     it('does not show + indicator for empty collapsed completed cells', () => {
@@ -291,6 +310,99 @@ describe('PlanCell', () => {
 
       // Course name should NOT be visible in collapsed view
       expect(screen.queryByText('Course 1')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('placement mode', () => {
+    const placementMode = { label: 'Elective', credits: 6 };
+
+    it('applies placement highlight on future cells when placement mode is active', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} placementMode={placementMode} />
+        </TestWrapper>
+      );
+
+      const cell = container.firstChild;
+      expect(cell).toHaveClass('ring-blue-400');
+      expect(cell).toHaveClass('cursor-pointer');
+    });
+
+    it('does not apply placement highlight on completed cells', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell {...defaultProps} semesterStatus="completed" placementMode={placementMode} />
+        </TestWrapper>
+      );
+
+      const cell = container.firstChild;
+      expect(cell).not.toHaveClass('ring-blue-400');
+      expect(cell).not.toHaveClass('cursor-pointer');
+    });
+
+    it('calls onCellPlacement when clicked in placement mode', () => {
+      const onCellPlacement = vi.fn();
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell
+            {...defaultProps}
+            placementMode={placementMode}
+            onCellPlacement={onCellPlacement}
+          />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(onCellPlacement).toHaveBeenCalledWith('FS26', 'Core/Electives');
+    });
+
+    it('does not call onCellPlacement on completed cells', () => {
+      const onCellPlacement = vi.fn();
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell
+            {...defaultProps}
+            semesterStatus="completed"
+            placementMode={placementMode}
+            onCellPlacement={onCellPlacement}
+          />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(onCellPlacement).not.toHaveBeenCalled();
+    });
+
+    it('does not call onCellPlacement when placement mode is null', () => {
+      const onCellPlacement = vi.fn();
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell
+            {...defaultProps}
+            placementMode={null}
+            onCellPlacement={onCellPlacement}
+          />
+        </TestWrapper>
+      );
+
+      fireEvent.click(container.firstChild);
+      expect(onCellPlacement).not.toHaveBeenCalled();
+    });
+
+    it('applies placement highlight on collapsed cells in placement mode', () => {
+      const { container } = render(
+        <TestWrapper>
+          <PlanCell
+            {...defaultProps}
+            isCollapsed={true}
+            placementMode={placementMode}
+          />
+        </TestWrapper>
+      );
+
+      const cell = container.firstChild;
+      expect(cell).toHaveClass('ring-blue-400');
+      expect(cell).toHaveClass('cursor-pointer');
     });
   });
 });

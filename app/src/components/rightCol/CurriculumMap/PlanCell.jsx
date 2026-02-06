@@ -27,6 +27,8 @@ const PlanCell = ({
   isCategoryComplete,
   categoryName,
   validClassifications,
+  placementMode,
+  onCellPlacement,
 }) => {
   const { addPlaceholder } = useCurriculumPlan();
 
@@ -125,6 +127,18 @@ const PlanCell = ({
     return "ring-2 ring-blue-300 ring-inset bg-blue-50/50";
   };
 
+  // Placement mode highlight — dashed blue ring on valid target cells
+  const getPlacementClass = () => {
+    if (!placementMode || !canDrop) return "";
+    return "ring-2 ring-blue-400 ring-inset bg-blue-50/30 cursor-pointer";
+  };
+
+  const handleCellClick = () => {
+    if (placementMode && canDrop && onCellPlacement) {
+      onCellPlacement(semesterKey, categoryPath);
+    }
+  };
+
   // Validation styling - uses ring-inset to compose with drag-over feedback
   const getValidationClasses = () => {
     if (hasConflicts) return "ring-2 ring-red-400 ring-inset";
@@ -142,9 +156,10 @@ const PlanCell = ({
   // Drag-over visual feedback (takes precedence over validation styling)
   const dragOverClass = getDragOverClasses();
   const suggestionClass = getSuggestionClass();
+  const placementClass = getPlacementClass();
 
-  // Combined ring class: drag-over > suggestion > validation
-  const ringClass = dragOverClass || suggestionClass || validationClass;
+  // Combined ring class: drag-over > suggestion > placement > validation
+  const ringClass = dragOverClass || suggestionClass || placementClass || validationClass;
 
   // Collapsed view - show just a count badge
   if (isCollapsed) {
@@ -154,19 +169,18 @@ const PlanCell = ({
     return (
       <div
         ref={setNodeRef}
+        onClick={handleCellClick}
         className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} p-1 min-h-[75px] flex flex-col items-center justify-center transition-colors`}
         data-semester={semesterKey}
         data-category={categoryPath}
         title={`${courseCount} course${courseCount !== 1 ? "s" : ""}, ${totalCredits} ECTS`}
       >
-        {courseCount > 0 ? (
+        {courseCount > 0 && (
           <div className="flex flex-col items-center gap-0.5">
             <span className="text-xs font-bold text-gray-700">{courseCount}</span>
             <span className="text-[8px] text-gray-500">{totalCredits}</span>
           </div>
-        ) : semesterStatus === "future" ? (
-          <span className="text-gray-300 text-sm">+</span>
-        ) : null}
+        )}
       </div>
     );
   }
@@ -174,6 +188,7 @@ const PlanCell = ({
   return (
     <div
       ref={setNodeRef}
+      onClick={handleCellClick}
       className={`${cellBackground} ${borderClass} ${roundedClass} ${ringClass} p-1.5 min-h-[75px] flex flex-col gap-1 transition-colors`}
       data-semester={semesterKey}
       data-category={categoryPath}
@@ -196,19 +211,6 @@ const PlanCell = ({
         >
           + Add
         </button>
-      )}
-
-      {/* Empty state - clickable add placeholder for future semesters */}
-      {courses.length === 0 && semesterStatus === "future" && !showPlaceholderForm && (
-        <div className="flex-1 flex items-center justify-center">
-          <button
-            onClick={handlePlusClick}
-            className="text-gray-300 text-lg hover:text-gray-500 hover:bg-gray-100 rounded-full w-6 h-6 flex items-center justify-center transition-colors"
-            title="Add placeholder course"
-          >
-            +
-          </button>
-        </div>
       )}
 
       {/* Placeholder form */}
@@ -304,6 +306,11 @@ PlanCell.propTypes = {
   isCategoryComplete: PropTypes.bool.isRequired,
   categoryName: PropTypes.string.isRequired,
   validClassifications: PropTypes.arrayOf(PropTypes.string),
+  placementMode: PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    credits: PropTypes.number.isRequired,
+  }),
+  onCellPlacement: PropTypes.func,
 };
 
 export default PlanCell;

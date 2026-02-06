@@ -45,7 +45,7 @@ import { isLeftViewVisible } from "../components/recoil/isLeftViewVisible";
 const DragPreviewCard = ({ item, type }) => {
   if (!item) return null;
 
-  const isGridCourse = type === "grid-course";
+  const isGridCourse = type === "grid-course" || type === "placeholder-creator";
 
   // Grid courses have already-normalized credits (in ECTS)
   // EventList and Picker courses have credits in "cents" format (300 = 3 ECTS)
@@ -77,7 +77,7 @@ export default function Biddit2() {
   // Drag-and-drop state for cross-component dragging
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [activeDragType, setActiveDragType] = useState(null);
-  const { addCourse, moveCourse, removeCourse, movePlaceholder, removePlaceholder } = useCurriculumPlan();
+  const { addCourse, addPlaceholder, moveCourse, removeCourse, movePlaceholder, removePlaceholder } = useCurriculumPlan();
 
   // Configure drag sensors with activation constraint to prevent accidental drags
   const sensors = useSensors(
@@ -101,6 +101,9 @@ export default function Biddit2() {
     } else if (dragData?.type === "grid-course") {
       setActiveDragItem(dragData.item);
       setActiveDragType("grid-course");
+    } else if (dragData?.type === "placeholder-creator") {
+      setActiveDragItem({ name: dragData.label, credits: dragData.credits, isPlaceholder: true });
+      setActiveDragType("placeholder-creator");
     }
   }, []);
 
@@ -159,6 +162,14 @@ export default function Biddit2() {
       return;
     }
 
+    // Handle placeholder from PlaceholderCreator
+    if (dragData?.type === "placeholder-creator") {
+      const { credits, label } = dragData;
+      const { semesterKey: targetSemester, categoryPath } = dropData;
+      addPlaceholder(targetSemester, categoryPath, credits, label);
+      return;
+    }
+
     // Handle course from EventListContainer
     if (dragData?.type === "eventlist-course") {
       const { course } = dragData;
@@ -189,7 +200,7 @@ export default function Biddit2() {
         moveCourse(courseId, sourceSemester, targetSemester, targetCategory, source);
       }
     }
-  }, [addCourse, moveCourse, removeCourse, movePlaceholder, removePlaceholder]);
+  }, [addCourse, addPlaceholder, moveCourse, removeCourse, movePlaceholder, removePlaceholder]);
 
   /**
    * Handle drag cancel

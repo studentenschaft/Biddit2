@@ -21,6 +21,7 @@ import LoadingText from "../../common/LoadingText";
 import CurriculumGrid from "./CurriculumGrid";
 import ProgramHeader from "./ProgramHeader";
 import PlanSwitcher from "./PlanSwitcher";
+import PlaceholderCreator from "./PlaceholderCreator";
 import CategoryLegend from "./CategoryLegend";
 
 const CurriculumMap = () => {
@@ -29,6 +30,9 @@ const CurriculumMap = () => {
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  // Click-to-place is disabled; placementMode stays null. Grid still receives
+  // it so re-enabling later only requires restoring the useState + handlers.
+  const placementMode = null;
 
   // Initialize scorecard data
   useInitializeScoreCards(handleError);
@@ -94,6 +98,7 @@ const CurriculumMap = () => {
       <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
         <ProgramHeader program={curriculumData.program} />
         <PlanSwitcher />
+        <PlaceholderCreator />
       </div>
 
       {/* Main content area: grid (courses are dragged from EventListContainer) */}
@@ -104,6 +109,7 @@ const CurriculumMap = () => {
           semesters={curriculumData.semesters}
           coursesBySemesterAndCategory={curriculumData.coursesBySemesterAndCategory}
           validations={curriculumData.validations}
+          placementMode={placementMode}
         />
       </div>
 

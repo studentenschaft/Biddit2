@@ -25,6 +25,8 @@ const CurriculumGrid = ({
   semesters,
   coursesBySemesterAndCategory,
   validations,
+  placementMode,
+  onCellPlacement,
 }) => {
   // Track which individual category columns are collapsed
   const [collapsedCategories, setCollapsedCategories] = useState(new Set());
@@ -304,6 +306,8 @@ const CurriculumGrid = ({
                   isCategoryComplete={isColumnComplete}
                   categoryName={category.name}
                   validClassifications={category.validClassifications}
+                  placementMode={placementMode}
+                  onCellPlacement={onCellPlacement}
                 />
               );
             })}
@@ -405,6 +409,11 @@ CurriculumGrid.propTypes = {
     categoryWarnings: PropTypes.array,
     availabilityWarnings: PropTypes.array,
   }),
+  placementMode: PropTypes.shape({
+    label: PropTypes.string.isRequired,
+    credits: PropTypes.number.isRequired,
+  }),
+  onCellPlacement: PropTypes.func,
 };
 
 export default CurriculumGrid;
