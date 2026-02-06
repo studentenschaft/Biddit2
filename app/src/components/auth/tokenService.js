@@ -119,11 +119,8 @@ export const handleAuthFailure = (error) => {
  * Called when session is definitively dead
  */
 export const clearSessionAndRedirect = () => {
-  // Clear MSAL cache properly
-  const accounts = msalInstance.getAllAccounts();
-  accounts.forEach((account) => {
-    msalInstance.setActiveAccount(null);
-  });
+  // Clear active account
+  msalInstance.setActiveAccount(null);
 
   // Clear all MSAL-related localStorage entries
   Object.keys(localStorage).forEach((key) => {
