@@ -14,6 +14,7 @@ import SemesterSummary from "../components/rightCol/SemesterSummary";
 import Transcript from "../components/rightCol/Transcript";
 import StudyOverview from "../components/rightCol/StudyOverview";
 import SmartSearch from "../components/rightCol/SmartSearch";
+import CurriculumMap from "../components/rightCol/CurriculumMap";
 
 
 // For dynamic tab text
@@ -51,6 +52,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
         <Tab className={tabStyle}>{dynamicSummaryText}</Tab>
         <Tab className={tabStyle}>Transcript</Tab>
         <Tab className={tabStyle}>Study Overview</Tab>
+        <Tab className={tabStyle}>Curriculum Map</Tab>
         <Tab className={tabStyle}>Smart Search</Tab>
       </TabList>
 
@@ -90,6 +92,15 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
             fallback={<LoadingText>Loading Study Overview...</LoadingText>}
           >
             <StudyOverview />
+          </Suspense>
+        </ErrorBoundary>
+      </TabPanel>
+      <TabPanel>
+        <ErrorBoundary>
+          <Suspense
+            fallback={<LoadingText>Loading Curriculum Map...</LoadingText>}
+          >
+            <CurriculumMap />
           </Suspense>
         </ErrorBoundary>
       </TabPanel>
