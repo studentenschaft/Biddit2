@@ -61,8 +61,8 @@ const PlanItem = ({ item, semesterKey }) => {
   // Style variants based on course status (unified green theme)
   const statusStyles = {
     completed: {
-      bg: "bg-green-200",
-      text: "text-green-900",
+      bg: "bg-green-600",
+      text: "text-white",
       shadow: "shadow-sm hover:shadow-md",
     },
     enrolled: {
@@ -191,7 +191,7 @@ const PlanItem = ({ item, semesterKey }) => {
 
       {/* Credits and grade on same line */}
       <div className="flex items-center justify-between mt-0.5 text-[10px]">
-        <span className="text-gray-500">{creditsDisplay} ECTS</span>
+        <span className={styleKey === "completed" ? "text-green-100" : "text-gray-500"}>{creditsDisplay} ECTS</span>
         {(grade || gradeText) && (
           <span className="font-semibold">{grade || gradeText}</span>
         )}

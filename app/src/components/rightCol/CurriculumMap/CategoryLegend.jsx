@@ -8,8 +8,8 @@
 const CategoryLegend = () => {
   const legendItems = [
     { color: "bg-green-600", label: "Completed" },
-    { color: "bg-green-400", label: "Enrolled" },
-    { color: "bg-gray-400", label: "Planned" },
+    { color: "bg-green-200", label: "Enrolled" },
+    { color: "bg-gray-200", label: "Planned" },
   ];
 
   return (
