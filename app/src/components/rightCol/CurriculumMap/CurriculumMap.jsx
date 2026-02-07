@@ -23,6 +23,7 @@ import ProgramHeader from "./ProgramHeader";
 import PlanSwitcher from "./PlanSwitcher";
 import PlaceholderCreator from "./PlaceholderCreator";
 import CategoryLegend from "./CategoryLegend";
+import CurriculumMapTutorial, { TUTORIAL_STORAGE_KEY } from "./CurriculumMapTutorial";
 
 const CurriculumMap = () => {
   const curriculumData = useRecoilValue(curriculumMapSelector);
@@ -30,6 +31,9 @@ const CurriculumMap = () => {
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(
+    () => localStorage.getItem(TUTORIAL_STORAGE_KEY) !== "true"
+  );
   // Click-to-place is disabled; placementMode stays null. Grid still receives
   // it so re-enabling later only requires restoring the useState + handlers.
   const placementMode = null;
@@ -94,9 +98,19 @@ const CurriculumMap = () => {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <CurriculumMapTutorial
+        isOpen={tutorialOpen}
+        onDismiss={() => {
+          localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
+          setTutorialOpen(false);
+        }}
+      />
       {/* Header with program info and progress */}
       <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
-        <ProgramHeader program={curriculumData.program} />
+        <ProgramHeader
+          program={curriculumData.program}
+          onHelpClick={() => setTutorialOpen(true)}
+        />
         <PlanSwitcher />
         <PlaceholderCreator />
       </div>

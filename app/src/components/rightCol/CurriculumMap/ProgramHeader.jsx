@@ -10,7 +10,7 @@ import PropTypes from "prop-types";
 import { QuestionMarkCircleIcon } from "@heroicons/react/outline";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
-const ProgramHeader = ({ program }) => {
+const ProgramHeader = ({ program, onHelpClick }) => {
   if (!program) return null;
 
   const {
@@ -35,8 +35,9 @@ const ProgramHeader = ({ program }) => {
       <div className="py-2 pl-2 pr-3 text-xl font-bold bg-gray-100 rounded flex items-center justify-between">
         {name}
         <button
-          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 cursor-help flex-shrink-0 ml-2 transition-colors"
+          className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2 transition-colors"
           data-tooltip-id="curriculum-map-help"
+          onClick={onHelpClick}
         >
           <QuestionMarkCircleIcon className="h-4 w-4" />
           How this works
@@ -92,30 +93,16 @@ const ProgramHeader = ({ program }) => {
       <ReactTooltip
         id="curriculum-map-help"
         place="bottom"
+        content="Click for the Tutorial"
         style={{
           backgroundColor: "#f9fafb",
           color: "#111827",
           border: "1px solid #d1d5db",
-          borderRadius: "0.5rem",
+          borderRadius: "0.375rem",
           fontSize: "0.8125rem",
-          maxWidth: "340px",
-          padding: "12px 16px",
+          padding: "6px 10px",
           zIndex: 50,
         }}
-        render={() => (
-          <div>
-            <p style={{ margin: "0 0 8px 0" }}>
-              This view allows you to plan your entire study program.
-            </p>
-            <ul style={{ margin: 0, paddingLeft: "18px", lineHeight: "1.6", listStyleType: "disc" }}>
-              <li>Drag courses from the list on the left into any future semester cell</li>
-              <li>Completed and enrolled courses appear automatically from your transcript</li>
-              <li>Click &quot;+&quot; in an empty cell to add a placeholder</li>
-              <li>Create multiple plans with the tabs below to compare study paths</li>
-              <li>Right-click a plan tab to rename, duplicate, or delete</li>
-            </ul>
-          </div>
-        )}
       />
     </div>
   );
@@ -131,6 +118,7 @@ ProgramHeader.propTypes = {
     completionPercentage: PropTypes.number.isRequired,
     estimatedCompletion: PropTypes.string,
   }),
+  onHelpClick: PropTypes.func,
 };
 
 export default ProgramHeader;
