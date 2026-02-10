@@ -64,61 +64,77 @@ export function useCourseSelection({
     const courseSemester = course.semester || course.originalCourse?.semester || selectedSemesterShortName;
     const normalizedCourseSemester = normalizeSemesterName(courseSemester);
 
+    // ── Single authoritative decision: add or remove? ─────────────────────
+    // Computed ONCE and used consistently for ALL state atoms to prevent
+    // flip-flop bugs when atoms get out of sync.
+    const isCourseSelected =
+      selectedCourseIds.includes(course.id) ||
+      selectedCourseIds.includes(course.courseNumber) ||
+      selectedCourseIds.includes(course.courseId) ||
+      selectedCourseIds.includes(course.courses?.[0]?.courseNumber);
+
+    const courseNumber =
+      course.courses?.[0]?.courseNumber || course.courseNumber || course.courseId || course.id;
+
+    const minimalCourse = {
+      id: course.id,
+      shortName: course.shortName,
+      classification: course.classification,
+      credits: normalizeCredits(course.credits),
+      big_type: categoryTypeMap[course.classification] || "",
+      calendarEntry: course.calendarEntry || [],
+      courseNumber: course.courseNumber || course.coursesNumber || "",
+    };
+
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {
       if (typeof prevCourses === "object" && prevCourses !== null) {
         const updatedCourses = { ...prevCourses };
-        const courseIndex = updatedCourses[index]?.findIndex(
-          (c) => c.id === course.id
-        );
 
-        if (courseIndex > -1) {
-          // Remove course if it already exists
-          updatedCourses[index] = [
-            ...updatedCourses[index].slice(0, courseIndex),
-            ...updatedCourses[index].slice(courseIndex + 1),
-          ];
+        if (isCourseSelected) {
+          // Remove course
+          const courseIndex = updatedCourses[index]?.findIndex(
+            (c) => c.id === course.id
+          );
+          if (courseIndex > -1) {
+            updatedCourses[index] = [
+              ...updatedCourses[index].slice(0, courseIndex),
+              ...updatedCourses[index].slice(courseIndex + 1),
+            ];
+          }
         } else {
-          // Add course if it doesn't exist
+          // Add course
           updatedCourses[index] = [...(updatedCourses[index] || []), course];
         }
 
         return updatedCourses;
       } else {
         console.error("prevCourses is not an object:", prevCourses);
-        return { [index]: [course] };
+        return isCourseSelected ? {} : { [index]: [course] };
       }
     });
 
     // Update local selected courses (indexed by shortName)
     // Use the course's actual semester for accurate state updates
     setLocalSelectedCoursesSemKey((prevCourses) => {
-      // Use the course's semester, not the UI's selected semester
       const semKey = normalizedCourseSemester;
 
       if (typeof prevCourses === "object" && prevCourses !== null) {
         const updatedCourses = { ...prevCourses };
-        // Create minimal course object with normalized credits
-        const minimalCourse = {
-          id: course.id,
-          shortName: course.shortName,
-          classification: course.classification,
-          credits: normalizeCredits(course.credits), // Convert API format (400) to display format (4)
-          big_type: categoryTypeMap[course.classification] || "",
-          calendarEntry: course.calendarEntry || [],
-          courseNumber: course.courseNumber || course.coursesNumber || "",
-        };
 
-        const courseIndex = updatedCourses[semKey]?.findIndex(
-          (c) => c.id === minimalCourse.id
-        );
-
-        if (courseIndex > -1) {
-          updatedCourses[semKey] = [
-            ...updatedCourses[semKey].slice(0, courseIndex),
-            ...updatedCourses[semKey].slice(courseIndex + 1),
-          ];
+        if (isCourseSelected) {
+          // Remove course
+          const courseIndex = updatedCourses[semKey]?.findIndex(
+            (c) => c.id === minimalCourse.id
+          );
+          if (courseIndex > -1) {
+            updatedCourses[semKey] = [
+              ...updatedCourses[semKey].slice(0, courseIndex),
+              ...updatedCourses[semKey].slice(courseIndex + 1),
+            ];
+          }
         } else {
+          // Add course
           updatedCourses[semKey] = [
             ...(updatedCourses[semKey] || []),
             minimalCourse,
@@ -129,31 +145,10 @@ export function useCourseSelection({
       }
 
       // Create new entry if prevCourses is not an object
-      return {
-        [semKey]: [
-          {
-            id: course.id,
-            shortName: course.shortName,
-            classification: course.classification,
-            credits: normalizeCredits(course.credits),
-            big_type: categoryTypeMap[course.classification] || "",
-            calendarEntry: course.calendarEntry || [],
-            courseNumber: course.courseNumber || course.coursesNumber || "", // Fix to use either courseNumber or coursesNumber
-          },
-        ],
-      };
+      return isCourseSelected ? {} : { [semKey]: [minimalCourse] };
     });
 
     try {
-      const isCourseSelected =
-        selectedCourseIds.includes(course.id) ||
-        selectedCourseIds.includes(course.courseNumber) ||
-        selectedCourseIds.includes(course.courseId) ||
-        selectedCourseIds.includes(course.courses?.[0]?.courseNumber);
-
-      // Extract the correct course number for API calls
-      const courseNumber =
-        course.courses?.[0]?.courseNumber || course.courseNumber || course.courseId || course.id;
 
       // Use the course's actual semester for API calls - this is critical for Transcript
       // where courses from multiple semesters are displayed
