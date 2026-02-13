@@ -687,6 +687,7 @@ export const curriculumMapSelector = selector({
         completedCredits,
         plannedCredits: totalCredits - completedCredits,
         courseCount: semesterCourses.length,
+        note: curriculumPlan.semesterNotes?.[semKey] || "",
       };
     });
 

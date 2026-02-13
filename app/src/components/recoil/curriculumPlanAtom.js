@@ -52,6 +52,7 @@ export const getDefaultPlanState = () => ({
   plannedItems: {},
   wishlistOverrides: {},
   // shape: { "FS26": { removedCourseIds: ["ABC123", ...] } }
+  semesterNotes: {},
   specialization: null,
   validations: {
     conflicts: [],
@@ -78,6 +79,7 @@ const getInitialState = () => {
       ...defaults,
       ...stored,
       wishlistOverrides: stored.wishlistOverrides || defaults.wishlistOverrides,
+      semesterNotes: stored.semesterNotes || defaults.semesterNotes,
       validations: { ...defaults.validations, ...stored.validations },
       syncStatus: { ...defaults.syncStatus, ...stored.syncStatus },
     };

@@ -37,8 +37,8 @@ const CurriculumGrid = ({
   // Track which parent category groups are collapsed
   const [collapsedParents, setCollapsedParents] = useState(new Set());
 
-  // Hook for adding semesters
-  const { addSemester } = useCurriculumPlan();
+  // Hooks for semester operations
+  const { addSemester, setSemesterNote } = useCurriculumPlan();
 
   // Hooks for "click course → open details" feature
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
@@ -292,6 +292,7 @@ const CurriculumGrid = ({
               key={`row-${semester.key}`}
               semester={semester}
               isLast={semIdx === semesters.length - 1}
+              onSetNote={setSemesterNote}
             />
 
             {/* Course cells for each category */}
