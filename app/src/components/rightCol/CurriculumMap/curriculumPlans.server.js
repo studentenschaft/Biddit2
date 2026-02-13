@@ -1,6 +1,6 @@
 /**
  * Curriculum Plans API
- * 
+ *
  * Move this file to your server:
  * - Model section → models/CurriculumPlan.js
  * - Routes section → routes/curriculumPlans.js
@@ -55,7 +55,7 @@ const placementSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const planSchema = new mongoose.Schema(
@@ -78,7 +78,7 @@ const planSchema = new mongoose.Schema(
     },
     placements: [placementSchema],
   },
-  { _id: false }
+  { _id: false },
 );
 
 const curriculumPlanSchema = new mongoose.Schema({
@@ -200,7 +200,8 @@ router.post("/", [auth, hsgOnly, getCurriculumPlan], async (req, res, next) => {
     }));
 
     curriculumPlan.plans = plansArray;
-    curriculumPlan.activePlanId = activePlanId || plansArray[0]?.planId || "plan-default";
+    curriculumPlan.activePlanId =
+      activePlanId || plansArray[0]?.planId || "plan-default";
 
     await curriculumPlan.save();
     res.json(formatResponse(curriculumPlan));
@@ -233,7 +234,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // POST /active/:planId - Set active plan
@@ -256,7 +257,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // POST /:planId - Create or update plan metadata
@@ -269,7 +270,9 @@ router.post(
       const { name, placements } = req.body;
       const { curriculumPlan } = req;
 
-      const planIndex = curriculumPlan.plans.findIndex((p) => p.planId === planId);
+      const planIndex = curriculumPlan.plans.findIndex(
+        (p) => p.planId === planId,
+      );
 
       if (planIndex === -1) {
         // Create new plan
@@ -296,7 +299,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // DELETE /:planId - Delete a plan
@@ -312,7 +315,9 @@ router.delete(
         throw createHttpError(400, "Cannot delete the only remaining plan");
       }
 
-      curriculumPlan.plans = curriculumPlan.plans.filter((p) => p.planId !== planId);
+      curriculumPlan.plans = curriculumPlan.plans.filter(
+        (p) => p.planId !== planId,
+      );
 
       // If deleted plan was active, switch to first available
       if (curriculumPlan.activePlanId === planId) {
@@ -324,7 +329,7 @@ router.delete(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // POST /:planId/duplicate - Clone plan with new name
@@ -360,7 +365,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // POST /:planId/:placementId - Add or update single placement
@@ -370,12 +375,24 @@ router.post(
   async (req, res, next) => {
     try {
       const { planId, placementId } = req.params;
-      const { type, semester, categoryPath, courseId, shortName, label, credits, note } = req.body;
+      const {
+        type,
+        semester,
+        categoryPath,
+        courseId,
+        shortName,
+        label,
+        credits,
+        note,
+      } = req.body;
       const { curriculumPlan } = req;
 
       // Validate required fields
       if (!type || !semester || !categoryPath) {
-        throw createHttpError(400, "Missing required fields: type, semester, categoryPath");
+        throw createHttpError(
+          400,
+          "Missing required fields: type, semester, categoryPath",
+        );
       }
 
       if (type === "course" && !courseId) {
@@ -383,16 +400,23 @@ router.post(
       }
 
       if (type === "placeholder" && (credits === undefined || !label)) {
-        throw createHttpError(400, "credits and label are required for type 'placeholder'");
+        throw createHttpError(
+          400,
+          "credits and label are required for type 'placeholder'",
+        );
       }
 
-      const planIndex = curriculumPlan.plans.findIndex((p) => p.planId === planId);
+      const planIndex = curriculumPlan.plans.findIndex(
+        (p) => p.planId === planId,
+      );
       if (planIndex === -1) {
         throw createHttpError(404, "Plan not found");
       }
 
       const plan = curriculumPlan.plans[planIndex];
-      const placementIndex = plan.placements.findIndex((p) => p.placementId === placementId);
+      const placementIndex = plan.placements.findIndex(
+        (p) => p.placementId === placementId,
+      );
 
       const placementData = {
         placementId,
@@ -404,7 +428,10 @@ router.post(
         label: type === "placeholder" ? label : undefined,
         credits: type === "placeholder" ? credits : undefined,
         note: note || undefined,
-        addedAt: placementIndex === -1 ? new Date() : plan.placements[placementIndex].addedAt,
+        addedAt:
+          placementIndex === -1
+            ? new Date()
+            : plan.placements[placementIndex].addedAt,
       };
 
       if (placementIndex === -1) {
@@ -421,7 +448,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 // DELETE /:planId/:placementId - Remove single placement
@@ -433,14 +460,16 @@ router.delete(
       const { planId, placementId } = req.params;
       const { curriculumPlan } = req;
 
-      const planIndex = curriculumPlan.plans.findIndex((p) => p.planId === planId);
+      const planIndex = curriculumPlan.plans.findIndex(
+        (p) => p.planId === planId,
+      );
       if (planIndex === -1) {
         throw createHttpError(404, "Plan not found");
       }
 
-      curriculumPlan.plans[planIndex].placements = curriculumPlan.plans[planIndex].placements.filter(
-        (p) => p.placementId !== placementId
-      );
+      curriculumPlan.plans[planIndex].placements = curriculumPlan.plans[
+        planIndex
+      ].placements.filter((p) => p.placementId !== placementId);
       curriculumPlan.plans[planIndex].lastModified = new Date();
 
       await curriculumPlan.save();
@@ -448,7 +477,7 @@ router.delete(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 module.exports = router;

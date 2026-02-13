@@ -2,8 +2,6 @@ import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import {
   curriculumPlanState,
-  createCoursePlanItem,
-  createPlaceholderItem,
   getNextSemesterKey,
   getCurrentSemesterInfo,
   isSemesterSyncable as checkSemesterSyncable,
@@ -12,6 +10,7 @@ import {
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import usePlanManager from "./usePlanManager";
 
 /**
  * Check if a stored course matches a given courseId.
@@ -29,7 +28,7 @@ const courseMatchesId = (storedCourse, courseId) => {
  * Manages curriculum plan state operations for the Curriculum Map.
  * Handles the distinction between:
  * - Current/next semester: Updates localSelectedCoursesSemKeyState (syncs to backend)
- * - Future semesters: Updates curriculumPlanState (local-only)
+ * - Future semesters: Updates curriculumPlanState via API
  *
  * Key operations:
  * - moveCourse: Move a course between semester/category cells
@@ -37,12 +36,19 @@ const courseMatchesId = (storedCourse, courseId) => {
  * - removeCourse: Remove a course from the plan
  */
 export const useCurriculumPlan = () => {
-  const [, setCurriculumPlan] = useRecoilState(curriculumPlanState);
+  const [curriculumPlan] = useRecoilState(curriculumPlanState);
   const [, setLocalSelectedCourses] = useRecoilState(
     localSelectedCoursesSemKeyState
   );
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const { removeSelectedCourse } = useUnifiedCourseData();
+  const { 
+    addPlaceholderById, 
+    removePlaceholderById,
+    addCourseById,
+    removeCourseById,
+    updatePlacementById,
+  } = usePlanManager();
 
   /**
    * Determine if a semester is "current or next" (eligible for wishlist sync)
@@ -68,16 +74,17 @@ export const useCurriculumPlan = () => {
 
   /**
    * Move a course from one cell to another
+   * For future semesters, uses API directly.
    *
    * @param {string} courseId - The course ID to move
    * @param {string} fromSemester - Source semester key
    * @param {string} toSemester - Target semester key
    * @param {string} toCategoryPath - Target category path
    * @param {string} source - Where the course came from ("wishlist" | "plan")
-   * @returns {boolean} - Whether the move was successful
+   * @returns {Promise<boolean>} - Whether the move was successful
    */
   const moveCourse = useCallback(
-    (courseId, fromSemester, toSemester, toCategoryPath, source) => {
+    async (courseId, fromSemester, toSemester, toCategoryPath, source) => {
       // Prevent moves to completed semesters
       if (isSemesterCompleted(toSemester)) {
         if (import.meta.env.DEV) {
@@ -112,18 +119,12 @@ export const useCurriculumPlan = () => {
             };
           });
         } else {
-          setCurriculumPlan((prev) => ({
-            ...prev,
-            plannedItems: {
-              ...prev.plannedItems,
-              [fromSemester]: (prev.plannedItems[fromSemester] || []).map(
-                (item) =>
-                  item.courseId === courseId
-                    ? { ...item, categoryPath: toCategoryPath }
-                    : item
-              ),
-            },
-          }));
+          // Future semester - update via API
+          await updatePlacementById(`course-${courseId}`, toSemester, toCategoryPath, {
+            type: "course",
+            courseId,
+            shortName: courseData?.shortName,
+          });
         }
         return true;
       }
@@ -141,16 +142,8 @@ export const useCurriculumPlan = () => {
           };
         });
       } else {
-        // Remove from curriculum plan
-        setCurriculumPlan((prev) => ({
-          ...prev,
-          plannedItems: {
-            ...prev.plannedItems,
-            [fromSemester]: (prev.plannedItems[fromSemester] || []).filter(
-              (item) => item.courseId !== courseId
-            ),
-          },
-        }));
+        // Remove from future semester via API
+        await removeCourseById(courseId);
       }
 
       // Add to destination
@@ -173,23 +166,14 @@ export const useCurriculumPlan = () => {
                 credits: courseData?.credits,
                 classification: courseData?.classification,
                 calendarEntry: courseData?.calendarEntry,
-                categoryPath: toCategoryPath, // Store category path for correct grid placement
+                categoryPath: toCategoryPath,
               },
             ],
           };
         });
       } else {
-        // Add to curriculum plan
-        setCurriculumPlan((prev) => ({
-          ...prev,
-          plannedItems: {
-            ...prev.plannedItems,
-            [toSemester]: [
-              ...(prev.plannedItems[toSemester] || []),
-              createCoursePlanItem(courseId, toCategoryPath, courseData?.shortName),
-            ],
-          },
-        }));
+        // Add to future semester via API
+        await addCourseById(courseId, toSemester, toCategoryPath, courseData?.shortName);
       }
 
       return true;
@@ -199,20 +183,23 @@ export const useCurriculumPlan = () => {
       isSemesterSyncable,
       unifiedCourseData,
       setLocalSelectedCourses,
-      setCurriculumPlan,
+      updatePlacementById,
+      removeCourseById,
+      addCourseById,
     ]
   );
 
   /**
    * Add a course from CoursePicker to the grid
+   * For future semesters, uses API directly.
    *
    * @param {object} course - The course object from available courses
    * @param {string} semesterKey - Target semester key
    * @param {string} categoryPath - Target category path
-   * @returns {boolean} - Whether the add was successful
+   * @returns {Promise<boolean>} - Whether the add was successful
    */
   const addCourse = useCallback(
-    (course, semesterKey, categoryPath) => {
+    async (course, semesterKey, categoryPath) => {
       // Prevent adds to completed semesters
       if (isSemesterCompleted(semesterKey)) {
         if (import.meta.env.DEV) {
@@ -225,23 +212,6 @@ export const useCurriculumPlan = () => {
       const isSyncable = isSemesterSyncable(semesterKey);
 
       if (isSyncable) {
-        // Un-hide the course if it was previously removed from this plan
-        setCurriculumPlan((prev) => {
-          const semOverrides = prev.wishlistOverrides?.[semesterKey] || {};
-          const removed = semOverrides.removedCourseIds || [];
-          if (!removed.includes(courseId)) return prev;
-          return {
-            ...prev,
-            wishlistOverrides: {
-              ...prev.wishlistOverrides,
-              [semesterKey]: {
-                ...semOverrides,
-                removedCourseIds: removed.filter((id) => id !== courseId),
-              },
-            },
-          };
-        });
-
         // Add to shared wishlist
         setLocalSelectedCourses((prev) => {
           const semesterCourses = prev[semesterKey] || [];
@@ -266,62 +236,33 @@ export const useCurriculumPlan = () => {
           };
         });
       } else {
-        // Add to curriculum plan
-        setCurriculumPlan((prev) => {
-          const existingItems = prev.plannedItems[semesterKey] || [];
-          // Avoid duplicates
-          if (existingItems.some((item) => item.courseId === courseId)) {
-            return prev;
-          }
-          return {
-            ...prev,
-            plannedItems: {
-              ...prev.plannedItems,
-              [semesterKey]: [
-                ...existingItems,
-                createCoursePlanItem(courseId, categoryPath, course.shortName),
-              ],
-            },
-          };
-        });
+        // Check for duplicates in local state
+        const existingItems = curriculumPlan.plannedItems[semesterKey] || [];
+        if (existingItems.some((item) => item.courseId === courseId)) {
+          return false;
+        }
+        // Add to future semester via API
+        await addCourseById(courseId, semesterKey, categoryPath, course.shortName);
       }
 
       return true;
     },
-    [isSemesterCompleted, isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan]
+    [isSemesterCompleted, isSemesterSyncable, setLocalSelectedCourses, curriculumPlan, addCourseById]
   );
 
   /**
    * Remove a course from the plan
+   * For future semesters, uses API directly.
    *
    * @param {string} courseId - The course ID to remove
    * @param {string} semesterKey - The semester to remove from
    * @param {string} source - Where the course is ("wishlist" | "plan")
-   * @returns {boolean} - Whether the removal was successful
+   * @returns {Promise<boolean>} - Whether the removal was successful
    */
   const removeCourse = useCallback(
-    (courseId, semesterKey, source) => {
-      if (source === "wishlist" && isSemesterSyncable(semesterKey)) {
-        // Plan-specific override: hide this wishlist course from the active plan only.
-        // The shared wishlist (localSelectedCoursesSemKeyState) stays untouched so
-        // other plans still see the course.
-        setCurriculumPlan((prev) => {
-          const semOverrides = prev.wishlistOverrides?.[semesterKey] || {};
-          const existing = semOverrides.removedCourseIds || [];
-          if (existing.includes(courseId)) return prev;
-          return {
-            ...prev,
-            wishlistOverrides: {
-              ...prev.wishlistOverrides,
-              [semesterKey]: {
-                ...semOverrides,
-                removedCourseIds: [...existing, courseId],
-              },
-            },
-          };
-        });
-      } else if (isSemesterSyncable(semesterKey)) {
-        // Non-wishlist in syncable semester — remove from shared state
+    async (courseId, semesterKey, source) => {
+      if (isSemesterSyncable(semesterKey)) {
+        // Remove from shared wishlist state
         setLocalSelectedCourses((prev) => ({
           ...prev,
           [semesterKey]: (prev[semesterKey] || []).filter(
@@ -330,26 +271,18 @@ export const useCurriculumPlan = () => {
         }));
         removeSelectedCourse(semesterKey, courseId);
       } else {
-        // Future semester — remove from plan-specific plannedItems
-        setCurriculumPlan((prev) => ({
-          ...prev,
-          plannedItems: {
-            ...prev.plannedItems,
-            [semesterKey]: (prev.plannedItems[semesterKey] || []).filter(
-              (item) => item.courseId !== courseId
-            ),
-          },
-        }));
+        // Future semester — remove via API
+        await removeCourseById(courseId);
       }
 
       return true;
     },
-    [isSemesterSyncable, setLocalSelectedCourses, setCurriculumPlan, removeSelectedCourse]
+    [isSemesterSyncable, setLocalSelectedCourses, removeSelectedCourse, removeCourseById]
   );
 
   /**
    * Add a new semester to the plan (for future planning)
-   * Creates an empty semester entry that will appear in the grid
+   * Note: Empty semesters are created locally but will be persisted when items are added.
    *
    * @param {string} lastSemesterKey - The last semester currently in the grid
    * @returns {string} - The newly added semester key
@@ -357,61 +290,36 @@ export const useCurriculumPlan = () => {
   const addSemester = useCallback(
     (lastSemesterKey) => {
       const newSemesterKey = getNextSemesterKey(lastSemesterKey);
-
-      // Add empty entry to curriculum plan to make it appear in the grid
-      setCurriculumPlan((prev) => {
-        // Don't add if already exists
-        if (prev.plannedItems[newSemesterKey]) {
-          return prev;
-        }
-        return {
-          ...prev,
-          plannedItems: {
-            ...prev.plannedItems,
-            [newSemesterKey]: [], // Empty array - will show in grid
-          },
-        };
-      });
-
+      // Note: The semester will appear in the grid once items are added via API
       return newSemesterKey;
     },
-    [setCurriculumPlan]
+    []
   );
 
   /**
    * Add a placeholder item to a future semester cell
    * Placeholders represent generic credit allocations without specific courses
+   * Calls API directly - API is the source of truth.
    *
    * @param {string} semesterKey - Target semester key
    * @param {string} categoryPath - Target category path
    * @param {number} credits - Number of credits for the placeholder
    * @param {string} label - Display label (defaults to "TBD")
-   * @returns {boolean} - Whether the add was successful
+   * @returns {Promise<string|null>} - The placeholder ID or null on failure
    */
   const addPlaceholder = useCallback(
-    (semesterKey, categoryPath, credits, label = "TBD") => {
+    async (semesterKey, categoryPath, credits, label = "TBD") => {
       if (isSemesterCompleted(semesterKey)) {
         if (import.meta.env.DEV) {
           console.warn("[useCurriculumPlan] Cannot add placeholder to completed semester");
         }
-        return false;
+        return null;
       }
 
-      // Placeholders only go to curriculum plan (not wishlist sync)
-      setCurriculumPlan((prev) => ({
-        ...prev,
-        plannedItems: {
-          ...prev.plannedItems,
-          [semesterKey]: [
-            ...(prev.plannedItems[semesterKey] || []),
-            createPlaceholderItem(categoryPath, credits, label),
-          ],
-        },
-      }));
-
-      return true;
+      // Call API directly - state updated from response
+      return addPlaceholderById(semesterKey, categoryPath, credits, label);
     },
-    [isSemesterCompleted, setCurriculumPlan]
+    [isSemesterCompleted, addPlaceholderById]
   );
 
   /**
@@ -421,10 +329,10 @@ export const useCurriculumPlan = () => {
    * @param {string} fromSemester - Source semester key
    * @param {string} toSemester - Target semester key
    * @param {string} toCategoryPath - Target category path
-   * @returns {boolean} - Whether the move was successful
+   * @returns {Promise<boolean>} - Whether the move was successful
    */
   const movePlaceholder = useCallback(
-    (placeholderId, fromSemester, toSemester, toCategoryPath) => {
+    async (placeholderId, fromSemester, toSemester, toCategoryPath) => {
       if (isSemesterCompleted(toSemester)) {
         if (import.meta.env.DEV) {
           console.warn("[useCurriculumPlan] Cannot move placeholder to completed semester");
@@ -432,68 +340,38 @@ export const useCurriculumPlan = () => {
         return false;
       }
 
-      const isSameSemester = fromSemester === toSemester;
+      // Find the placeholder data from current state
+      const sourceItems = curriculumPlan.plannedItems[fromSemester] || [];
+      const placeholder = sourceItems.find((item) => item.id === placeholderId);
 
-      setCurriculumPlan((prev) => {
-        const sourceItems = prev.plannedItems[fromSemester] || [];
-        const placeholder = sourceItems.find((item) => item.id === placeholderId);
+      if (!placeholder) {
+        console.warn("[useCurriculumPlan] Placeholder not found:", placeholderId);
+        return false;
+      }
 
-        if (!placeholder) return prev;
-
-        if (isSameSemester) {
-          // Same-semester: update categoryPath in place
-          return {
-            ...prev,
-            plannedItems: {
-              ...prev.plannedItems,
-              [fromSemester]: sourceItems.map((item) =>
-                item.id === placeholderId
-                  ? { ...item, categoryPath: toCategoryPath }
-                  : item
-              ),
-            },
-          };
-        }
-
-        // Cross-semester: remove from source, add to destination
-        const destItems = prev.plannedItems[toSemester] || [];
-        return {
-          ...prev,
-          plannedItems: {
-            ...prev.plannedItems,
-            [fromSemester]: sourceItems.filter((item) => item.id !== placeholderId),
-            [toSemester]: [...destItems, { ...placeholder, categoryPath: toCategoryPath }],
-          },
-        };
+      // Update via API - includes semester, categoryPath, and placeholder data
+      return updatePlacementById(placeholderId, toSemester, toCategoryPath, {
+        type: "placeholder",
+        label: placeholder.label,
+        credits: placeholder.credits,
       });
-
-      return true;
     },
-    [isSemesterCompleted, setCurriculumPlan]
+    [isSemesterCompleted, curriculumPlan, updatePlacementById]
   );
 
   /**
    * Remove a placeholder item from the plan
+   * Calls API directly - API is the source of truth.
    *
    * @param {string} placeholderId - The placeholder ID to remove
-   * @param {string} semesterKey - The semester to remove from
-   * @returns {boolean} - Whether the removal was successful
+   * @returns {Promise<boolean>} - Whether the removal was successful
    */
   const removePlaceholder = useCallback(
-    (placeholderId, semesterKey) => {
-      setCurriculumPlan((prev) => ({
-        ...prev,
-        plannedItems: {
-          ...prev.plannedItems,
-          [semesterKey]: (prev.plannedItems[semesterKey] || []).filter(
-            (item) => item.id !== placeholderId
-          ),
-        },
-      }));
-
-      return true;
+    async (placeholderId) => {
+      // Call API directly - state updated from response
+      return removePlaceholderById(placeholderId);
     },
-    [setCurriculumPlan]
+    [removePlaceholderById]
   );
 
   return {

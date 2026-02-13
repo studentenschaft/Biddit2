@@ -1,5 +1,4 @@
 import { atom } from "recoil";
-import { toast } from "react-toastify";
 
 /**
  * Curriculum Plan Atom
@@ -18,35 +17,16 @@ import { toast } from "react-toastify";
  * 1. Current semester courses: localSelectedCoursesSemKeyState (existing wishlist)
  * 2. Future semester courses: curriculumPlanState (this atom)
  * 3. Combined view: curriculumMapSelector (merges both)
+ *
+ * NOTE: Data is now synced via API, not localStorage.
+ * State is loaded from server when CurriculumMap mounts and updated via API calls.
  */
 
-export const STORAGE_KEY = 'biddit_curriculum_plan';
-
-/**
- * Load plan from localStorage
- */
-const loadFromStorage = () => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : null;
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error('[curriculumPlanAtom] Error loading from storage:', error);
-    }
-    // Defer toast to avoid calling during module initialization
-    setTimeout(() => {
-      toast.warn("Could not load your saved curriculum plan. Your changes may not persist.", {
-        toastId: "curriculum-plan-load-error",
-        autoClose: 8000,
-      });
-    }, 0);
-    return null;
-  }
-};
+export const STORAGE_KEY = 'biddit_curriculum_plan'; // Keep for migration reference
 
 /**
  * Canonical default state shape for a curriculum plan.
- * Used by getInitialState() and as the fallback in usePlanManager.switchPlan.
+ * Used as initial state and as fallback in usePlanManager.
  */
 export const getDefaultPlanState = () => ({
   plannedItems: {},
@@ -66,51 +46,10 @@ export const getDefaultPlanState = () => ({
   lastModified: null,
 });
 
-/**
- * Get initial state, merging localStorage with defaults
- */
-const getInitialState = () => {
-  const stored = loadFromStorage();
-  const defaults = getDefaultPlanState();
-
-  if (stored) {
-    return {
-      ...defaults,
-      ...stored,
-      wishlistOverrides: stored.wishlistOverrides || defaults.wishlistOverrides,
-      validations: { ...defaults.validations, ...stored.validations },
-      syncStatus: { ...defaults.syncStatus, ...stored.syncStatus },
-    };
-  }
-
-  return defaults;
-};
-
 export const curriculumPlanState = atom({
   key: "curriculumPlanState",
-  default: getInitialState(),
-  effects: [
-    // localStorage persistence effect
-    ({ onSet }) => {
-      onSet((newValue) => {
-        try {
-          const toStore = {
-            ...newValue,
-            lastModified: new Date().toISOString(),
-          };
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
-        } catch (error) {
-          if (import.meta.env.DEV) {
-            console.error('[curriculumPlanAtom] Error saving to storage:', error);
-          }
-          toast.warn("Could not save your curriculum plan changes. Storage may be full.", {
-            toastId: "curriculum-plan-save-error",
-            autoClose: 8000,
-          });
-        }
-      });
-    },
-  ],
+  default: getDefaultPlanState(),
+  // No localStorage effects - synced via API
 });
 
 /**

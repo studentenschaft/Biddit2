@@ -1,7 +1,7 @@
 import { apiClient } from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const BASE_URL = "http://localhost:5000/shsg-api/curriculum-plans";
+const BASE_URL = "http://localhost:52079/curriculum-plans";
 
 /**
  * Curriculum Plans API Client

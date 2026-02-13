@@ -378,9 +378,12 @@ describe('useCurriculumPlan hook integration', () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    const success = result.current.addPlaceholder('HS25', 'Core/Electives', 6, 'Elective');
+    let id;
+    await act(async () => {
+      id = await result.current.addPlaceholder('HS25', 'Core/Electives', 6, 'Elective');
+    });
 
-    expect(success).toBe(false);
+    expect(id).toBe(null);
   });
 
   it('addPlaceholder accepts future semesters', async () => {
@@ -388,12 +391,12 @@ describe('useCurriculumPlan hook integration', () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    let success;
-    act(() => {
-      success = result.current.addPlaceholder('HS27', 'Core/Electives', 6, 'Elective');
+    let id;
+    await act(async () => {
+      id = await result.current.addPlaceholder('HS27', 'Core/Electives', 6, 'Elective');
     });
 
-    expect(success).toBe(true);
+    expect(id).toBeTruthy();
   });
 
   it('addPlaceholder uses default label when not provided', async () => {
@@ -401,12 +404,12 @@ describe('useCurriculumPlan hook integration', () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    let success;
-    act(() => {
-      success = result.current.addPlaceholder('HS27', 'Core/Electives', 3);
+    let id;
+    await act(async () => {
+      id = await result.current.addPlaceholder('HS27', 'Core/Electives', 3);
     });
 
-    expect(success).toBe(true);
+    expect(id).toBeTruthy();
   });
 
   it('removePlaceholder returns true', async () => {
@@ -415,8 +418,8 @@ describe('useCurriculumPlan hook integration', () => {
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
     let success;
-    act(() => {
-      success = result.current.removePlaceholder('placeholder-123', 'FS27');
+    await act(async () => {
+      success = await result.current.removePlaceholder('placeholder-123');
     });
 
     expect(success).toBe(true);

@@ -53,9 +53,10 @@ const PlanCell = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showPlaceholderForm]);
 
-  const handleAddPlaceholder = (e) => {
+  const handleAddPlaceholder = async (e) => {
     e.preventDefault();
-    if (addPlaceholder(semesterKey, categoryPath, placeholderCredits, placeholderLabel || "TBD")) {
+    const id = await addPlaceholder(semesterKey, categoryPath, placeholderCredits, placeholderLabel || "TBD");
+    if (id) {
       setShowPlaceholderForm(false);
       setPlaceholderCredits(3);
       setPlaceholderLabel("");

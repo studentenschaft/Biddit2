@@ -14,8 +14,10 @@ import { useRecoilValue } from "recoil";
 import { useState, useEffect } from "react";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
 import { authTokenState } from "../../recoil/authAtom";
+import { curriculumPlansRegistryState } from "../../recoil/curriculumPlansRegistryAtom";
 import { useScorecardFetching } from "../../helpers/useScorecardFetching";
 import { useInitializeScoreCards } from "../../helpers/useInitializeScorecards";
+import usePlanManager from "../../helpers/usePlanManager";
 import { useErrorHandler } from "../../errorHandling/useErrorHandler";
 import LoadingText from "../../common/LoadingText";
 import CurriculumGrid from "./CurriculumGrid";
@@ -28,6 +30,8 @@ import CurriculumMapTutorial, { TUTORIAL_STORAGE_KEY } from "./CurriculumMapTuto
 const CurriculumMap = () => {
   const curriculumData = useRecoilValue(curriculumMapSelector);
   const authToken = useRecoilValue(authTokenState);
+  const plansRegistry = useRecoilValue(curriculumPlansRegistryState);
+  const { loadPlans } = usePlanManager();
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
   const [fetchAttempted, setFetchAttempted] = useState(false);
@@ -40,6 +44,13 @@ const CurriculumMap = () => {
 
   // Initialize scorecard data
   useInitializeScoreCards(handleError);
+
+  // Load curriculum plans from API on mount (if not already loaded)
+  useEffect(() => {
+    if (!plansRegistry.isLoaded && authToken) {
+      loadPlans();
+    }
+  }, [plansRegistry.isLoaded, authToken, loadPlans]);
 
   // Auto-fetch if needed
   useEffect(() => {
@@ -57,7 +68,7 @@ const CurriculumMap = () => {
   }, [curriculumData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
 
   // Loading state
-  if (!curriculumData.isLoaded) {
+  if (!curriculumData.isLoaded || !plansRegistry.isLoaded) {
     return (
       <div className="flex flex-col h-full px-6 py-4">
         <h1 className="text-2xl font-bold mb-4 text-gray-900">Curriculum Map</h1>
@@ -68,7 +79,11 @@ const CurriculumMap = () => {
               <div className="h-4 bg-gray-200 rounded w-48 mx-auto mb-2"></div>
               <div className="h-4 bg-gray-200 rounded w-56 mx-auto"></div>
             </div>
-            <LoadingText>Loading curriculum data...</LoadingText>
+            <LoadingText>
+              {!plansRegistry.isLoaded
+                ? "Loading your curriculum plans..."
+                : "Loading curriculum data..."}
+            </LoadingText>
           </div>
         </div>
       </div>

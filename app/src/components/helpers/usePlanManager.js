@@ -1,62 +1,154 @@
-import { useRecoilCallback } from "recoil";
+import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toast } from "react-toastify";
 import {
   curriculumPlanState,
   getDefaultPlanState,
+  generatePlaceholderId,
 } from "../recoil/curriculumPlanAtom";
 import {
   curriculumPlansRegistryState,
   generatePlanId,
-  PLAN_STORAGE_PREFIX,
 } from "../recoil/curriculumPlansRegistryAtom";
+import { authTokenState } from "../recoil/authAtom";
+import {
+  getCurriculumPlans,
+  setActivePlanApi,
+  upsertPlan,
+  deletePlanApi,
+  duplicatePlanApi,
+  upsertPlacement,
+  removePlacement,
+} from "./curriculumPlansApi";
 
-// --- localStorage helpers ---
+// --- Conversion helpers ---
 
-const savePlanToStorage = (planId, data) => {
-  try {
-    localStorage.setItem(PLAN_STORAGE_PREFIX + planId, JSON.stringify(data));
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("[usePlanManager] Error saving plan to storage:", error);
+/**
+ * Convert API placements array to plannedItems by semester
+ */
+const convertPlacementsToPlannedItems = (placements = []) => {
+  const plannedItems = {};
+  placements.forEach((p) => {
+    if (!plannedItems[p.semester]) {
+      plannedItems[p.semester] = [];
     }
-    toast.warn("Could not save plan data. Storage may be full.", {
-      toastId: "plan-save-error",
-      autoClose: 8000,
+    plannedItems[p.semester].push({
+      type: p.type,
+      ...(p.type === "course" && { courseId: p.courseId, shortName: p.shortName }),
+      ...(p.type === "placeholder" && { id: p.placementId, label: p.label, credits: p.credits }),
+      categoryPath: p.categoryPath,
+      note: p.note,
+      addedAt: p.addedAt,
     });
-  }
-};
-
-const loadPlanFromStorage = (planId) => {
-  try {
-    const stored = localStorage.getItem(PLAN_STORAGE_PREFIX + planId);
-    return stored ? JSON.parse(stored) : null;
-  } catch (error) {
-    if (import.meta.env.DEV) {
-      console.error("[usePlanManager] Error loading plan from storage:", error);
-    }
-    return null;
-  }
-};
-
-const removePlanFromStorage = (planId) => {
-  try {
-    localStorage.removeItem(PLAN_STORAGE_PREFIX + planId);
-  } catch {
-    // best-effort cleanup
-  }
+  });
+  return plannedItems;
 };
 
 /**
- * Hook providing all plan management operations.
+ * Convert plannedItems by semester to flat placements array
+ */
+const convertPlannedItemsToPlacements = (plannedItems = {}) => {
+  const placements = [];
+  Object.entries(plannedItems).forEach(([semester, items]) => {
+    items.forEach((item) => {
+      placements.push({
+        placementId: item.type === "placeholder" ? item.id : `course-${item.courseId}`,
+        type: item.type,
+        semester,
+        categoryPath: item.categoryPath,
+        ...(item.type === "course" && { courseId: item.courseId, shortName: item.shortName }),
+        ...(item.type === "placeholder" && { label: item.label, credits: item.credits }),
+        note: item.note,
+        addedAt: item.addedAt,
+      });
+    });
+  });
+  return placements;
+};
+
+/**
+ * Hook providing all plan management operations via API.
  * Uses useRecoilCallback for atomic read+write without extra subscriptions.
  */
 const usePlanManager = () => {
+  const token = useRecoilValue(authTokenState);
+
   /**
-   * Switch to a different plan:
-   * 1. Save current atom data under outgoing plan's storage key
-   * 2. Load target plan's data from storage (or use defaults)
-   * 3. Write target data into the atom (atom effect persists to ACTIVE_PLAN_KEY)
-   * 4. Update registry's activePlanId
+   * Load plans from API (call on CurriculumMap mount)
+   * If 404 (new user), uses default state and sets isNewUser flag.
+   * Data only syncs to server when user makes actual changes.
+   */
+  const loadPlans = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        
+        // Skip if already loaded
+        if (registry.isLoaded) return;
+
+        try {
+          const data = await getCurriculumPlans(token);
+
+          if (data === null) {
+            // New user - no saved plans on server
+            // Use default state, mark as new user (will sync on first change)
+            console.log("[usePlanManager] New user, using default plan state");
+            set(curriculumPlansRegistryState, (prev) => ({
+              ...prev,
+              isLoaded: true,
+              isNewUser: true,
+              isDirty: false,
+            }));
+            // curriculumPlanState already has defaults
+            return;
+          }
+
+          // Existing user - load from server
+          const plans = {};
+          Object.entries(data.plans).forEach(([planId, plan]) => {
+            plans[planId] = {
+              id: planId,
+              name: plan.name,
+              createdAt: plan.createdAt,
+              lastModified: plan.lastModified,
+            };
+          });
+
+          set(curriculumPlansRegistryState, {
+            activePlanId: data.activePlanId,
+            plans,
+            schemaVersion: 1,
+            isLoaded: true,
+            isNewUser: false,
+            isDirty: false,
+          });
+
+          // Load active plan data into curriculumPlanState
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, {
+              ...getDefaultPlanState(),
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            });
+          }
+        } catch (error) {
+          console.error("[usePlanManager] Error loading plans:", error);
+          toast.error("Could not load your curriculum plans.", {
+            toastId: "plans-load-error",
+          });
+          // Mark as loaded anyway to prevent infinite retry, treat as new user
+          set(curriculumPlansRegistryState, (prev) => ({
+            ...prev,
+            isLoaded: true,
+            isNewUser: true,
+          }));
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Switch to a different plan
    */
   const switchPlan = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -65,42 +157,88 @@ const usePlanManager = () => {
         if (targetPlanId === registry.activePlanId) return;
         if (!registry.plans[targetPlanId]) return;
 
-        // Step 1: save current plan data to its dedicated storage key
-        const currentData = await snapshot.getPromise(curriculumPlanState);
-        savePlanToStorage(registry.activePlanId, currentData);
+        try {
+          // Save current plan first
+          const currentData = await snapshot.getPromise(curriculumPlanState);
+          await upsertPlan(
+            registry.activePlanId,
+            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
+            token
+          );
 
-        // Step 2: load target plan data
-        const targetData = loadPlanFromStorage(targetPlanId);
+          // Switch active plan via API
+          const data = await setActivePlanApi(targetPlanId, token);
 
-        // Step 3: swap atom contents
-        if (targetData) {
-          set(curriculumPlanState, targetData);
-        } else {
-          if (import.meta.env.DEV) {
-            console.log(`[usePlanManager] No stored data for ${targetPlanId}, loading defaults`);
-          }
-          set(curriculumPlanState, getDefaultPlanState());
+          // Update local state with API response
+          const targetPlan = data.plans[targetPlanId];
+          set(curriculumPlanState, {
+            ...getDefaultPlanState(),
+            plannedItems: convertPlacementsToPlannedItems(targetPlan?.placements || []),
+            lastModified: targetPlan?.lastModified,
+          });
+
+          set(curriculumPlansRegistryState, (prev) => ({
+            ...prev,
+            activePlanId: targetPlanId,
+          }));
+        } catch (error) {
+          console.error("[usePlanManager] Error switching plan:", error);
+          toast.error("Could not switch plans.", { toastId: "plan-switch-error" });
         }
-
-        // Step 4: update registry
-        const now = new Date().toISOString();
-        set(curriculumPlansRegistryState, {
-          ...registry,
-          activePlanId: targetPlanId,
-          plans: {
-            ...registry.plans,
-            [targetPlanId]: { ...registry.plans[targetPlanId], lastModified: now },
-          },
-        });
       },
-    []
+    [token]
   );
 
   /**
-   * Duplicate a specific plan (can be active or inactive).
-   * The duplicate becomes the new active plan.
-   * @param {string} planId - ID of the plan to duplicate
-   * @param {string} [name] - Name for the new plan (defaults to "${sourceName} (copy)")
+   * Create a new plan
+   */
+  const createPlan = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (name = "New Plan") => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+
+        try {
+          // Save current plan first
+          const currentData = await snapshot.getPromise(curriculumPlanState);
+          await upsertPlan(
+            registry.activePlanId,
+            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
+            token
+          );
+
+          // Create new plan via API
+          const newPlanId = generatePlanId();
+          await upsertPlan(newPlanId, { name, placements: [] }, token);
+
+          // Switch to new plan
+          await setActivePlanApi(newPlanId, token);
+
+          set(curriculumPlanState, getDefaultPlanState());
+          set(curriculumPlansRegistryState, {
+            ...registry,
+            activePlanId: newPlanId,
+            plans: {
+              ...registry.plans,
+              [newPlanId]: {
+                id: newPlanId,
+                name,
+                createdAt: new Date().toISOString(),
+                lastModified: new Date().toISOString(),
+              },
+            },
+          });
+
+          return newPlanId;
+        } catch (error) {
+          console.error("[usePlanManager] Error creating plan:", error);
+          toast.error("Could not create plan.", { toastId: "plan-create-error" });
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Duplicate a plan
    */
   const duplicatePlan = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -108,73 +246,54 @@ const usePlanManager = () => {
         const registry = await snapshot.getPromise(curriculumPlansRegistryState);
         if (!registry.plans[planId]) return;
 
-        const currentData = await snapshot.getPromise(curriculumPlanState);
-        const now = new Date().toISOString();
-        const newId = generatePlanId();
-        const sourceName = registry.plans[planId].name;
+        try {
+          // Save current plan first
+          const currentData = await snapshot.getPromise(curriculumPlanState);
+          await upsertPlan(
+            registry.activePlanId,
+            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
+            token
+          );
 
-        // Save current active plan before switching
-        savePlanToStorage(registry.activePlanId, currentData);
+          const sourceName = registry.plans[planId].name;
+          const data = await duplicatePlanApi(planId, name ?? `${sourceName} (copy)`, token);
 
-        // Get source data (either from atom if active, or from storage)
-        let sourceData;
-        if (planId === registry.activePlanId) {
-          sourceData = currentData;
-        } else {
-          sourceData = loadPlanFromStorage(planId);
-          if (!sourceData) {
-            toast.error("Could not load plan data for duplication.", {
-              toastId: "plan-duplicate-error",
+          // Find the new plan ID (the one that wasn't there before)
+          const newPlanId = Object.keys(data.plans).find((id) => !registry.plans[id]);
+
+          if (newPlanId) {
+            const newPlan = data.plans[newPlanId];
+            set(curriculumPlanState, {
+              ...getDefaultPlanState(),
+              plannedItems: convertPlacementsToPlannedItems(newPlan.placements),
             });
-            return;
+
+            set(curriculumPlansRegistryState, {
+              ...registry,
+              activePlanId: newPlanId,
+              plans: {
+                ...registry.plans,
+                [newPlanId]: {
+                  id: newPlanId,
+                  name: newPlan.name,
+                  createdAt: newPlan.createdAt,
+                  lastModified: newPlan.lastModified,
+                },
+              },
+            });
           }
+
+          return newPlanId;
+        } catch (error) {
+          console.error("[usePlanManager] Error duplicating plan:", error);
+          toast.error("Could not duplicate plan.", { toastId: "plan-duplicate-error" });
         }
-
-        const clonedData = JSON.parse(JSON.stringify(sourceData));
-        clonedData.lastModified = now;
-        savePlanToStorage(newId, clonedData);
-        set(curriculumPlanState, clonedData);
-
-        set(curriculumPlansRegistryState, {
-          ...registry,
-          activePlanId: newId,
-          plans: {
-            ...registry.plans,
-            [registry.activePlanId]: {
-              ...registry.plans[registry.activePlanId],
-              lastModified: now,
-            },
-            [newId]: {
-              id: newId,
-              name: name ?? `${sourceName} (copy)`,
-              createdAt: now,
-              lastModified: now,
-            },
-          },
-        });
-
-        return newId;
       },
-    []
-  );
-
-  /**
-   * Create a new plan by duplicating the active plan's data.
-   * Delegates to duplicatePlan with an explicit name.
-   */
-  const createPlan = useRecoilCallback(
-    ({ snapshot }) =>
-      async (name = "New Plan") => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
-        return duplicatePlan(registry.activePlanId, name);
-      },
-    [duplicatePlan]
+    [token]
   );
 
   /**
    * Delete a plan. Cannot delete the last remaining plan.
-   * If deleting the active plan, atomically switches to another plan
-   * in the same callback to avoid stale snapshot issues.
    */
   const deletePlan = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -183,39 +302,37 @@ const usePlanManager = () => {
         const planIds = Object.keys(registry.plans);
         if (planIds.length <= 1) return;
 
-        const remainingPlans = Object.fromEntries(
-          Object.entries(registry.plans).filter(([id]) => id !== planId)
-        );
+        try {
+          const data = await deletePlanApi(planId, token);
 
-        if (planId === registry.activePlanId) {
-          // Deleting the active plan: save current, load another, update registry — all in one batch
-          const currentData = await snapshot.getPromise(curriculumPlanState);
-          savePlanToStorage(registry.activePlanId, currentData);
+          const remainingPlans = Object.fromEntries(
+            Object.entries(registry.plans).filter(([id]) => id !== planId)
+          );
 
-          const otherPlanId = planIds.find((id) => id !== planId);
-          const targetData = loadPlanFromStorage(otherPlanId);
+          // If we deleted the active plan, switch to the new active from API response
+          if (planId === registry.activePlanId) {
+            const newActivePlan = data.plans[data.activePlanId];
+            set(curriculumPlanState, {
+              ...getDefaultPlanState(),
+              plannedItems: convertPlacementsToPlannedItems(newActivePlan?.placements || []),
+            });
+          }
 
-          set(curriculumPlanState, targetData ?? getDefaultPlanState());
-
-          const now = new Date().toISOString();
           set(curriculumPlansRegistryState, {
-            activePlanId: otherPlanId,
-            plans: {
-              ...remainingPlans,
-              [otherPlanId]: { ...remainingPlans[otherPlanId], lastModified: now },
-            },
+            ...registry,
+            activePlanId: data.activePlanId,
+            plans: remainingPlans,
           });
-        } else {
-          set(curriculumPlansRegistryState, { ...registry, plans: remainingPlans });
+        } catch (error) {
+          console.error("[usePlanManager] Error deleting plan:", error);
+          toast.error("Could not delete plan.", { toastId: "plan-delete-error" });
         }
-
-        removePlanFromStorage(planId);
       },
-    []
+    [token]
   );
 
   /**
-   * Rename a plan in the registry.
+   * Rename a plan
    */
   const renamePlan = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -223,22 +340,267 @@ const usePlanManager = () => {
         const registry = await snapshot.getPromise(curriculumPlansRegistryState);
         if (!registry.plans[planId]) return;
 
-        set(curriculumPlansRegistryState, {
-          ...registry,
-          plans: {
-            ...registry.plans,
-            [planId]: {
-              ...registry.plans[planId],
-              name: newName,
-              lastModified: new Date().toISOString(),
+        try {
+          await upsertPlan(planId, { name: newName }, token);
+
+          set(curriculumPlansRegistryState, {
+            ...registry,
+            plans: {
+              ...registry.plans,
+              [planId]: {
+                ...registry.plans[planId],
+                name: newName,
+                lastModified: new Date().toISOString(),
+              },
             },
-          },
-        });
+          });
+        } catch (error) {
+          console.error("[usePlanManager] Error renaming plan:", error);
+          toast.error("Could not rename plan.", { toastId: "plan-rename-error" });
+        }
       },
-    []
+    [token]
   );
 
-  return { switchPlan, createPlan, deletePlan, renamePlan, duplicatePlan };
+  /**
+   * Add a course directly via API (granular operation).
+   * State is updated from API response - API is the source of truth.
+   *
+   * @param {string} courseId - Course ID
+   * @param {string} semesterKey - Target semester (e.g., "FS26")
+   * @param {string} categoryPath - Category path (e.g., "Core/Required")
+   * @param {string} [shortName] - Course short name
+   * @returns {Promise<boolean>} - Whether the operation was successful
+   */
+  const addCourseById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (courseId, semesterKey, categoryPath, shortName = null) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const placementId = `course-${courseId}`;
+
+        const placementData = {
+          type: "course",
+          semester: semesterKey,
+          categoryPath,
+          courseId,
+          ...(shortName && { shortName }),
+          addedAt: new Date().toISOString(),
+        };
+
+        try {
+          const data = await upsertPlacement(registry.activePlanId, placementId, placementData, token);
+
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          set(curriculumPlansRegistryState, (prev) => ({
+            ...prev,
+            isNewUser: false,
+          }));
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error adding course:", error);
+          toast.error("Could not add course.", { toastId: "course-add-error" });
+          return false;
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Remove a course directly via API (granular operation).
+   * State is updated from API response - API is the source of truth.
+   *
+   * @param {string} courseId - Course ID to remove
+   * @returns {Promise<boolean>} - Whether removal was successful
+   */
+  const removeCourseById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (courseId) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const placementId = `course-${courseId}`;
+
+        try {
+          const data = await removePlacement(registry.activePlanId, placementId, token);
+
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error removing course:", error);
+          toast.error("Could not remove course.", { toastId: "course-remove-error" });
+          return false;
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Update a placement's position (move operation) via API.
+   * Works for both courses and placeholders.
+   * State is updated from API response - API is the source of truth.
+   *
+   * @param {string} placementId - Placement ID to update
+   * @param {string} toSemester - Target semester
+   * @param {string} toCategoryPath - Target category path
+   * @param {Object} [extraData] - Additional data to include (type, courseId, shortName, etc.)
+   * @returns {Promise<boolean>} - Whether the operation was successful
+   */
+  const updatePlacementById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (placementId, toSemester, toCategoryPath, extraData = {}) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+
+        const placementData = {
+          ...extraData,
+          semester: toSemester,
+          categoryPath: toCategoryPath,
+        };
+
+        try {
+          const data = await upsertPlacement(registry.activePlanId, placementId, placementData, token);
+
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error updating placement:", error);
+          toast.error("Could not move item.", { toastId: "placement-update-error" });
+          return false;
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Add a placeholder directly via API (granular operation).
+   * State is updated from API response - API is the source of truth.
+   *
+   * @param {string} semesterKey - Target semester (e.g., "FS26")
+   * @param {string} categoryPath - Category path (e.g., "Core/Required")
+   * @param {number} credits - Credit value for placeholder
+   * @param {string} label - Display label (default "TBD")
+   * @param {string} [placeholderId] - Optional ID, auto-generated if not provided
+   * @returns {Promise<string|null>} - The placeholder ID or null on failure
+   */
+  const addPlaceholderById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (semesterKey, categoryPath, credits, label = "TBD", placeholderId = null) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const id = placeholderId || generatePlaceholderId();
+
+        const placementData = {
+          type: "placeholder",
+          semester: semesterKey,
+          categoryPath,
+          credits,
+          label,
+          addedAt: new Date().toISOString(),
+        };
+
+        try {
+          // API call - response is source of truth
+          const data = await upsertPlacement(registry.activePlanId, id, placementData, token);
+
+          // Update state from API response
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          set(curriculumPlansRegistryState, (prev) => ({
+            ...prev,
+            isNewUser: false,
+          }));
+
+          return id;
+        } catch (error) {
+          console.error("[usePlanManager] Error adding placeholder:", error);
+          toast.error("Could not add placeholder.", {
+            toastId: "placeholder-add-error",
+          });
+          return null;
+        }
+      },
+    [token]
+  );
+
+  /**
+   * Remove a placeholder directly via API (granular operation).
+   * State is updated from API response - API is the source of truth.
+   *
+   * @param {string} placeholderId - The placeholder ID to remove
+   * @returns {Promise<boolean>} - Whether removal was successful
+   */
+  const removePlaceholderById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (placeholderId) => {
+        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+
+        try {
+          // API call - response is source of truth
+          const data = await removePlacement(registry.activePlanId, placeholderId, token);
+
+          // Update state from API response
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error removing placeholder:", error);
+          toast.error("Could not remove placeholder.", {
+            toastId: "placeholder-remove-error",
+          });
+          return false;
+        }
+      },
+    [token]
+  );
+
+  return { 
+    loadPlans, 
+    switchPlan, 
+    createPlan, 
+    deletePlan, 
+    renamePlan, 
+    duplicatePlan, 
+    addPlaceholderById, 
+    removePlaceholderById,
+    addCourseById,
+    removeCourseById,
+    updatePlacementById,
+  };
 };
 
 export default usePlanManager;

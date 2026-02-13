@@ -125,7 +125,7 @@ export default function Biddit2() {
       if (dragData?.type === "grid-course") {
         const { item, semesterKey: sourceSemester, source } = dragData;
         if (item.isPlaceholder) {
-          removePlaceholder(item.id, sourceSemester);
+          removePlaceholder(item.id);
         } else {
           const courseId = item.courseId || item.id;
           removeCourse(courseId, sourceSemester, source || "wishlist");
@@ -143,7 +143,7 @@ export default function Biddit2() {
     if (dragData?.type === "grid-course" && !isValidGridCell) {
       const { item, semesterKey: sourceSemester, source } = dragData;
       if (item.isPlaceholder) {
-        removePlaceholder(item.id, sourceSemester);
+        removePlaceholder(item.id);
       } else {
         const courseId = item.courseId || item.id;
         removeCourse(courseId, sourceSemester, source || "wishlist");

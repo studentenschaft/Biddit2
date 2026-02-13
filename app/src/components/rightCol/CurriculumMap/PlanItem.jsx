@@ -140,7 +140,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
 
     try {
       if (isPlaceholder) {
-        removePlaceholder(itemId, semesterKey);
+        removePlaceholder(itemId);
       } else {
         removeCourse(itemId, semesterKey, source || "wishlist");
       }
