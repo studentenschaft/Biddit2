@@ -22,7 +22,7 @@ import { atom } from "recoil";
  * State is loaded from server when CurriculumMap mounts and updated via API calls.
  */
 
-export const STORAGE_KEY = 'biddit_curriculum_plan'; // Keep for migration reference
+export const STORAGE_KEY = "biddit_curriculum_plan"; // Keep for migration reference
 
 /**
  * Canonical default state shape for a curriculum plan.
@@ -32,6 +32,7 @@ export const getDefaultPlanState = () => ({
   plannedItems: {},
   wishlistOverrides: {},
   // shape: { "FS26": { removedCourseIds: ["ABC123", ...] } }
+  semesterNotes: {},
   specialization: null,
   validations: {
     conflicts: [],
@@ -62,7 +63,11 @@ export const generatePlaceholderId = () => {
 /**
  * Helper: Create a course plan item
  */
-export const createCoursePlanItem = (courseId, categoryPath, shortName = null) => ({
+export const createCoursePlanItem = (
+  courseId,
+  categoryPath,
+  shortName = null,
+) => ({
   type: "course",
   courseId,
   categoryPath,
@@ -73,7 +78,11 @@ export const createCoursePlanItem = (courseId, categoryPath, shortName = null) =
 /**
  * Helper: Create a placeholder plan item
  */
-export const createPlaceholderItem = (categoryPath, credits, label = "TBD") => ({
+export const createPlaceholderItem = (
+  categoryPath,
+  credits,
+  label = "TBD",
+) => ({
   type: "placeholder",
   id: generatePlaceholderId(),
   categoryPath,
@@ -101,7 +110,7 @@ export const generateFutureSemesters = (count = 6) => {
   let isFall = isHerbstsemester;
 
   for (let i = 0; i < count; i++) {
-    semesters.push(`${isFall ? 'HS' : 'FS'}${year}`);
+    semesters.push(`${isFall ? "HS" : "FS"}${year}`);
     if (!isFall) year++;
     isFall = !isFall;
   }
@@ -138,7 +147,7 @@ export const compareSemesters = (a, b) => {
   // Actually HS23 starts Sept 2023, FS24 starts Feb 2024
   // So HS23 < FS24 but within "year 24": FS24 < HS24
   if (parsedA.type !== parsedB.type) {
-    return parsedA.type === 'FS' ? -1 : 1;
+    return parsedA.type === "FS" ? -1 : 1;
   }
 
   return 0;
@@ -159,7 +168,7 @@ export const sortSemesters = (semesterKeys) => {
 export const getNextSemesterKey = (semesterKey) => {
   const { type, year } = parseSemesterKey(semesterKey);
 
-  if (type === 'FS') {
+  if (type === "FS") {
     // FS -> HS of same year
     return `HS${year}`;
   } else {
@@ -183,9 +192,8 @@ export const getCurrentSemesterInfo = () => {
   const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
 
   // If we're in Jan/Feb of HS, the year code is previous year (e.g., Jan 2025 = HS24)
-  const currentSemYear = isCurrentlyHS && currentMonth <= 1
-    ? currentYear - 1
-    : currentYear;
+  const currentSemYear =
+    isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
 
   const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
   const nextSemKey = getNextSemesterKey(currentSemKey);

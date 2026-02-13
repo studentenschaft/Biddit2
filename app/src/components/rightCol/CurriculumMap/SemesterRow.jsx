@@ -4,12 +4,20 @@
  * Row header cell showing semester information (key, status, credits).
  * Sticky positioned so it remains visible when scrolling horizontally.
  * Uses HSG color palette aligned with StudyOverview patterns.
+ * Includes an annotation icon to attach free-text notes to each semester.
  */
 
+import { useState } from "react";
 import PropTypes from "prop-types";
+import { AnnotationIcon as AnnotationIconSolid } from "@heroicons/react/solid";
+import { AnnotationIcon as AnnotationIconOutline } from "@heroicons/react/outline";
+import SemesterNotePopover from "./SemesterNotePopover";
 
-const SemesterRow = ({ semester, isLast }) => {
-  const { key, status, totalCredits, plannedCredits } = semester;
+const SemesterRow = ({ semester, isLast, onSetNote }) => {
+  const { key, status, totalCredits, plannedCredits, note } = semester;
+  const [showNotePopover, setShowNotePopover] = useState(false);
+
+  const hasNote = Boolean(note);
 
   // Status-based styling using unified green theme
   // Using full opacity for WCAG contrast compliance
@@ -36,12 +44,29 @@ const SemesterRow = ({ semester, isLast }) => {
   // Border radius for last row
   const roundedClass = isLast ? "rounded-bl-lg" : "";
 
+  const NoteIcon = hasNote ? AnnotationIconSolid : AnnotationIconOutline;
+
   return (
     <div
-      className={`${style.bg} ${roundedClass} p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
+      className={`${style.bg} ${roundedClass} relative p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
     >
-      {/* Semester key */}
-      <div className="font-bold text-sm text-gray-800">{key}</div>
+      {/* Semester key + note icon */}
+      <div className="flex items-center gap-1">
+        <div className="font-bold text-sm text-gray-800">{key}</div>
+        {onSetNote && (
+          <button
+            onClick={() => setShowNotePopover((prev) => !prev)}
+            className={`p-0.5 rounded transition-colors ${
+              hasNote
+                ? "text-blue-500 hover:text-blue-700"
+                : "text-gray-300 hover:text-gray-500"
+            }`}
+            title={hasNote ? note : "Add a note"}
+          >
+            <NoteIcon className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
 
       {/* Credit summary */}
       <div className="text-[10px] text-gray-700 mt-0.5">
@@ -61,6 +86,16 @@ const SemesterRow = ({ semester, isLast }) => {
           +{plannedCredits} planned
         </div>
       )}
+
+      {/* Note popover */}
+      {showNotePopover && onSetNote && (
+        <SemesterNotePopover
+          semesterKey={key}
+          initialNote={note}
+          onSave={onSetNote}
+          onClose={() => setShowNotePopover(false)}
+        />
+      )}
     </div>
   );
 };
@@ -73,8 +108,10 @@ SemesterRow.propTypes = {
     completedCredits: PropTypes.number,
     plannedCredits: PropTypes.number,
     courseCount: PropTypes.number,
+    note: PropTypes.string,
   }).isRequired,
   isLast: PropTypes.bool,
+  onSetNote: PropTypes.func,
 };
 
 export default SemesterRow;

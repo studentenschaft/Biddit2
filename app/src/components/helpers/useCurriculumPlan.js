@@ -405,6 +405,26 @@ export const useCurriculumPlan = () => {
     [removePlaceholderById],
   );
 
+  /**
+   * Set or clear a free-text note for a semester.
+   * Trims whitespace, caps at 200 characters, and removes the key when empty.
+   */
+  const setSemesterNote = useCallback(
+    (semesterKey, text) => {
+      setCurriculumPlan((prev) => {
+        const trimmed = text.trim();
+        const newNotes = { ...(prev.semesterNotes || {}) };
+        if (trimmed) {
+          newNotes[semesterKey] = trimmed.slice(0, 200);
+        } else {
+          delete newNotes[semesterKey];
+        }
+        return { ...prev, semesterNotes: newNotes };
+      });
+    },
+    [setCurriculumPlan]
+  );
+
   return {
     moveCourse,
     addCourse,
@@ -413,6 +433,7 @@ export const useCurriculumPlan = () => {
     addPlaceholder,
     movePlaceholder,
     removePlaceholder,
+    setSemesterNote,
     isSemesterSyncable,
     isSemesterCompleted,
     getCurrentSemesterKey,
