@@ -49,7 +49,12 @@ const DragPreviewCard = ({ item, type }) => {
 
   // Grid courses have already-normalized credits (in ECTS)
   // EventList and Picker courses have credits in "cents" format (300 = 3 ECTS)
-  const name = item.shortName || item.courseNumber || item.name || item.courseId || item.id;
+  const name =
+    item.shortName ||
+    item.courseNumber ||
+    item.name ||
+    item.courseId ||
+    item.id;
   const credits = formatCredits(item.credits, isGridCourse);
   const displayName = name?.length > 30 ? name.substring(0, 28) + "..." : name;
 
@@ -77,7 +82,14 @@ export default function Biddit2() {
   // Drag-and-drop state for cross-component dragging
   const [activeDragItem, setActiveDragItem] = useState(null);
   const [activeDragType, setActiveDragType] = useState(null);
-  const { addCourse, addPlaceholder, moveCourse, removeCourse, movePlaceholder, removePlaceholder } = useCurriculumPlan();
+  const {
+    addCourse,
+    addPlaceholder,
+    moveCourse,
+    removeCourse,
+    movePlaceholder,
+    removePlaceholder,
+  } = useCurriculumPlan();
 
   // Configure drag sensors with activation constraint to prevent accidental drags
   const sensors = useSensors(
@@ -85,7 +97,7 @@ export default function Biddit2() {
       activationConstraint: {
         distance: 8,
       },
-    })
+    }),
   );
 
   /**
@@ -102,7 +114,11 @@ export default function Biddit2() {
       setActiveDragItem(dragData.item);
       setActiveDragType("grid-course");
     } else if (dragData?.type === "placeholder-creator") {
-      setActiveDragItem({ name: dragData.label, credits: dragData.credits, isPlaceholder: true });
+      setActiveDragItem({
+        name: dragData.label,
+        credits: dragData.credits,
+        isPlaceholder: true,
+      });
       setActiveDragType("placeholder-creator");
     }
   }, []);
@@ -110,19 +126,38 @@ export default function Biddit2() {
   /**
    * Handle drag end - process the drop
    */
-  const handleDragEnd = useCallback((event) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    (event) => {
+      const { active, over } = event;
 
-    // Reset drag state
-    setActiveDragItem(null);
-    setActiveDragType(null);
+      // Reset drag state
+      setActiveDragItem(null);
+      setActiveDragType(null);
 
-    const dragData = active.data.current;
+      const dragData = active.data.current;
 
-    // No valid drop target - check if we should remove a grid course
-    if (!over) {
-      // If dragging a grid course and dropped outside any target, remove it
-      if (dragData?.type === "grid-course") {
+      // No valid drop target - check if we should remove a grid course
+      if (!over) {
+        // If dragging a grid course and dropped outside any target, remove it
+        if (dragData?.type === "grid-course") {
+          const { item, semesterKey: sourceSemester, source } = dragData;
+          if (item.isPlaceholder) {
+            removePlaceholder(item.id);
+          } else {
+            const courseId = item.courseId || item.id;
+            removeCourse(courseId, sourceSemester, source || "wishlist");
+          }
+        }
+        return;
+      }
+
+      const dropData = over.data.current;
+
+      // Validate drop target has required properties (is a grid cell)
+      const isValidGridCell = dropData?.semesterKey && dropData?.categoryPath;
+
+      // Handle grid course dropped on non-grid target (remove it)
+      if (dragData?.type === "grid-course" && !isValidGridCell) {
         const { item, semesterKey: sourceSemester, source } = dragData;
         if (item.isPlaceholder) {
           removePlaceholder(item.id);
@@ -130,77 +165,86 @@ export default function Biddit2() {
           const courseId = item.courseId || item.id;
           removeCourse(courseId, sourceSemester, source || "wishlist");
         }
-      }
-      return;
-    }
-
-    const dropData = over.data.current;
-
-    // Validate drop target has required properties (is a grid cell)
-    const isValidGridCell = dropData?.semesterKey && dropData?.categoryPath;
-
-    // Handle grid course dropped on non-grid target (remove it)
-    if (dragData?.type === "grid-course" && !isValidGridCell) {
-      const { item, semesterKey: sourceSemester, source } = dragData;
-      if (item.isPlaceholder) {
-        removePlaceholder(item.id);
-      } else {
-        const courseId = item.courseId || item.id;
-        removeCourse(courseId, sourceSemester, source || "wishlist");
-      }
-      return;
-    }
-
-    // From here, we need a valid grid cell
-    if (!isValidGridCell) return;
-
-    // Reject drops to completed semesters
-    if (dropData.canDrop === false || dropData.semesterStatus === "completed") {
-      if (import.meta.env.DEV) {
-        console.log("[Biddit2] Drop rejected: completed semester");
-      }
-      return;
-    }
-
-    // Handle placeholder from PlaceholderCreator
-    if (dragData?.type === "placeholder-creator") {
-      const { credits, label } = dragData;
-      const { semesterKey: targetSemester, categoryPath } = dropData;
-      addPlaceholder(targetSemester, categoryPath, credits, label);
-      return;
-    }
-
-    // Handle course from EventListContainer
-    if (dragData?.type === "eventlist-course") {
-      const { course } = dragData;
-      const { semesterKey: targetSemester, categoryPath } = dropData;
-      addCourse(course, targetSemester, categoryPath);
-      return;
-    }
-
-    // Handle course from grid (move between cells)
-    if (dragData?.type === "grid-course") {
-      const {
-        item,
-        semesterKey: sourceSemester,
-        categoryPath: sourceCategory,
-        source,
-      } = dragData;
-      const { semesterKey: targetSemester, categoryPath: targetCategory } = dropData;
-
-      // Same cell = no-op (check BOTH semester AND category)
-      if (sourceSemester === targetSemester && sourceCategory === targetCategory) {
         return;
       }
 
-      if (item.isPlaceholder) {
-        movePlaceholder(item.id, sourceSemester, targetSemester, targetCategory);
-      } else {
-        const courseId = item.courseId || item.id;
-        moveCourse(courseId, sourceSemester, targetSemester, targetCategory, source);
+      // From here, we need a valid grid cell
+      if (!isValidGridCell) return;
+
+      // Reject drops to completed semesters
+      if (
+        dropData.canDrop === false ||
+        dropData.semesterStatus === "completed"
+      ) {
+        if (import.meta.env.DEV) {
+          console.log("[Biddit2] Drop rejected: completed semester");
+        }
+        return;
       }
-    }
-  }, [addCourse, addPlaceholder, moveCourse, removeCourse, movePlaceholder, removePlaceholder]);
+
+      // Handle placeholder from PlaceholderCreator
+      if (dragData?.type === "placeholder-creator") {
+        const { credits, label } = dragData;
+        const { semesterKey: targetSemester, categoryPath } = dropData;
+        addPlaceholder(targetSemester, categoryPath, credits, label);
+        return;
+      }
+
+      // Handle course from EventListContainer
+      if (dragData?.type === "eventlist-course") {
+        const { course } = dragData;
+        const { semesterKey: targetSemester, categoryPath } = dropData;
+        addCourse(course, targetSemester, categoryPath);
+        return;
+      }
+
+      // Handle course from grid (move between cells)
+      if (dragData?.type === "grid-course") {
+        const {
+          item,
+          semesterKey: sourceSemester,
+          categoryPath: sourceCategory,
+          source,
+        } = dragData;
+        const { semesterKey: targetSemester, categoryPath: targetCategory } =
+          dropData;
+
+        // Same cell = no-op (check BOTH semester AND category)
+        if (
+          sourceSemester === targetSemester &&
+          sourceCategory === targetCategory
+        ) {
+          return;
+        }
+
+        if (item.isPlaceholder) {
+          movePlaceholder(
+            item.id,
+            sourceSemester,
+            targetSemester,
+            targetCategory,
+          );
+        } else {
+          const courseId = item.courseId || item.id;
+          moveCourse(
+            courseId,
+            sourceSemester,
+            targetSemester,
+            targetCategory,
+            source,
+          );
+        }
+      }
+    },
+    [
+      addCourse,
+      addPlaceholder,
+      moveCourse,
+      removeCourse,
+      movePlaceholder,
+      removePlaceholder,
+    ],
+  );
 
   /**
    * Handle drag cancel
@@ -266,7 +310,9 @@ export default function Biddit2() {
             !isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
-          <Suspense fallback={<LoadingText>Loading Course Data...</LoadingText>}>
+          <Suspense
+            fallback={<LoadingText>Loading Course Data...</LoadingText>}
+          >
             <SelectSemester />
           </Suspense>
         </div>

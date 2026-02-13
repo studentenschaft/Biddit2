@@ -18,7 +18,8 @@ import usePlanManager from "./usePlanManager";
  */
 const courseMatchesId = (storedCourse, courseId) => {
   if (!storedCourse || !courseId) return false;
-  const storedId = storedCourse.id || storedCourse.courseNumber || storedCourse.courseId;
+  const storedId =
+    storedCourse.id || storedCourse.courseNumber || storedCourse.courseId;
   return storedId === courseId;
 };
 
@@ -38,12 +39,12 @@ const courseMatchesId = (storedCourse, courseId) => {
 export const useCurriculumPlan = () => {
   const [curriculumPlan] = useRecoilState(curriculumPlanState);
   const [, setLocalSelectedCourses] = useRecoilState(
-    localSelectedCoursesSemKeyState
+    localSelectedCoursesSemKeyState,
   );
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const { removeSelectedCourse } = useUnifiedCourseData();
-  const { 
-    addPlaceholderById, 
+  const {
+    addPlaceholderById,
     removePlaceholderById,
     addCourseById,
     removeCourseById,
@@ -101,7 +102,7 @@ export const useCurriculumPlan = () => {
       const availableCourses =
         unifiedCourseData.semesters?.[fromSemester]?.available || [];
       const courseData = availableCourses.find(
-        (c) => c.courseNumber === courseId || c.id === courseId
+        (c) => c.courseNumber === courseId || c.id === courseId,
       );
 
       // Same-semester category move: just update categoryPath
@@ -114,17 +115,22 @@ export const useCurriculumPlan = () => {
               [fromSemester]: semesterCourses.map((c) =>
                 courseMatchesId(c, courseId)
                   ? { ...c, categoryPath: toCategoryPath }
-                  : c
+                  : c,
               ),
             };
           });
         } else {
           // Future semester - update via API
-          await updatePlacementById(`course-${courseId}`, toSemester, toCategoryPath, {
-            type: "course",
-            courseId,
-            shortName: courseData?.shortName,
-          });
+          await updatePlacementById(
+            `course-${courseId}`,
+            toSemester,
+            toCategoryPath,
+            {
+              type: "course",
+              courseId,
+              shortName: courseData?.shortName,
+            },
+          );
         }
         return true;
       }
@@ -137,7 +143,7 @@ export const useCurriculumPlan = () => {
           return {
             ...prev,
             [fromSemester]: semesterCourses.filter(
-              (c) => !courseMatchesId(c, courseId)
+              (c) => !courseMatchesId(c, courseId),
             ),
           };
         });
@@ -173,7 +179,12 @@ export const useCurriculumPlan = () => {
         });
       } else {
         // Add to future semester via API
-        await addCourseById(courseId, toSemester, toCategoryPath, courseData?.shortName);
+        await addCourseById(
+          courseId,
+          toSemester,
+          toCategoryPath,
+          courseData?.shortName,
+        );
       }
 
       return true;
@@ -186,7 +197,7 @@ export const useCurriculumPlan = () => {
       updatePlacementById,
       removeCourseById,
       addCourseById,
-    ]
+    ],
   );
 
   /**
@@ -242,12 +253,23 @@ export const useCurriculumPlan = () => {
           return false;
         }
         // Add to future semester via API
-        await addCourseById(courseId, semesterKey, categoryPath, course.shortName);
+        await addCourseById(
+          courseId,
+          semesterKey,
+          categoryPath,
+          course.shortName,
+        );
       }
 
       return true;
     },
-    [isSemesterCompleted, isSemesterSyncable, setLocalSelectedCourses, curriculumPlan, addCourseById]
+    [
+      isSemesterCompleted,
+      isSemesterSyncable,
+      setLocalSelectedCourses,
+      curriculumPlan,
+      addCourseById,
+    ],
   );
 
   /**
@@ -266,7 +288,7 @@ export const useCurriculumPlan = () => {
         setLocalSelectedCourses((prev) => ({
           ...prev,
           [semesterKey]: (prev[semesterKey] || []).filter(
-            (c) => !courseMatchesId(c, courseId)
+            (c) => !courseMatchesId(c, courseId),
           ),
         }));
         removeSelectedCourse(semesterKey, courseId);
@@ -277,7 +299,12 @@ export const useCurriculumPlan = () => {
 
       return true;
     },
-    [isSemesterSyncable, setLocalSelectedCourses, removeSelectedCourse, removeCourseById]
+    [
+      isSemesterSyncable,
+      setLocalSelectedCourses,
+      removeSelectedCourse,
+      removeCourseById,
+    ],
   );
 
   /**
@@ -287,14 +314,11 @@ export const useCurriculumPlan = () => {
    * @param {string} lastSemesterKey - The last semester currently in the grid
    * @returns {string} - The newly added semester key
    */
-  const addSemester = useCallback(
-    (lastSemesterKey) => {
-      const newSemesterKey = getNextSemesterKey(lastSemesterKey);
-      // Note: The semester will appear in the grid once items are added via API
-      return newSemesterKey;
-    },
-    []
-  );
+  const addSemester = useCallback((lastSemesterKey) => {
+    const newSemesterKey = getNextSemesterKey(lastSemesterKey);
+    // Note: The semester will appear in the grid once items are added via API
+    return newSemesterKey;
+  }, []);
 
   /**
    * Add a placeholder item to a future semester cell
@@ -311,7 +335,9 @@ export const useCurriculumPlan = () => {
     async (semesterKey, categoryPath, credits, label = "TBD") => {
       if (isSemesterCompleted(semesterKey)) {
         if (import.meta.env.DEV) {
-          console.warn("[useCurriculumPlan] Cannot add placeholder to completed semester");
+          console.warn(
+            "[useCurriculumPlan] Cannot add placeholder to completed semester",
+          );
         }
         return null;
       }
@@ -319,7 +345,7 @@ export const useCurriculumPlan = () => {
       // Call API directly - state updated from response
       return addPlaceholderById(semesterKey, categoryPath, credits, label);
     },
-    [isSemesterCompleted, addPlaceholderById]
+    [isSemesterCompleted, addPlaceholderById],
   );
 
   /**
@@ -335,7 +361,9 @@ export const useCurriculumPlan = () => {
     async (placeholderId, fromSemester, toSemester, toCategoryPath) => {
       if (isSemesterCompleted(toSemester)) {
         if (import.meta.env.DEV) {
-          console.warn("[useCurriculumPlan] Cannot move placeholder to completed semester");
+          console.warn(
+            "[useCurriculumPlan] Cannot move placeholder to completed semester",
+          );
         }
         return false;
       }
@@ -345,7 +373,10 @@ export const useCurriculumPlan = () => {
       const placeholder = sourceItems.find((item) => item.id === placeholderId);
 
       if (!placeholder) {
-        console.warn("[useCurriculumPlan] Placeholder not found:", placeholderId);
+        console.warn(
+          "[useCurriculumPlan] Placeholder not found:",
+          placeholderId,
+        );
         return false;
       }
 
@@ -356,7 +387,7 @@ export const useCurriculumPlan = () => {
         credits: placeholder.credits,
       });
     },
-    [isSemesterCompleted, curriculumPlan, updatePlacementById]
+    [isSemesterCompleted, curriculumPlan, updatePlacementById],
   );
 
   /**
@@ -371,7 +402,7 @@ export const useCurriculumPlan = () => {
       // Call API directly - state updated from response
       return removePlaceholderById(placeholderId);
     },
-    [removePlaceholderById]
+    [removePlaceholderById],
   );
 
   return {

@@ -32,9 +32,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
 
   // Planned items and placeholders are draggable (not completed, not enrolled)
   const isDraggable =
-    !isCompleted &&
-    status !== "completed" &&
-    status !== "enrolled";
+    !isCompleted && status !== "completed" && status !== "enrolled";
 
   // Items can be removed if they are draggable OR if they are placeholders
   const isRemovable = isDraggable || isPlaceholder;
@@ -112,7 +110,10 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
 
   // Drag indicator for draggable items (only show on hover via group)
   const dragHandle = isDraggable ? (
-    <span className="text-[10px] text-gray-400 mr-1 select-none opacity-0 group-hover:opacity-100 transition-opacity" title="Drag to move">
+    <span
+      className="text-[10px] text-gray-400 mr-1 select-none opacity-0 group-hover:opacity-100 transition-opacity"
+      title="Drag to move"
+    >
       ⠿
     </span>
   ) : null;
@@ -201,7 +202,13 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
 
       {/* Credits and grade on same line */}
       <div className="flex items-center justify-between mt-0.5 text-[10px]">
-        <span className={styleKey === "completed" ? "text-green-100" : "text-gray-500"}>{creditsDisplay} ECTS</span>
+        <span
+          className={
+            styleKey === "completed" ? "text-green-100" : "text-gray-500"
+          }
+        >
+          {creditsDisplay} ECTS
+        </span>
         {(grade || gradeText) && (
           <span className="font-semibold">{grade || gradeText}</span>
         )}

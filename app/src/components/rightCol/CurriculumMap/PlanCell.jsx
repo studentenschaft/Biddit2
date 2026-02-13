@@ -55,7 +55,12 @@ const PlanCell = ({
 
   const handleAddPlaceholder = async (e) => {
     e.preventDefault();
-    const id = await addPlaceholder(semesterKey, categoryPath, placeholderCredits, placeholderLabel || "TBD");
+    const id = await addPlaceholder(
+      semesterKey,
+      categoryPath,
+      placeholderCredits,
+      placeholderLabel || "TBD",
+    );
     if (id) {
       setShowPlaceholderForm(false);
       setPlaceholderCredits(3);
@@ -87,7 +92,11 @@ const PlanCell = ({
         : dragData?.type === "grid-course"
           ? dragData.item?.classification
           : null;
-    return doesClassificationMatchCategory(classification, categoryName, validClassifications);
+    return doesClassificationMatchCategory(
+      classification,
+      categoryName,
+      validClassifications,
+    );
   })();
 
   // Cell background: full category → green everywhere; otherwise by semester status
@@ -161,10 +170,12 @@ const PlanCell = ({
   const placementClass = getPlacementClass();
 
   // Combined ring class: drag-over > suggestion > placement > validation
-  const ringClass = dragOverClass || suggestionClass || placementClass || validationClass;
+  const ringClass =
+    dragOverClass || suggestionClass || placementClass || validationClass;
 
   // Cursor: pointer on clickable cells (non-completed, non-collapsed, not in placement mode)
-  const cursorClass = !isCollapsed && canDrop && !placementMode ? "cursor-pointer" : "";
+  const cursorClass =
+    !isCollapsed && canDrop && !placementMode ? "cursor-pointer" : "";
 
   // Collapsed view - show just a count badge
   if (isCollapsed) {
@@ -182,7 +193,9 @@ const PlanCell = ({
       >
         {courseCount > 0 && (
           <div className="flex flex-col items-center gap-0.5">
-            <span className="text-xs font-bold text-gray-700">{courseCount}</span>
+            <span className="text-xs font-bold text-gray-700">
+              {courseCount}
+            </span>
             <span className="text-[8px] text-gray-500">{totalCredits}</span>
           </div>
         )}
@@ -216,7 +229,9 @@ const PlanCell = ({
           className="bg-white border border-gray-300 rounded-md p-2 shadow-sm space-y-2"
         >
           <div>
-            <label className="block text-[10px] text-gray-600 mb-0.5">Credits (ECTS)</label>
+            <label className="block text-[10px] text-gray-600 mb-0.5">
+              Credits (ECTS)
+            </label>
             <input
               type="number"
               min="1"
@@ -228,7 +243,9 @@ const PlanCell = ({
             />
           </div>
           <div>
-            <label className="block text-[10px] text-gray-600 mb-0.5">Label (optional)</label>
+            <label className="block text-[10px] text-gray-600 mb-0.5">
+              Label (optional)
+            </label>
             <input
               type="text"
               value={placeholderLabel}
@@ -289,9 +306,10 @@ PlanCell.propTypes = {
       name: PropTypes.string,
       credits: PropTypes.number,
       status: PropTypes.string,
-    })
+    }),
   ).isRequired,
-  semesterStatus: PropTypes.oneOf(["completed", "current", "future"]).isRequired,
+  semesterStatus: PropTypes.oneOf(["completed", "current", "future"])
+    .isRequired,
   validations: PropTypes.shape({
     conflicts: PropTypes.array,
     warnings: PropTypes.array,

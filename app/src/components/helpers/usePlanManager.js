@@ -33,8 +33,15 @@ const convertPlacementsToPlannedItems = (placements = []) => {
     }
     plannedItems[p.semester].push({
       type: p.type,
-      ...(p.type === "course" && { courseId: p.courseId, shortName: p.shortName }),
-      ...(p.type === "placeholder" && { id: p.placementId, label: p.label, credits: p.credits }),
+      ...(p.type === "course" && {
+        courseId: p.courseId,
+        shortName: p.shortName,
+      }),
+      ...(p.type === "placeholder" && {
+        id: p.placementId,
+        label: p.label,
+        credits: p.credits,
+      }),
       categoryPath: p.categoryPath,
       note: p.note,
       addedAt: p.addedAt,
@@ -51,12 +58,19 @@ const convertPlannedItemsToPlacements = (plannedItems = {}) => {
   Object.entries(plannedItems).forEach(([semester, items]) => {
     items.forEach((item) => {
       placements.push({
-        placementId: item.type === "placeholder" ? item.id : `course-${item.courseId}`,
+        placementId:
+          item.type === "placeholder" ? item.id : `course-${item.courseId}`,
         type: item.type,
         semester,
         categoryPath: item.categoryPath,
-        ...(item.type === "course" && { courseId: item.courseId, shortName: item.shortName }),
-        ...(item.type === "placeholder" && { label: item.label, credits: item.credits }),
+        ...(item.type === "course" && {
+          courseId: item.courseId,
+          shortName: item.shortName,
+        }),
+        ...(item.type === "placeholder" && {
+          label: item.label,
+          credits: item.credits,
+        }),
         note: item.note,
         addedAt: item.addedAt,
       });
@@ -80,8 +94,10 @@ const usePlanManager = () => {
   const loadPlans = useRecoilCallback(
     ({ snapshot, set }) =>
       async () => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
-        
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+
         // Skip if already loaded
         if (registry.isLoaded) return;
 
@@ -127,7 +143,9 @@ const usePlanManager = () => {
           if (activePlan) {
             set(curriculumPlanState, {
               ...getDefaultPlanState(),
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             });
           }
@@ -144,7 +162,7 @@ const usePlanManager = () => {
           }));
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -153,7 +171,9 @@ const usePlanManager = () => {
   const switchPlan = useRecoilCallback(
     ({ snapshot, set }) =>
       async (targetPlanId) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         if (targetPlanId === registry.activePlanId) return;
         if (!registry.plans[targetPlanId]) return;
 
@@ -162,8 +182,12 @@ const usePlanManager = () => {
           const currentData = await snapshot.getPromise(curriculumPlanState);
           await upsertPlan(
             registry.activePlanId,
-            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
-            token
+            {
+              placements: convertPlannedItemsToPlacements(
+                currentData.plannedItems,
+              ),
+            },
+            token,
           );
 
           // Switch active plan via API
@@ -173,7 +197,9 @@ const usePlanManager = () => {
           const targetPlan = data.plans[targetPlanId];
           set(curriculumPlanState, {
             ...getDefaultPlanState(),
-            plannedItems: convertPlacementsToPlannedItems(targetPlan?.placements || []),
+            plannedItems: convertPlacementsToPlannedItems(
+              targetPlan?.placements || [],
+            ),
             lastModified: targetPlan?.lastModified,
           });
 
@@ -183,10 +209,12 @@ const usePlanManager = () => {
           }));
         } catch (error) {
           console.error("[usePlanManager] Error switching plan:", error);
-          toast.error("Could not switch plans.", { toastId: "plan-switch-error" });
+          toast.error("Could not switch plans.", {
+            toastId: "plan-switch-error",
+          });
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -195,15 +223,21 @@ const usePlanManager = () => {
   const createPlan = useRecoilCallback(
     ({ snapshot, set }) =>
       async (name = "New Plan") => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
 
         try {
           // Save current plan first
           const currentData = await snapshot.getPromise(curriculumPlanState);
           await upsertPlan(
             registry.activePlanId,
-            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
-            token
+            {
+              placements: convertPlannedItemsToPlacements(
+                currentData.plannedItems,
+              ),
+            },
+            token,
           );
 
           // Create new plan via API
@@ -231,10 +265,12 @@ const usePlanManager = () => {
           return newPlanId;
         } catch (error) {
           console.error("[usePlanManager] Error creating plan:", error);
-          toast.error("Could not create plan.", { toastId: "plan-create-error" });
+          toast.error("Could not create plan.", {
+            toastId: "plan-create-error",
+          });
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -243,7 +279,9 @@ const usePlanManager = () => {
   const duplicatePlan = useRecoilCallback(
     ({ snapshot, set }) =>
       async (planId, name) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         if (!registry.plans[planId]) return;
 
         try {
@@ -251,15 +289,25 @@ const usePlanManager = () => {
           const currentData = await snapshot.getPromise(curriculumPlanState);
           await upsertPlan(
             registry.activePlanId,
-            { placements: convertPlannedItemsToPlacements(currentData.plannedItems) },
-            token
+            {
+              placements: convertPlannedItemsToPlacements(
+                currentData.plannedItems,
+              ),
+            },
+            token,
           );
 
           const sourceName = registry.plans[planId].name;
-          const data = await duplicatePlanApi(planId, name ?? `${sourceName} (copy)`, token);
+          const data = await duplicatePlanApi(
+            planId,
+            name ?? `${sourceName} (copy)`,
+            token,
+          );
 
           // Find the new plan ID (the one that wasn't there before)
-          const newPlanId = Object.keys(data.plans).find((id) => !registry.plans[id]);
+          const newPlanId = Object.keys(data.plans).find(
+            (id) => !registry.plans[id],
+          );
 
           if (newPlanId) {
             const newPlan = data.plans[newPlanId];
@@ -286,10 +334,12 @@ const usePlanManager = () => {
           return newPlanId;
         } catch (error) {
           console.error("[usePlanManager] Error duplicating plan:", error);
-          toast.error("Could not duplicate plan.", { toastId: "plan-duplicate-error" });
+          toast.error("Could not duplicate plan.", {
+            toastId: "plan-duplicate-error",
+          });
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -298,7 +348,9 @@ const usePlanManager = () => {
   const deletePlan = useRecoilCallback(
     ({ snapshot, set }) =>
       async (planId) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         const planIds = Object.keys(registry.plans);
         if (planIds.length <= 1) return;
 
@@ -306,7 +358,7 @@ const usePlanManager = () => {
           const data = await deletePlanApi(planId, token);
 
           const remainingPlans = Object.fromEntries(
-            Object.entries(registry.plans).filter(([id]) => id !== planId)
+            Object.entries(registry.plans).filter(([id]) => id !== planId),
           );
 
           // If we deleted the active plan, switch to the new active from API response
@@ -314,7 +366,9 @@ const usePlanManager = () => {
             const newActivePlan = data.plans[data.activePlanId];
             set(curriculumPlanState, {
               ...getDefaultPlanState(),
-              plannedItems: convertPlacementsToPlannedItems(newActivePlan?.placements || []),
+              plannedItems: convertPlacementsToPlannedItems(
+                newActivePlan?.placements || [],
+              ),
             });
           }
 
@@ -325,10 +379,12 @@ const usePlanManager = () => {
           });
         } catch (error) {
           console.error("[usePlanManager] Error deleting plan:", error);
-          toast.error("Could not delete plan.", { toastId: "plan-delete-error" });
+          toast.error("Could not delete plan.", {
+            toastId: "plan-delete-error",
+          });
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -337,7 +393,9 @@ const usePlanManager = () => {
   const renamePlan = useRecoilCallback(
     ({ snapshot, set }) =>
       async (planId, newName) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         if (!registry.plans[planId]) return;
 
         try {
@@ -356,10 +414,12 @@ const usePlanManager = () => {
           });
         } catch (error) {
           console.error("[usePlanManager] Error renaming plan:", error);
-          toast.error("Could not rename plan.", { toastId: "plan-rename-error" });
+          toast.error("Could not rename plan.", {
+            toastId: "plan-rename-error",
+          });
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -375,7 +435,9 @@ const usePlanManager = () => {
   const addCourseById = useRecoilCallback(
     ({ snapshot, set }) =>
       async (courseId, semesterKey, categoryPath, shortName = null) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         const placementId = `course-${courseId}`;
 
         const placementData = {
@@ -388,13 +450,20 @@ const usePlanManager = () => {
         };
 
         try {
-          const data = await upsertPlacement(registry.activePlanId, placementId, placementData, token);
+          const data = await upsertPlacement(
+            registry.activePlanId,
+            placementId,
+            placementData,
+            token,
+          );
 
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, (prev) => ({
               ...prev,
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             }));
           }
@@ -411,7 +480,7 @@ const usePlanManager = () => {
           return false;
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -424,17 +493,25 @@ const usePlanManager = () => {
   const removeCourseById = useRecoilCallback(
     ({ snapshot, set }) =>
       async (courseId) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         const placementId = `course-${courseId}`;
 
         try {
-          const data = await removePlacement(registry.activePlanId, placementId, token);
+          const data = await removePlacement(
+            registry.activePlanId,
+            placementId,
+            token,
+          );
 
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, (prev) => ({
               ...prev,
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             }));
           }
@@ -442,11 +519,13 @@ const usePlanManager = () => {
           return true;
         } catch (error) {
           console.error("[usePlanManager] Error removing course:", error);
-          toast.error("Could not remove course.", { toastId: "course-remove-error" });
+          toast.error("Could not remove course.", {
+            toastId: "course-remove-error",
+          });
           return false;
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -463,7 +542,9 @@ const usePlanManager = () => {
   const updatePlacementById = useRecoilCallback(
     ({ snapshot, set }) =>
       async (placementId, toSemester, toCategoryPath, extraData = {}) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
 
         const placementData = {
           ...extraData,
@@ -472,13 +553,20 @@ const usePlanManager = () => {
         };
 
         try {
-          const data = await upsertPlacement(registry.activePlanId, placementId, placementData, token);
+          const data = await upsertPlacement(
+            registry.activePlanId,
+            placementId,
+            placementData,
+            token,
+          );
 
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, (prev) => ({
               ...prev,
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             }));
           }
@@ -486,11 +574,13 @@ const usePlanManager = () => {
           return true;
         } catch (error) {
           console.error("[usePlanManager] Error updating placement:", error);
-          toast.error("Could not move item.", { toastId: "placement-update-error" });
+          toast.error("Could not move item.", {
+            toastId: "placement-update-error",
+          });
           return false;
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -506,8 +596,16 @@ const usePlanManager = () => {
    */
   const addPlaceholderById = useRecoilCallback(
     ({ snapshot, set }) =>
-      async (semesterKey, categoryPath, credits, label = "TBD", placeholderId = null) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+      async (
+        semesterKey,
+        categoryPath,
+        credits,
+        label = "TBD",
+        placeholderId = null,
+      ) => {
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
         const id = placeholderId || generatePlaceholderId();
 
         const placementData = {
@@ -521,14 +619,21 @@ const usePlanManager = () => {
 
         try {
           // API call - response is source of truth
-          const data = await upsertPlacement(registry.activePlanId, id, placementData, token);
+          const data = await upsertPlacement(
+            registry.activePlanId,
+            id,
+            placementData,
+            token,
+          );
 
           // Update state from API response
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, (prev) => ({
               ...prev,
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             }));
           }
@@ -547,7 +652,7 @@ const usePlanManager = () => {
           return null;
         }
       },
-    [token]
+    [token],
   );
 
   /**
@@ -560,18 +665,26 @@ const usePlanManager = () => {
   const removePlaceholderById = useRecoilCallback(
     ({ snapshot, set }) =>
       async (placeholderId) => {
-        const registry = await snapshot.getPromise(curriculumPlansRegistryState);
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
 
         try {
           // API call - response is source of truth
-          const data = await removePlacement(registry.activePlanId, placeholderId, token);
+          const data = await removePlacement(
+            registry.activePlanId,
+            placeholderId,
+            token,
+          );
 
           // Update state from API response
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, (prev) => ({
               ...prev,
-              plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
               lastModified: activePlan.lastModified,
             }));
           }
@@ -585,17 +698,17 @@ const usePlanManager = () => {
           return false;
         }
       },
-    [token]
+    [token],
   );
 
-  return { 
-    loadPlans, 
-    switchPlan, 
-    createPlan, 
-    deletePlan, 
-    renamePlan, 
-    duplicatePlan, 
-    addPlaceholderById, 
+  return {
+    loadPlans,
+    switchPlan,
+    createPlan,
+    deletePlan,
+    renamePlan,
+    duplicatePlan,
+    addPlaceholderById,
     removePlaceholderById,
     addCourseById,
     removeCourseById,
