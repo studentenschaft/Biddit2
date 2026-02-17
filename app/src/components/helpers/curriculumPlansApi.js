@@ -1,7 +1,7 @@
 import { apiClient } from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const BASE_URL = "http://localhost:52079/curriculum-plans";
+const BASE_URL = "http://localhost:57045/curriculum-plans";
 
 /**
  * Curriculum Plans API Client
@@ -107,7 +107,7 @@ export const duplicatePlanApi = async (planId, name, token) => {
  * Add or update a placement in a plan
  * @param {string} planId - Plan ID
  * @param {string} placementId - Placement ID
- * @param {Object} data - { type, semester, categoryPath, courseId?, shortName?, label?, credits?, note? }
+ * @param {Object} data - { type, semester, categoryPath, courseId?, shortName?, label?, credits?, note?, colorCode? }
  * @param {string} token - Authentication token
  * @returns {Promise<Object>} - Updated state
  */
@@ -143,6 +143,29 @@ export const removePlacement = async (planId, placementId, token) => {
   } catch (err) {
     errorHandlingService.handleError(err);
     console.error("[CurriculumPlansAPI] Error removing placement:", err);
+    throw err;
+  }
+};
+
+/**
+ * Set or clear a semester note in a plan
+ * @param {string} planId - Plan ID
+ * @param {string} semesterKey - Semester key (e.g., "FS26")
+ * @param {string|null} note - Note text (null or empty to clear)
+ * @param {string} token - Authentication token
+ * @returns {Promise<Object>} - Updated state
+ */
+export const setSemesterNoteApi = async (planId, semesterKey, note, token) => {
+  try {
+    const res = await apiClient.post(
+      `${BASE_URL}/${planId}/semester-notes/${semesterKey}`,
+      { note },
+      token,
+    );
+    return res.data;
+  } catch (err) {
+    errorHandlingService.handleError(err);
+    console.error("[CurriculumPlansAPI] Error setting semester note:", err);
     throw err;
   }
 };

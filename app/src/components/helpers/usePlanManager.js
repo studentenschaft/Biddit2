@@ -4,12 +4,14 @@ import {
   curriculumPlanState,
   getDefaultPlanState,
   generatePlaceholderId,
+  isSemesterCompleted,
 } from "../recoil/curriculumPlanAtom";
 import {
   curriculumPlansRegistryState,
   generatePlanId,
 } from "../recoil/curriculumPlansRegistryAtom";
 import { authTokenState } from "../recoil/authAtom";
+import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 import {
   getCurriculumPlans,
   setActivePlanApi,
@@ -18,6 +20,7 @@ import {
   duplicatePlanApi,
   upsertPlacement,
   removePlacement,
+  setSemesterNoteApi,
 } from "./curriculumPlansApi";
 
 // --- Conversion helpers ---
@@ -36,6 +39,7 @@ const convertPlacementsToPlannedItems = (placements = []) => {
       ...(p.type === "course" && {
         courseId: p.courseId,
         shortName: p.shortName,
+        label: p.label,
       }),
       ...(p.type === "placeholder" && {
         id: p.placementId,
@@ -44,6 +48,7 @@ const convertPlacementsToPlannedItems = (placements = []) => {
       }),
       categoryPath: p.categoryPath,
       note: p.note,
+      colorCode: p.colorCode,
       addedAt: p.addedAt,
     });
   });
@@ -72,6 +77,7 @@ const convertPlannedItemsToPlacements = (plannedItems = {}) => {
           credits: item.credits,
         }),
         note: item.note,
+        colorCode: item.colorCode,
         addedAt: item.addedAt,
       });
     });
@@ -146,6 +152,7 @@ const usePlanManager = () => {
               plannedItems: convertPlacementsToPlannedItems(
                 activePlan.placements,
               ),
+              semesterNotes: activePlan.semesterNotes || {},
               lastModified: activePlan.lastModified,
             });
           }
@@ -178,7 +185,7 @@ const usePlanManager = () => {
         if (!registry.plans[targetPlanId]) return;
 
         try {
-          // Save current plan first
+          // Save current plan first (including semesterNotes)
           const currentData = await snapshot.getPromise(curriculumPlanState);
           await upsertPlan(
             registry.activePlanId,
@@ -186,6 +193,7 @@ const usePlanManager = () => {
               placements: convertPlannedItemsToPlacements(
                 currentData.plannedItems,
               ),
+              semesterNotes: currentData.semesterNotes || {},
             },
             token,
           );
@@ -200,6 +208,7 @@ const usePlanManager = () => {
             plannedItems: convertPlacementsToPlannedItems(
               targetPlan?.placements || [],
             ),
+            semesterNotes: targetPlan?.semesterNotes || {},
             lastModified: targetPlan?.lastModified,
           });
 
@@ -701,6 +710,194 @@ const usePlanManager = () => {
     [token],
   );
 
+  /**
+   * Import selected courses from the study plan into the curriculum plan.
+   * Reads selected courses from unifiedCourseDataState and creates placements via API.
+   * Only imports courses from non-completed semesters.
+   *
+   * @returns {Promise<{imported: number, skipped: number}>} - Count of imported and skipped courses
+   */
+  const importSelectedCourses = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async () => {
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+        const unifiedCourseData = await snapshot.getPromise(
+          unifiedCourseDataState,
+        );
+        const currentPlan = await snapshot.getPromise(curriculumPlanState);
+
+        if (!registry.activePlanId) {
+          toast.error("No active plan selected.", {
+            toastId: "import-no-plan",
+          });
+          return { imported: 0, skipped: 0 };
+        }
+
+        const semesters = unifiedCourseData.semesters || {};
+        let imported = 0;
+        let skipped = 0;
+
+        // Collect all courses to import
+        const coursesToImport = [];
+
+        for (const [semesterKey, semesterData] of Object.entries(semesters)) {
+          // Skip completed semesters
+          if (isSemesterCompleted(semesterKey)) {
+            continue;
+          }
+
+          const selectedIds = semesterData.selectedIds || [];
+          const availableCourses = semesterData.available || [];
+
+          // Get full course objects for selected IDs
+          for (const courseId of selectedIds) {
+            const course = availableCourses.find(
+              (c) => c.courseNumber === courseId || c.id === courseId,
+            );
+
+            if (course) {
+              // Check if already in curriculum plan
+              const existingItems = currentPlan.plannedItems[semesterKey] || [];
+              const alreadyExists = existingItems.some(
+                (item) =>
+                  item.courseId === courseId ||
+                  item.courseId === course.courseNumber,
+              );
+
+              if (alreadyExists) {
+                skipped++;
+                continue;
+              }
+
+              coursesToImport.push({
+                courseId: course.courseNumber || course.id,
+                semesterKey,
+                shortName: course.shortName || course.name,
+                classification: course.classification,
+              });
+            }
+          }
+        }
+
+        if (coursesToImport.length === 0) {
+          toast.info("No new courses to import.", { toastId: "import-empty" });
+          return { imported: 0, skipped };
+        }
+
+        // Import all courses via API
+        const toastId = toast.loading(
+          `Importing ${coursesToImport.length} courses...`,
+        );
+
+        try {
+          for (const course of coursesToImport) {
+            const placementId = `course-${course.courseId}`;
+            const placementData = {
+              type: "course",
+              semester: course.semesterKey,
+              categoryPath: course.classification || "Uncategorized",
+              courseId: course.courseId,
+              shortName: course.shortName,
+              addedAt: new Date().toISOString(),
+            };
+
+            await upsertPlacement(
+              registry.activePlanId,
+              placementId,
+              placementData,
+              token,
+            );
+            imported++;
+          }
+
+          // Reload plans to get updated state
+          const data = await getCurriculumPlans(token);
+          if (data) {
+            const activePlan = data.plans[data.activePlanId];
+            if (activePlan) {
+              set(curriculumPlanState, (prev) => ({
+                ...prev,
+                plannedItems: convertPlacementsToPlannedItems(
+                  activePlan.placements,
+                ),
+                lastModified: activePlan.lastModified,
+              }));
+            }
+          }
+
+          toast.update(toastId, {
+            render: `Imported ${imported} course${imported !== 1 ? "s" : ""} successfully!`,
+            type: "success",
+            isLoading: false,
+            autoClose: 3000,
+          });
+
+          return { imported, skipped };
+        } catch (error) {
+          console.error("[usePlanManager] Error importing courses:", error);
+          toast.update(toastId, {
+            render: "Failed to import some courses.",
+            type: "error",
+            isLoading: false,
+            autoClose: 3000,
+          });
+          return { imported, skipped };
+        }
+      },
+    [token],
+  );
+
+  /**
+   * Set or clear a semester note via API
+   * @param {string} semesterKey - Semester key (e.g., "FS26")
+   * @param {string} note - Note text (empty to clear)
+   * @returns {Promise<boolean>} - Whether the operation was successful
+   */
+  const setSemesterNoteById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (semesterKey, note) => {
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+
+        if (!registry.activePlanId) {
+          return false;
+        }
+
+        const trimmedNote = (note || "").trim().slice(0, 200);
+
+        try {
+          const data = await setSemesterNoteApi(
+            registry.activePlanId,
+            semesterKey,
+            trimmedNote || null,
+            token,
+          );
+
+          // Update local state with API response
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              semesterNotes: activePlan.semesterNotes || {},
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error setting semester note:", error);
+          toast.error("Could not save semester note.", {
+            toastId: "semester-note-error",
+          });
+          return false;
+        }
+      },
+    [token],
+  );
+
   return {
     loadPlans,
     switchPlan,
@@ -713,6 +910,8 @@ const usePlanManager = () => {
     addCourseById,
     removeCourseById,
     updatePlacementById,
+    importSelectedCourses,
+    setSemesterNoteById,
   };
 };
 

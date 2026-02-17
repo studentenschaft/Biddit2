@@ -29,18 +29,66 @@ const normalizeSemesterKey = (semester) => {
  */
 const extractClassifications = (categoryItem) => {
   const classifications = [];
-  const name = (categoryItem.description || categoryItem.shortName || "").toLowerCase();
+  const name = (
+    categoryItem.description ||
+    categoryItem.shortName ||
+    ""
+  ).toLowerCase();
 
   const patterns = [
-    { keywords: ["compulsory", "pflicht", "mandatory"], values: ["compulsory", "pflicht", "Pflichtbereich", "mandatory", "Pflicht"] },
-    { keywords: ["context", "kontext"], values: ["context", "kontext", "Contextual Studies", "Kontextstudium"] },
-    { keywords: ["focus", "schwerpunkt", "major", "concentration"], values: ["focus", "schwerpunkt", "Focus Area", "Major", "Concentration", "Schwerpunktfächer"] },
-    { keywords: ["method", "forschung", "research"], values: ["method", "forschung", "Research Methods", "Forschungsmethoden"] },
-    { keywords: ["thesis", "arbeit", "dissertation"], values: ["thesis", "masterarbeit", "bachelorarbeit", "Thesis", "Master Thesis", "Bachelor Thesis"] },
-    { keywords: ["project", "projekt"], values: ["project", "projekt", "Projects", "Projekte"] },
-    { keywords: ["core", "kern", "foundation"], values: ["core", "kern", "Core", "Foundation", "Kernbereich"] },
+    {
+      keywords: ["compulsory", "pflicht", "mandatory"],
+      values: [
+        "compulsory",
+        "pflicht",
+        "Pflichtbereich",
+        "mandatory",
+        "Pflicht",
+      ],
+    },
+    {
+      keywords: ["context", "kontext"],
+      values: ["context", "kontext", "Contextual Studies", "Kontextstudium"],
+    },
+    {
+      keywords: ["focus", "schwerpunkt", "major", "concentration"],
+      values: [
+        "focus",
+        "schwerpunkt",
+        "Focus Area",
+        "Major",
+        "Concentration",
+        "Schwerpunktfächer",
+      ],
+    },
+    {
+      keywords: ["method", "forschung", "research"],
+      values: ["method", "forschung", "Research Methods", "Forschungsmethoden"],
+    },
+    {
+      keywords: ["thesis", "arbeit", "dissertation"],
+      values: [
+        "thesis",
+        "masterarbeit",
+        "bachelorarbeit",
+        "Thesis",
+        "Master Thesis",
+        "Bachelor Thesis",
+      ],
+    },
+    {
+      keywords: ["project", "projekt"],
+      values: ["project", "projekt", "Projects", "Projekte"],
+    },
+    {
+      keywords: ["core", "kern", "foundation"],
+      values: ["core", "kern", "Core", "Foundation", "Kernbereich"],
+    },
     { keywords: ["seminar"], values: ["seminar", "Seminar", "Seminare"] },
-    { keywords: ["integration", "capstone"], values: ["integration", "capstone", "Integrationsfächer", "Capstone"] },
+    {
+      keywords: ["integration", "capstone"],
+      values: ["integration", "capstone", "Integrationsfächer", "Capstone"],
+    },
   ];
 
   for (const { keywords, values } of patterns) {
@@ -50,7 +98,10 @@ const extractClassifications = (categoryItem) => {
   }
 
   // "elective"/"wahl" must exclude "pflicht" to avoid matching "Wahlpflicht"
-  if ((name.includes("elective") || name.includes("wahl")) && !name.includes("pflicht")) {
+  if (
+    (name.includes("elective") || name.includes("wahl")) &&
+    !name.includes("pflicht")
+  ) {
     classifications.push("elective", "wahl", "Wahlbereich", "Elective", "Wahl");
   }
 
@@ -82,7 +133,11 @@ const extractCategoryHierarchy = (items, parentPath = "", level = 0) => {
       };
 
       if (item.items && Array.isArray(item.items)) {
-        category.children = extractCategoryHierarchy(item.items, path, level + 1);
+        category.children = extractCategoryHierarchy(
+          item.items,
+          path,
+          level + 1,
+        );
       }
 
       categories.push(category);
@@ -95,7 +150,11 @@ const extractCategoryHierarchy = (items, parentPath = "", level = 0) => {
 /**
  * Extract courses (non-title items) with their semester and category info
  */
-const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy = "") => {
+const extractCoursesFromHierarchy = (
+  items,
+  categoryPath = "",
+  parentHierarchy = "",
+) => {
   const courses = [];
 
   (items || []).forEach((item) => {
@@ -106,7 +165,7 @@ const extractCoursesFromHierarchy = (items, categoryPath = "", parentHierarchy =
 
       if (item.items) {
         courses.push(
-          ...extractCoursesFromHierarchy(item.items, subPath, item.hierarchy)
+          ...extractCoursesFromHierarchy(item.items, subPath, item.hierarchy),
         );
       }
     } else if (!item.isTitle && item.semester) {
@@ -155,10 +214,11 @@ const flattenCategoriesForGrid = (categories) => {
   const flattened = [];
 
   const shouldSkipLevel0 =
-    categories.length === 1 &&
-    categories[0].children.length > 0;
+    categories.length === 1 && categories[0].children.length > 0;
 
-  const effectiveCategories = shouldSkipLevel0 ? categories[0].children : categories;
+  const effectiveCategories = shouldSkipLevel0
+    ? categories[0].children
+    : categories;
 
   const recurse = (cats, depth, groupingParentId = null) => {
     cats.forEach((cat) => {
@@ -189,8 +249,7 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
   if (!categories?.length) return [];
 
   const shouldSkipLevel0 =
-    categories.length === 1 &&
-    categories[0].children.length > 0;
+    categories.length === 1 && categories[0].children.length > 0;
 
   const groupingCategories = shouldSkipLevel0
     ? categories[0].children
@@ -210,11 +269,18 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
     const isLeaf = descendantLeaves.length === 0;
     const leaves = isLeaf ? [groupCat] : descendantLeaves;
 
-    const earnedCredits = leaves.reduce((sum, leaf) => sum + (leaf.earnedCredits || 0), 0);
-    const plannedCredits = leaves.reduce((sum, leaf) => sum + (leaf.plannedCredits || 0), 0);
+    const earnedCredits = leaves.reduce(
+      (sum, leaf) => sum + (leaf.earnedCredits || 0),
+      0,
+    );
+    const plannedCredits = leaves.reduce(
+      (sum, leaf) => sum + (leaf.plannedCredits || 0),
+      0,
+    );
     const totalCredits = earnedCredits + plannedCredits;
     const targetCredits = groupCat.maxCredits || groupCat.minCredits || 0;
-    const isComplete = targetCredits > 0 && (earnedCredits + plannedCredits) >= targetCredits;
+    const isComplete =
+      targetCredits > 0 && earnedCredits + plannedCredits >= targetCredits;
 
     return {
       id: groupCat.id,
@@ -253,14 +319,14 @@ const matchClassificationToCategory = (classification, flatCategories) => {
 
   return (
     flatCategories.find(
-      (cat) => cat.name.toLowerCase() === lowerClassification
+      (cat) => cat.name.toLowerCase() === lowerClassification,
     ) ||
     flatCategories.find((cat) =>
       cat.validClassifications.some(
         (vc) =>
           vc.toLowerCase() === lowerClassification ||
-          lowerClassification.includes(vc.toLowerCase())
-      )
+          lowerClassification.includes(vc.toLowerCase()),
+      ),
     )
   );
 };
@@ -277,7 +343,9 @@ const estimateCompletion = (required, earned, planned, semesters) => {
       ? semesters.reduce((sum, s) => sum + s.totalCredits, 0) / semesters.length
       : 30;
 
-  const semestersNeeded = Math.ceil(remaining / Math.max(avgCreditsPerSemester, 15));
+  const semestersNeeded = Math.ceil(
+    remaining / Math.max(avgCreditsPerSemester, 15),
+  );
   const futureSems = semesters.filter((s) => s.status === "future");
 
   if (futureSems.length >= semestersNeeded) {
@@ -329,7 +397,14 @@ export const curriculumCategoryStructureSelector = selector({
     const academicData = get(unifiedAcademicDataState);
 
     if (!academicData.initialization?.isInitialized || !academicData.programs) {
-      return { isReady: false, mainProgramId: null, rawScorecard: null, categories: [], flatCategories: [], completedCourses: [] };
+      return {
+        isReady: false,
+        mainProgramId: null,
+        rawScorecard: null,
+        categories: [],
+        flatCategories: [],
+        completedCourses: [],
+      };
     }
 
     const mainProgramId = findMainProgram(
@@ -337,12 +412,19 @@ export const curriculumCategoryStructureSelector = selector({
         Object.entries(academicData.programs).map(([id, p]) => [
           id,
           { isMainStudy: p.metadata?.isMainStudy },
-        ])
-      )
+        ]),
+      ),
     );
 
     if (!mainProgramId) {
-      return { isReady: false, mainProgramId: null, rawScorecard: null, categories: [], flatCategories: [], completedCourses: [] };
+      return {
+        isReady: false,
+        mainProgramId: null,
+        rawScorecard: null,
+        categories: [],
+        flatCategories: [],
+        completedCourses: [],
+      };
     }
 
     const mainProgram = academicData.programs[mainProgramId];
@@ -353,20 +435,23 @@ export const curriculumCategoryStructureSelector = selector({
       : [];
 
     if (import.meta.env.DEV && categories.length > 0) {
-      const shouldSkipLevel0 = categories.length === 1 && categories[0].children.length > 0;
-      const effectiveParents = shouldSkipLevel0 ? categories[0].children : categories;
+      const shouldSkipLevel0 =
+        categories.length === 1 && categories[0].children.length > 0;
+      const effectiveParents = shouldSkipLevel0
+        ? categories[0].children
+        : categories;
       const totalDepth = getHierarchyDepth(categories);
       console.log("[CurriculumMap] Category hierarchy structure:", {
         totalDepth,
         skippingProgramWrapper: shouldSkipLevel0,
         programName: shouldSkipLevel0 ? categories[0].name : "(none)",
-        effectiveGroupingParents: effectiveParents.map(c => ({
+        effectiveGroupingParents: effectiveParents.map((c) => ({
           name: c.name,
           level: c.level,
           hasChildren: c.children.length > 0,
           childCount: c.children.length,
-          children: c.children.map(ch => ch.name)
-        }))
+          children: c.children.map((ch) => ch.name),
+        })),
       });
     }
 
@@ -407,23 +492,32 @@ export const curriculumMapSelector = selector({
     if (!categoryStructure.isReady) {
       return createEmptyResult(
         categoryStructure.mainProgramId !== null,
-        curriculumPlan.validations
+        curriculumPlan.validations,
       );
     }
 
-    const { mainProgramId, rawScorecard, categories, flatCategories, completedCourses } =
-      categoryStructure;
+    const {
+      mainProgramId,
+      rawScorecard,
+      categories,
+      flatCategories,
+      completedCourses,
+    } = categoryStructure;
 
     // ── Collect all semester keys ──────────────────────────────────────────
     const allSemesterKeys = new Set();
 
-    completedCourses.forEach((c) => allSemesterKeys.add(normalizeSemesterKey(c.semester)));
-    Object.keys(localSelectedCourses).forEach((k) => allSemesterKeys.add(normalizeSemesterKey(k)));
+    completedCourses.forEach((c) =>
+      allSemesterKeys.add(normalizeSemesterKey(c.semester)),
+    );
+    Object.keys(localSelectedCourses).forEach((k) =>
+      allSemesterKeys.add(normalizeSemesterKey(k)),
+    );
     Object.keys(curriculumPlan.plannedItems || {}).forEach((k) =>
-      allSemesterKeys.add(normalizeSemesterKey(k))
+      allSemesterKeys.add(normalizeSemesterKey(k)),
     );
     Object.keys(unifiedCourseData.semesters || {}).forEach((k) =>
-      allSemesterKeys.add(normalizeSemesterKey(k))
+      allSemesterKeys.add(normalizeSemesterKey(k)),
     );
 
     const sortedSemesters = sortSemesters(Array.from(allSemesterKeys));
@@ -445,7 +539,7 @@ export const curriculumMapSelector = selector({
 
       if (coursesBySemesterAndCategory[semKey]) {
         const matchedCat = flatCategories.find(
-          (c) => c.path === catPath || catPath.startsWith(c.path)
+          (c) => c.path === catPath || catPath.startsWith(c.path),
         );
 
         if (matchedCat) {
@@ -466,7 +560,8 @@ export const curriculumMapSelector = selector({
       const removedIds =
         curriculumPlan.wishlistOverrides?.[semKey]?.removedCourseIds || [];
 
-      const availableCourses = unifiedCourseData.semesters?.[semKey]?.available || [];
+      const availableCourses =
+        unifiedCourseData.semesters?.[semKey]?.available || [];
 
       courses.forEach((course) => {
         const courseId = course.id || course.courseNumber;
@@ -475,7 +570,7 @@ export const curriculumMapSelector = selector({
           (c) =>
             c.courseNumber === course.id ||
             c.id === course.id ||
-            c.courseNumber === course.courseNumber
+            c.courseNumber === course.courseNumber,
         );
 
         const classification =
@@ -487,13 +582,19 @@ export const curriculumMapSelector = selector({
         // Use stored categoryPath first (from drag-and-drop), validate it exists
         let targetCatPath = course.categoryPath;
 
-        if (targetCatPath && !flatCategories.some((cat) => cat.path === targetCatPath)) {
+        if (
+          targetCatPath &&
+          !flatCategories.some((cat) => cat.path === targetCatPath)
+        ) {
           targetCatPath = null;
         }
 
         // Fallback to classification matching
         if (!targetCatPath) {
-          const matchedCat = matchClassificationToCategory(classification, flatCategories);
+          const matchedCat = matchClassificationToCategory(
+            classification,
+            flatCategories,
+          );
           targetCatPath = matchedCat?.path || flatCategories[0]?.path;
 
           if (import.meta.env.DEV && !matchedCat) {
@@ -501,15 +602,21 @@ export const curriculumMapSelector = selector({
               `[CurriculumMap] No category match for course "${course.shortName || course.id}"`,
               `\n  Classification: "${classification}"`,
               `\n  Available categories:`,
-              flatCategories.map((c) => `${c.name} [${c.validClassifications.join(", ")}]`)
+              flatCategories.map(
+                (c) => `${c.name} [${c.validClassifications.join(", ")}]`,
+              ),
             );
           }
         }
 
-        if (targetCatPath && coursesBySemesterAndCategory[semKey][targetCatPath]) {
+        if (
+          targetCatPath &&
+          coursesBySemesterAndCategory[semKey][targetCatPath]
+        ) {
           // Idempotent normalization: handles both pre-normalized (6) and raw API (600) credits
           const rawCredits = course.credits ?? fullCourse?.credits ?? 300;
-          const normalizedCredits = rawCredits > 99 ? rawCredits / 100 : rawCredits;
+          const normalizedCredits =
+            rawCredits > 99 ? rawCredits / 100 : rawCredits;
 
           coursesBySemesterAndCategory[semKey][targetCatPath].push({
             id: course.id || course.courseNumber,
@@ -530,58 +637,72 @@ export const curriculumMapSelector = selector({
     });
 
     // ── Place enrolled courses ────────────────────────────────────────────
-    Object.entries(unifiedCourseData.semesters || {}).forEach(([semKey, semData]) => {
-      const normalizedSemKey = normalizeSemesterKey(semKey);
-      if (!coursesBySemesterAndCategory[normalizedSemKey]) return;
+    Object.entries(unifiedCourseData.semesters || {}).forEach(
+      ([semKey, semData]) => {
+        const normalizedSemKey = normalizeSemesterKey(semKey);
+        if (!coursesBySemesterAndCategory[normalizedSemKey]) return;
 
-      const enrolledIds = semData.enrolledIds || [];
-      const availableCourses = semData.available || [];
+        const enrolledIds = semData.enrolledIds || [];
+        const availableCourses = semData.available || [];
 
-      enrolledIds.forEach((enrolledId) => {
-        const alreadyExists = Object.values(coursesBySemesterAndCategory[normalizedSemKey])
-          .flat()
-          .some((c) => c.id === enrolledId || c.courseId === enrolledId);
+        enrolledIds.forEach((enrolledId) => {
+          const alreadyExists = Object.values(
+            coursesBySemesterAndCategory[normalizedSemKey],
+          )
+            .flat()
+            .some((c) => c.id === enrolledId || c.courseId === enrolledId);
 
-        if (alreadyExists) return;
+          if (alreadyExists) return;
 
-        const fullCourse = availableCourses.find(
-          (c) => c.courseNumber === enrolledId || c.id === enrolledId
-        );
-
-        if (!fullCourse) return;
-
-        const classification = fullCourse.classification || fullCourse.big_type || "elective";
-
-        const matchedCat = matchClassificationToCategory(classification, flatCategories);
-        const targetCatPath = matchedCat?.path || flatCategories[0]?.path;
-
-        if (import.meta.env.DEV && !matchedCat) {
-          console.warn(
-            `[CurriculumMap] No category match for enrolled course "${fullCourse.shortName || enrolledId}"`,
-            `\n  Classification: "${classification}"`,
-            `\n  Available categories:`,
-            flatCategories.map((c) => `${c.name} [${c.validClassifications.join(", ")}]`)
+          const fullCourse = availableCourses.find(
+            (c) => c.courseNumber === enrolledId || c.id === enrolledId,
           );
-        }
 
-        if (targetCatPath && coursesBySemesterAndCategory[normalizedSemKey][targetCatPath]) {
-          coursesBySemesterAndCategory[normalizedSemKey][targetCatPath].push({
-            id: enrolledId,
-            courseId: enrolledId,
-            name: fullCourse.shortName || fullCourse.description || enrolledId,
-            credits: (fullCourse.credits || 300) / 100,
-            semester: normalizedSemKey,
-            categoryPath: targetCatPath,
-            status: "enrolled",
-            isCompleted: false,
-            isEnrolled: true,
+          if (!fullCourse) return;
+
+          const classification =
+            fullCourse.classification || fullCourse.big_type || "elective";
+
+          const matchedCat = matchClassificationToCategory(
             classification,
-            source: "enrolled",
-            calendarEntry: fullCourse.calendarEntry,
-          });
-        }
-      });
-    });
+            flatCategories,
+          );
+          const targetCatPath = matchedCat?.path || flatCategories[0]?.path;
+
+          if (import.meta.env.DEV && !matchedCat) {
+            console.warn(
+              `[CurriculumMap] No category match for enrolled course "${fullCourse.shortName || enrolledId}"`,
+              `\n  Classification: "${classification}"`,
+              `\n  Available categories:`,
+              flatCategories.map(
+                (c) => `${c.name} [${c.validClassifications.join(", ")}]`,
+              ),
+            );
+          }
+
+          if (
+            targetCatPath &&
+            coursesBySemesterAndCategory[normalizedSemKey][targetCatPath]
+          ) {
+            coursesBySemesterAndCategory[normalizedSemKey][targetCatPath].push({
+              id: enrolledId,
+              courseId: enrolledId,
+              name:
+                fullCourse.shortName || fullCourse.description || enrolledId,
+              credits: (fullCourse.credits || 300) / 100,
+              semester: normalizedSemKey,
+              categoryPath: targetCatPath,
+              status: "enrolled",
+              isCompleted: false,
+              isEnrolled: true,
+              classification,
+              source: "enrolled",
+              calendarEntry: fullCourse.calendarEntry,
+            });
+          }
+        });
+      },
+    );
 
     // ── Place curriculum plan items ───────────────────────────────────────
     Object.entries(curriculumPlan.plannedItems || {}).forEach(
@@ -594,36 +715,80 @@ export const curriculumMapSelector = selector({
         }
 
         items.forEach((item) => {
-          const targetCatPath =
-            item.categoryPath || flatCategories[0]?.path || "";
+          // First try the stored categoryPath
+          let targetCatPath = item.categoryPath;
+
+          // Check if categoryPath is a valid path in flatCategories
+          if (
+            targetCatPath &&
+            !flatCategories.some((cat) => cat.path === targetCatPath)
+          ) {
+            // Try to find a category by matching the categoryPath as a name or partial path
+            const matchedByName = flatCategories.find(
+              (cat) =>
+                cat.name === targetCatPath ||
+                cat.path.endsWith(`/${targetCatPath}`) ||
+                cat.path.includes(targetCatPath),
+            );
+            if (matchedByName) {
+              targetCatPath = matchedByName.path;
+            } else {
+              // Fall back to classification matching for courses
+              if (item.type === "course") {
+                const availableCourses =
+                  unifiedCourseData.semesters?.[semKey]?.available || [];
+                const fullCourse = availableCourses.find(
+                  (c) =>
+                    c.courseNumber === item.courseId || c.id === item.courseId,
+                );
+                const classification =
+                  fullCourse?.classification || item.categoryPath || "elective";
+                const matchedCat = matchClassificationToCategory(
+                  classification,
+                  flatCategories,
+                );
+                targetCatPath =
+                  matchedCat?.path || flatCategories[0]?.path || "";
+              } else {
+                targetCatPath = flatCategories[0]?.path || "";
+              }
+            }
+          }
+
+          // Fall back to first category if still no match
+          if (!targetCatPath) {
+            targetCatPath = flatCategories[0]?.path || "";
+          }
 
           if (coursesBySemesterAndCategory[semKey][targetCatPath]) {
             if (item.type === "placeholder") {
               coursesBySemesterAndCategory[semKey][targetCatPath].push({
                 id: item.id,
                 name: item.label || "TBD",
+                label: item.label || "TBD",
                 credits: item.credits,
                 semester: semKey,
                 categoryPath: targetCatPath,
                 status: "placeholder",
                 isPlaceholder: true,
                 source: "plan",
+                note: item.note,
+                colorCode: item.colorCode,
               });
             } else if (item.type === "course") {
               const availableCourses =
                 unifiedCourseData.semesters?.[semKey]?.available || [];
               const fullCourse = availableCourses.find(
                 (c) =>
-                  c.courseNumber === item.courseId || c.id === item.courseId
+                  c.courseNumber === item.courseId || c.id === item.courseId,
               );
 
               coursesBySemesterAndCategory[semKey][targetCatPath].push({
                 id: item.courseId,
                 courseId: item.courseId,
                 name: fullCourse?.shortName || item.shortName || item.courseId,
-                credits: fullCourse
-                  ? (fullCourse.credits || 300) / 100
-                  : 3,
+                shortName: item.shortName || fullCourse?.shortName,
+                credits: fullCourse ? (fullCourse.credits || 300) / 100 : 3,
                 semester: semKey,
                 categoryPath: targetCatPath,
                 status: "planned",
@@ -631,17 +796,19 @@ export const curriculumMapSelector = selector({
                 isPlanned: true,
                 source: "plan",
                 calendarEntry: fullCourse?.calendarEntry,
+                note: item.note,
+                colorCode: item.colorCode,
               });
             }
           }
         });
-      }
+      },
     );
 
     // ── Exercise group credit normalization ───────────────────────────────
     sortedSemesters.forEach((semKey) => {
       const allSemesterCourses = Object.values(
-        coursesBySemesterAndCategory[semKey] || {}
+        coursesBySemesterAndCategory[semKey] || {},
       ).flat();
 
       if (allSemesterCourses.length === 0) return;
@@ -657,24 +824,25 @@ export const curriculumMapSelector = selector({
       });
 
       Object.keys(coursesBySemesterAndCategory[semKey]).forEach((catPath) => {
-        coursesBySemesterAndCategory[semKey][catPath] = coursesBySemesterAndCategory[semKey][catPath].map((course) => {
-          const courseId = course.id || course.courseId;
-          if (courseId && processedCreditsMap.has(courseId)) {
-            return { ...course, credits: processedCreditsMap.get(courseId) };
-          }
-          return course;
-        });
+        coursesBySemesterAndCategory[semKey][catPath] =
+          coursesBySemesterAndCategory[semKey][catPath].map((course) => {
+            const courseId = course.id || course.courseId;
+            if (courseId && processedCreditsMap.has(courseId)) {
+              return { ...course, credits: processedCreditsMap.get(courseId) };
+            }
+            return course;
+          });
       });
     });
 
     // ── Calculate semester stats ──────────────────────────────────────────
     const semesters = sortedSemesters.map((semKey) => {
       const semesterCourses = Object.values(
-        coursesBySemesterAndCategory[semKey] || {}
+        coursesBySemesterAndCategory[semKey] || {},
       ).flat();
       const totalCredits = semesterCourses.reduce(
         (sum, c) => sum + (c.credits || 0),
-        0
+        0,
       );
       const completedCredits = semesterCourses
         .filter((c) => c.isCompleted)
@@ -710,7 +878,9 @@ export const curriculumMapSelector = selector({
         earnedCredits,
         plannedCredits,
         totalCredits: earnedCredits + plannedCredits,
-        isComplete: (earnedCredits + plannedCredits) >= (cat.maxCredits || cat.minCredits || 0),
+        isComplete:
+          earnedCredits + plannedCredits >=
+          (cat.maxCredits || cat.minCredits || 0),
         isOverfilled: earnedCredits + plannedCredits > (cat.maxCredits || 0),
       };
     });
@@ -718,28 +888,34 @@ export const curriculumMapSelector = selector({
     // ── Calculate program stats ───────────────────────────────────────────
     const totalEarned = categoriesWithCredits.reduce(
       (sum, c) => sum + c.earnedCredits,
-      0
+      0,
     );
     const totalPlanned = categoriesWithCredits.reduce(
       (sum, c) => sum + c.plannedCredits,
-      0
+      0,
     );
-    const totalRequired = parseFloat(rawScorecard?.items?.[0]?.maxCredits) || 180;
+    const totalRequired =
+      parseFloat(rawScorecard?.items?.[0]?.maxCredits) || 180;
 
     // ── Build hierarchy for nested headers ────────────────────────────────
-    const categoryHierarchy = buildCategoryHierarchy(categories, categoriesWithCredits);
+    const categoryHierarchy = buildCategoryHierarchy(
+      categories,
+      categoriesWithCredits,
+    );
 
     if (import.meta.env.DEV && categoryHierarchy.length > 0) {
-      const hasNestedHeaders = categoryHierarchy.some(p => p.children.length > 1);
+      const hasNestedHeaders = categoryHierarchy.some(
+        (p) => p.children.length > 1,
+      );
       console.log("[CurriculumMap] Hierarchy result:", {
         hasNestedHeaders,
-        parents: categoryHierarchy.map(p => ({
+        parents: categoryHierarchy.map((p) => ({
           name: p.name,
           colspan: p.colspan,
           isLeaf: p.isLeaf,
           childCount: p.children.length,
-          children: p.children.map(c => c.name)
-        }))
+          children: p.children.map((c) => c.name),
+        })),
       });
     }
 
@@ -756,7 +932,7 @@ export const curriculumMapSelector = selector({
           totalRequired,
           totalEarned,
           totalPlanned,
-          semesters
+          semesters,
         ),
       },
       categories,
@@ -815,13 +991,17 @@ export const curriculumProgramSelector = selector({
  * @param {string[]} validClassifications - The category's valid classification keywords
  * @returns {boolean}
  */
-export const doesClassificationMatchCategory = (classification, categoryName, validClassifications) => {
+export const doesClassificationMatchCategory = (
+  classification,
+  categoryName,
+  validClassifications,
+) => {
   if (!classification || !validClassifications) return false;
   const lower = classification.toLowerCase();
   return (
     categoryName.toLowerCase() === lower ||
     validClassifications.some(
-      (vc) => vc.toLowerCase() === lower || lower.includes(vc.toLowerCase())
+      (vc) => vc.toLowerCase() === lower || lower.includes(vc.toLowerCase()),
     )
   );
 };

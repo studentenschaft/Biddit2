@@ -12,6 +12,7 @@
 
 import { useRecoilValue } from "recoil";
 import { useState, useEffect } from "react";
+import { DownloadIcon, ArrowLeftIcon } from "@heroicons/react/solid";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
 import { authTokenState } from "../../recoil/authAtom";
 import { curriculumPlansRegistryState } from "../../recoil/curriculumPlansRegistryAtom";
@@ -25,22 +26,77 @@ import ProgramHeader from "./ProgramHeader";
 import PlanSwitcher from "./PlanSwitcher";
 import PlaceholderCreator from "./PlaceholderCreator";
 import CategoryLegend from "./CategoryLegend";
-import CurriculumMapTutorial, { TUTORIAL_STORAGE_KEY } from "./CurriculumMapTutorial";
+import CurriculumMapTutorial, {
+  TUTORIAL_STORAGE_KEY,
+} from "./CurriculumMapTutorial";
+
+const DRAG_HINT_STORAGE_KEY = "biddit-curriculum-drag-hint-dismissed";
+
+/**
+ * Animated hint showing users they can drag courses from the left panel
+ */
+const DragHint = ({ onDismiss }) => {
+  const [isVisible, setIsVisible] = useState(true);
+
+  if (!isVisible) return null;
+
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+      {/* Animated arrow pointing left */}
+      <div className="flex items-center animate-bounce-horizontal">
+        <ArrowLeftIcon className="w-5 h-5 text-blue-500" />
+      </div>
+
+      <div className="flex-1 text-sm text-blue-700">
+        <span className="font-medium">Drag courses</span>
+        <span className="text-blue-600">
+          {" "}
+          from the Course List on the left into the grid
+        </span>
+      </div>
+
+      <button
+        onClick={() => {
+          setIsVisible(false);
+          localStorage.setItem(DRAG_HINT_STORAGE_KEY, "true");
+          onDismiss?.();
+        }}
+        className="text-blue-400 hover:text-blue-600 text-xs font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+      >
+        Got it
+      </button>
+    </div>
+  );
+};
 
 const CurriculumMap = () => {
   const curriculumData = useRecoilValue(curriculumMapSelector);
   const authToken = useRecoilValue(authTokenState);
   const plansRegistry = useRecoilValue(curriculumPlansRegistryState);
-  const { loadPlans } = usePlanManager();
+  const { loadPlans, importSelectedCourses } = usePlanManager();
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [showDragHint, setShowDragHint] = useState(
+    () => localStorage.getItem(DRAG_HINT_STORAGE_KEY) !== "true",
+  );
   const [tutorialOpen, setTutorialOpen] = useState(
-    () => localStorage.getItem(TUTORIAL_STORAGE_KEY) !== "true"
+    () => localStorage.getItem(TUTORIAL_STORAGE_KEY) !== "true",
   );
   // Click-to-place is disabled; placementMode stays null. Grid still receives
   // it so re-enabling later only requires restoring the useState + handlers.
   const placementMode = null;
+
+  // Handle import button click
+  const handleImportCourses = async () => {
+    setIsImporting(true);
+    try {
+      await importSelectedCourses();
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Initialize scorecard data
   useInitializeScoreCards(handleError);
@@ -71,7 +127,9 @@ const CurriculumMap = () => {
   if (!curriculumData.isLoaded || !plansRegistry.isLoaded) {
     return (
       <div className="flex flex-col h-full px-6 py-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900">Curriculum Map</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">
+          Curriculum Map
+        </h1>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-4">
             <div className="animate-pulse">
@@ -94,7 +152,9 @@ const CurriculumMap = () => {
   if (!curriculumData.program) {
     return (
       <div className="flex flex-col h-full px-6 py-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-900">Curriculum Map</h1>
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">
+          Curriculum Map
+        </h1>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center py-8 bg-gradient-to-br from-hsg-50 to-blue-50 rounded-lg border border-hsg-200 max-w-md p-6">
             <div className="text-5xl mb-4">📋</div>
@@ -126,17 +186,37 @@ const CurriculumMap = () => {
           program={curriculumData.program}
           onHelpClick={() => setTutorialOpen(true)}
         />
-        <PlanSwitcher />
+        <div className="flex items-center gap-4 flex-wrap">
+          <PlanSwitcher />
+          <button
+            onClick={handleImportCourses}
+            disabled={isImporting}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-hsg-600 hover:bg-hsg-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors shadow-sm"
+            title="Import selected courses from your study plan into this curriculum plan"
+          >
+            <DownloadIcon className="w-4 h-4" />
+            {isImporting ? "Importing..." : "Import Selected Courses"}
+          </button>
+        </div>
         <PlaceholderCreator />
       </div>
 
       {/* Main content area: grid (courses are dragged from EventListContainer) */}
       <div className="flex-1 overflow-auto scrollbar-thin-visible px-6 py-4">
+        {/* Drag hint - shows animation to guide users */}
+        {showDragHint && (
+          <div className="mb-4">
+            <DragHint onDismiss={() => setShowDragHint(false)} />
+          </div>
+        )}
+
         <CurriculumGrid
           categories={curriculumData.flatCategories}
           categoryHierarchy={curriculumData.categoryHierarchy}
           semesters={curriculumData.semesters}
-          coursesBySemesterAndCategory={curriculumData.coursesBySemesterAndCategory}
+          coursesBySemesterAndCategory={
+            curriculumData.coursesBySemesterAndCategory
+          }
           validations={curriculumData.validations}
           placementMode={placementMode}
         />

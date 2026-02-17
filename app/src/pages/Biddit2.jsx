@@ -127,7 +127,7 @@ export default function Biddit2() {
    * Handle drag end - process the drop
    */
   const handleDragEnd = useCallback(
-    (event) => {
+    async (event) => {
       const { active, over } = event;
 
       // Reset drag state
@@ -140,12 +140,12 @@ export default function Biddit2() {
       if (!over) {
         // If dragging a grid course and dropped outside any target, remove it
         if (dragData?.type === "grid-course") {
-          const { item, semesterKey: sourceSemester, source } = dragData;
+          const { item } = dragData;
           if (item.isPlaceholder) {
-            removePlaceholder(item.id);
+            await removePlaceholder(item.id);
           } else {
             const courseId = item.courseId || item.id;
-            removeCourse(courseId, sourceSemester, source || "wishlist");
+            await removeCourse(courseId);
           }
         }
         return;
@@ -158,12 +158,12 @@ export default function Biddit2() {
 
       // Handle grid course dropped on non-grid target (remove it)
       if (dragData?.type === "grid-course" && !isValidGridCell) {
-        const { item, semesterKey: sourceSemester, source } = dragData;
+        const { item } = dragData;
         if (item.isPlaceholder) {
-          removePlaceholder(item.id);
+          await removePlaceholder(item.id);
         } else {
           const courseId = item.courseId || item.id;
-          removeCourse(courseId, sourceSemester, source || "wishlist");
+          await removeCourse(courseId);
         }
         return;
       }
@@ -186,7 +186,7 @@ export default function Biddit2() {
       if (dragData?.type === "placeholder-creator") {
         const { credits, label } = dragData;
         const { semesterKey: targetSemester, categoryPath } = dropData;
-        addPlaceholder(targetSemester, categoryPath, credits, label);
+        await addPlaceholder(targetSemester, categoryPath, credits, label);
         return;
       }
 
@@ -194,7 +194,7 @@ export default function Biddit2() {
       if (dragData?.type === "eventlist-course") {
         const { course } = dragData;
         const { semesterKey: targetSemester, categoryPath } = dropData;
-        addCourse(course, targetSemester, categoryPath);
+        await addCourse(course, targetSemester, categoryPath);
         return;
       }
 
@@ -204,7 +204,6 @@ export default function Biddit2() {
           item,
           semesterKey: sourceSemester,
           categoryPath: sourceCategory,
-          source,
         } = dragData;
         const { semesterKey: targetSemester, categoryPath: targetCategory } =
           dropData;
@@ -218,7 +217,7 @@ export default function Biddit2() {
         }
 
         if (item.isPlaceholder) {
-          movePlaceholder(
+          await movePlaceholder(
             item.id,
             sourceSemester,
             targetSemester,
@@ -226,12 +225,11 @@ export default function Biddit2() {
           );
         } else {
           const courseId = item.courseId || item.id;
-          moveCourse(
+          await moveCourse(
             courseId,
             sourceSemester,
             targetSemester,
             targetCategory,
-            source,
           );
         }
       }

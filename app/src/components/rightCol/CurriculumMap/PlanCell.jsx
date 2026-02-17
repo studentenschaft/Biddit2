@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect } from "react";
 import PropTypes from "prop-types";
 import { useDroppable } from "@dnd-kit/core";
+import { PlusIcon } from "@heroicons/react/solid";
 import PlanItem from "./PlanItem";
 import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
 import { doesClassificationMatchCategory } from "../../recoil/curriculumMapSelector";
@@ -158,7 +159,7 @@ const PlanCell = ({
   };
 
   // Base border for cell structure
-  const borderClass = "border-b border-r border-gray-100";
+  const borderClass = "border-b border-r border-gray-300";
   const validationClass = getValidationClasses();
 
   // Border radius for bottom-right corner of grid
@@ -270,6 +271,16 @@ const PlanCell = ({
             </button>
           </div>
         </form>
+      )}
+
+      {/* Add placeholder hint - show when cell is empty and can add */}
+      {courses.length === 0 && canDrop && !showPlaceholderForm && (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors">
+            <PlusIcon className="w-5 h-5" />
+            <span className="text-[9px] font-medium">Add course</span>
+          </div>
+        </div>
       )}
 
       {/* Validation badges */}
