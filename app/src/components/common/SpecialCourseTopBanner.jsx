@@ -1,14 +1,27 @@
 import { useState, useEffect } from "react";
 import { IconX } from "@tabler/icons-react";
 
-const STORAGE_KEY = "specialCourseTopBannerClosed";
+// ── Banner Configuration ─────────────────────────────────────────────
+// Flip ENABLED to true and update BANNER_CONFIG to activate a new announcement.
+// Change storageKey each time to reset previous dismissals.
+const ENABLED = false;
+
+const BANNER_CONFIG = {
+  storageKey: "specialBanner_example_2025",
+  title: "Announcement Title",
+  message: "Description of the announcement goes here.",
+  linkUrl: "", // leave empty to hide the link
+  linkText: "Learn more →",
+};
+// ─────────────────────────────────────────────────────────────────────
 
 const SpecialCourseTopBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEY) === "true") return;
+    if (!ENABLED) return;
+    if (localStorage.getItem(BANNER_CONFIG.storageKey) === "true") return;
     const showTimer = setTimeout(() => {
       setIsVisible(true);
       setTimeout(() => setIsAnimating(true), 50);
@@ -20,11 +33,11 @@ const SpecialCourseTopBanner = () => {
     setIsAnimating(false);
     setTimeout(() => {
       setIsVisible(false);
-      localStorage.setItem(STORAGE_KEY, "true");
+      localStorage.setItem(BANNER_CONFIG.storageKey, "true");
     }, 300);
   };
 
-  if (!isVisible) return null;
+  if (!ENABLED || !isVisible) return null;
 
   return (
     <div
@@ -34,16 +47,16 @@ const SpecialCourseTopBanner = () => {
     >
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <p className="text-sm font-medium sm:text-base">
-          <span className="mr-2 font-semibold">Special Master Course Announcement</span>
-          <span>
-            — "Das ethische Unternehmen?" (Kontextstudium Master) will appear in Bidding Round 3 due to a technical issue. Don't miss it!
-          </span>
-          <a
-            href="https://courses.unisg.ch/event/events/by-term/bcfa3ae5-e57c-4b67-b89c-92e887a85405/15167775"
-            className="ml-2 inline-block underline underline-offset-2 hover:text-hsg-100"
-          >
-            Learn more →
-          </a>
+          <span className="mr-2 font-semibold">{BANNER_CONFIG.title}</span>
+          <span>— {BANNER_CONFIG.message}</span>
+          {BANNER_CONFIG.linkUrl && (
+            <a
+              href={BANNER_CONFIG.linkUrl}
+              className="ml-2 inline-block underline underline-offset-2 hover:text-hsg-100"
+            >
+              {BANNER_CONFIG.linkText}
+            </a>
+          )}
         </p>
         <button
           onClick={handleClose}

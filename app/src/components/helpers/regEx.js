@@ -8,7 +8,7 @@ export const exerciseGroupRegex = new RegExp(
     // Titles that clearly denote an exercise subgroup through a suffix
     "\\bExercisegroup\\b",
     "\\bÜbungsgruppe\\b",
-    "(?::\\s*Exercises?\\b)",
+    "(?::\\s*(?:Exercises?|Übungen?)\\b)",
     // Coaching subgroup patterns (avoid matching proper courses like 'Mathe-Coaching')
     // 1) Title suffix like ': Coaching' or ': Coaching 1'
     "(?::\\s*Coaching(?:\\s*\\d+)?\\s*$)",

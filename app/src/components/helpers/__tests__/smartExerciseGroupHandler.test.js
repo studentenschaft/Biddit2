@@ -8,6 +8,7 @@ const EXERCISE_GROUP_NAMES = [
   "Linear Algebra: Exercises, Group 1",
   "Fundamentals and Methods of Computer Science for Business Studies: Exercises (basic), Group 8",
   "Corporate Finance (BBWL): Exercises",
+  "Secure & Private Computing: Foundations of Ethical Hacking: Übungen",
 ];
 
 const REGULAR_COURSE_NAMES = [

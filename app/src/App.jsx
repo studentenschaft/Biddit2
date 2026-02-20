@@ -22,7 +22,6 @@ import { Biddit2 } from "./pages/Biddit2.jsx";
 import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
-import SpecialCourseTopBanner from "./components/common/SpecialCourseTopBanner.jsx";
 
 
 // Initialize GA4 with Measurement ID and enable debug mode (for now)
@@ -64,7 +63,6 @@ const App = () => {
           <TrackPageView /> {/* Tracks active users & page views */}
           <AuthenticatedTemplate>
             <StudyondBanner />
-            <SpecialCourseTopBanner />
 
             <Routes>
               <Route
