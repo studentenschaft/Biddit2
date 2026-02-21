@@ -391,11 +391,11 @@ export default function SmartSearch() {
 
   return (
     <>
-      <div className="mb-6 mt-5 bg-green-50 rounded-lg p-4 border-l-4 border-green-700">
+      <div className="mb-6 mt-5 bg-green-50 rounded-lg p-4 border-green-700">
         <h2 className="text-xl font-semibold text-green-800 flex items-center mb-2">
           <span className="mr-2">🔍</span> Smart Search
         </h2>
-        <div className="text-sm text-gray-600 pl-2 border-l-2 border-green-200">
+        <div className="text-sm text-gray-600 pl-2 border-green-200">
           <p className="mb-1">
             Find courses based on what they&apos;re really about!
           </p>
