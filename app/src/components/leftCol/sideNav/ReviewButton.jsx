@@ -1,6 +1,6 @@
 import React, { Fragment, useEffect, useState } from "react";
 import { Dialog, Transition } from "@headlessui/react";
-import { XIcon } from "@heroicons/react/outline";
+import { XIcon, QuestionMarkCircleIcon } from "@heroicons/react/outline";
 import ReactStars from "react-rating-stars-component";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 // import TextareaAutosize from "react-textarea-autosize";
@@ -253,45 +253,75 @@ export const ReviewButton = () => {
                           <div className="grid grid-cols-2 font-semibold gap-x-4 gap-y-4">
                             <div className="grid items-center grid-cols-2 bg-gray-100 rounded-lg">
                               <div
-                                data-tip="tooltip"
-                                data-for="topic"
-                                className="text-lg"
+                                className="text-lg flex items-center gap-1 cursor-help"
+                                data-tooltip-id="review-topic"
+                                data-tooltip-content={tooltipTexts.topic}
                               >
                                 Topic*
+                                <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400" />
                               </div>
                               <ReactStars onChange={setTopic} {...baseStyle} />
-                              <ReactTooltip id="topic" type="light">
-                                <span>{tooltipTexts.topic}</span>
-                              </ReactTooltip>
+                              <ReactTooltip
+                                id="review-topic"
+                                place="top"
+                                style={{
+                                  backgroundColor: "#f9fafb",
+                                  color: "#111827",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.375rem",
+                                  fontSize: "0.875rem",
+                                  maxWidth: "250px",
+                                }}
+                              />
                             </div>
                             <div className="grid items-center grid-cols-2 bg-gray-100">
                               <div
-                                data-tip="tooltip"
-                                data-for="Exam"
-                                className="text-lg"
+                                className="text-lg flex items-center gap-1 cursor-help"
+                                data-tooltip-id="review-exam"
+                                data-tooltip-content={tooltipTexts.exam}
                               >
                                 Exam*
+                                <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400" />
                               </div>
                               <ReactStars onChange={setExam} {...baseStyle} />
-                              <ReactTooltip id="Exam" type="light">
-                                <span>{tooltipTexts.exam}</span>
-                              </ReactTooltip>
+                              <ReactTooltip
+                                id="review-exam"
+                                place="top"
+                                style={{
+                                  backgroundColor: "#f9fafb",
+                                  color: "#111827",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.375rem",
+                                  fontSize: "0.875rem",
+                                  maxWidth: "250px",
+                                }}
+                              />
                             </div>
                             <div className="grid items-center grid-cols-2 bg-gray-100">
                               <div
-                                data-tip="tooltip"
-                                data-for="Lecture"
-                                className="text-lg"
+                                className="text-lg flex items-center gap-1 cursor-help"
+                                data-tooltip-id="review-lecture"
+                                data-tooltip-content={tooltipTexts.lecture}
                               >
                                 Lecture*
+                                <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400" />
                               </div>
                               <ReactStars
                                 onChange={setLecture}
                                 {...baseStyle}
                               />
-                              <ReactTooltip id="Lecture" type="light">
-                                <span>{tooltipTexts.lecture}</span>
-                              </ReactTooltip>
+                              <ReactTooltip
+                                id="review-lecture"
+                                place="top"
+                                style={{
+                                  backgroundColor: "#f9fafb",
+                                  color: "#111827",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.375rem",
+                                  fontSize: "0.875rem",
+                                  maxWidth: "250px",
+                                }}
+                              />
                             </div>
                             {/* <div className="grid items-center grid-cols-2 bg-gray-100">
                                                             <div
@@ -321,35 +351,55 @@ export const ReviewButton = () => {
 
                             <div className="grid items-center grid-cols-2 bg-gray-100">
                               <div
-                                data-tip="tooltip"
-                                data-for="Materials"
-                                className="text-lg"
+                                className="text-lg flex items-center gap-1 cursor-help"
+                                data-tooltip-id="review-materials"
+                                data-tooltip-content={tooltipTexts.materials}
                               >
                                 Materials*
+                                <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400" />
                               </div>
                               <ReactStars
                                 onChange={setMaterials}
                                 {...baseStyle}
                               />
-                              <ReactTooltip id="Materials" type="light">
-                                <span>{tooltipTexts.materials}</span>
-                              </ReactTooltip>
+                              <ReactTooltip
+                                id="review-materials"
+                                place="top"
+                                style={{
+                                  backgroundColor: "#f9fafb",
+                                  color: "#111827",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.375rem",
+                                  fontSize: "0.875rem",
+                                  maxWidth: "250px",
+                                }}
+                              />
                             </div>
                             <div className="grid items-center grid-cols-2 bg-gray-100">
                               <div
-                                data-tip="tooltip"
-                                data-for="Workload"
-                                className="text-lg"
+                                className="text-lg flex items-center gap-1 cursor-help"
+                                data-tooltip-id="review-workload"
+                                data-tooltip-content={tooltipTexts.workload}
                               >
                                 Workload*
+                                <QuestionMarkCircleIcon className="w-4 h-4 text-gray-400" />
                               </div>
                               <ReactStars
                                 onChange={setWorkload}
                                 {...baseStyle}
                               />
-                              <ReactTooltip id="Workload" type="light">
-                                <span>{tooltipTexts.workload}</span>
-                              </ReactTooltip>
+                              <ReactTooltip
+                                id="review-workload"
+                                place="top"
+                                style={{
+                                  backgroundColor: "#f9fafb",
+                                  color: "#111827",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "0.375rem",
+                                  fontSize: "0.875rem",
+                                  maxWidth: "250px",
+                                }}
+                              />
                             </div>
                           </div>
                           {/* <div className="pt-4 mb-4">
