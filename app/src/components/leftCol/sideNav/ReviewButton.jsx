@@ -374,7 +374,7 @@ export const ReviewButton = () => {
                           </div> */}
                           {!submittable ? (
                             <div
-                              className="inline-flex items-center px-6 py-3 text-base font-medium text-white bg-gray-300 border border-transparent rounded-md shadow-sm"
+                              className="inline-flex items-center px-6 py-3 mt-6 text-base font-medium text-white bg-gray-300 border border-transparent rounded-md shadow-sm"
                               style={{
                                 fontSize: "1.1rem",
                                 fontWeight: "semibold",
@@ -385,7 +385,7 @@ export const ReviewButton = () => {
                             </div>
                           ) : (
                             <button
-                              className="inline-flex items-center px-6 py-3 text-base font-medium text-white border border-transparent rounded-md shadow-sm bg-hsg-600 hover:bg-hsg-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hsg-500"
+                              className="inline-flex items-center px-6 py-3 mt-6 text-base font-medium text-white border border-transparent rounded-md shadow-sm bg-hsg-600 hover:bg-hsg-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-hsg-500"
                               onClick={handleSubmit}
                               hidden={false}
                               style={{
