@@ -41,6 +41,12 @@ const getCourseRootKey = (course) => {
   return null;
 };
 
+const getThirdSegment = (course) => {
+  const cn = course?.courseNumber || '';
+  const m = cn.match(/^\d+,\d+,(\d+)\./);
+  return m ? parseInt(m[1], 10) : null;
+};
+
 // Prefer grouping by normalized identifier root; fallback to base-name grouping.
 export const groupCoursesByBaseName = (courses) => {
   if (!Array.isArray(courses)) {
@@ -69,8 +75,17 @@ export const hasMainCourse = (courseGroup) => {
   if (!Array.isArray(courseGroup)) {
     return false;
   }
-  
+
   return courseGroup.some(course => !isExerciseGroup(course));
+};
+
+export const isLikelySubgroupByNumber = (course, courseGroup) => {
+  const segment = getThirdSegment(course);
+  if (segment === null || segment < 2) return false;
+
+  return courseGroup.some(
+    sibling => sibling !== course && getThirdSegment(sibling) === 1
+  );
 };
 
 const createCourseIdentifier = (course) => {
@@ -94,7 +109,7 @@ export const processExerciseGroupECTS = (courses) => {
     // Only zero exercise groups when main course exists in same group
     if (courseGroup.length > 1 && hasMainCourse(courseGroup)) {
       courseGroup.forEach(course => {
-        if (isExerciseGroup(course)) {
+        if (isExerciseGroup(course) || isLikelySubgroupByNumber(course, courseGroup)) {
           const identifier = createCourseIdentifier(course);
           if (identifier) {
             shouldZeroECTS.add(identifier);
@@ -107,7 +122,7 @@ export const processExerciseGroupECTS = (courses) => {
   return courses.map(course => {
     const identifier = createCourseIdentifier(course);
     
-    if (isExerciseGroup(course) && shouldZeroECTS.has(identifier)) {
+    if (shouldZeroECTS.has(identifier)) {
       return { ...course, credits: 0 };
     }
     
@@ -143,12 +158,11 @@ export const getProcessingMetadata = (courses) => {
   courses.forEach((originalCourse, index) => {
     const processedCourse = processedCourses[index];
     
-    if (isExerciseGroup(originalCourse)) {
-      if (processedCourse.credits === 0 && originalCourse.credits > 0) {
-        exerciseGroupsZeroed++;
-      } else if (processedCourse.credits > 0) {
-        standaloneExerciseGroupsPreserved++;
-      }
+    const wasZeroed = processedCourse.credits === 0 && originalCourse.credits > 0;
+    if (wasZeroed) {
+      exerciseGroupsZeroed++;
+    } else if (isExerciseGroup(originalCourse) && processedCourse.credits > 0) {
+      standaloneExerciseGroupsPreserved++;
     }
   });
   

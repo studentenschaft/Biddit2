@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isExerciseGroup, processExerciseGroupECTS, extractBaseName } from "../smartExerciseGroupHandler";
+import { isExerciseGroup, processExerciseGroupECTS, extractBaseName, isLikelySubgroupByNumber } from "../smartExerciseGroupHandler";
 
 const EXERCISE_GROUP_NAMES = [
   "Marketing: Übungen und Selbststudium (Uhrenindustrie), Gruppe 3",
@@ -101,5 +101,143 @@ describe("smartExerciseGroupHandler", () => {
       .toBe("Corporate Finance (BBWL)");
     expect(extractBaseName("Volkswirtschaftslehre: Fallstudien, Gruppe 3"))
       .toBe("Volkswirtschaftslehre");
+  });
+
+  // --- Number-based subgroup detection ---
+
+  it("isLikelySubgroupByNumber detects 2.xx with 1.xx sibling", () => {
+    const main = { courseNumber: "4,135,1.00" };
+    const sub = { courseNumber: "4,135,2.01" };
+    const group = [main, sub];
+
+    expect(isLikelySubgroupByNumber(sub, group)).toBe(true);
+    expect(isLikelySubgroupByNumber(main, group)).toBe(false);
+  });
+
+  it("isLikelySubgroupByNumber detects 3.xx (coaching) with 1.xx sibling", () => {
+    const main = { courseNumber: "4,125,1.00" };
+    const exercise = { courseNumber: "4,125,2.01" };
+    const coaching = { courseNumber: "4,125,3.00" };
+    const group = [main, exercise, coaching];
+
+    expect(isLikelySubgroupByNumber(coaching, group)).toBe(true);
+    expect(isLikelySubgroupByNumber(exercise, group)).toBe(true);
+    expect(isLikelySubgroupByNumber(main, group)).toBe(false);
+  });
+
+  it("isLikelySubgroupByNumber returns false without 1.xx sibling", () => {
+    const a = { courseNumber: "4,135,2.01" };
+    const b = { courseNumber: "4,135,2.02" };
+
+    expect(isLikelySubgroupByNumber(a, [a, b])).toBe(false);
+  });
+
+  it("zeroes subgroup ECTS via course number when regex does not match the name", () => {
+    const main = {
+      name: "Advanced Topic XYZ",
+      credits: 400,
+      courseNumber: "7,999,1.00",
+    };
+    const subgroup = {
+      name: "Advanced Topic XYZ: Supplementary Sessions, Group 1",
+      credits: 400,
+      courseNumber: "7,999,2.01",
+    };
+
+    // Regex does NOT detect these
+    expect(isExerciseGroup(main)).toBe(false);
+    expect(isExerciseGroup(subgroup)).toBe(false);
+
+    const processed = processExerciseGroupECTS([main, subgroup]);
+    expect(processed.find(c => c.courseNumber === "7,999,1.00").credits).toBe(400);
+    expect(processed.find(c => c.courseNumber === "7,999,2.01").credits).toBe(0);
+  });
+
+  it("keeps credits for a 2.xx course when no 1.xx sibling exists", () => {
+    const solo = {
+      name: "Standalone Seminar",
+      credits: 400,
+      courseNumber: "5,555,2.00",
+    };
+
+    const processed = processExerciseGroupECTS([solo]);
+    expect(processed[0].credits).toBe(400);
+  });
+
+  // --- Real-world course families (Faculty 4, 7) ---
+
+  it("zeroes all exercise groups in Accounting, Controlling, Auditing family (4,135)", () => {
+    const courses = [
+      { name: "Accounting, Controlling, Auditing", credits: 400, courseNumber: "4,135,1.00" },
+      { name: "Accounting, Controlling, Auditing: Übungen und Selbststudium, Gruppe 1", credits: 400, courseNumber: "4,135,2.01" },
+      { name: "Accounting, Controlling, Auditing: Übungen und Selbststudium, Gruppe 2", credits: 400, courseNumber: "4,135,2.02" },
+      { name: "Accounting, Controlling, Auditing: Übungen und Selbststudium, Gruppe 3", credits: 400, courseNumber: "4,135,2.03" },
+      { name: "Accounting, Controlling, Auditing: Übungen und Selbststudium, Gruppe 4", credits: 400, courseNumber: "4,135,2.04" },
+      { name: "Accounting, Controlling, Auditing: Übungen und Selbststudium, Gruppe 5", credits: 400, courseNumber: "4,135,2.05" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.find(c => c.courseNumber === "4,135,1.00").credits).toBe(400);
+    for (const p of processed.filter(c => c.courseNumber !== "4,135,1.00")) {
+      expect(p.credits).toBe(0);
+    }
+  });
+
+  it("zeroes exercise and coaching groups in Informatik family (4,125) including 3.xx", () => {
+    const courses = [
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften", credits: 400, courseNumber: "4,125,1.00" },
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften: Übungen (basic), Gruppe 1", credits: 400, courseNumber: "4,125,2.01" },
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften: Übungen (basic), Gruppe 2", credits: 400, courseNumber: "4,125,2.02" },
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften: Übungen (basic), Gruppe 3", credits: 400, courseNumber: "4,125,2.03" },
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften: Übungen (basic), Gruppe 4", credits: 400, courseNumber: "4,125,2.04" },
+      { name: "Grundlagen und Methoden der Informatik für Wirtschaftswissenschaften: Coaching", credits: 400, courseNumber: "4,125,3.00" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.find(c => c.courseNumber === "4,125,1.00").credits).toBe(400);
+    for (const p of processed.filter(c => c.courseNumber !== "4,125,1.00")) {
+      expect(p.credits).toBe(0);
+    }
+  });
+
+  it("zeroes exercise groups in Methods: Statistics family (4,120)", () => {
+    const courses = [
+      { name: "Methods: Statistics", credits: 400, courseNumber: "4,120,1.00" },
+      { name: "Methods: Statistics: Exercises and Independent Studies, Group 1", credits: 400, courseNumber: "4,120,2.01" },
+      { name: "Methods: Statistics: Exercises and Independent Studies, Group 2", credits: 400, courseNumber: "4,120,2.02" },
+      { name: "Methods: Statistics: Exercises and Independent Studies, Group 3", credits: 400, courseNumber: "4,120,2.03" },
+      { name: "Methods: Statistics: Exercises and Independent Studies, Group 4", credits: 400, courseNumber: "4,120,2.04" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.find(c => c.courseNumber === "4,120,1.00").credits).toBe(400);
+    for (const p of processed.filter(c => c.courseNumber !== "4,120,1.00")) {
+      expect(p.credits).toBe(0);
+    }
+  });
+
+  it("zeroes exercise groups in Grundlagen Business Innovation family (7,000)", () => {
+    const courses = [
+      { name: "Grundlagen Business Innovation", credits: 400, courseNumber: "7,000,1.00" },
+      { name: "Grundlagen Business Innovation: Übungen, Gruppe 1", credits: 400, courseNumber: "7,000,2.01" },
+      { name: "Grundlagen Business Innovation: Übungen, Gruppe 2", credits: 400, courseNumber: "7,000,2.02" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.find(c => c.courseNumber === "7,000,1.00").credits).toBe(400);
+    for (const p of processed.filter(c => c.courseNumber !== "7,000,1.00")) {
+      expect(p.credits).toBe(0);
+    }
+  });
+
+  it("zeroes exercise group in Advanced Cybersecurity family (7,850)", () => {
+    const courses = [
+      { name: "Advanced Cybersecurity", credits: 400, courseNumber: "7,850,1.00" },
+      { name: "Advanced Cybersecurity: Exercises", credits: 400, courseNumber: "7,850,2.00" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.find(c => c.courseNumber === "7,850,1.00").credits).toBe(400);
+    expect(processed.find(c => c.courseNumber === "7,850,2.00").credits).toBe(0);
   });
 });
