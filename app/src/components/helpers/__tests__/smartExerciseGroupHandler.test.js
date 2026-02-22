@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isExerciseGroup, processExerciseGroupECTS } from "../smartExerciseGroupHandler";
+import { isExerciseGroup, processExerciseGroupECTS, extractBaseName } from "../smartExerciseGroupHandler";
 
 const EXERCISE_GROUP_NAMES = [
   "Marketing: Übungen und Selbststudium (Uhrenindustrie), Gruppe 3",
@@ -9,12 +9,18 @@ const EXERCISE_GROUP_NAMES = [
   "Fundamentals and Methods of Computer Science for Business Studies: Exercises (basic), Group 8",
   "Corporate Finance (BBWL): Exercises",
   "Secure & Private Computing: Foundations of Ethical Hacking: Übungen",
+  "Corporate Finance (BBWL): Case Studies, Group 1",
+  "Corporate Finance (BBWL): Case Studies, Group 2",
+  "Corporate Finance (BBWL): Case Studies",
+  "Volkswirtschaftslehre: Fallstudien, Gruppe 3",
 ];
 
 const REGULAR_COURSE_NAMES = [
   "1,725,1.00 Psychologie: Coaching und Gesprächsführung",
   "7,556,1.00 Kursübergreifendes Mathe-Coaching",
   "7,556,1.00 …: Coachingsituationen gestalten",
+  "Case Study Methods in Social Science",
+  "Introduction to Case Studies",
 ];
 
 describe("smartExerciseGroupHandler", () => {
@@ -65,5 +71,35 @@ describe("smartExerciseGroupHandler", () => {
 
     const processed = processExerciseGroupECTS([exerciseOnly]);
     expect(processed[0].credits).toBe(400);
+  });
+
+  it("zeroes Case Studies group ECTS when main course shares the same root key", () => {
+    const main = {
+      name: "Corporate Finance (BBWL)",
+      credits: 400,
+      courseNumber: "4,130,1.00",
+    };
+    const caseStudy = {
+      name: "Corporate Finance (BBWL): Case Studies, Group 1",
+      credits: 400,
+      courseNumber: "4,130,2.01",
+    };
+
+    expect(isExerciseGroup(caseStudy)).toBe(true);
+    expect(isExerciseGroup(main)).toBe(false);
+
+    const processed = processExerciseGroupECTS([main, caseStudy]);
+    const processedMain = processed.find(c => c.name === main.name);
+    const processedCS = processed.find(c => c.name === caseStudy.name);
+
+    expect(processedMain.credits).toBe(400);
+    expect(processedCS.credits).toBe(0);
+  });
+
+  it("extractBaseName strips Case Studies suffix to produce the base name", () => {
+    expect(extractBaseName("Corporate Finance (BBWL): Case Studies, Group 1"))
+      .toBe("Corporate Finance (BBWL)");
+    expect(extractBaseName("Volkswirtschaftslehre: Fallstudien, Gruppe 3"))
+      .toBe("Volkswirtschaftslehre");
   });
 });

@@ -14,6 +14,9 @@ export const extractBaseName = (courseName) => {
     .replace(/\s*:\s*Coaching\s*\d*\s*$/i, '')
     // Coaching Gruppe/Group N at end
     .replace(/\s*Coaching\s*(Gruppe|Group)\s*\d*\s*$/i, '')
+    // Case Studies / Fallstudien suffixes
+    .replace(/\s*:\s*(?:Case Stud(?:y|ies)|Fallstudien?)\b.*$/i, '')
+    .replace(/\s*(?:Case Studies|Case Study|Fallstudien?)\s*\d*\s*/gi, '')
     .replace(/\s*\d+\s*$/, '')
     .replace(/\s*[,-]\s*$/, '')
     .trim();
