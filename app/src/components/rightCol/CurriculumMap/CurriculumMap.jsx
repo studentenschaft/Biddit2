@@ -51,7 +51,11 @@ const DragHint = ({ onDismiss }) => {
         <span className="font-medium">Drag courses</span>
         <span className="text-blue-600">
           {" "}
-          from the Course List on the left into the grid
+          from the Course List on the left into the grid. To get all your previously saved courses into the Curriculum map, click {" "}
+        </span>
+        <span className="font-medium">"Import Selected Courses"</span>
+        <span className="text-blue-600">
+          .
         </span>
       </div>
 
