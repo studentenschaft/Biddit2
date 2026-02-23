@@ -786,45 +786,47 @@ const usePlanManager = () => {
           return { imported: 0, skipped };
         }
 
-        // Import all courses via API
+        // Build merged placements array: existing + new imports (single API call)
         const toastId = toast.loading(
           `Importing ${coursesToImport.length} courses...`,
         );
 
         try {
-          for (const course of coursesToImport) {
-            const placementId = `course-${course.courseId}`;
-            const placementData = {
-              type: "course",
-              semester: course.semesterKey,
-              categoryPath: course.classification || "Uncategorized",
-              courseId: course.courseId,
-              shortName: course.shortName,
-              addedAt: new Date().toISOString(),
-            };
+          const existingPlacements = convertPlannedItemsToPlacements(
+            currentPlan.plannedItems,
+          );
 
-            await upsertPlacement(
-              registry.activePlanId,
-              placementId,
-              placementData,
-              token,
-            );
-            imported++;
-          }
+          const newPlacements = coursesToImport.map((course) => ({
+            placementId: `course-${course.courseId}`,
+            type: "course",
+            semester: course.semesterKey,
+            categoryPath: course.classification || "Uncategorized",
+            courseId: course.courseId,
+            shortName: course.shortName,
+            addedAt: new Date().toISOString(),
+          }));
 
-          // Reload plans to get updated state
-          const data = await getCurriculumPlans(token);
-          if (data) {
-            const activePlan = data.plans[data.activePlanId];
-            if (activePlan) {
-              set(curriculumPlanState, (prev) => ({
-                ...prev,
-                plannedItems: convertPlacementsToPlannedItems(
-                  activePlan.placements,
-                ),
-                lastModified: activePlan.lastModified,
-              }));
-            }
+          const mergedPlacements = [...existingPlacements, ...newPlacements];
+          imported = coursesToImport.length;
+
+          const data = await upsertPlan(
+            registry.activePlanId,
+            {
+              placements: mergedPlacements,
+              semesterNotes: currentPlan.semesterNotes || {},
+            },
+            token,
+          );
+
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
+              lastModified: activePlan.lastModified,
+            }));
           }
 
           toast.update(toastId, {
@@ -838,12 +840,12 @@ const usePlanManager = () => {
         } catch (error) {
           console.error("[usePlanManager] Error importing courses:", error);
           toast.update(toastId, {
-            render: "Failed to import some courses.",
+            render: "Failed to import courses.",
             type: "error",
             isLoading: false,
             autoClose: 3000,
           });
-          return { imported, skipped };
+          return { imported: 0, skipped };
         }
       },
     [token],
