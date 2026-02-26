@@ -15,6 +15,8 @@
     "@azure/msal-browser": "^3.18.0",
     "@azure/msal-node": "^2.10.0",
     "@azure/msal-react": "^2.0.20",
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@fullcalendar/daygrid": "^6.0.3",
     "@fullcalendar/react": "^6.0.3",
     "@fullcalendar/timegrid": "^6.0.3",
