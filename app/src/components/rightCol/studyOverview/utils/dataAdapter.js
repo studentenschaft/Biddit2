@@ -51,7 +51,10 @@ export const adaptAcademicDataForStudyOverview = (academicData, unifiedCourseDat
             gradeText: course.gradeText,
             type: course.type || course.classification || 'core',
             big_type: course.big_type,
-            isEnriched: true, // Enrolled courses are always enriched
+            id: course.id || course.courseId,
+            courseId: course.courseId || course.id,
+            courseNumber: course.courseNumber,
+            isEnriched: true,
             source: 'enrolled'
           });
         });

@@ -42,7 +42,8 @@ const getCourseRootKey = (course) => {
 };
 
 const getThirdSegment = (course) => {
-  const cn = course?.courseNumber || '';
+  const raw = course?.courseNumber || course?.courseId || course?.id || '';
+  const cn = typeof raw === 'string' ? raw : '';
   const m = cn.match(/^\d+,\d+,(\d+)\./);
   return m ? parseInt(m[1], 10) : null;
 };
@@ -114,6 +115,26 @@ export const processExerciseGroupECTS = (courses) => {
           if (identifier) {
             shouldZeroECTS.add(identifier);
           }
+        }
+      });
+
+      // Same-name deduplication fallback:
+      // When courses share an identical name (e.g., "Einführung in das
+      // Operations-Management" for both 4,140,1.00 and 4,140,2.00), keep
+      // credits on the first occurrence and zero the rest.
+      const namesSeen = new Set();
+      courseGroup.forEach(course => {
+        const name = course.name || '';
+        if (!name) return;
+        const identifier = createCourseIdentifier(course);
+        if (namesSeen.has(name)) {
+          // Only deduplicate when the course has a unique identifier
+          // (not just a name fallback) to avoid zeroing ALL same-named courses
+          if (identifier && identifier !== name && !shouldZeroECTS.has(identifier)) {
+            shouldZeroECTS.add(identifier);
+          }
+        } else {
+          namesSeen.add(name);
         }
       });
     }

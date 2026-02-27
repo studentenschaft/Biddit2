@@ -240,4 +240,43 @@ describe("smartExerciseGroupHandler", () => {
     expect(processed.find(c => c.courseNumber === "7,850,1.00").credits).toBe(400);
     expect(processed.find(c => c.courseNumber === "7,850,2.00").credits).toBe(0);
   });
+
+  // --- Same-name deduplication (Operations Management 4,140) ---
+
+  it("zeroes duplicate-named subgroup in Operations Management family (4,140)", () => {
+    const courses = [
+      { name: "Einführung in das Operations-Management", credits: 400, id: 3916, courseNumber: "4,140,1.00" },
+      { name: "Einführung in das Operations-Management", credits: 400, id: 3917, courseNumber: "4,140,2.00" },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    const withCredits = processed.filter(c => c.credits > 0);
+    const zeroed = processed.filter(c => c.credits === 0);
+    expect(withCredits).toHaveLength(1);
+    expect(zeroed).toHaveLength(1);
+  });
+
+  it("zeroes same-named courses even without courseNumber (scorecard integer IDs)", () => {
+    const courses = [
+      { name: "Einführung in das Operations-Management", credits: 400, id: 3916 },
+      { name: "Einführung in das Operations-Management", credits: 400, id: 3917 },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    const withCredits = processed.filter(c => c.credits > 0);
+    const zeroed = processed.filter(c => c.credits === 0);
+    expect(withCredits).toHaveLength(1);
+    expect(zeroed).toHaveLength(1);
+  });
+
+  it("does NOT deduplicate same-named courses when identifier falls back to name", () => {
+    const courses = [
+      { name: "Einführung in das Operations-Management", credits: 400 },
+      { name: "Einführung in das Operations-Management", credits: 400 },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed[0].credits).toBe(400);
+    expect(processed[1].credits).toBe(400);
+  });
 });
