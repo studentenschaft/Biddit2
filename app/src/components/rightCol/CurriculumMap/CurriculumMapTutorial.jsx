@@ -12,16 +12,20 @@ import PropTypes from "prop-types";
 
 const TUTORIAL_ITEMS = [
   {
-    label: "Drag courses from the list",
-    description: "Drag any course from the left panel onto a grid cell to plan it. (Courses you saved will already show up here!)",
+    label: "Drag courses into the grid",
+    description: "Drag any course from the Course List on the left into any cell. This is the primary way to plan your semesters.",
   },
   {
-    label: "Click a cell to add a placeholder",
-    description: "Click any empty area in a semester row to create a placeholder course.",
+    label: "Or click a cell to add a placeholder",
+    description: "Click any empty cell to quickly create a placeholder for courses you haven't chosen yet.",
   },
   {
     label: "Drag to rearrange",
     description: "Move planned courses between semesters and categories by dragging.",
+  },
+  {
+    label: "Add notes & colors",
+    description: "Click the note icon on any course or semester row to add personal notes. Use the color wheel for visual grouping.",
   },
 ];
 
@@ -97,7 +101,7 @@ const CurriculumMapTutorial = ({ isOpen, onDismiss }) => {
                   {/* Color legend */}
                   <div className="flex items-start gap-3">
                     <div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-hsg-50 text-hsg-700">
-                      <span className="text-xs font-bold">4</span>
+                      <span className="text-xs font-bold">{TUTORIAL_ITEMS.length + 1}</span>
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900 mb-1.5">

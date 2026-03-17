@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { useRecoilValue } from "recoil";
+import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   curriculumPlanState,
   getNextSemesterKey,
@@ -23,6 +23,7 @@ import usePlanManager from "./usePlanManager";
  */
 export const useCurriculumPlan = () => {
   const curriculumPlan = useRecoilValue(curriculumPlanState);
+  const setCurriculumPlan = useSetRecoilState(curriculumPlanState);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const {
     addPlaceholderById,
@@ -185,9 +186,21 @@ export const useCurriculumPlan = () => {
    */
   const addSemester = useCallback((lastSemesterKey) => {
     const newSemesterKey = getNextSemesterKey(lastSemesterKey);
-    // Note: The semester will appear in the grid once items are added via API
+
+    // Add empty entry to plannedItems so the selector includes this semester in the grid
+    setCurriculumPlan((prev) => {
+      if (prev.plannedItems[newSemesterKey]) return prev;
+      return {
+        ...prev,
+        plannedItems: {
+          ...prev.plannedItems,
+          [newSemesterKey]: [],
+        },
+      };
+    });
+
     return newSemesterKey;
-  }, []);
+  }, [setCurriculumPlan]);
 
   /**
    * Add a placeholder item to a future semester cell

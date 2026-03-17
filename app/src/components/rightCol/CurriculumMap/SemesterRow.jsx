@@ -13,7 +13,7 @@ import { AnnotationIcon as AnnotationIconSolid } from "@heroicons/react/solid";
 import { AnnotationIcon as AnnotationIconOutline } from "@heroicons/react/outline";
 import SemesterNotePopover from "./SemesterNotePopover";
 
-const SemesterRow = ({ semester, isLast, onSetNote }) => {
+const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
   const { key, status, totalCredits, plannedCredits, note } = semester;
   const [showNotePopover, setShowNotePopover] = useState(false);
 
@@ -46,6 +46,57 @@ const SemesterRow = ({ semester, isLast, onSetNote }) => {
 
   const NoteIcon = hasNote ? AnnotationIconSolid : AnnotationIconOutline;
 
+  // Column orientation — used as a column header in flipped grid mode
+  if (orientation === "column") {
+    return (
+      <div
+        className={`${style.bg} relative p-2 border-b border-gray-100 text-center min-w-[120px]`}
+      >
+        <div className="font-bold text-sm text-gray-800">{key}</div>
+        <div className="text-[10px] text-gray-500 mt-0.5">
+          {totalCredits > 0 ? (
+            <>
+              <span className={`font-semibold ${style.textColor}`}>
+                {totalCredits}
+              </span>
+              <span className="ml-0.5">ECTS</span>
+            </>
+          ) : (
+            "—"
+          )}
+        </div>
+        {status !== "completed" && plannedCredits > 0 && (
+          <div className="text-[9px] text-gray-500 mt-0.5">
+            +{plannedCredits} planned
+          </div>
+        )}
+        {onSetNote && (
+          <div className="mt-1 flex justify-center">
+            <button
+              onClick={() => setShowNotePopover((prev) => !prev)}
+              className={`p-0.5 rounded transition-colors ${
+                hasNote
+                  ? "text-blue-500 hover:text-blue-700"
+                  : "text-gray-400 hover:text-gray-600"
+              }`}
+              title={hasNote ? note : "Add a note"}
+            >
+              <NoteIcon className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+        {showNotePopover && onSetNote && (
+          <SemesterNotePopover
+            semesterKey={key}
+            initialNote={note}
+            onSave={onSetNote}
+            onClose={() => setShowNotePopover(false)}
+          />
+        )}
+      </div>
+    );
+  }
+
   return (
     <div
       className={`${style.bg} ${roundedClass} relative p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
@@ -59,7 +110,7 @@ const SemesterRow = ({ semester, isLast, onSetNote }) => {
             className={`p-0.5 rounded transition-colors ${
               hasNote
                 ? "text-blue-500 hover:text-blue-700"
-                : "text-gray-300 hover:text-gray-500"
+                : "text-gray-400 hover:text-gray-600"
             }`}
             title={hasNote ? note : "Add a note"}
           >
@@ -112,6 +163,7 @@ SemesterRow.propTypes = {
   }).isRequired,
   isLast: PropTypes.bool,
   onSetNote: PropTypes.func,
+  orientation: PropTypes.oneOf(["row", "column"]),
 };
 
 export default SemesterRow;

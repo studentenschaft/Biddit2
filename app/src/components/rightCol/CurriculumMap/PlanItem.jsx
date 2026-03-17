@@ -26,7 +26,7 @@ const COLOR_OPTIONS = [
   { value: "#14B8A6", label: "Teal", class: "border-teal-500" },
 ];
 
-const PlanItem = ({ item, semesterKey, onCourseClick }) => {
+const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
   const { removeCourse, removePlaceholder, updatePlacementAttributes } =
     useCurriculumPlan();
   const {
@@ -180,7 +180,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
   // Drag indicator for draggable items (only show on hover via group)
   const dragHandle = isDraggable ? (
     <span
-      className="text-[10px] text-gray-400 mr-1 select-none opacity-0 group-hover:opacity-100 transition-opacity"
+      className="text-[10px] text-gray-400 mr-1 select-none opacity-30 group-hover:opacity-100 transition-opacity"
       title="Drag to move"
     >
       ⠿
@@ -313,7 +313,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
       onClick={handleClick}
       className={`group relative ${statusStyle.bg} ${borderStyle} ${statusStyle.text} ${statusStyle.shadow} ${cursorClass} ${opacityClass} rounded-md px-2 py-1 text-xs transition-all select-none`}
-      title={`${fullName}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${grade ? ` (Grade: ${grade})` : ""}${note ? `\nNote: ${note}` : ""}${
+      title={`${fullName}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${!gradesHidden && grade ? ` (Grade: ${grade})` : ""}${note ? `\nNote: ${note}` : ""}${
         isDraggable ? "\nDrag to move" : ""
       }`}
     >
@@ -355,7 +355,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
             {creditsDisplay} ECTS
           </span>
         )}
-        {(grade || gradeText) && (
+        {!gradesHidden && (grade || gradeText) && (
           <span className="font-semibold">{grade || gradeText}</span>
         )}
       </div>
@@ -370,7 +370,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick }) => {
             className={`p-0.5 rounded transition-colors ${
               note
                 ? "text-blue-500 hover:text-blue-600"
-                : "text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100"
+                : "text-gray-400 hover:text-gray-600 opacity-30 group-hover:opacity-100"
             }`}
             title={note ? `Note: ${note}` : "Add note"}
           >
@@ -591,6 +591,7 @@ PlanItem.propTypes = {
   }).isRequired,
   semesterKey: PropTypes.string.isRequired,
   onCourseClick: PropTypes.func,
+  gradesHidden: PropTypes.bool,
 };
 
 export default PlanItem;

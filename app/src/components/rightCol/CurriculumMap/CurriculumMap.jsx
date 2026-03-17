@@ -13,6 +13,7 @@
 import { useRecoilValue } from "recoil";
 import { useState, useEffect } from "react";
 import { DownloadIcon, ArrowLeftIcon } from "@heroicons/react/solid";
+import { EyeIcon, EyeOffIcon, SwitchHorizontalIcon } from "@heroicons/react/outline";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
 import { authTokenState } from "../../recoil/authAtom";
 import { curriculumPlansRegistryState } from "../../recoil/curriculumPlansRegistryAtom";
@@ -31,12 +32,20 @@ import CurriculumMapTutorial, {
 } from "./CurriculumMapTutorial";
 
 const DRAG_HINT_STORAGE_KEY = "biddit-curriculum-drag-hint-dismissed";
+const GRADES_HIDDEN_STORAGE_KEY = "biddit-curriculum-grades-hidden";
+const AXIS_FLIPPED_STORAGE_KEY = "biddit-curriculum-axis-flipped";
 
 /**
  * Animated hint showing users they can drag courses from the left panel
  */
 const DragHint = ({ onDismiss }) => {
   const [isVisible, setIsVisible] = useState(true);
+  const [canDismiss, setCanDismiss] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setCanDismiss(true), 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!isVisible) return null;
 
@@ -59,16 +68,18 @@ const DragHint = ({ onDismiss }) => {
         </span>
       </div>
 
-      <button
-        onClick={() => {
-          setIsVisible(false);
-          localStorage.setItem(DRAG_HINT_STORAGE_KEY, "true");
-          onDismiss?.();
-        }}
-        className="text-blue-400 hover:text-blue-600 text-xs font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
-      >
-        Got it
-      </button>
+      {canDismiss && (
+        <button
+          onClick={() => {
+            setIsVisible(false);
+            localStorage.setItem(DRAG_HINT_STORAGE_KEY, "true");
+            onDismiss?.();
+          }}
+          className="text-blue-400 hover:text-blue-600 text-xs font-medium px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+        >
+          Got it
+        </button>
+      )}
     </div>
   );
 };
@@ -87,6 +98,12 @@ const CurriculumMap = () => {
   );
   const [tutorialOpen, setTutorialOpen] = useState(
     () => localStorage.getItem(TUTORIAL_STORAGE_KEY) !== "true",
+  );
+  const [gradesHidden, setGradesHidden] = useState(
+    () => localStorage.getItem(GRADES_HIDDEN_STORAGE_KEY) === "true",
+  );
+  const [isAxisFlipped, setIsAxisFlipped] = useState(
+    () => localStorage.getItem(AXIS_FLIPPED_STORAGE_KEY) === "true",
   );
   // Click-to-place is disabled; placementMode stays null. Grid still receives
   // it so re-enabling later only requires restoring the useState + handlers.
@@ -201,6 +218,38 @@ const CurriculumMap = () => {
             <DownloadIcon className="w-4 h-4" />
             {isImporting ? "Importing..." : "Import Selected Courses"}
           </button>
+          <button
+            onClick={() => {
+              setGradesHidden((prev) => {
+                const next = !prev;
+                localStorage.setItem(GRADES_HIDDEN_STORAGE_KEY, String(next));
+                return next;
+              });
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            title={gradesHidden ? "Show grades" : "Hide grades"}
+          >
+            {gradesHidden ? (
+              <EyeOffIcon className="w-4 h-4" />
+            ) : (
+              <EyeIcon className="w-4 h-4" />
+            )}
+            {gradesHidden ? "Show Grades" : "Hide Grades"}
+          </button>
+          <button
+            onClick={() => {
+              setIsAxisFlipped((prev) => {
+                const next = !prev;
+                localStorage.setItem(AXIS_FLIPPED_STORAGE_KEY, String(next));
+                return next;
+              });
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+            title="Flip axes — swap semesters and categories"
+          >
+            <SwitchHorizontalIcon className="w-4 h-4" />
+            Flip Axes
+          </button>
         </div>
         <PlaceholderCreator />
       </div>
@@ -223,6 +272,8 @@ const CurriculumMap = () => {
           }
           validations={curriculumData.validations}
           placementMode={placementMode}
+          gradesHidden={gradesHidden}
+          isAxisFlipped={isAxisFlipped}
         />
       </div>
 

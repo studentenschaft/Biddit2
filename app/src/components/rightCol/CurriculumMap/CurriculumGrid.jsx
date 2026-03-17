@@ -2,15 +2,17 @@
  * CurriculumGrid.jsx
  *
  * The main grid component that displays the 2D curriculum view.
- * Rows = semesters, Columns = requirement categories
- * Each cell contains courses assigned to that semester + category.
+ * Supports two orientations:
+ *   - Default: semesters as rows, categories as columns
+ *   - Flipped: categories as rows, semesters as columns
  *
  * Features:
  * - Multi-row nested headers to match university curriculum structure
- * - Collapsible columns (individual or by parent group) to fit more on screen
+ * - Collapsible columns (individual or by parent group) in default mode
+ * - Axis flip for alternative viewing orientation
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { Fragment, useState, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/solid";
@@ -22,6 +24,7 @@ import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
+import { useGridLayout } from "../../helpers/useGridLayout";
 
 const CurriculumGrid = ({
   categories,
@@ -31,6 +34,8 @@ const CurriculumGrid = ({
   validations,
   placementMode,
   onCellPlacement,
+  gradesHidden,
+  isAxisFlipped,
 }) => {
   // Track which individual category columns are collapsed
   const [collapsedCategories, setCollapsedCategories] = useState(new Set());
@@ -121,6 +126,14 @@ const CurriculumGrid = ({
     return false;
   }, [collapsedCategories, collapsedParents, categoryToParent]);
 
+  // Grid layout computation (axis-aware)
+  const { gridTemplateColumns, stickyColumnWidth } = useGridLayout({
+    categories,
+    semesters,
+    isFlipped: isAxisFlipped,
+    isCategoryCollapsed,
+  });
+
   // Ensure we have data to display
   if (!categories?.length || !semesters?.length) {
     return (
@@ -137,13 +150,11 @@ const CurriculumGrid = ({
   const hasHierarchy = categoryHierarchy?.length > 0;
 
   // Build lookup map for parent completion status
-  // If a parent is complete, all its children should show as highlighted
   const parentCompletionMap = useMemo(() => {
     const map = {};
     if (categoryHierarchy) {
       categoryHierarchy.forEach((parent) => {
         if (parent.isComplete) {
-          // Mark all children of this parent as having a complete parent
           parent.children?.forEach((child) => {
             map[child.path] = true;
           });
@@ -153,24 +164,225 @@ const CurriculumGrid = ({
     return map;
   }, [categoryHierarchy]);
 
-  // Calculate total leaf columns for grid
   const leafCategories = categories;
-  const minCategoryWidth = 140;
-  const collapsedWidth = 36;
-  const semesterColWidth = 100;
-
-  // Build grid template columns string with collapsed support
-  const columnWidths = leafCategories.map((cat) =>
-    isCategoryCollapsed(cat.path)
-      ? `${collapsedWidth}px`
-      : `minmax(${minCategoryWidth}px, 1fr)`
-  );
-  const gridTemplateColumns = `${semesterColWidth}px ${columnWidths.join(" ")}`;
 
   // Determine if we should show parent header row (only if any parent has multiple children)
   const showParentHeaders =
     hasHierarchy && categoryHierarchy.some((parent) => parent.children.length > 1);
 
+  // Shared handler for "add semester" clicks
+  const handleAddSemester = () => {
+    const lastSemester = semesters[semesters.length - 1];
+    if (lastSemester) {
+      addSemester(lastSemester.key);
+    }
+  };
+
+  // Helper: render a PlanCell for a given semester × category intersection
+  const renderPlanCell = (semester, category, { isLastCol }) => {
+    const courses =
+      coursesBySemesterAndCategory[semester.key]?.[category.path] || [];
+
+    const cellValidations = {
+      conflicts: (validations?.conflicts || []).filter(
+        (v) =>
+          v.semesterKey === semester.key &&
+          courses.some((c) => v.courses?.includes(c.id))
+      ),
+      warnings: (validations?.categoryWarnings || []).filter(
+        (v) => v.categoryPath === category.path
+      ),
+    };
+
+    const isColumnComplete = category.isComplete || parentCompletionMap[category.path];
+
+    return (
+      <PlanCell
+        key={`${semester.key}-${category.path}`}
+        semesterKey={semester.key}
+        categoryPath={category.path}
+        courses={courses}
+        semesterStatus={semester.status}
+        validations={cellValidations}
+        isLastCol={isLastCol}
+        isCollapsed={isAxisFlipped ? false : isCategoryCollapsed(category.path)}
+        isCategoryComplete={isColumnComplete}
+        categoryName={category.name}
+        validClassifications={category.validClassifications}
+        placementMode={placementMode}
+        onCellPlacement={onCellPlacement}
+        onCourseClick={handleCourseClick}
+        gradesHidden={gradesHidden}
+      />
+    );
+  };
+
+  // Scroll affordance gradient overlays (shared between modes)
+  const scrollAffordance = (
+    <>
+      <div
+        className={`absolute top-0 right-0 bottom-0 w-16 pointer-events-none
+          rounded-r-lg transition-opacity duration-300
+          ${canScrollRight ? "opacity-100" : "opacity-0"}`}
+        style={{
+          background:
+            "linear-gradient(to left, rgba(255,255,255,1), transparent)",
+        }}
+        aria-hidden="true"
+      />
+      <div
+        className={`absolute top-0 bottom-0 w-14 pointer-events-none
+          transition-opacity duration-300
+          ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
+        style={{
+          left: `${stickyColumnWidth}px`,
+          background:
+            "linear-gradient(to right, rgba(255,255,255,1), transparent)",
+        }}
+        aria-hidden="true"
+      />
+    </>
+  );
+
+  // ─── Flipped mode: categories as rows, semesters as columns ──────────
+  if (isAxisFlipped) {
+    // Helper: render the "add semester" column cell (narrow + icon)
+    const addSemCol = (key) => (
+      <div
+        key={key}
+        className="bg-gray-50 border-b border-r border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
+        onClick={handleAddSemester}
+        title="Add next semester"
+      >
+        <PlusIcon className="w-3.5 h-3.5 text-gray-300" />
+      </div>
+    );
+
+    // Resolve a category from a hierarchy child entry
+    const findCategory = (childPath) =>
+      leafCategories.find((c) => c.path === childPath);
+
+    // Render cells for one category row
+    const renderCategoryRow = (category) => (
+      <Fragment key={category.path}>
+        {/* Category row label (sticky left) */}
+        <CategoryHeader
+          category={category}
+          orientation="row"
+          isParentComplete={parentCompletionMap[category.path] || false}
+        />
+
+        {/* PlanCells for each semester column */}
+        {semesters.map((semester, semIdx) =>
+          renderPlanCell(semester, category, {
+            isLastCol: semIdx === semesters.length - 1,
+          })
+        )}
+
+        {/* Add-semester column cell */}
+        {addSemCol(`add-${category.path}`)}
+      </Fragment>
+    );
+
+    return (
+      <div className="relative">
+        <div
+          ref={scrollContainerRef}
+          className="overflow-x-auto scrollbar-thin-visible rounded-l-lg border-t border-b border-l border-black/5"
+        >
+          <div
+            className="grid min-w-fit bg-white"
+            style={{ gridTemplateColumns }}
+          >
+            {/* ── Header row: corner + semester column headers + add-semester ── */}
+            <div className="bg-gray-50 p-2 sticky left-0 z-20 border-b border-gray-100 rounded-tl-lg">
+              <span className="text-[10px] text-gray-500 font-medium">
+                Category / Semester
+              </span>
+            </div>
+            {semesters.map((semester) => (
+              <SemesterRow
+                key={`col-${semester.key}`}
+                semester={semester}
+                orientation="column"
+                onSetNote={setSemesterNote}
+              />
+            ))}
+            {/* Add-semester header cell */}
+            <div
+              className="bg-gray-50 border-b border-gray-100 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center rounded-tr-lg"
+              onClick={handleAddSemester}
+              title="Add next semester"
+            >
+              <PlusIcon className="w-4 h-4 text-gray-500" />
+            </div>
+
+            {/* ── Category rows, grouped by parent hierarchy ── */}
+            {hasHierarchy
+              ? categoryHierarchy.map((parent) => (
+                  <Fragment key={parent.id}>
+                    {/* Parent group header spanning all columns */}
+                    {parent.children.length > 1 && (() => {
+                      const targetCredits = parent.maxCredits || parent.minCredits || 0;
+                      return (
+                        <div
+                          className="relative bg-gray-100 p-2 border-b border-gray-100 flex items-center gap-2 overflow-hidden"
+                          style={{ gridColumn: "1 / -1" }}
+                        >
+                          {targetCredits > 0 && (
+                            <div
+                              className={`absolute inset-y-0 left-0 transition-all duration-300 ${
+                                parent.isComplete ? "bg-green-100" : "bg-gray-200"
+                              }`}
+                              style={{
+                                width: `${Math.min(100, Math.round(((parent.earnedCredits || 0) / targetCredits) * 100))}%`,
+                              }}
+                            />
+                          )}
+                          <div className="relative z-10 flex items-center gap-2">
+                            <span className="font-bold text-sm text-gray-800">
+                              {parent.name}
+                            </span>
+                            {targetCredits > 0 && (
+                              <span className="text-[10px] text-gray-600">
+                                <span
+                                  className={
+                                    parent.isComplete
+                                      ? "font-semibold text-green-700"
+                                      : "font-medium"
+                                  }
+                                >
+                                  {parent.earnedCredits || 0}
+                                </span>
+                                <span className="text-gray-500">
+                                  {" "}
+                                  / {targetCredits} ECTS
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Child category rows */}
+                    {parent.children?.map((child) => {
+                      const category = findCategory(child.path);
+                      if (!category) return null;
+                      return renderCategoryRow(category);
+                    })}
+                  </Fragment>
+                ))
+              : leafCategories.map((category) => renderCategoryRow(category))}
+          </div>
+        </div>
+
+        {scrollAffordance}
+      </div>
+    );
+  }
+
+  // ─── Default mode: semesters as rows, categories as columns ──────────
   return (
     <div className="relative">
       <div
@@ -286,67 +498,27 @@ const CurriculumGrid = ({
 
         {/* Data rows: semester label + cells */}
         {semesters.map((semester, semIdx) => (
-          <>
+          <Fragment key={`row-${semester.key}`}>
             {/* Semester label cell */}
             <SemesterRow
-              key={`row-${semester.key}`}
               semester={semester}
               isLast={semIdx === semesters.length - 1}
               onSetNote={setSemesterNote}
             />
 
             {/* Course cells for each category */}
-            {leafCategories.map((category, catIdx) => {
-              const courses =
-                coursesBySemesterAndCategory[semester.key]?.[category.path] ||
-                [];
-
-              // Find any validations for this cell
-              const cellValidations = {
-                conflicts: (validations?.conflicts || []).filter(
-                  (v) =>
-                    v.semesterKey === semester.key &&
-                    courses.some((c) => v.courses?.includes(c.id))
-                ),
-                warnings: (validations?.categoryWarnings || []).filter(
-                  (v) => v.categoryPath === category.path
-                ),
-              };
-
-              // Category is highlighted if it or its parent is complete
-              const isColumnComplete = category.isComplete || parentCompletionMap[category.path];
-
-              return (
-                <PlanCell
-                  key={`${semester.key}-${category.path}`}
-                  semesterKey={semester.key}
-                  categoryPath={category.path}
-                  courses={courses}
-                  semesterStatus={semester.status}
-                  validations={cellValidations}
-                  isLastCol={catIdx === leafCategories.length - 1}
-                  isCollapsed={isCategoryCollapsed(category.path)}
-                  isCategoryComplete={isColumnComplete}
-                  categoryName={category.name}
-                  validClassifications={category.validClassifications}
-                  placementMode={placementMode}
-                  onCellPlacement={onCellPlacement}
-                  onCourseClick={handleCourseClick}
-                />
-              );
-            })}
-          </>
+            {leafCategories.map((category, catIdx) =>
+              renderPlanCell(semester, category, {
+                isLastCol: catIdx === leafCategories.length - 1,
+              })
+            )}
+          </Fragment>
         ))}
 
         {/* Add Semester row */}
         <div
           className="bg-gray-50 border-b border-gray-100 p-2 sticky left-0 z-10 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center min-h-[50px]"
-          onClick={() => {
-            const lastSemester = semesters[semesters.length - 1];
-            if (lastSemester) {
-              addSemester(lastSemester.key);
-            }
-          }}
+          onClick={handleAddSemester}
           title="Add next semester"
         >
           <div className="flex items-center gap-1.5 text-gray-600">
@@ -355,16 +527,11 @@ const CurriculumGrid = ({
           </div>
         </div>
         {/* Empty cells for the add semester row */}
-        {leafCategories.map((category, catIdx) => (
+        {leafCategories.map((category) => (
           <div
             key={`add-row-${category.path}`}
             className="bg-gray-50 border-b border-r border-gray-100 min-h-[50px] cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-center"
-            onClick={() => {
-              const lastSemester = semesters[semesters.length - 1];
-              if (lastSemester) {
-                addSemester(lastSemester.key);
-              }
-            }}
+            onClick={handleAddSemester}
             title="Add next semester"
           >
             <PlusIcon className="w-4 h-4 text-gray-300" />
@@ -373,30 +540,7 @@ const CurriculumGrid = ({
       </div>
     </div>
 
-      {/* Right fade — visible when more content exists to the right */}
-      <div
-        className={`absolute top-0 right-0 bottom-0 w-16 pointer-events-none
-          rounded-r-lg transition-opacity duration-300
-          ${canScrollRight ? "opacity-100" : "opacity-0"}`}
-        style={{
-          background:
-            "linear-gradient(to left, rgba(255,255,255,1), transparent)",
-        }}
-        aria-hidden="true"
-      />
-
-      {/* Left fade — visible when scrolled past the start, offset past sticky semester column */}
-      <div
-        className={`absolute top-0 bottom-0 w-14 pointer-events-none
-          transition-opacity duration-300
-          ${canScrollLeft ? "opacity-100" : "opacity-0"}`}
-        style={{
-          left: `${semesterColWidth}px`,
-          background:
-            "linear-gradient(to right, rgba(255,255,255,1), transparent)",
-        }}
-        aria-hidden="true"
-      />
+      {scrollAffordance}
     </div>
   );
 };
@@ -438,6 +582,8 @@ CurriculumGrid.propTypes = {
     credits: PropTypes.number.isRequired,
   }),
   onCellPlacement: PropTypes.func,
+  gradesHidden: PropTypes.bool,
+  isAxisFlipped: PropTypes.bool,
 };
 
 export default CurriculumGrid;

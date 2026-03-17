@@ -18,6 +18,7 @@ const CategoryHeader = ({
   isCollapsed,
   onToggleCollapse,
   isParentComplete = false,
+  orientation = "column",
 }) => {
   const {
     name,
@@ -66,6 +67,45 @@ const CategoryHeader = ({
   const suggestionClass = isSuggestedTarget
     ? "ring-2 ring-blue-300 ring-inset"
     : "";
+
+  // Row orientation — used as a sticky-left row label in flipped grid mode
+  if (orientation === "row") {
+    return (
+      <div
+        className={`relative p-2 sticky left-0 z-10 border-b border-gray-100 flex flex-col justify-center min-h-[70px] overflow-hidden ${suggestionClass}`}
+        style={{ backgroundColor: "#f9fafb" }}
+        title={name}
+      >
+        {/* Progress fill background */}
+        <div
+          className={`absolute inset-y-0 left-0 transition-all duration-300 ${
+            isHighlighted ? "bg-green-100" : "bg-gray-200"
+          }`}
+          style={{ width: isHighlighted ? "100%" : `${fillPercentage}%` }}
+        />
+
+        <div className="relative z-10">
+          <div className="text-xs font-semibold text-gray-800 leading-tight truncate">
+            {displayName}
+          </div>
+          <div className="text-[10px] text-gray-700 mt-0.5">
+            <span
+              className={
+                isComplete ? "font-semibold text-green-700" : "font-medium"
+              }
+            >
+              {totalCredits}
+            </span>
+            <span className="text-gray-500">
+              {" / "}
+              {targetCredits > 0 ? targetCredits : "?"}
+            </span>
+            <span className="text-gray-500 ml-0.5">ECTS</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Collapsed view - vertical name with expand button
   if (isCollapsed) {
@@ -182,6 +222,7 @@ CategoryHeader.propTypes = {
   isCollapsed: PropTypes.bool,
   onToggleCollapse: PropTypes.func,
   isParentComplete: PropTypes.bool,
+  orientation: PropTypes.oneOf(["column", "row"]),
 };
 
 CategoryHeader.defaultProps = {
@@ -190,6 +231,7 @@ CategoryHeader.defaultProps = {
   isCollapsed: false,
   onToggleCollapse: () => {},
   isParentComplete: false,
+  orientation: "column",
 };
 
 export default CategoryHeader;

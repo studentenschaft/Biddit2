@@ -31,6 +31,7 @@ const PlanCell = ({
   placementMode,
   onCellPlacement,
   onCourseClick,
+  gradesHidden,
 }) => {
   const { addPlaceholder } = useCurriculumPlan();
 
@@ -219,6 +220,7 @@ const PlanCell = ({
           item={course}
           semesterKey={semesterKey}
           onCourseClick={onCourseClick}
+          gradesHidden={gradesHidden}
         />
       ))}
 
@@ -273,14 +275,17 @@ const PlanCell = ({
         </form>
       )}
 
-      {/* Add placeholder hint - show when cell is empty and can add */}
+      {/* Empty cell hint: "Drop here" during active drag, subtle "+" otherwise */}
       {courses.length === 0 && canDrop && !showPlaceholderForm && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-1 text-gray-400 hover:text-gray-600 transition-colors">
-            <PlusIcon className="w-5 h-5" />
-            <span className="text-[9px] font-medium">Add course</span>
+        active ? (
+          <div className="flex-1 flex items-center justify-center">
+            <span className="text-[10px] font-medium text-blue-400">Drop here</span>
           </div>
-        </div>
+        ) : (
+          <div className="flex-1 flex items-end justify-end pr-1 pb-0.5">
+            <PlusIcon className="w-3.5 h-3.5 text-gray-300 hover:text-gray-500 transition-colors" />
+          </div>
+        )
       )}
 
       {/* Validation badges */}
@@ -336,6 +341,7 @@ PlanCell.propTypes = {
   }),
   onCellPlacement: PropTypes.func,
   onCourseClick: PropTypes.func,
+  gradesHidden: PropTypes.bool,
 };
 
 export default PlanCell;

@@ -32,16 +32,17 @@ describe("CurriculumMapTutorial", () => {
   });
 
   describe("tutorial content", () => {
-    it("displays all four tutorial items", () => {
+    it("displays all five tutorial items", () => {
       render(<CurriculumMapTutorial {...defaultProps} />);
 
       expect(
-        screen.getByText("Drag courses from the list")
+        screen.getByText("Drag courses into the grid")
       ).toBeInTheDocument();
       expect(
-        screen.getByText("Click a cell to add a placeholder")
+        screen.getByText("Or click a cell to add a placeholder")
       ).toBeInTheDocument();
       expect(screen.getByText("Drag to rearrange")).toBeInTheDocument();
+      expect(screen.getByText("Add notes & colors")).toBeInTheDocument();
       expect(screen.getByText("Color legend")).toBeInTheDocument();
     });
 
