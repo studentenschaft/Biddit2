@@ -5,7 +5,7 @@ export const PLAN_STORAGE_PREFIX = "biddit_curriculum_plan__"; // Keep for migra
 const DEFAULT_PLAN_ID = "plan-default";
 
 export const generatePlanId = () =>
-  `plan-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  `plan-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
 /**
  * Get initial state - now starts empty, populated from API on CurriculumMap mount

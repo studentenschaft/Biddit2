@@ -57,7 +57,7 @@ export const curriculumPlanState = atom({
  * Helper: Generate a unique ID for placeholders
  */
 export const generatePlaceholderId = () => {
-  return `placeholder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  return `placeholder-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 };
 
 /**
