@@ -900,6 +900,63 @@ const usePlanManager = () => {
     [token],
   );
 
+  /**
+   * Atomically sync the full active plan's placements and notes to the API.
+   * Use this when a local state transformation (e.g. cross-semester move)
+   * must be persisted as a single operation to avoid partial failures.
+   *
+   * @param {Object} plannedItems - The full plannedItems object (by semester)
+   * @param {Object} [semesterNotes] - Optional semester notes to sync
+   * @returns {Promise<boolean>} - Whether the sync was successful
+   */
+  const syncActivePlan = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (plannedItems, semesterNotes) => {
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+
+        if (!registry.activePlanId) return false;
+
+        try {
+          const placements = convertPlannedItemsToPlacements(plannedItems);
+          const data = await upsertPlan(
+            registry.activePlanId,
+            {
+              placements,
+              ...(semesterNotes !== undefined && { semesterNotes }),
+            },
+            token,
+          );
+
+          const activePlan = data.plans[data.activePlanId];
+          if (activePlan) {
+            set(curriculumPlanState, (prev) => ({
+              ...prev,
+              plannedItems: convertPlacementsToPlannedItems(
+                activePlan.placements,
+              ),
+              lastModified: activePlan.lastModified,
+            }));
+          }
+
+          set(curriculumPlansRegistryState, (prev) => ({
+            ...prev,
+            isNewUser: false,
+          }));
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error syncing plan:", error);
+          toast.error("Could not save changes.", {
+            toastId: "plan-sync-error",
+          });
+          return false;
+        }
+      },
+    [token],
+  );
+
   return {
     loadPlans,
     switchPlan,
@@ -914,6 +971,7 @@ const usePlanManager = () => {
     updatePlacementById,
     importSelectedCourses,
     setSemesterNoteById,
+    syncActivePlan,
   };
 };
 

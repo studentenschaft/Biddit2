@@ -32,6 +32,7 @@ export const useCurriculumPlan = () => {
     removeCourseById,
     updatePlacementById,
     setSemesterNoteById,
+    syncActivePlan,
   } = usePlanManager();
 
   /**
@@ -100,23 +101,36 @@ export const useCurriculumPlan = () => {
         return true;
       }
 
-      // Cross-semester move: remove from source and add to destination via API
-      await removeCourseById(courseId);
-      await addCourseById(
-        courseId,
-        toSemester,
-        toCategoryPath,
-        courseData?.shortName,
+      // Cross-semester move: build new plannedItems locally and sync atomically.
+      // Using two separate API calls (remove + add) could lose data if the
+      // second call fails — a single upsertPlan call avoids this.
+      const updatedItems = { ...curriculumPlan.plannedItems };
+
+      // Remove from source semester
+      updatedItems[fromSemester] = (updatedItems[fromSemester] || []).filter(
+        (item) => item.courseId !== courseId,
       );
 
-      return true;
+      // Add to target semester
+      updatedItems[toSemester] = [
+        ...(updatedItems[toSemester] || []),
+        {
+          type: "course",
+          courseId,
+          shortName: courseData?.shortName,
+          categoryPath: toCategoryPath,
+          addedAt: new Date().toISOString(),
+        },
+      ];
+
+      return syncActivePlan(updatedItems, curriculumPlan.semesterNotes);
     },
     [
       isSemesterCompleted,
       unifiedCourseData,
+      curriculumPlan,
       updatePlacementById,
-      removeCourseById,
-      addCourseById,
+      syncActivePlan,
     ],
   );
 
