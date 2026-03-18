@@ -7,6 +7,32 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
 
+// Mock the API layer so hook integration tests don't make real HTTP calls.
+// Returns a response shaped like the real API: { activePlanId, plans }.
+const mockApiResponse = {
+  activePlanId: "plan-default",
+  plans: {
+    "plan-default": {
+      name: "My Plan",
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      placements: [],
+      semesterNotes: {},
+    },
+  },
+};
+
+vi.mock("../curriculumPlansApi", () => ({
+  getCurriculumPlans: vi.fn().mockResolvedValue(mockApiResponse),
+  setActivePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
+  upsertPlan: vi.fn().mockResolvedValue(mockApiResponse),
+  deletePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
+  duplicatePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
+  upsertPlacement: vi.fn().mockResolvedValue(mockApiResponse),
+  removePlacement: vi.fn().mockResolvedValue(mockApiResponse),
+  setSemesterNoteApi: vi.fn().mockResolvedValue(mockApiResponse),
+}));
+
 // Helper for semester comparison (extracted from the hook logic)
 const compareSemesters = (a, b) => {
   const parseKey = (key) => {
@@ -306,8 +332,14 @@ describe("useCurriculumPlan hook integration", () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    const course = { courseNumber: "ABC123", shortName: "Test", credits: 300 };
-    const success = result.current.addCourse(course, "HS25", "Core/Electives");
+    let success;
+    await act(async () => {
+      success = await result.current.addCourse(
+        { courseNumber: "ABC123", shortName: "Test", credits: 300 },
+        "HS25",
+        "Core/Electives",
+      );
+    });
 
     expect(success).toBe(false);
   });
@@ -317,11 +349,13 @@ describe("useCurriculumPlan hook integration", () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    const course = { courseNumber: "ABC123", shortName: "Test", credits: 300 };
-
     let success;
-    act(() => {
-      success = result.current.addCourse(course, "FS26", "Core/Electives");
+    await act(async () => {
+      success = await result.current.addCourse(
+        { courseNumber: "ABC123", shortName: "Test", credits: 300 },
+        "FS26",
+        "Core/Electives",
+      );
     });
 
     expect(success).toBe(true);
@@ -332,13 +366,15 @@ describe("useCurriculumPlan hook integration", () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    const success = result.current.moveCourse(
-      "ABC123",
-      "FS26",
-      "HS25",
-      "Core",
-      "wishlist",
-    );
+    let success;
+    await act(async () => {
+      success = await result.current.moveCourse(
+        "ABC123",
+        "FS26",
+        "HS25",
+        "Core",
+      );
+    });
 
     expect(success).toBe(false);
   });
@@ -348,13 +384,15 @@ describe("useCurriculumPlan hook integration", () => {
 
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
-    const success = result.current.moveCourse(
-      "ABC123",
-      "FS26",
-      "FS26",
-      "Core",
-      "wishlist",
-    );
+    let success;
+    await act(async () => {
+      success = await result.current.moveCourse(
+        "ABC123",
+        "FS26",
+        "FS26",
+        "Core",
+      );
+    });
 
     expect(success).toBe(true);
   });
@@ -365,8 +403,8 @@ describe("useCurriculumPlan hook integration", () => {
     const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
 
     let success;
-    act(() => {
-      success = result.current.removeCourse("ABC123", "FS26", "wishlist");
+    await act(async () => {
+      success = await result.current.removeCourse("ABC123", "FS26");
     });
 
     expect(success).toBe(true);
