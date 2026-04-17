@@ -1,28 +1,24 @@
 import { apiClient } from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const BASE_URL = "http://localhost:57045/curriculum-plans";
+const BASE_URL = "https://api.shsg.ch/curriculum-plans";
 
 /**
  * Curriculum Plans API Client
  * All endpoints return full state: { activePlanId, plans: { [planId]: { name, placements } } }
+ * The server auto-creates a default plan on first GET, so the response is always populated.
  */
 
 /**
  * Fetch all curriculum plans for the authenticated user
  * @param {string} token - Authentication token
- * @returns {Promise<Object|null>} - { activePlanId, plans } or null if not found (new user)
+ * @returns {Promise<Object>} - { activePlanId, plans }
  */
 export const getCurriculumPlans = async (token) => {
   try {
     const res = await apiClient.get(BASE_URL, token);
     return res.data;
   } catch (err) {
-    // 404 means new user with no saved plans - return null, don't treat as error
-    if (err.response?.status === 404) {
-      console.log("[CurriculumPlansAPI] No saved plans found (new user)");
-      return null;
-    }
     errorHandlingService.handleError(err);
     console.error("[CurriculumPlansAPI] Error fetching plans:", err);
     throw err;

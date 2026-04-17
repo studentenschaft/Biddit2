@@ -21,9 +21,8 @@ const getInitialState = () => ({
     },
   },
   schemaVersion: 1,
-  isLoaded: false, // Track if data loaded from API
-  isNewUser: false, // True if no saved plans on server (404 on GET)
-  isDirty: false, // True if user has made changes that need syncing
+  isLoaded: false,
+  isDirty: false,
 });
 
 export const curriculumPlansRegistryState = atom({

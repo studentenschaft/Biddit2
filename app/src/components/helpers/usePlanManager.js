@@ -93,9 +93,9 @@ const usePlanManager = () => {
   const token = useRecoilValue(authTokenState);
 
   /**
-   * Load plans from API (call on CurriculumMap mount)
-   * If 404 (new user), uses default state and sets isNewUser flag.
-   * Data only syncs to server when user makes actual changes.
+   * Load plans from API (call on CurriculumMap mount).
+   * Server auto-creates a default plan on first access, so the response
+   * is always populated.
    */
   const loadPlans = useRecoilCallback(
     ({ snapshot, set }) =>
@@ -110,21 +110,6 @@ const usePlanManager = () => {
         try {
           const data = await getCurriculumPlans(token);
 
-          if (data === null) {
-            // New user - no saved plans on server
-            // Use default state, mark as new user (will sync on first change)
-            console.log("[usePlanManager] New user, using default plan state");
-            set(curriculumPlansRegistryState, (prev) => ({
-              ...prev,
-              isLoaded: true,
-              isNewUser: true,
-              isDirty: false,
-            }));
-            // curriculumPlanState already has defaults
-            return;
-          }
-
-          // Existing user - load from server
           const plans = {};
           Object.entries(data.plans).forEach(([planId, plan]) => {
             plans[planId] = {
@@ -140,11 +125,9 @@ const usePlanManager = () => {
             plans,
             schemaVersion: 1,
             isLoaded: true,
-            isNewUser: false,
             isDirty: false,
           });
 
-          // Load active plan data into curriculumPlanState
           const activePlan = data.plans[data.activePlanId];
           if (activePlan) {
             set(curriculumPlanState, {
@@ -161,11 +144,10 @@ const usePlanManager = () => {
           toast.error("Could not load your curriculum plans.", {
             toastId: "plans-load-error",
           });
-          // Mark as loaded anyway to prevent infinite retry, treat as new user
+          // Mark as loaded anyway to prevent infinite retry
           set(curriculumPlansRegistryState, (prev) => ({
             ...prev,
             isLoaded: true,
-            isNewUser: true,
           }));
         }
       },
@@ -477,11 +459,6 @@ const usePlanManager = () => {
             }));
           }
 
-          set(curriculumPlansRegistryState, (prev) => ({
-            ...prev,
-            isNewUser: false,
-          }));
-
           return true;
         } catch (error) {
           console.error("[usePlanManager] Error adding course:", error);
@@ -646,11 +623,6 @@ const usePlanManager = () => {
               lastModified: activePlan.lastModified,
             }));
           }
-
-          set(curriculumPlansRegistryState, (prev) => ({
-            ...prev,
-            isNewUser: false,
-          }));
 
           return id;
         } catch (error) {
@@ -939,11 +911,6 @@ const usePlanManager = () => {
               lastModified: activePlan.lastModified,
             }));
           }
-
-          set(curriculumPlansRegistryState, (prev) => ({
-            ...prev,
-            isNewUser: false,
-          }));
 
           return true;
         } catch (error) {
