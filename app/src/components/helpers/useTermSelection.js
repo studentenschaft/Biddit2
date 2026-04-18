@@ -8,6 +8,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 import { termListState } from "../recoil/termListState";
+import { getCurrentSemesterInfo } from "../recoil/curriculumPlanAtom";
 
 /**
  * SIMPLIFIED Custom hook to handle term selection logic
@@ -171,21 +172,29 @@ export function useTermSelection() {
             });
           });
 
-          // Find current terms from API
-          const currentTerms = termIdList.filter((term) => term.isCurrent);
           let latestValidTerm = null;
           let primaryTermShortName = null;
 
-          if (currentTerms.length > 0) {
-            primaryTermShortName = currentTerms[0].shortName;
+          // Prefer calendar-based semester, fall back to API's isCurrent flag
+          const { currentSemKey } = getCurrentSemesterInfo();
+          const calendarTerm = termIdList.find(
+            (t) => t.shortName === currentSemKey
+          );
+
+          if (calendarTerm) {
+            primaryTermShortName = calendarTerm.shortName;
             console.log(
-              "✅ [TERM SELECTION] Using API-marked current term:",
+              "✅ [TERM SELECTION] Using calendar-based current term:",
               primaryTermShortName
             );
           } else {
-            primaryTermShortName = termIdList[0]?.shortName;
+            const currentTerms = termIdList.filter((term) => term.isCurrent);
+            primaryTermShortName =
+              currentTerms.length > 0
+                ? currentTerms[0].shortName
+                : termIdList[0]?.shortName;
             console.log(
-              "⚠️ [TERM SELECTION] No current terms found, using first term:",
+              "⚠️ [TERM SELECTION] Calendar semester not in API list, falling back to:",
               primaryTermShortName
             );
           }

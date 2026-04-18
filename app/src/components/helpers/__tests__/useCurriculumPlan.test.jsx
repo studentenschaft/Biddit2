@@ -67,9 +67,9 @@ describe("useCurriculumPlan utilities", () => {
       const now = new Date();
       const currentYear = now.getFullYear() % 100;
       const currentMonth = now.getMonth();
-      const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+      const isCurrentlyHS = currentMonth === 0 || currentMonth >= 5;
       const currentSemYear =
-        isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+        isCurrentlyHS && currentMonth === 0 ? currentYear - 1 : currentYear;
       return `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
     };
 
@@ -78,9 +78,9 @@ describe("useCurriculumPlan utilities", () => {
       expect(getCurrentSemesterKey()).toBe("FS26");
     });
 
-    it("returns correct semester key for spring semester (June)", () => {
+    it("returns correct semester key for fall semester (June)", () => {
       vi.setSystemTime(new Date("2026-06-15"));
-      expect(getCurrentSemesterKey()).toBe("FS26");
+      expect(getCurrentSemesterKey()).toBe("HS26");
     });
 
     it("returns correct semester key for fall semester (September)", () => {
@@ -98,24 +98,19 @@ describe("useCurriculumPlan utilities", () => {
       expect(getCurrentSemesterKey()).toBe("HS25");
     });
 
-    it("handles February correctly (still HS as it overlaps)", () => {
-      // HSG: HS runs Sept-Feb, so February is still HS
+    it("handles February correctly (start of FS)", () => {
       vi.setSystemTime(new Date("2026-02-15"));
-      expect(getCurrentSemesterKey()).toBe("HS25");
+      expect(getCurrentSemesterKey()).toBe("FS26");
     });
 
-    it("handles July correctly (still FS)", () => {
-      // HSG: FS runs Feb-Aug, so July is still FS
+    it("handles July correctly (HS)", () => {
       vi.setSystemTime(new Date("2026-07-15"));
-      expect(getCurrentSemesterKey()).toBe("FS26");
+      expect(getCurrentSemesterKey()).toBe("HS26");
     });
 
-    it("handles August correctly (transition to HS)", () => {
-      // August (month 7, 0-indexed) is >= 8? No, so it's still FS
-      // Actually wait - the logic is currentMonth >= 8, and August is 7
-      // So August should be FS still. HS starts in September (8)
+    it("handles August correctly (HS)", () => {
       vi.setSystemTime(new Date("2026-08-15"));
-      expect(getCurrentSemesterKey()).toBe("FS26");
+      expect(getCurrentSemesterKey()).toBe("HS26");
     });
 
     it("handles September correctly (start of HS)", () => {
@@ -163,9 +158,9 @@ describe("useCurriculumPlan utilities", () => {
       const now = new Date();
       const currentYear = now.getFullYear() % 100;
       const currentMonth = now.getMonth();
-      const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+      const isCurrentlyHS = currentMonth === 0 || currentMonth >= 5;
       const currentSemYear =
-        isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+        isCurrentlyHS && currentMonth === 0 ? currentYear - 1 : currentYear;
       const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
       return compareSemesters(semesterKey, currentSemKey) < 0;
     };
@@ -195,9 +190,9 @@ describe("useCurriculumPlan utilities", () => {
       const now = new Date();
       const currentYear = now.getFullYear() % 100;
       const currentMonth = now.getMonth();
-      const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+      const isCurrentlyHS = currentMonth === 0 || currentMonth >= 5;
       const currentSemYear =
-        isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+        isCurrentlyHS && currentMonth === 0 ? currentYear - 1 : currentYear;
       const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
 
       const nextSemType = isCurrentlyHS ? "FS" : "HS";

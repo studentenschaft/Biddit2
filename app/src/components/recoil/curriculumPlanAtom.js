@@ -179,7 +179,7 @@ export const getNextSemesterKey = (semesterKey) => {
 
 /**
  * Helper: Get current semester info based on current date
- * HSG academic calendar: HS = September-February, FS = February-July
+ * HSG academic calendar: FS = Feb–May (months 1-4), HS = Jun–Jan (months 0, 5-11)
  *
  * @returns {{ currentSemKey: string, isCurrentlyHS: boolean, currentSemYear: number, nextSemKey: string }}
  */
@@ -188,12 +188,12 @@ export const getCurrentSemesterInfo = () => {
   const currentYear = now.getFullYear() % 100;
   const currentMonth = now.getMonth();
 
-  // HS runs Sept-Feb (months 8-1), FS runs Feb-Jul (months 1-7)
-  const isCurrentlyHS = currentMonth >= 8 || currentMonth <= 1;
+  // FS = Feb–May (months 1-4), everything else is HS
+  const isCurrentlyHS = currentMonth === 0 || currentMonth >= 5;
 
-  // If we're in Jan/Feb of HS, the year code is previous year (e.g., Jan 2025 = HS24)
+  // Jan (month 0) belongs to previous year's HS (e.g., Jan 2026 = HS25)
   const currentSemYear =
-    isCurrentlyHS && currentMonth <= 1 ? currentYear - 1 : currentYear;
+    isCurrentlyHS && currentMonth === 0 ? currentYear - 1 : currentYear;
 
   const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
   const nextSemKey = getNextSemesterKey(currentSemKey);

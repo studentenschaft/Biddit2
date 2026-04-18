@@ -128,18 +128,15 @@ describe('getCurrentSemesterInfo', () => {
   it('returns FS during February (boundary month)', () => {
     vi.setSystemTime(new Date('2026-02-15'));
     const info = getCurrentSemesterInfo();
-    // February (month 1) is <= 1, so isCurrentlyHS = true
-    // But the year code: month <= 1 means currentSemYear = currentYear - 1
-    expect(info.currentSemKey).toBe('HS25');
-    expect(info.isCurrentlyHS).toBe(true);
+    expect(info.currentSemKey).toBe('FS26');
+    expect(info.isCurrentlyHS).toBe(false);
   });
 
-  it('returns FS during August (month 7 is still FS; HS starts in September)', () => {
+  it('returns HS during August (month 7 starts HS)', () => {
     vi.setSystemTime(new Date('2025-08-15'));
     const info = getCurrentSemesterInfo();
-    // Month 7 (August, 0-indexed) is < 8, so it's still FS
-    expect(info.currentSemKey).toBe('FS25');
-    expect(info.isCurrentlyHS).toBe(false);
+    expect(info.currentSemKey).toBe('HS25');
+    expect(info.isCurrentlyHS).toBe(true);
   });
 
   it('returns HS during September (month 8 starts HS)', () => {
@@ -149,11 +146,11 @@ describe('getCurrentSemesterInfo', () => {
     expect(info.isCurrentlyHS).toBe(true);
   });
 
-  it('returns FS during July', () => {
+  it('returns HS during July', () => {
     vi.setSystemTime(new Date('2025-07-15'));
     const info = getCurrentSemesterInfo();
-    expect(info.currentSemKey).toBe('FS25');
-    expect(info.isCurrentlyHS).toBe(false);
+    expect(info.currentSemKey).toBe('HS25');
+    expect(info.isCurrentlyHS).toBe(true);
   });
 });
 
