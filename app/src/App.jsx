@@ -23,6 +23,7 @@ import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
 
+
 // Initialize GA4 with Measurement ID and enable debug mode (for now)
 const GA_MEASUREMENT_ID = "G-BMG2V9ZX73";
 ReactGA.initialize(GA_MEASUREMENT_ID, { debug: true });
@@ -62,6 +63,7 @@ const App = () => {
           <TrackPageView /> {/* Tracks active users & page views */}
           <AuthenticatedTemplate>
             <StudyondBanner />
+
             <Routes>
               <Route
                 path="/"

@@ -14,6 +14,9 @@ export const extractBaseName = (courseName) => {
     .replace(/\s*:\s*Coaching\s*\d*\s*$/i, '')
     // Coaching Gruppe/Group N at end
     .replace(/\s*Coaching\s*(Gruppe|Group)\s*\d*\s*$/i, '')
+    // Case Studies / Fallstudien suffixes
+    .replace(/\s*:\s*(?:Case Stud(?:y|ies)|Fallstudien?)\b.*$/i, '')
+    .replace(/\s*(?:Case Studies|Case Study|Fallstudien?)\s*\d*\s*/gi, '')
     .replace(/\s*\d+\s*$/, '')
     .replace(/\s*[,-]\s*$/, '')
     .trim();
@@ -36,6 +39,13 @@ const getCourseRootKey = (course) => {
   const m = raw.match(/^(\d+),(\d+),/);
   if (m) return `${m[1]},${m[2]}`;
   return null;
+};
+
+const getThirdSegment = (course) => {
+  const raw = course?.courseNumber || course?.courseId || course?.id || '';
+  const cn = typeof raw === 'string' ? raw : '';
+  const m = cn.match(/^\d+,\d+,(\d+)\./);
+  return m ? parseInt(m[1], 10) : null;
 };
 
 // Prefer grouping by normalized identifier root; fallback to base-name grouping.
@@ -66,8 +76,17 @@ export const hasMainCourse = (courseGroup) => {
   if (!Array.isArray(courseGroup)) {
     return false;
   }
-  
+
   return courseGroup.some(course => !isExerciseGroup(course));
+};
+
+export const isLikelySubgroupByNumber = (course, courseGroup) => {
+  const segment = getThirdSegment(course);
+  if (segment === null || segment < 2) return false;
+
+  return courseGroup.some(
+    sibling => sibling !== course && getThirdSegment(sibling) === 1
+  );
 };
 
 const createCourseIdentifier = (course) => {
@@ -91,11 +110,31 @@ export const processExerciseGroupECTS = (courses) => {
     // Only zero exercise groups when main course exists in same group
     if (courseGroup.length > 1 && hasMainCourse(courseGroup)) {
       courseGroup.forEach(course => {
-        if (isExerciseGroup(course)) {
+        if (isExerciseGroup(course) || isLikelySubgroupByNumber(course, courseGroup)) {
           const identifier = createCourseIdentifier(course);
           if (identifier) {
             shouldZeroECTS.add(identifier);
           }
+        }
+      });
+
+      // Same-name deduplication fallback:
+      // When courses share an identical name (e.g., "Einführung in das
+      // Operations-Management" for both 4,140,1.00 and 4,140,2.00), keep
+      // credits on the first occurrence and zero the rest.
+      const namesSeen = new Set();
+      courseGroup.forEach(course => {
+        const name = course.name || '';
+        if (!name) return;
+        const identifier = createCourseIdentifier(course);
+        if (namesSeen.has(name)) {
+          // Only deduplicate when the course has a unique identifier
+          // (not just a name fallback) to avoid zeroing ALL same-named courses
+          if (identifier && identifier !== name && !shouldZeroECTS.has(identifier)) {
+            shouldZeroECTS.add(identifier);
+          }
+        } else {
+          namesSeen.add(name);
         }
       });
     }
@@ -104,7 +143,7 @@ export const processExerciseGroupECTS = (courses) => {
   return courses.map(course => {
     const identifier = createCourseIdentifier(course);
     
-    if (isExerciseGroup(course) && shouldZeroECTS.has(identifier)) {
+    if (shouldZeroECTS.has(identifier)) {
       return { ...course, credits: 0 };
     }
     
@@ -140,12 +179,11 @@ export const getProcessingMetadata = (courses) => {
   courses.forEach((originalCourse, index) => {
     const processedCourse = processedCourses[index];
     
-    if (isExerciseGroup(originalCourse)) {
-      if (processedCourse.credits === 0 && originalCourse.credits > 0) {
-        exerciseGroupsZeroed++;
-      } else if (processedCourse.credits > 0) {
-        standaloneExerciseGroupsPreserved++;
-      }
+    const wasZeroed = processedCourse.credits === 0 && originalCourse.credits > 0;
+    if (wasZeroed) {
+      exerciseGroupsZeroed++;
+    } else if (isExerciseGroup(originalCourse) && processedCourse.credits > 0) {
+      standaloneExerciseGroupsPreserved++;
     }
   });
   

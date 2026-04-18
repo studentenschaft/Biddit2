@@ -7,13 +7,24 @@ import {
   IconX,
 } from "@tabler/icons-react";
 
+const getLastResetDate = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  // Reset every semester: Aug 1 and Jan 1
+  if (month >= 7) return new Date(year, 7, 1);
+  return new Date(year, 0, 1);
+};
+
 const StudyondBanner = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    const isDialogClosed = localStorage.getItem("studyondBannerClosed");
-    if (isDialogClosed !== "true") {
+    const dismissedAt = localStorage.getItem("studyondBannerDismissedAt");
+    const shouldShow =
+      !dismissedAt || new Date(dismissedAt) < getLastResetDate();
+    if (shouldShow) {
       setTimeout(() => {
         setIsVisible(true);
         setTimeout(() => setIsAnimating(true), 200);
@@ -25,7 +36,7 @@ const StudyondBanner = () => {
     setIsAnimating(false);
     setTimeout(() => {
       setIsVisible(false);
-      localStorage.setItem("studyondBannerClosed", "true");
+      localStorage.setItem("studyondBannerDismissedAt", new Date().toISOString());
     }, 300);
   };
 
@@ -51,7 +62,7 @@ const StudyondBanner = () => {
         </button>
         <div className="mb-3">
           <h3 className="text-[27px] leading-[34px] font-semibold text-black mb-1.5">
-            Looking for Thesis Topics or Interview Partners?
+            Find Your Thesis Topic in Minutes
           </h3>
           <span className="text-sm text-gray-500 leading-relaxed">
             We partnered with{" "}
@@ -66,7 +77,7 @@ const StudyondBanner = () => {
           </a>
 
           <span className="text-sm text-gray-500 leading-relaxed">
-            to connect you with HSG supervisors and companies -{" "}
+            to connect you with real thesis topics from real companies -{" "}
           </span>
           <span className="text-sm text-black font-bold leading-relaxed">
             for free!
@@ -83,29 +94,10 @@ const StudyondBanner = () => {
             <div>
               <p className="text-sm text-gray-700 leading-relaxed">
                 <span className="font-bold text-black">
-                  Explore 400+ Thesis Topics{" "}
+                  Browse 7,500+ Thesis Topics{" "}
                 </span>
                 <span className="font-normal text-gray-500">
-                  from HSG professors and partner companies
-                </span>
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 max-w-xs pl-1">
-            <div className="flex-shrink-0 mt-0.5">
-              <div className="size-5 rounded-full flex items-center justify-center">
-                <IconMessages stroke="2" className="size-5 text-black" />
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-gray-700 leading-relaxed">
-                <span className="font-bold text-black">
-                  Find Interview Partners{" "}
-                </span>
-
-                <span className="text-sm font-normal text-gray-500">
-                  and contacts for your thesis or course projects
+                  from 140+ companies across Switzerland
                 </span>
               </p>
             </div>
@@ -118,13 +110,32 @@ const StudyondBanner = () => {
               </div>
             </div>
             <div>
-              <p className="text-sm leading-relaxed">
+              <p className="text-sm text-gray-700 leading-relaxed">
                 <span className="font-bold bg-gradient-to-r from-purple-500 via-blue-700 to-blue-500 bg-clip-text text-transparent">
-                  AI Topic Suggestions{" "}
+                  AI-Powered Matching{" "}
                 </span>
 
                 <span className="text-sm font-normal text-gray-500">
-                  to find the perfect topic or internship based on your profile
+                  suggests topics based on your field and interests
+                </span>
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3 max-w-xs pl-1">
+            <div className="flex-shrink-0 mt-0.5">
+              <div className="size-5 rounded-full flex items-center justify-center">
+                <IconMessages stroke="2" className="size-5 text-black" />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm leading-relaxed">
+                <span className="font-bold text-black">
+                  Internships & Expert Access{" "}
+                </span>
+
+                <span className="text-sm font-normal text-gray-500">
+                  find internships and interview partners for your research
                 </span>
               </p>
             </div>
