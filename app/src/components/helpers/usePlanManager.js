@@ -136,6 +136,7 @@ const usePlanManager = () => {
                 activePlan.placements,
               ),
               semesterNotes: activePlan.semesterNotes || {},
+              wishlistOverrides: activePlan.wishlistOverrides || {},
               lastModified: activePlan.lastModified,
             });
           }
@@ -167,7 +168,7 @@ const usePlanManager = () => {
         if (!registry.plans[targetPlanId]) return;
 
         try {
-          // Save current plan first (including semesterNotes)
+          // Save current plan first (including semesterNotes and wishlistOverrides)
           const currentData = await snapshot.getPromise(curriculumPlanState);
           await upsertPlan(
             registry.activePlanId,
@@ -176,6 +177,7 @@ const usePlanManager = () => {
                 currentData.plannedItems,
               ),
               semesterNotes: currentData.semesterNotes || {},
+              wishlistOverrides: currentData.wishlistOverrides || {},
             },
             token,
           );
@@ -191,6 +193,7 @@ const usePlanManager = () => {
               targetPlan?.placements || [],
             ),
             semesterNotes: targetPlan?.semesterNotes || {},
+            wishlistOverrides: targetPlan?.wishlistOverrides || {},
             lastModified: targetPlan?.lastModified,
           });
 
@@ -227,6 +230,8 @@ const usePlanManager = () => {
               placements: convertPlannedItemsToPlacements(
                 currentData.plannedItems,
               ),
+              semesterNotes: currentData.semesterNotes || {},
+              wishlistOverrides: currentData.wishlistOverrides || {},
             },
             token,
           );
@@ -284,6 +289,8 @@ const usePlanManager = () => {
               placements: convertPlannedItemsToPlacements(
                 currentData.plannedItems,
               ),
+              semesterNotes: currentData.semesterNotes || {},
+              wishlistOverrides: currentData.wishlistOverrides || {},
             },
             token,
           );
@@ -305,6 +312,8 @@ const usePlanManager = () => {
             set(curriculumPlanState, {
               ...getDefaultPlanState(),
               plannedItems: convertPlacementsToPlannedItems(newPlan.placements),
+              semesterNotes: newPlan.semesterNotes || {},
+              wishlistOverrides: newPlan.wishlistOverrides || {},
             });
 
             set(curriculumPlansRegistryState, {
@@ -360,6 +369,8 @@ const usePlanManager = () => {
               plannedItems: convertPlacementsToPlannedItems(
                 newActivePlan?.placements || [],
               ),
+              semesterNotes: newActivePlan?.semesterNotes || {},
+              wishlistOverrides: newActivePlan?.wishlistOverrides || {},
             });
           }
 
@@ -872,10 +883,41 @@ const usePlanManager = () => {
     [token],
   );
 
+  const updateWishlistOverridesById = useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (wishlistOverrides) => {
+        const registry = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+
+        if (!registry.activePlanId) return false;
+
+        try {
+          await upsertPlan(
+            registry.activePlanId,
+            { wishlistOverrides },
+            token,
+          );
+
+          set(curriculumPlanState, (prev) => ({
+            ...prev,
+            wishlistOverrides,
+          }));
+
+          return true;
+        } catch (error) {
+          console.error("[usePlanManager] Error updating wishlist overrides:", error);
+          toast.error("Could not update course visibility.", {
+            toastId: "wishlist-override-error",
+          });
+          return false;
+        }
+      },
+    [token],
+  );
+
   /**
    * Atomically sync the full active plan's placements and notes to the API.
-   * Use this when a local state transformation (e.g. cross-semester move)
-   * must be persisted as a single operation to avoid partial failures.
    *
    * @param {Object} plannedItems - The full plannedItems object (by semester)
    * @param {Object} [semesterNotes] - Optional semester notes to sync
@@ -938,6 +980,7 @@ const usePlanManager = () => {
     updatePlacementById,
     importSelectedCourses,
     setSemesterNoteById,
+    updateWishlistOverridesById,
     syncActivePlan,
   };
 };

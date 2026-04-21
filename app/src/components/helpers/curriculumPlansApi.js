@@ -45,7 +45,7 @@ export const setActivePlanApi = async (planId, token) => {
 /**
  * Create or update a plan
  * @param {string} planId - Plan ID
- * @param {Object} data - { name?, placements? }
+ * @param {Object} data - { name?, placements?, semesterNotes?, wishlistOverrides? }
  * @param {string} token - Authentication token
  * @returns {Promise<Object>} - Updated state
  */

@@ -32,6 +32,7 @@ export const useCurriculumPlan = () => {
     removeCourseById,
     updatePlacementById,
     setSemesterNoteById,
+    updateWishlistOverridesById,
     syncActivePlan,
   } = usePlanManager();
 
@@ -175,20 +176,38 @@ export const useCurriculumPlan = () => {
   );
 
   /**
-   * Remove a course from the plan
-   * Always removes via curriculum-plans API.
+   * Remove a course from the plan.
+   * For plan-sourced courses, removes via API.
+   * For wishlist-sourced courses, marks them as removed in wishlistOverrides
+   * so the selector filters them out.
    *
    * @param {string} courseId - The course ID to remove
-   * @param {string} semesterKey - The semester to remove from (unused, kept for API compatibility)
+   * @param {object} [options] - Optional metadata
+   * @param {string} [options.source] - Where the course came from ("plan", "wishlist", "enrolled")
+   * @param {string} [options.semesterKey] - Semester the course belongs to (needed for wishlist overrides)
    * @returns {Promise<boolean>} - Whether the removal was successful
    */
   const removeCourse = useCallback(
-    async (courseId) => {
-      // Always remove via curriculum-plans API
+    async (courseId, { source, semesterKey: semKey } = {}) => {
+      if (source === "wishlist" && semKey) {
+        const existing = curriculumPlan.wishlistOverrides?.[semKey]?.removedCourseIds || [];
+        if (existing.includes(courseId)) return true;
+
+        const updatedOverrides = {
+          ...curriculumPlan.wishlistOverrides,
+          [semKey]: {
+            ...curriculumPlan.wishlistOverrides?.[semKey],
+            removedCourseIds: [...existing, courseId],
+          },
+        };
+
+        return updateWishlistOverridesById(updatedOverrides);
+      }
+
       await removeCourseById(courseId);
       return true;
     },
-    [removeCourseById],
+    [removeCourseById, curriculumPlan.wishlistOverrides, updateWishlistOverridesById],
   );
 
   /**

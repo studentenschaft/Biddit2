@@ -212,7 +212,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
       if (isPlaceholder) {
         removePlaceholder(itemId);
       } else {
-        removeCourse(itemId);
+        removeCourse(itemId, { source, semesterKey });
       }
     } catch (error) {
       if (import.meta.env.DEV) {

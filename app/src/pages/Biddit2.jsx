@@ -145,7 +145,7 @@ export default function Biddit2() {
             await removePlaceholder(item.id);
           } else {
             const courseId = item.courseId || item.id;
-            await removeCourse(courseId);
+            await removeCourse(courseId, { source: dragData.source, semesterKey: dragData.semesterKey });
           }
         }
         return;
@@ -163,7 +163,7 @@ export default function Biddit2() {
           await removePlaceholder(item.id);
         } else {
           const courseId = item.courseId || item.id;
-          await removeCourse(courseId);
+          await removeCourse(courseId, { source: dragData.source, semesterKey: dragData.semesterKey });
         }
         return;
       }

@@ -335,7 +335,7 @@ const CurriculumGrid = ({
                                 parent.isComplete ? "bg-green-100" : "bg-gray-200"
                               }`}
                               style={{
-                                width: `${Math.min(100, Math.round(((parent.earnedCredits || 0) / targetCredits) * 100))}%`,
+                                width: `${Math.min(100, Math.round((((parent.earnedCredits || 0) + (parent.plannedCredits || 0)) / targetCredits) * 100))}%`,
                               }}
                             />
                           )}
@@ -352,7 +352,7 @@ const CurriculumGrid = ({
                                       : "font-medium"
                                   }
                                 >
-                                  {parent.earnedCredits || 0}
+                                  {(parent.earnedCredits || 0) + (parent.plannedCredits || 0)}
                                 </span>
                                 <span className="text-gray-500">
                                   {" "}
@@ -423,7 +423,7 @@ const CurriculumGrid = ({
                         parent.isComplete ? 'bg-green-100' : 'bg-gray-200'
                       }`}
                       style={{
-                        width: `${Math.min(100, Math.round(((parent.earnedCredits || 0) / targetCredits) * 100))}%`,
+                        width: `${Math.min(100, Math.round((((parent.earnedCredits || 0) + (parent.plannedCredits || 0)) / targetCredits) * 100))}%`,
                       }}
                     />
                   )}
@@ -452,7 +452,7 @@ const CurriculumGrid = ({
                         {targetCredits > 0 && (
                           <span className="text-[10px] text-gray-600">
                             <span className={parent.isComplete ? "font-semibold text-green-700" : "font-medium"}>
-                              {parent.earnedCredits || 0}
+                              {(parent.earnedCredits || 0) + (parent.plannedCredits || 0)}
                             </span>
                             <span className="text-gray-500"> / {targetCredits} ECTS</span>
                           </span>
