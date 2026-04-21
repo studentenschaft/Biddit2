@@ -285,15 +285,33 @@ export function useTermSelection() {
               const termData = allTerms.find((t) => t.shortName === shortName);
               if (!termData) return null;
 
-              // Find the current semester as marked by the API
-              const currentSemester =
-                currentTerms.length > 0 ? currentTerms[0].shortName : null;
+              // Use calendar-based current semester (not the API's isCurrent flag)
+              // The API may mark a future term as "current" before courses are published
+              const calendarCurrent = latestValidTerm || primaryTermShortName;
 
-              // Determine if this is a future semester (newer than current semester)
-              const isFuture = currentSemester
+              const isFuture = calendarCurrent
                 ? allSortedTerms.indexOf(shortName) >
-                  allSortedTerms.indexOf(currentSemester)
+                  allSortedTerms.indexOf(calendarCurrent)
                 : false;
+
+              // For future semesters, compute same-season previous year as reference
+              let referenceSemester = termData.referenceSemester || null;
+              let referenceCisId = null;
+              if (isFuture && !referenceSemester) {
+                const season = shortName.slice(0, 2);
+                const year = parseInt(shortName.slice(2), 10);
+                if (!isNaN(year) && year > 0) {
+                  const refName = `${season}${(year - 1).toString().padStart(2, "0")}`;
+                  const refTerm = allTerms.find((t) => t.shortName === refName);
+                  if (refTerm) {
+                    referenceSemester = refName;
+                    referenceCisId = refTerm.cisId;
+                  }
+                }
+              } else if (referenceSemester) {
+                const refTerm = allTerms.find((t) => t.shortName === referenceSemester);
+                referenceCisId = refTerm?.cisId || null;
+              }
 
               // isProjected = artificially generated (not from API)
               // isFuture = newer than current semester (could be real API data or artificial)
@@ -304,6 +322,8 @@ export function useTermSelection() {
                 isCurrent: termData.isCurrent || false,
                 isProjected: termData.isFuture || false, // Only artificial semesters are "projected"
                 isFuture: isFuture, // Any semester newer than current semester
+                referenceSemester,
+                referenceCisId,
               };
             })
             .filter(Boolean);

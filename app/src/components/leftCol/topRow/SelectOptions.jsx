@@ -44,7 +44,7 @@ export default function SelectSemester() {
   const selectedSemesterData = termListObject?.find(
     (term) => term.shortName === selectedSemesterShortName
   );
-  const isFutureSemester = selectedSemesterData?.isProjected || false;
+  const isFutureSemester = selectedSemesterData?.isProjected || selectedSemesterData?.isFuture || false;
 
   // SIMPLIFIED: Create sorted term names from termListObject
   const sortedTermShortNames =

@@ -82,18 +82,57 @@ export const useCourseInfoData = (params) => {
           `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} course information sheets for ${selectedSemester.shortName}`
         );
 
-        // Debug: Log the response if we get 0 courses
-        if (response.data.length === 0) {
-          console.warn(
-            `⚠️ [DEBUG] No courses returned for semester ${selectedSemester.shortName} (CIS ID: ${selectedSemester.cisId}). This might be normal for future semesters.`
+        // Future semester with no published courses: fall back to same-season previous year
+        if (
+          response.data.length === 0 &&
+          selectedSemester.isFuture &&
+          selectedSemester.referenceCisId &&
+          selectedSemester.referenceCisId !== selectedSemester.cisId
+        ) {
+          console.log(
+            `🔄 [SIMPLIFIED] No courses for ${selectedSemester.shortName} — falling back to reference semester ${selectedSemester.referenceSemester} (CIS ID: ${selectedSemester.referenceCisId})`
+          );
+
+          try {
+            const refResponse = await axios.get(
+              `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.referenceCisId}`,
+              {
+                headers: {
+                  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+                  "X-RequestedLanguage": "EN",
+                  "API-Version": "1",
+                  Authorization: `Bearer ${authToken}`,
+                },
+              }
+            );
+
+            console.log(
+              `✅ [SIMPLIFIED] Fetched ${refResponse.data.length} courses from reference semester ${selectedSemester.referenceSemester} for ${selectedSemester.shortName}`
+            );
+
+            updateUnifiedAvailableCourses(
+              selectedSemester.shortName,
+              refResponse.data
+            );
+          } catch (refError) {
+            console.warn(
+              `⚠️ Failed to fetch reference semester ${selectedSemester.referenceSemester} for ${selectedSemester.shortName}`,
+              refError
+            );
+            updateUnifiedAvailableCourses(selectedSemester.shortName, []);
+          }
+        } else {
+          if (response.data.length === 0) {
+            console.warn(
+              `⚠️ [DEBUG] No courses returned for semester ${selectedSemester.shortName} (CIS ID: ${selectedSemester.cisId}). This might be normal for future semesters.`
+            );
+          }
+
+          updateUnifiedAvailableCourses(
+            selectedSemester.shortName,
+            response.data
           );
         }
-
-        // Update ONLY unified available courses state (no more legacy atoms)
-        updateUnifiedAvailableCourses(
-          selectedSemester.shortName,
-          response.data
-        );
       } catch (error) {
         console.error("❌ Error fetching course data:", error);
         errorHandlingService.handleError(error);
