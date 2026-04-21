@@ -324,7 +324,6 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
           {isPlaceholder && isEditable ? (
             <button
               onClick={handleLabelClick}
-              onPointerDown={(e) => e.stopPropagation()}
               className="text-left truncate hover:underline w-full"
             >
               {displayName}
@@ -340,7 +339,6 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
         {isPlaceholder && isEditable ? (
           <button
             onClick={handleCreditsClick}
-            onPointerDown={(e) => e.stopPropagation()}
             className="text-gray-500 hover:underline hover:text-gray-700"
             title="Click to edit credits"
           >
@@ -366,7 +364,6 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
         {isEditable && (
           <button
             onClick={handleNoteClick}
-            onPointerDown={(e) => e.stopPropagation()}
             className={`p-0.5 rounded transition-colors ${
               note
                 ? "text-blue-500 hover:text-blue-600"
@@ -389,7 +386,6 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
         {isEditable && (
           <button
             onClick={handleColorClick}
-            onPointerDown={(e) => e.stopPropagation()}
             className="p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100"
             title="Change color"
           >
@@ -411,7 +407,6 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
         {isRemovable && (
           <button
             onClick={handleRemove}
-            onPointerDown={(e) => e.stopPropagation()}
             className="p-0.5 rounded hover:bg-red-200 text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100"
             title="Remove from plan"
           >
