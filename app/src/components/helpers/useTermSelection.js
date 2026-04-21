@@ -172,6 +172,7 @@ export function useTermSelection() {
             });
           });
 
+          const currentTerms = termIdList.filter((term) => term.isCurrent);
           let latestValidTerm = null;
           let primaryTermShortName = null;
 
@@ -188,7 +189,6 @@ export function useTermSelection() {
               primaryTermShortName
             );
           } else {
-            const currentTerms = termIdList.filter((term) => term.isCurrent);
             primaryTermShortName =
               currentTerms.length > 0
                 ? currentTerms[0].shortName
