@@ -6,32 +6,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
+import { curriculumPlanState } from "../../recoil/curriculumPlanAtom";
+import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
+import * as curriculumPlansApi from "../curriculumPlansApi";
 
 // Mock the API layer so hook integration tests don't make real HTTP calls.
 // Returns a response shaped like the real API: { activePlanId, plans }.
-const mockApiResponse = {
-  activePlanId: "plan-default",
-  plans: {
-    "plan-default": {
-      name: "My Plan",
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString(),
-      placements: [],
-      semesterNotes: {},
+vi.mock("../curriculumPlansApi", () => {
+  const response = {
+    activePlanId: "plan-default",
+    plans: {
+      "plan-default": {
+        name: "My Plan",
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        placements: [],
+        semesterNotes: {},
+      },
     },
-  },
-};
+  };
 
-vi.mock("../curriculumPlansApi", () => ({
-  getCurriculumPlans: vi.fn().mockResolvedValue(mockApiResponse),
-  setActivePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
-  upsertPlan: vi.fn().mockResolvedValue(mockApiResponse),
-  deletePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
-  duplicatePlanApi: vi.fn().mockResolvedValue(mockApiResponse),
-  upsertPlacement: vi.fn().mockResolvedValue(mockApiResponse),
-  removePlacement: vi.fn().mockResolvedValue(mockApiResponse),
-  setSemesterNoteApi: vi.fn().mockResolvedValue(mockApiResponse),
-}));
+  return {
+    getCurriculumPlans: vi.fn().mockResolvedValue(response),
+    setActivePlanApi: vi.fn().mockResolvedValue(response),
+    upsertPlan: vi.fn().mockResolvedValue(response),
+    deletePlanApi: vi.fn().mockResolvedValue(response),
+    duplicatePlanApi: vi.fn().mockResolvedValue(response),
+    upsertPlacement: vi.fn().mockResolvedValue(response),
+    removePlacement: vi.fn().mockResolvedValue(response),
+    setSemesterNoteApi: vi.fn().mockResolvedValue(response),
+  };
+});
 
 // Helper for semester comparison (extracted from the hook logic)
 const compareSemesters = (a, b) => {
@@ -262,6 +267,7 @@ describe("useCurriculumPlan hook integration", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-03-15"));
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
@@ -483,5 +489,145 @@ describe("useCurriculumPlan hook integration", () => {
     });
 
     expect(success).toBe(true);
+  });
+
+  it("moveCourse preserves note and colorCode when dragged", async () => {
+    const { useCurriculumPlan } = await import("../useCurriculumPlan");
+
+    const wrapperWithState = ({ children }) => (
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(curriculumPlanState, {
+            plannedItems: {
+              FS26: [
+                {
+                  type: "course",
+                  courseId: "ABC123",
+                  shortName: "Intro",
+                  categoryPath: "Core",
+                  note: "keep this note",
+                  colorCode: "#3B82F6",
+                },
+              ],
+            },
+            wishlistOverrides: {},
+            semesterNotes: {},
+            specialization: null,
+            validations: {
+              conflicts: [],
+              categoryWarnings: [],
+              availabilityWarnings: [],
+            },
+            syncStatus: {
+              lastSynced: null,
+              pendingChanges: [],
+              syncError: null,
+            },
+            lastModified: null,
+          });
+
+          set(unifiedCourseDataState, {
+            semesters: {
+              FS26: {
+                available: [{ courseNumber: "ABC123", shortName: "Intro" }],
+                enrolledIds: [],
+                selectedIds: [],
+              },
+            },
+            selectedSemester: "FS26",
+            latestValidTerm: null,
+            selectedCourseInfo: null,
+          });
+        }}
+      >
+        {children}
+      </RecoilRoot>
+    );
+
+    const { result } = renderHook(() => useCurriculumPlan(), {
+      wrapper: wrapperWithState,
+    });
+
+    await act(async () => {
+      await result.current.moveCourse("ABC123", "FS26", "FS26", "Elective");
+    });
+
+    const [, , payload] = curriculumPlansApi.upsertPlacement.mock.calls[0];
+    expect(payload).toMatchObject({
+      type: "course",
+      courseId: "ABC123",
+      semester: "FS26",
+      categoryPath: "Elective",
+      note: "keep this note",
+      colorCode: "#3B82F6",
+    });
+  });
+
+  it("movePlaceholder preserves note and colorCode when dragged", async () => {
+    const { useCurriculumPlan } = await import("../useCurriculumPlan");
+
+    const wrapperWithState = ({ children }) => (
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(curriculumPlanState, {
+            plannedItems: {
+              FS26: [
+                {
+                  type: "placeholder",
+                  id: "placeholder-1",
+                  label: "Elective",
+                  credits: 6,
+                  categoryPath: "Core",
+                  note: "placeholder note",
+                  colorCode: "#8B5CF6",
+                },
+              ],
+            },
+            wishlistOverrides: {},
+            semesterNotes: {},
+            specialization: null,
+            validations: {
+              conflicts: [],
+              categoryWarnings: [],
+              availabilityWarnings: [],
+            },
+            syncStatus: {
+              lastSynced: null,
+              pendingChanges: [],
+              syncError: null,
+            },
+            lastModified: null,
+          });
+        }}
+      >
+        {children}
+      </RecoilRoot>
+    );
+
+    const { result } = renderHook(() => useCurriculumPlan(), {
+      wrapper: wrapperWithState,
+    });
+
+    await act(async () => {
+      await result.current.movePlaceholder(
+        "placeholder-1",
+        "FS26",
+        "HS26",
+        "Elective",
+      );
+    });
+
+    const [, placementId, payload] = curriculumPlansApi.upsertPlacement.mock
+      .calls[0];
+    expect(placementId).toBe("placeholder-1");
+    expect(payload).toMatchObject({
+      type: "placeholder",
+      semester: "HS26",
+      categoryPath: "Elective",
+      label: "Elective",
+      credits: 6,
+      note: "placeholder note",
+      colorCode: "#8B5CF6",
+    });
   });
 });

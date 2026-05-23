@@ -33,7 +33,6 @@ export const useCurriculumPlan = () => {
     updatePlacementById,
     setSemesterNoteById,
     updateWishlistOverridesById,
-    syncActivePlan,
   } = usePlanManager();
 
   /**
@@ -78,8 +77,6 @@ export const useCurriculumPlan = () => {
         return false;
       }
 
-      const isSameSemester = fromSemester === toSemester;
-
       // Get full course data for enrichment
       const availableCourses =
         unifiedCourseData.semesters?.[fromSemester]?.available || [];
@@ -87,52 +84,28 @@ export const useCurriculumPlan = () => {
         (c) => c.courseNumber === courseId || c.id === courseId,
       );
 
-      // Same-semester category move: just update categoryPath via API
-      if (isSameSemester) {
-        await updatePlacementById(
-          `course-${courseId}`,
-          toSemester,
-          toCategoryPath,
-          {
-            type: "course",
-            courseId,
-            shortName: courseData?.shortName,
-          },
-        );
-        return true;
-      }
-
-      // Cross-semester move: build new plannedItems locally and sync atomically.
-      // Using two separate API calls (remove + add) could lose data if the
-      // second call fails — a single upsertPlan call avoids this.
-      const updatedItems = { ...curriculumPlan.plannedItems };
-
-      // Remove from source semester
-      updatedItems[fromSemester] = (updatedItems[fromSemester] || []).filter(
-        (item) => item.courseId !== courseId,
+      // Preserve existing placement metadata (note/color/shortName) when moving.
+      // The backend upsert endpoint fully replaces placement data, so omitting
+      // fields here would clear them.
+      const sourceItems = curriculumPlan.plannedItems[fromSemester] || [];
+      const sourcePlacement = sourceItems.find(
+        (item) => item.courseId === courseId,
       );
 
-      // Add to target semester
-      updatedItems[toSemester] = [
-        ...(updatedItems[toSemester] || []),
+      return updatePlacementById(
+        `course-${courseId}`,
+        toSemester,
+        toCategoryPath,
         {
           type: "course",
           courseId,
-          shortName: courseData?.shortName,
-          categoryPath: toCategoryPath,
-          addedAt: new Date().toISOString(),
+          shortName: sourcePlacement?.shortName ?? courseData?.shortName,
+          note: sourcePlacement?.note,
+          colorCode: sourcePlacement?.colorCode,
         },
-      ];
-
-      return syncActivePlan(updatedItems, curriculumPlan.semesterNotes);
+      );
     },
-    [
-      isSemesterCompleted,
-      unifiedCourseData,
-      curriculumPlan,
-      updatePlacementById,
-      syncActivePlan,
-    ],
+    [isSemesterCompleted, unifiedCourseData, curriculumPlan, updatePlacementById],
   );
 
   /**
@@ -295,11 +268,14 @@ export const useCurriculumPlan = () => {
         return false;
       }
 
-      // Update via API - includes semester, categoryPath, and placeholder data
+      // Update via API - includes semester, categoryPath, placeholder data,
+      // and preserves note/color metadata.
       return updatePlacementById(placeholderId, toSemester, toCategoryPath, {
         type: "placeholder",
         label: placeholder.label,
         credits: placeholder.credits,
+        note: placeholder.note,
+        colorCode: placeholder.colorCode,
       });
     },
     [isSemesterCompleted, curriculumPlan, updatePlacementById],
