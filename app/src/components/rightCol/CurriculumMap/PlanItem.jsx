@@ -15,7 +15,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { XIcon } from "@heroicons/react/solid";
 import { AnnotationIcon } from "@heroicons/react/outline";
-import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { useCurriculumPlanContext } from "./CurriculumPlanContext";
 
 // Color options for border (not yellow/red/green/gray/white)
 const COLOR_OPTIONS = [
@@ -28,7 +28,7 @@ const COLOR_OPTIONS = [
 
 const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
   const { removeCourse, removePlaceholder, updatePlacementAttributes } =
-    useCurriculumPlan();
+    useCurriculumPlanContext();
   const {
     id,
     courseId,

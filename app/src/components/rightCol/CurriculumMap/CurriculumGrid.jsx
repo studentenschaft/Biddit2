@@ -19,7 +19,7 @@ import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/so
 import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
-import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { useCurriculumPlanContext } from "./CurriculumPlanContext";
 import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
@@ -43,7 +43,7 @@ const CurriculumGrid = ({
   const [collapsedParents, setCollapsedParents] = useState(new Set());
 
   // Hooks for semester operations
-  const { addSemester, setSemesterNote } = useCurriculumPlan();
+  const { addSemester, setSemesterNote } = useCurriculumPlanContext();
 
   // Hooks for "click course → open details" feature
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
@@ -80,24 +80,23 @@ const CurriculumGrid = ({
   }, []);
 
   const toggleParentCollapse = useCallback((parentId, childPaths) => {
+    const willCollapse = !collapsedParents.has(parentId);
     setCollapsedParents((prev) => {
       const next = new Set(prev);
-      if (next.has(parentId)) {
-        next.delete(parentId);
-      } else {
+      if (willCollapse) {
         next.add(parentId);
+      } else {
+        next.delete(parentId);
       }
       return next;
     });
-    // Also collapse/expand all children
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
-      const isCurrentlyCollapsed = collapsedParents.has(parentId);
       childPaths.forEach((path) => {
-        if (isCurrentlyCollapsed) {
-          next.delete(path);
-        } else {
+        if (willCollapse) {
           next.add(path);
+        } else {
+          next.delete(path);
         }
       });
       return next;

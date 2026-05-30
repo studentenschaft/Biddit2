@@ -18,6 +18,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { localSelectedCoursesSemKeyState } from "../../recoil/localSelectedCoursesSemKeyAtom";
 import { curriculumPlanState, filterCurrentAndFutureSemesters } from "../../recoil/curriculumPlanAtom";
+import { normalizeCourseCredits } from "../../recoil/curriculumMapSelector";
 
 /**
  * PickerCourseCard - A draggable course card in the picker
@@ -42,8 +43,9 @@ const PickerCourseCard = ({ course, semesterKey }) => {
       }
     : undefined;
 
-  const creditsDisplay = course.credits
-    ? (course.credits / 100).toFixed(course.credits % 100 === 0 ? 0 : 1)
+  const normalized = normalizeCourseCredits(course.credits);
+  const creditsDisplay = normalized != null
+    ? (Number.isInteger(normalized) ? normalized : normalized.toFixed(1))
     : "?";
 
   const displayName =

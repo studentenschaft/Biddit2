@@ -30,6 +30,7 @@ import CategoryLegend from "./CategoryLegend";
 import CurriculumMapTutorial, {
   TUTORIAL_STORAGE_KEY,
 } from "./CurriculumMapTutorial";
+import { CurriculumPlanProvider } from "./CurriculumPlanContext";
 
 const DRAG_HINT_STORAGE_KEY = "biddit-curriculum-drag-hint-dismissed";
 const GRADES_HIDDEN_STORAGE_KEY = "biddit-curriculum-grades-hidden";
@@ -193,95 +194,97 @@ const CurriculumMap = () => {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <CurriculumMapTutorial
-        isOpen={tutorialOpen}
-        onDismiss={() => {
-          localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
-          setTutorialOpen(false);
-        }}
-      />
-      {/* Header with program info and progress */}
-      <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
-        <ProgramHeader
-          program={curriculumData.program}
-          onHelpClick={() => setTutorialOpen(true)}
+    <CurriculumPlanProvider>
+      <div className="flex flex-col h-full overflow-hidden">
+        <CurriculumMapTutorial
+          isOpen={tutorialOpen}
+          onDismiss={() => {
+            localStorage.setItem(TUTORIAL_STORAGE_KEY, "true");
+            setTutorialOpen(false);
+          }}
         />
-        <div className="flex items-center gap-4 flex-wrap">
-          <PlanSwitcher />
-          <button
-            onClick={handleImportCourses}
-            disabled={isImporting}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-hsg-600 hover:bg-hsg-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors shadow-sm"
-            title="Import selected courses from your study plan into this curriculum plan"
-          >
-            <DownloadIcon className="w-4 h-4" />
-            {isImporting ? "Importing..." : "Import Selected Courses"}
-          </button>
-          <button
-            onClick={() => {
-              setGradesHidden((prev) => {
-                const next = !prev;
-                localStorage.setItem(GRADES_HIDDEN_STORAGE_KEY, String(next));
-                return next;
-              });
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            title={gradesHidden ? "Show grades" : "Hide grades"}
-          >
-            {gradesHidden ? (
-              <EyeOffIcon className="w-4 h-4" />
-            ) : (
-              <EyeIcon className="w-4 h-4" />
-            )}
-            {gradesHidden ? "Show Grades" : "Hide Grades"}
-          </button>
-          <button
-            onClick={() => {
-              setIsAxisFlipped((prev) => {
-                const next = !prev;
-                localStorage.setItem(AXIS_FLIPPED_STORAGE_KEY, String(next));
-                return next;
-              });
-            }}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            title="Flip axes — swap semesters and categories"
-          >
-            <SwitchHorizontalIcon className="w-4 h-4" />
-            Flip Axes
-          </button>
-        </div>
-        <PlaceholderCreator />
-      </div>
-
-      {/* Main content area: grid (courses are dragged from EventListContainer) */}
-      <div className="flex-1 overflow-auto scrollbar-thin-visible px-6 py-4">
-        {/* Drag hint - shows animation to guide users */}
-        {showDragHint && (
-          <div className="mb-4">
-            <DragHint onDismiss={() => setShowDragHint(false)} />
+        {/* Header with program info and progress */}
+        <div className="flex-shrink-0 px-6 py-4 border-b border-gray-200 bg-white">
+          <ProgramHeader
+            program={curriculumData.program}
+            onHelpClick={() => setTutorialOpen(true)}
+          />
+          <div className="flex items-center gap-4 flex-wrap">
+            <PlanSwitcher />
+            <button
+              onClick={handleImportCourses}
+              disabled={isImporting}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-hsg-600 hover:bg-hsg-700 disabled:bg-gray-400 disabled:cursor-not-allowed rounded-md transition-colors shadow-sm"
+              title="Import selected courses from your study plan into this curriculum plan"
+            >
+              <DownloadIcon className="w-4 h-4" />
+              {isImporting ? "Importing..." : "Import Selected Courses"}
+            </button>
+            <button
+              onClick={() => {
+                setGradesHidden((prev) => {
+                  const next = !prev;
+                  localStorage.setItem(GRADES_HIDDEN_STORAGE_KEY, String(next));
+                  return next;
+                });
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              title={gradesHidden ? "Show grades" : "Hide grades"}
+            >
+              {gradesHidden ? (
+                <EyeOffIcon className="w-4 h-4" />
+              ) : (
+                <EyeIcon className="w-4 h-4" />
+              )}
+              {gradesHidden ? "Show Grades" : "Hide Grades"}
+            </button>
+            <button
+              onClick={() => {
+                setIsAxisFlipped((prev) => {
+                  const next = !prev;
+                  localStorage.setItem(AXIS_FLIPPED_STORAGE_KEY, String(next));
+                  return next;
+                });
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              title="Flip axes — swap semesters and categories"
+            >
+              <SwitchHorizontalIcon className="w-4 h-4" />
+              Flip Axes
+            </button>
           </div>
-        )}
+          <PlaceholderCreator />
+        </div>
 
-        <CurriculumGrid
-          categories={curriculumData.flatCategories}
-          categoryHierarchy={curriculumData.categoryHierarchy}
-          semesters={curriculumData.semesters}
-          coursesBySemesterAndCategory={
-            curriculumData.coursesBySemesterAndCategory
-          }
-          validations={curriculumData.validations}
-          placementMode={placementMode}
-          gradesHidden={gradesHidden}
-          isAxisFlipped={isAxisFlipped}
-        />
-      </div>
+        {/* Main content area: grid (courses are dragged from EventListContainer) */}
+        <div className="flex-1 overflow-auto scrollbar-thin-visible px-6 py-4">
+          {/* Drag hint - shows animation to guide users */}
+          {showDragHint && (
+            <div className="mb-4">
+              <DragHint onDismiss={() => setShowDragHint(false)} />
+            </div>
+          )}
 
-      {/* Legend at bottom */}
-      <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
-        <CategoryLegend />
+          <CurriculumGrid
+            categories={curriculumData.flatCategories}
+            categoryHierarchy={curriculumData.categoryHierarchy}
+            semesters={curriculumData.semesters}
+            coursesBySemesterAndCategory={
+              curriculumData.coursesBySemesterAndCategory
+            }
+            validations={curriculumData.validations}
+            placementMode={placementMode}
+            gradesHidden={gradesHidden}
+            isAxisFlipped={isAxisFlipped}
+          />
+        </div>
+
+        {/* Legend at bottom */}
+        <div className="flex-shrink-0 border-t border-gray-200 bg-gray-50">
+          <CategoryLegend />
+        </div>
       </div>
-    </div>
+    </CurriculumPlanProvider>
   );
 };
 

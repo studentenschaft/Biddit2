@@ -8,11 +8,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { DndContext } from '@dnd-kit/core';
 import { RecoilRoot } from 'recoil';
 import PlanItem from '../PlanItem';
+import { CurriculumPlanProvider } from '../CurriculumPlanContext';
 
-// Wrapper to provide DndContext and RecoilRoot
+// Wrapper to provide DndContext, RecoilRoot, and CurriculumPlanContext
 const TestWrapper = ({ children }) => (
   <RecoilRoot>
-    <DndContext>{children}</DndContext>
+    <CurriculumPlanProvider>
+      <DndContext>{children}</DndContext>
+    </CurriculumPlanProvider>
   </RecoilRoot>
 );
 

@@ -6,7 +6,7 @@
  * Saves on close (Done button, click-outside, or Escape key).
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 
 const MAX_LENGTH = 200;
@@ -16,12 +16,17 @@ const SemesterNotePopover = ({ semesterKey, initialNote, onSave, onClose }) => {
   const popoverRef = useRef(null);
   const textareaRef = useRef(null);
 
+  const handleSave = useCallback(() => {
+    onSave(semesterKey, text);
+    onClose();
+  }, [onSave, semesterKey, text, onClose]);
+
   // Auto-focus textarea on mount
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
 
-  // Click-outside-to-close (mirrors PlanCell.jsx pattern)
+  // Click-outside-to-close
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) {
@@ -31,12 +36,7 @@ const SemesterNotePopover = ({ semesterKey, initialNote, onSave, onClose }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  });
-
-  const handleSave = () => {
-    onSave(semesterKey, text);
-    onClose();
-  };
+  }, [handleSave]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Escape") {

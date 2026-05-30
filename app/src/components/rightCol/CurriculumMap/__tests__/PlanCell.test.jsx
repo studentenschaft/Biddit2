@@ -9,11 +9,14 @@ import { DndContext } from '@dnd-kit/core';
 import { RecoilRoot } from 'recoil';
 import PropTypes from 'prop-types';
 import PlanCell from '../PlanCell';
+import { CurriculumPlanProvider } from '../CurriculumPlanContext';
 
-// Wrapper to provide DndContext and RecoilRoot (needed for PlanItem inside PlanCell)
+// Wrapper to provide DndContext, RecoilRoot, and CurriculumPlanContext
 const TestWrapper = ({ children }) => (
   <RecoilRoot>
-    <DndContext>{children}</DndContext>
+    <CurriculumPlanProvider>
+      <DndContext>{children}</DndContext>
+    </CurriculumPlanProvider>
   </RecoilRoot>
 );
 

@@ -14,7 +14,7 @@ import PropTypes from "prop-types";
 import { useDroppable } from "@dnd-kit/core";
 import { PlusIcon } from "@heroicons/react/solid";
 import PlanItem from "./PlanItem";
-import { useCurriculumPlan } from "../../helpers/useCurriculumPlan";
+import { useCurriculumPlanContext } from "./CurriculumPlanContext";
 import { doesClassificationMatchCategory } from "../../recoil/curriculumMapSelector";
 
 const PlanCell = ({
@@ -33,7 +33,7 @@ const PlanCell = ({
   onCourseClick,
   gradesHidden,
 }) => {
-  const { addPlaceholder } = useCurriculumPlan();
+  const { addPlaceholder } = useCurriculumPlanContext();
 
   // Placeholder form state
   const [showPlaceholderForm, setShowPlaceholderForm] = useState(false);

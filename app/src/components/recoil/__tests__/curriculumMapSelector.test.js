@@ -321,8 +321,8 @@ describe('matchClassificationToCategory', () => {
 
 describe('estimateCompletion', () => {
   it('returns "Completed" when earned >= required', () => {
-    expect(estimateCompletion(180, 180, 0, [])).toBe('Completed');
-    expect(estimateCompletion(180, 200, 0, [])).toBe('Completed');
+    expect(estimateCompletion(180, 180, [])).toBe('Completed');
+    expect(estimateCompletion(180, 200, [])).toBe('Completed');
   });
 
   it('projects from future semesters when available', () => {
@@ -332,13 +332,13 @@ describe('estimateCompletion', () => {
       { key: 'FS26', status: 'future', totalCredits: 30 },
       { key: 'HS26', status: 'future', totalCredits: 30 },
     ];
-    const result = estimateCompletion(180, 120, 60, semesters);
+    const result = estimateCompletion(180, 120, semesters);
     // Needs 60 more credits, avg 30/semester = 2 more semesters
     // First future semester is FS26, second is HS26
     expect(result).toBe('HS26');
   });
 
   it('returns "TBD" when no semesters available', () => {
-    expect(estimateCompletion(180, 0, 0, [])).toBe('TBD');
+    expect(estimateCompletion(180, 0, [])).toBe('TBD');
   });
 });

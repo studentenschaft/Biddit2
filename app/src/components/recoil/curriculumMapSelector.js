@@ -24,6 +24,16 @@ const normalizeSemesterKey = (semester) => {
 };
 
 /**
+ * Idempotent credit normalization.
+ * API returns raw values (e.g., 600 for 6 ECTS). Some paths pre-normalize.
+ * This handles both: values > 99 are divided by 100, others pass through.
+ */
+export const normalizeCourseCredits = (raw, fallback = 3) => {
+  if (raw == null) return fallback;
+  return raw > 99 ? raw / 100 : raw;
+};
+
+/**
  * Extract classification values that should map to a category.
  * Uses category name/description patterns to infer valid classifications.
  */
@@ -334,7 +344,7 @@ const matchClassificationToCategory = (classification, flatCategories) => {
 /**
  * Estimate completion semester based on credits and planned courses
  */
-const estimateCompletion = (required, earned, planned, semesters) => {
+const estimateCompletion = (required, earned, semesters) => {
   if (earned >= required) return "Completed";
 
   const remaining = required - earned;
@@ -613,16 +623,11 @@ export const curriculumMapSelector = selector({
           targetCatPath &&
           coursesBySemesterAndCategory[semKey][targetCatPath]
         ) {
-          // Idempotent normalization: handles both pre-normalized (6) and raw API (600) credits
-          const rawCredits = course.credits ?? fullCourse?.credits ?? 300;
-          const normalizedCredits =
-            rawCredits > 99 ? rawCredits / 100 : rawCredits;
-
           coursesBySemesterAndCategory[semKey][targetCatPath].push({
             id: course.id || course.courseNumber,
             courseId: course.id || course.courseNumber,
             name: course.shortName || fullCourse?.shortName || course.id,
-            credits: normalizedCredits,
+            credits: normalizeCourseCredits(course.credits ?? fullCourse?.credits),
             semester: semKey,
             categoryPath: targetCatPath,
             status: "planned",
@@ -689,7 +694,7 @@ export const curriculumMapSelector = selector({
               courseId: enrolledId,
               name:
                 fullCourse.shortName || fullCourse.description || enrolledId,
-              credits: (fullCourse.credits || 300) / 100,
+              credits: normalizeCourseCredits(fullCourse.credits),
               semester: normalizedSemKey,
               categoryPath: targetCatPath,
               status: "enrolled",
@@ -788,7 +793,7 @@ export const curriculumMapSelector = selector({
                 courseId: item.courseId,
                 name: fullCourse?.shortName || item.shortName || item.courseId,
                 shortName: item.shortName || fullCourse?.shortName,
-                credits: fullCourse ? (fullCourse.credits || 300) / 100 : 3,
+                credits: normalizeCourseCredits(fullCourse?.credits),
                 semester: semKey,
                 categoryPath: targetCatPath,
                 status: "planned",
@@ -931,7 +936,6 @@ export const curriculumMapSelector = selector({
         estimatedCompletion: estimateCompletion(
           totalRequired,
           totalEarned,
-          totalPlanned,
           semesters,
         ),
       },
@@ -1012,6 +1016,7 @@ export const doesClassificationMatchCategory = (
 
 export const _testHelpers = {
   normalizeSemesterKey,
+  normalizeCourseCredits,
   extractClassifications,
   extractCategoryHierarchy,
   extractCoursesFromHierarchy,
