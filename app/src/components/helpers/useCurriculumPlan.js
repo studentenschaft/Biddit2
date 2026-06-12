@@ -100,6 +100,7 @@ export const useCurriculumPlan = () => {
           type: "course",
           courseId,
           shortName: sourcePlacement?.shortName ?? courseData?.shortName,
+          credits: sourcePlacement?.credits ?? courseData?.credits,
           note: sourcePlacement?.note,
           colorCode: sourcePlacement?.colorCode,
         },
@@ -135,12 +136,15 @@ export const useCurriculumPlan = () => {
         return false;
       }
 
-      // Always persist to API immediately
+      // Always persist to API immediately. Store credits so the map can show
+      // the correct ECTS even for semesters whose course catalog isn't loaded
+      // (e.g. past semesters), instead of falling back to a placeholder value.
       await addCourseById(
         courseId,
         semesterKey,
         categoryPath,
         course.shortName,
+        course.credits,
       );
 
       return true;

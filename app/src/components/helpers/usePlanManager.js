@@ -40,6 +40,7 @@ const convertPlacementsToPlannedItems = (placements = []) => {
         courseId: p.courseId,
         shortName: p.shortName,
         label: p.label,
+        credits: p.credits,
       }),
       ...(p.type === "placeholder" && {
         id: p.placementId,
@@ -71,6 +72,7 @@ const convertPlannedItemsToPlacements = (plannedItems = {}) => {
         ...(item.type === "course" && {
           courseId: item.courseId,
           shortName: item.shortName,
+          credits: item.credits,
         }),
         ...(item.type === "placeholder" && {
           label: item.label,
@@ -436,7 +438,13 @@ const usePlanManager = () => {
    */
   const addCourseById = useRecoilCallback(
     ({ snapshot, set }) =>
-      async (courseId, semesterKey, categoryPath, shortName = null) => {
+      async (
+        courseId,
+        semesterKey,
+        categoryPath,
+        shortName = null,
+        credits = null,
+      ) => {
         const registry = await snapshot.getPromise(
           curriculumPlansRegistryState,
         );
@@ -448,6 +456,7 @@ const usePlanManager = () => {
           categoryPath,
           courseId,
           ...(shortName && { shortName }),
+          ...(credits != null && { credits }),
           addedAt: new Date().toISOString(),
         };
 
@@ -759,6 +768,7 @@ const usePlanManager = () => {
                 semesterKey,
                 shortName: course.shortName || course.name,
                 classification: course.classification,
+                credits: course.credits,
               });
             }
           }
@@ -786,6 +796,7 @@ const usePlanManager = () => {
             categoryPath: course.classification || "Uncategorized",
             courseId: course.courseId,
             shortName: course.shortName,
+            ...(course.credits != null && { credits: course.credits }),
             addedAt: new Date().toISOString(),
           }));
 

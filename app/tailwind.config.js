@@ -29,6 +29,11 @@ export default {
         "hsg-700": "#007A2D",
         "hsg-800": "#006625",
         "hsg-900": "#00521E",
+        // Official HSG brand palette — used for curriculum-map note colors
+        "hsg-green": "#00802F",
+        "hsg-blue": "#73A5AF",
+        "hsg-coral": "#EB6969",
+        "hsg-yellow": "#FFF04B",
       },
       width: {
         "1/8": "12.5%",

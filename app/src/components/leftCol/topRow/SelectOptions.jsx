@@ -4,6 +4,7 @@ import Select from "react-select";
 import { useTermSelection } from "../../helpers/useTermSelection";
 import { useUnifiedSemesterState } from "../../helpers/useUnifiedSemesterState";
 import { selectedSemesterSelector } from "../../recoil/unifiedCourseDataSelectors";
+import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { SelectClassification } from "./SelectClassification";
 import { SelectEcts } from "./SelectEcts";
 import { SelectLanguage } from "./SelectLanguage";
@@ -46,6 +47,14 @@ export default function SelectSemester() {
   );
   const isFutureSemester = selectedSemesterData?.isProjected || selectedSemesterData?.isFuture || false;
 
+  // The current term can also be showing last-year's catalog as a preview
+  // (when it isn't published yet or its own catalog errored). Surface the same
+  // disclaimer in that case.
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
+  const isShowingReferenceData =
+    !!unifiedCourseData?.semesters?.[selectedSemesterShortName]?.usingReferenceData;
+  const showPreviewDisclaimer = isFutureSemester || isShowingReferenceData;
+
   // SIMPLIFIED: Create sorted term names from termListObject
   const sortedTermShortNames =
     termListObject?.map((term) => term.shortName) || [];
@@ -86,7 +95,7 @@ export default function SelectSemester() {
         placeholder="Select Semester"
       />
 
-      {isFutureSemester && (
+      {showPreviewDisclaimer && (
         <h5 className="mt-4 mb-2 text-sm font-medium leading-6 text-gray-500">
           Disclaimer: The course data for your currently selected semester is
           not yet confirmed and may not be accurate. We display it as a preview

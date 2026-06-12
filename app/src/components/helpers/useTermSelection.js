@@ -280,6 +280,18 @@ export function useTermSelection() {
           const allTerms = [...termIdList, ...artificialFutureSemesters];
           const allSortedTerms = sortTerms(allTerms.map((t) => t.shortName));
 
+          // Resolve a reference term's cisId. The dropdown only keeps the 3 most
+          // recent terms (allTerms), but a reference like FS25 for FS26 can be
+          // older and still fetchable — so fall back to the full raw term list.
+          const resolveReferenceCisId = (name) => {
+            const inWindow = allTerms.find((t) => t.shortName === name);
+            if (inWindow?.cisId) return inWindow.cisId;
+            const raw = (cisIdListAtom || []).find(
+              (t) => t.shortName === name
+            );
+            return raw?.id || null;
+          };
+
           const builtTermListObject = allSortedTerms
             .map((shortName) => {
               const termData = allTerms.find((t) => t.shortName === shortName);
@@ -294,23 +306,25 @@ export function useTermSelection() {
                   allSortedTerms.indexOf(calendarCurrent)
                 : false;
 
-              // For future semesters, compute same-season previous year as reference
+              // Same-season previous year as reference (e.g. HS26 -> HS25).
+              // Computed for every semester (not only future ones) so the course
+              // list can preview last year's catalog whenever a term isn't yet
+              // published or its own catalog errors — including the current term.
               let referenceSemester = termData.referenceSemester || null;
               let referenceCisId = null;
-              if (isFuture && !referenceSemester) {
+              if (!referenceSemester) {
                 const season = shortName.slice(0, 2);
                 const year = parseInt(shortName.slice(2), 10);
                 if (!isNaN(year) && year > 0) {
                   const refName = `${season}${(year - 1).toString().padStart(2, "0")}`;
-                  const refTerm = allTerms.find((t) => t.shortName === refName);
-                  if (refTerm) {
+                  const cisId = resolveReferenceCisId(refName);
+                  if (cisId) {
                     referenceSemester = refName;
-                    referenceCisId = refTerm.cisId;
+                    referenceCisId = cisId;
                   }
                 }
-              } else if (referenceSemester) {
-                const refTerm = allTerms.find((t) => t.shortName === referenceSemester);
-                referenceCisId = refTerm?.cisId || null;
+              } else {
+                referenceCisId = resolveReferenceCisId(referenceSemester);
               }
 
               // isProjected = artificially generated (not from API)
@@ -349,6 +363,9 @@ export function useTermSelection() {
         }
       })();
     }
+    // Intentionally runs once (guarded by initialSelectionMadeRef); cisIdListAtom
+    // and the Recoil setters are stable for the lifetime of this build.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     authToken,
     termIdList,

@@ -10,22 +10,31 @@ import { Fragment } from "react";
 import { Dialog, Transition } from "@headlessui/react";
 import PropTypes from "prop-types";
 
+// Plain-language overview shown first, so a brand-new user understands what the
+// page is before learning how to use it.
+const OVERVIEW =
+  "The Curriculum Map is a bird's-eye view of your whole degree. Plan the courses you'll take each semester and see how they add up to your programme's requirements.";
+
 const TUTORIAL_ITEMS = [
   {
-    label: "Drag courses into the grid",
-    description: "Drag any course from the Course List on the left into any cell. This is the primary way to plan your semesters.",
+    label: "Read the map",
+    description:
+      "Semesters run left to right, your programme's requirement areas top to bottom. Every semester and area keeps a ECTS total.",
   },
   {
-    label: "Or click a cell to add a placeholder",
-    description: "Click any empty cell to quickly create a placeholder for courses you haven't chosen yet.",
+    label: "Add your courses",
+    description:
+      "Drag any course from the Course List on the left into a cell.",
   },
   {
-    label: "Drag to rearrange",
-    description: "Move planned courses between semesters and categories by dragging.",
+    label: "Plan ahead with placeholders",
+    description:
+      "Haven't picked an exact course yet? Click an empty cell to drop a placeholder with the ECTS you expect, then swap in the real course later.",
   },
   {
-    label: "Add notes & colors",
-    description: "Click the note icon on any course or semester row to add personal notes. Use the color wheel for visual grouping.",
+    label: "Rearrange & make it yours",
+    description:
+      "Drag courses between semesters and categories as your plans change, and add notes or colours to anything.",
   },
 ];
 
@@ -71,13 +80,17 @@ const CurriculumMapTutorial = ({ isOpen, onDismiss }) => {
               <Dialog.Panel className="relative w-full max-w-md transform rounded-xl bg-white p-6 shadow-xl transition-all">
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-semibold text-gray-900 mb-1"
+                  className="text-lg font-semibold text-gray-900 mb-2"
                 >
                   Welcome to the Curriculum Map
                 </Dialog.Title>
-                <Dialog.Description className="text-sm text-gray-500 mb-5">
-                  Here&apos;s how to plan your studies:
+                <Dialog.Description className="text-sm leading-relaxed text-gray-600 mb-4">
+                  {OVERVIEW}
                 </Dialog.Description>
+
+                <p className="text-sm font-medium text-gray-900 mb-3">
+                  Here&apos;s how it works:
+                </p>
 
                 <div className="space-y-4">
                   {TUTORIAL_ITEMS.map((item) => (

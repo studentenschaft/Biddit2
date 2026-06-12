@@ -43,7 +43,7 @@ const PickerCourseCard = ({ course, semesterKey }) => {
       }
     : undefined;
 
-  const normalized = normalizeCourseCredits(course.credits);
+  const normalized = normalizeCourseCredits(course.credits, null);
   const creditsDisplay = normalized != null
     ? (Number.isInteger(normalized) ? normalized : normalized.toFixed(1))
     : "?";

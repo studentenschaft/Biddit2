@@ -27,6 +27,9 @@ const normalizeSemesterKey = (semester) => {
  * Idempotent credit normalization.
  * API returns raw values (e.g., 600 for 6 ECTS). Some paths pre-normalize.
  * This handles both: values > 99 are divided by 100, others pass through.
+ * When credits are unknown (raw == null), returns `fallback`. The curriculum
+ * map passes `null` so unresolved credits render as "?" rather than a
+ * fabricated number.
  */
 export const normalizeCourseCredits = (raw, fallback = 3) => {
   if (raw == null) return fallback;
@@ -627,7 +630,10 @@ export const curriculumMapSelector = selector({
             id: course.id || course.courseNumber,
             courseId: course.id || course.courseNumber,
             name: course.shortName || fullCourse?.shortName || course.id,
-            credits: normalizeCourseCredits(course.credits ?? fullCourse?.credits),
+            credits: normalizeCourseCredits(
+              course.credits ?? fullCourse?.credits,
+              null,
+            ),
             semester: semKey,
             categoryPath: targetCatPath,
             status: "planned",
@@ -694,7 +700,7 @@ export const curriculumMapSelector = selector({
               courseId: enrolledId,
               name:
                 fullCourse.shortName || fullCourse.description || enrolledId,
-              credits: normalizeCourseCredits(fullCourse.credits),
+              credits: normalizeCourseCredits(fullCourse.credits, null),
               semester: normalizedSemKey,
               categoryPath: targetCatPath,
               status: "enrolled",
@@ -793,7 +799,10 @@ export const curriculumMapSelector = selector({
                 courseId: item.courseId,
                 name: fullCourse?.shortName || item.shortName || item.courseId,
                 shortName: item.shortName || fullCourse?.shortName,
-                credits: normalizeCourseCredits(fullCourse?.credits),
+                credits: normalizeCourseCredits(
+                  item.credits ?? fullCourse?.credits,
+                  null,
+                ),
                 semester: semKey,
                 categoryPath: targetCatPath,
                 status: "planned",

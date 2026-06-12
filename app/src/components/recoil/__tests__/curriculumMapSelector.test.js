@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { _testHelpers } from '../curriculumMapSelector';
+import { _testHelpers, normalizeCourseCredits } from '../curriculumMapSelector';
 
 const {
   normalizeSemesterKey,
@@ -38,6 +38,32 @@ describe('normalizeSemesterKey', () => {
 
   it('removes multiple spaces', () => {
     expect(normalizeSemesterKey('FS  25')).toBe('FS25');
+  });
+});
+
+// ── normalizeCourseCredits ────────────────────────────────────────────────
+
+describe('normalizeCourseCredits', () => {
+  it('divides raw API values (>99) by 100', () => {
+    expect(normalizeCourseCredits(600)).toBe(6);
+    expect(normalizeCourseCredits(300)).toBe(3);
+  });
+
+  it('passes through already-normalized values', () => {
+    expect(normalizeCourseCredits(6)).toBe(6);
+    expect(normalizeCourseCredits(0)).toBe(0);
+  });
+
+  it('returns the default fallback (3) when raw is missing', () => {
+    expect(normalizeCourseCredits(null)).toBe(3);
+    expect(normalizeCourseCredits(undefined)).toBe(3);
+  });
+
+  it('returns null (unknown) when an explicit null fallback is given', () => {
+    // The curriculum map passes null so unresolved credits render as "?"
+    // instead of a fabricated number.
+    expect(normalizeCourseCredits(null, null)).toBeNull();
+    expect(normalizeCourseCredits(undefined, null)).toBeNull();
   });
 });
 

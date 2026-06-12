@@ -353,7 +353,7 @@ export function useUnifiedCourseData() {
    * Update available courses for a semester
    * Flattens nested courses from the courses array to make exercise groups selectable
    */
-  const updateAvailableCourses = (semesterShortName, courses) => {
+  const updateAvailableCourses = (semesterShortName, courses, meta = {}) => {
     const flattenedCourses = [];
     
     (courses || []).forEach(parentCourse => {
@@ -391,11 +391,17 @@ export function useUnifiedCourseData() {
 
     patchSemester(
       semesterShortName,
-      { available: flattenedCourses },
+      {
+        available: flattenedCourses,
+        // True when these courses are a previous-year preview standing in for a
+        // term that isn't published yet (or whose catalog errored). Drives the
+        // existing "preview" disclaimer for the current term.
+        usingReferenceData: !!meta.usingReferenceData,
+      },
       { touchLastFetched: true }
     );
     console.log(
-      `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)`
+      `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)${meta.usingReferenceData ? ` [preview from ${meta.referenceSemester || "reference"}]` : ""}`
     );
   };
 

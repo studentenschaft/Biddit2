@@ -17,13 +17,14 @@ import { XIcon } from "@heroicons/react/solid";
 import { AnnotationIcon } from "@heroicons/react/outline";
 import { useCurriculumPlanContext } from "./CurriculumPlanContext";
 
-// Color options for border (not yellow/red/green/gray/white)
+// Note border colors — HSG-conform palette (subset of the official brand colors,
+// chosen for distinct, legible borders). Tokens defined in tailwind.config.js.
 const COLOR_OPTIONS = [
   { value: "", label: "None", class: "" },
-  { value: "#3B82F6", label: "Blue", class: "border-blue-500" },
-  { value: "#8B5CF6", label: "Purple", class: "border-purple-500" },
-  { value: "#EC4899", label: "Pink", class: "border-pink-500" },
-  { value: "#14B8A6", label: "Teal", class: "border-teal-500" },
+  { value: "#00802F", label: "Grün", class: "border-hsg-green" },
+  { value: "#73A5AF", label: "Blau", class: "border-hsg-blue" },
+  { value: "#EB6969", label: "Korall", class: "border-hsg-coral" },
+  { value: "#FFF04B", label: "Gelb", class: "border-hsg-yellow" },
 ];
 
 const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
@@ -313,7 +314,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
       {...(isDraggable ? { ...listeners, ...attributes } : {})}
       onClick={handleClick}
       className={`group relative ${statusStyle.bg} ${borderStyle} ${statusStyle.text} ${statusStyle.shadow} ${cursorClass} ${opacityClass} rounded-md px-2 py-1 text-xs transition-all select-none`}
-      title={`${fullName}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${credits} ECTS${!gradesHidden && grade ? ` (Grade: ${grade})` : ""}${note ? `\nNote: ${note}` : ""}${
+      title={`${fullName}${courseId && courseId !== name ? ` (${courseId})` : ""} - ${creditsDisplay} ECTS${!gradesHidden && grade ? ` (Grade: ${grade})` : ""}${note ? `\nNote: ${note}` : ""}${
         isDraggable ? "\nDrag to move" : ""
       }`}
     >
@@ -393,10 +394,10 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
               className="w-3.5 h-3.5 rounded-full border border-gray-400 overflow-hidden"
               style={{
                 background: `conic-gradient(
-                  #3B82F6 0deg 90deg,
-                  #8B5CF6 90deg 180deg,
-                  #EC4899 180deg 270deg,
-                  #14B8A6 270deg 360deg
+                  #00802F 0deg 90deg,
+                  #73A5AF 90deg 180deg,
+                  #EB6969 180deg 270deg,
+                  #FFF04B 270deg 360deg
                 )`,
               }}
             />

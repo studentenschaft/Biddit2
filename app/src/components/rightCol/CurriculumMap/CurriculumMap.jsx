@@ -11,7 +11,7 @@
  */
 
 import { useRecoilValue } from "recoil";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DownloadIcon, ArrowLeftIcon } from "@heroicons/react/solid";
 import { EyeIcon, EyeOffIcon, SwitchHorizontalIcon } from "@heroicons/react/outline";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
@@ -19,6 +19,7 @@ import { authTokenState } from "../../recoil/authAtom";
 import { curriculumPlansRegistryState } from "../../recoil/curriculumPlansRegistryAtom";
 import { useScorecardFetching } from "../../helpers/useScorecardFetching";
 import { useInitializeScoreCards } from "../../helpers/useInitializeScorecards";
+import { useCurriculumMapCourseLoader } from "../../helpers/useCurriculumMapCourseLoader";
 import usePlanManager from "../../helpers/usePlanManager";
 import { useErrorHandler } from "../../errorHandling/useErrorHandler";
 import LoadingText from "../../common/LoadingText";
@@ -92,6 +93,14 @@ const CurriculumMap = () => {
   const { loadPlans, importSelectedCourses } = usePlanManager();
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
+
+  // Lazily load course catalogs for every semester the map shows (e.g. past
+  // semesters) so course credits resolve to their real ECTS instead of "?".
+  const mapSemesterKeys = useMemo(
+    () => (curriculumData.semesters || []).map((s) => s.key),
+    [curriculumData.semesters],
+  );
+  useCurriculumMapCourseLoader(authToken, mapSemesterKeys);
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [showDragHint, setShowDragHint] = useState(
@@ -103,9 +112,12 @@ const CurriculumMap = () => {
   const [gradesHidden, setGradesHidden] = useState(
     () => localStorage.getItem(GRADES_HIDDEN_STORAGE_KEY) === "true",
   );
-  const [isAxisFlipped, setIsAxisFlipped] = useState(
-    () => localStorage.getItem(AXIS_FLIPPED_STORAGE_KEY) === "true",
-  );
+  const [isAxisFlipped, setIsAxisFlipped] = useState(() => {
+    // Default to flipped (semesters on X, course types on Y) for new users;
+    // respect an explicit saved preference either way.
+    const stored = localStorage.getItem(AXIS_FLIPPED_STORAGE_KEY);
+    return stored === null ? true : stored === "true";
+  });
   // Click-to-place is disabled; placementMode stays null. Grid still receives
   // it so re-enabling later only requires restoring the useState + handlers.
   const placementMode = null;

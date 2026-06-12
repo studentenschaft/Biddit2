@@ -362,6 +362,32 @@ describe("useCurriculumPlan hook integration", () => {
     expect(success).toBe(true);
   });
 
+  it("addCourse persists the course credits in the placement payload", async () => {
+    const { useCurriculumPlan } = await import("../useCurriculumPlan");
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    await act(async () => {
+      await result.current.addCourse(
+        { courseNumber: "ABC123", shortName: "Test", credits: 300 },
+        "FS26",
+        "Core/Electives",
+      );
+    });
+
+    // Credits must be stored so the map can show real ECTS for semesters whose
+    // catalog isn't loaded, instead of falling back to a placeholder value.
+    const courseCall = curriculumPlansApi.upsertPlacement.mock.calls.find(
+      (call) => call[1] === "course-ABC123",
+    );
+    expect(courseCall).toBeDefined();
+    expect(courseCall[2]).toMatchObject({
+      type: "course",
+      courseId: "ABC123",
+      credits: 300,
+    });
+  });
+
   it("moveCourse rejects completed semesters", async () => {
     const { useCurriculumPlan } = await import("../useCurriculumPlan");
 
@@ -506,7 +532,7 @@ describe("useCurriculumPlan hook integration", () => {
                   shortName: "Intro",
                   categoryPath: "Core",
                   note: "keep this note",
-                  colorCode: "#3B82F6",
+                  colorCode: "#73A5AF",
                 },
               ],
             },
@@ -559,7 +585,7 @@ describe("useCurriculumPlan hook integration", () => {
       semester: "FS26",
       categoryPath: "Elective",
       note: "keep this note",
-      colorCode: "#3B82F6",
+      colorCode: "#73A5AF",
     });
   });
 
@@ -579,7 +605,7 @@ describe("useCurriculumPlan hook integration", () => {
                   credits: 6,
                   categoryPath: "Core",
                   note: "placeholder note",
-                  colorCode: "#8B5CF6",
+                  colorCode: "#EB6969",
                 },
               ],
             },
@@ -627,7 +653,7 @@ describe("useCurriculumPlan hook integration", () => {
       label: "Elective",
       credits: 6,
       note: "placeholder note",
-      colorCode: "#8B5CF6",
+      colorCode: "#EB6969",
     });
   });
 });
