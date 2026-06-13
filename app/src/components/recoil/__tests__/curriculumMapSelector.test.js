@@ -6,7 +6,11 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { _testHelpers, normalizeCourseCredits } from '../curriculumMapSelector';
+import {
+  _testHelpers,
+  normalizeCourseCredits,
+  findCreditsInAnySemester,
+} from '../curriculumMapSelector';
 
 const {
   normalizeSemesterKey,
@@ -64,6 +68,50 @@ describe('normalizeCourseCredits', () => {
     // instead of a fabricated number.
     expect(normalizeCourseCredits(null, null)).toBeNull();
     expect(normalizeCourseCredits(undefined, null)).toBeNull();
+  });
+});
+
+// ── findCreditsInAnySemester ──────────────────────────────────────────────
+
+describe('findCreditsInAnySemester', () => {
+  const semesters = {
+    HS26: {
+      available: [
+        { courseNumber: '9,120,1.00', credits: 600 }, // Board Governance (main)
+        { courseNumber: '7,852,2.01', credits: 0 }, // an exercise group
+      ],
+    },
+    FS26: { available: [{ id: 'abc-id', credits: 300 }] },
+    HS27: { available: [] }, // projected future semester, no catalog
+  };
+
+  it('resolves credits from another loaded semester by courseNumber', () => {
+    expect(findCreditsInAnySemester('9,120,1.00', semesters)).toBe(600);
+  });
+
+  it('resolves by id as well as courseNumber', () => {
+    expect(findCreditsInAnySemester('abc-id', semesters)).toBe(300);
+  });
+
+  it('returns 0 for exercise groups (an explicit 0, not "unknown")', () => {
+    expect(findCreditsInAnySemester('7,852,2.01', semesters)).toBe(0);
+  });
+
+  it('returns null when the course is in no loaded catalog', () => {
+    expect(findCreditsInAnySemester('99,999,1.00', semesters)).toBeNull();
+  });
+
+  it('handles missing input safely', () => {
+    expect(findCreditsInAnySemester(null, semesters)).toBeNull();
+    expect(findCreditsInAnySemester('x', {})).toBeNull();
+    expect(findCreditsInAnySemester('x', null)).toBeNull();
+  });
+
+  it('a course on a catalog-less semester resolves to real ECTS via the fallback', () => {
+    // Board Governance is placed on HS27 (no catalog) but exists in HS26 → 6 ECTS,
+    // instead of the "?" it showed before this fallback.
+    const raw = findCreditsInAnySemester('9,120,1.00', semesters);
+    expect(normalizeCourseCredits(raw, null)).toBe(6);
   });
 });
 

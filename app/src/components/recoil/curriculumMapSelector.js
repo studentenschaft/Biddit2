@@ -37,6 +37,26 @@ export const normalizeCourseCredits = (raw, fallback = 3) => {
 };
 
 /**
+ * Resolve a course's raw credits from ANY loaded semester catalog.
+ *
+ * A course is placed under one semester, but its credits are only resolvable if
+ * that semester's catalog is loaded. Projected future semesters (and terms whose
+ * catalog errors) have no catalog, so a course there can't resolve locally — even
+ * though the same course number exists in another loaded catalog (a course's ECTS
+ * is stable across terms). This is the last-resort lookup for that case.
+ */
+export const findCreditsInAnySemester = (courseId, semesters) => {
+  if (!courseId) return null;
+  for (const semData of Object.values(semesters || {})) {
+    const hit = (semData?.available || []).find(
+      (c) => c.courseNumber === courseId || c.id === courseId,
+    );
+    if (hit && hit.credits != null) return hit.credits;
+  }
+  return null;
+};
+
+/**
  * Extract classification values that should map to a category.
  * Uses category name/description patterns to infer valid classifications.
  */
@@ -631,7 +651,12 @@ export const curriculumMapSelector = selector({
             courseId: course.id || course.courseNumber,
             name: course.shortName || fullCourse?.shortName || course.id,
             credits: normalizeCourseCredits(
-              course.credits ?? fullCourse?.credits,
+              course.credits ??
+                fullCourse?.credits ??
+                findCreditsInAnySemester(
+                  course.id || course.courseNumber,
+                  unifiedCourseData.semesters,
+                ),
               null,
             ),
             semester: semKey,
@@ -700,7 +725,14 @@ export const curriculumMapSelector = selector({
               courseId: enrolledId,
               name:
                 fullCourse.shortName || fullCourse.description || enrolledId,
-              credits: normalizeCourseCredits(fullCourse.credits, null),
+              credits: normalizeCourseCredits(
+                fullCourse.credits ??
+                  findCreditsInAnySemester(
+                    enrolledId,
+                    unifiedCourseData.semesters,
+                  ),
+                null,
+              ),
               semester: normalizedSemKey,
               categoryPath: targetCatPath,
               status: "enrolled",
@@ -800,7 +832,12 @@ export const curriculumMapSelector = selector({
                 name: fullCourse?.shortName || item.shortName || item.courseId,
                 shortName: item.shortName || fullCourse?.shortName,
                 credits: normalizeCourseCredits(
-                  item.credits ?? fullCourse?.credits,
+                  item.credits ??
+                    fullCourse?.credits ??
+                    findCreditsInAnySemester(
+                      item.courseId,
+                      unifiedCourseData.semesters,
+                    ),
                   null,
                 ),
                 semester: semKey,
