@@ -9,6 +9,7 @@
 import PropTypes from "prop-types";
 import { QuestionMarkCircleIcon } from "@heroicons/react/outline";
 import { Tooltip as ReactTooltip } from "react-tooltip";
+import CurriculumMapBetaNotice from "./CurriculumMapBetaNotice";
 
 const ProgramHeader = ({ program, onHelpClick }) => {
   if (!program) return null;
@@ -33,7 +34,15 @@ const ProgramHeader = ({ program, onHelpClick }) => {
     <div className="space-y-3">
       {/* Title - matches StudyOverview header style */}
       <div className="py-2 pl-2 pr-3 text-xl font-bold bg-gray-100 rounded flex items-center justify-between">
-        {name}
+        <span className="flex items-center gap-2 min-w-0">
+          <span className="truncate">{name}</span>
+          <span
+            className="inline-flex flex-shrink-0 items-center rounded-full bg-hsg-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-hsg-700 ring-1 ring-hsg-700/20 cursor-help"
+            data-tooltip-id="curriculum-map-beta"
+          >
+            Beta
+          </span>
+        </span>
         <button
           className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 flex-shrink-0 ml-2 transition-colors"
           data-tooltip-id="curriculum-map-help"
@@ -43,6 +52,9 @@ const ProgramHeader = ({ program, onHelpClick }) => {
           How this works
         </button>
       </div>
+
+      {/* One-time Beta welcome callout (dismissal persisted in localStorage) */}
+      <CurriculumMapBetaNotice />
 
       {/* Progress section */}
       <div className="px-2">
@@ -101,6 +113,22 @@ const ProgramHeader = ({ program, onHelpClick }) => {
           borderRadius: "0.375rem",
           fontSize: "0.8125rem",
           padding: "6px 10px",
+          zIndex: 50,
+        }}
+      />
+
+      <ReactTooltip
+        id="curriculum-map-beta"
+        place="bottom"
+        content="This feature is in Beta and still being refined. Your feedback is welcome!"
+        style={{
+          backgroundColor: "#f9fafb",
+          color: "#111827",
+          border: "1px solid #d1d5db",
+          borderRadius: "0.375rem",
+          fontSize: "0.8125rem",
+          padding: "6px 10px",
+          maxWidth: "240px",
           zIndex: 50,
         }}
       />
