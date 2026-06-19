@@ -175,6 +175,41 @@ describe("ApiClient Error Handling", () => {
       expect(classification.type).toBe("NETWORK");
       expect(classification.isRecoverable).toBe(true);
     });
+
+    it("should emit OFFLINE (not a toast) for a genuine network error after retries, even when navigator reports online", async () => {
+      vi.useFakeTimers();
+
+      // navigator.onLine stays true (captive portal / server unreachable case)
+      Object.defineProperty(navigator, "onLine", { value: true });
+
+      // Every attempt is a network-level failure
+      server.use(
+        http.get(`${SHSG_API}/study-plans`, () => HttpResponse.error()),
+      );
+
+      const events = [];
+      const unsubscribe = addNetworkEventListener((event) =>
+        events.push(event),
+      );
+
+      const request = apiClient
+        .get(`${SHSG_API}/study-plans`, TEST_TOKEN)
+        .catch((e) => e);
+
+      // Flush the backoff timers + microtasks for all retries
+      await vi.runAllTimersAsync();
+      const result = await request;
+
+      expect(result).toBeInstanceOf(Error);
+      expect(events.some((e) => e.type === "OFFLINE")).toBe(true);
+      // Network errors must never produce a reportable error toast
+      expect(errorHandlingService.classifyError(result).shouldShowToast).toBe(
+        false,
+      );
+
+      unsubscribe();
+      vi.useRealTimers();
+    });
   });
 
   describe("Request Queuing During Token Refresh", () => {

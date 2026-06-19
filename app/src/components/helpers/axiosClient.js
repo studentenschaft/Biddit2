@@ -141,11 +141,13 @@ class ApiClient {
         error._isTimeoutError =
           error.code === "ECONNABORTED" || error.message?.includes("timeout");
 
-        // Only show error for non-recoverable errors
-        if (
-          !error._isNetworkError ||
-          originalRequest._retryCount >= MAX_RETRIES
-        ) {
+        if (error._isNetworkError) {
+          // Genuine network failure. navigator.onLine can still report true
+          // behind a captive portal or when the server is unreachable, so we
+          // surface the offline modal here regardless and never show an error
+          // toast/email for it.
+          emitNetworkEvent("OFFLINE");
+        } else {
           errorHandlingService.handleError(error);
         }
 

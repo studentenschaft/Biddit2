@@ -4,11 +4,23 @@ import {
 } from "@azure/msal-browser";
 import { msalInstance, initializeMsalInstance, apiScopes } from "./authConfig";
 
-// Session state tracking
+/**
+ * Session event types emitted to listeners (consumed by AppStateProvider).
+ * - SESSION_EXPIRED: session is genuinely dead (re-login required).
+ * - SESSION_RENEW:   transient failure (iframe/popup hiccup); a page refresh
+ *                    usually recovers it without forcing a re-login.
+ */
+export const SessionEvent = {
+  EXPIRED: "SESSION_EXPIRED",
+  RENEW: "SESSION_RENEW",
+};
+
+// Count of genuine (non-transient) auth failures. Used to escalate to a
+// definitive "session expired" once we're confident the session is dead.
 let sessionDeathCount = 0;
 const MAX_SESSION_FAILURES = 3;
 
-// Event emitter for session/offline state changes
+// Event emitter for session state changes
 const sessionEventListeners = new Set();
 
 export const addSessionEventListener = (callback) => {
@@ -23,8 +35,10 @@ const emitSessionEvent = (eventType, data = {}) => {
 };
 
 /**
- * Global function to get fresh token for axios interceptor
- * Uses the shared MSAL instance from authConfig
+ * Global function to get a fresh token for the axios interceptor.
+ * Uses the shared MSAL instance from authConfig and is the single source of
+ * truth for session events: callers should simply react to a null return and
+ * let the emitted event drive any UI.
  * @returns {Promise<string|null>} New access token or null if refresh failed
  */
 export const getRefreshToken = async () => {
@@ -33,8 +47,9 @@ export const getRefreshToken = async () => {
     const accounts = msalInstance.getAllAccounts();
 
     if (accounts.length === 0) {
+      // No account at all → the session is genuinely gone.
       console.error("No accounts found - session expired");
-      emitSessionEvent("SESSION_EXPIRED");
+      emitSessionEvent(SessionEvent.EXPIRED);
       return null;
     }
 
@@ -50,15 +65,16 @@ export const getRefreshToken = async () => {
       sessionDeathCount = 0;
       return response.accessToken;
     } catch (silentError) {
-      // Handle InteractionRequiredAuthError - session expired, need full re-login
+      // InteractionRequiredAuthError → session expired, full re-login needed.
       if (silentError instanceof InteractionRequiredAuthError) {
         console.log("Interaction required - session expired");
-        emitSessionEvent("SESSION_EXPIRED");
+        emitSessionEvent(SessionEvent.EXPIRED);
         return null;
       }
 
-      // Handle BrowserAuthError (includes monitor_window_timeout, popup_window_error, etc.)
-      // For these, try popup recovery since the session might still be valid
+      // BrowserAuthError (monitor_window_timeout, popup_window_error, etc.) is
+      // typically a transient iframe issue while the session is still valid.
+      // Try a popup recovery; if that also fails transiently, prompt a refresh.
       if (silentError instanceof BrowserAuthError) {
         console.warn(
           "Browser auth error during silent acquisition:",
@@ -73,8 +89,12 @@ export const getRefreshToken = async () => {
     console.error("Failed to refresh token:", error);
     sessionDeathCount++;
 
+    // Only escalate to a definitive "expired" once we've seen repeated genuine
+    // failures; otherwise prompt a (less disruptive) refresh.
     if (sessionDeathCount >= MAX_SESSION_FAILURES) {
-      emitSessionEvent("SESSION_EXPIRED");
+      emitSessionEvent(SessionEvent.EXPIRED);
+    } else {
+      emitSessionEvent(SessionEvent.RENEW);
     }
 
     return null;
@@ -82,8 +102,11 @@ export const getRefreshToken = async () => {
 };
 
 /**
- * Attempt popup recovery for BrowserAuthError (monitor_window_timeout, etc.)
- * This is used when silent acquisition fails due to iframe issues but session may still be valid
+ * Attempt popup recovery for BrowserAuthError (monitor_window_timeout, etc.).
+ * Used when silent acquisition fails due to iframe issues but the session may
+ * still be valid. NOTE: a popup launched from a background interceptor (no user
+ * gesture) is usually blocked by the browser and falls through to the refresh
+ * prompt — that is expected.
  * @returns {Promise<string|null>} Access token or null
  */
 const attemptPopupRecovery = async () => {
@@ -96,14 +119,18 @@ const attemptPopupRecovery = async () => {
   } catch (popupError) {
     console.warn("Popup recovery failed:", popupError);
 
-    // Only count genuine auth failures toward session death.
-    // BrowserAuthErrors (popup blocked, timeout) are transient and
-    // should not force a re-login.
+    // A genuine interaction-required error means the session is dead.
     if (popupError instanceof InteractionRequiredAuthError) {
       sessionDeathCount++;
-      if (sessionDeathCount >= MAX_SESSION_FAILURES) {
-        emitSessionEvent("SESSION_EXPIRED");
-      }
+      emitSessionEvent(
+        sessionDeathCount >= MAX_SESSION_FAILURES
+          ? SessionEvent.EXPIRED
+          : SessionEvent.RENEW,
+      );
+    } else {
+      // Transient (popup blocked, timeout): a page refresh usually fixes this.
+      // Do not count it toward session death or force a re-login.
+      emitSessionEvent(SessionEvent.RENEW);
     }
 
     return null;
@@ -111,17 +138,18 @@ const attemptPopupRecovery = async () => {
 };
 
 /**
- * Handle authentication failure (e.g., redirect to login)
+ * Handle authentication failure. Logs only — session events are owned by
+ * getRefreshToken, which already emitted the correct (EXPIRED vs RENEW) signal.
+ * Kept for backward compatibility with existing callers.
  * @param {Error} error - The authentication error
  */
 export const handleAuthFailure = (error) => {
   console.error("Authentication failed:", error);
-  emitSessionEvent("SESSION_EXPIRED");
 };
 
 /**
- * Clear session and redirect to login
- * Called when session is definitively dead
+ * Clear session and redirect to login.
+ * Called when the session is definitively dead or the user chooses to re-login.
  */
 export const clearSessionAndRedirect = () => {
   // Clear active account
@@ -143,4 +171,11 @@ export const clearSessionAndRedirect = () => {
 
   // Redirect to login
   window.location.href = window.location.origin + "/login";
+};
+
+/**
+ * Reset internal session tracking. Useful for tests.
+ */
+export const resetSessionState = () => {
+  sessionDeathCount = 0;
 };
