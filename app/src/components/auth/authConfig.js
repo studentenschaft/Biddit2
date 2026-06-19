@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { LogLevel } from "@azure/msal-browser";
+import { LogLevel, PublicClientApplication } from "@azure/msal-browser";
 
 /**
  * Configuration object to be passed to MSAL instance on creation.
@@ -19,14 +19,19 @@ export const msalConfig = {
       window.location.hostname === "localhost"
         ? "http://localhost:3000/"
         : window.location.hostname === "dev-biddit.netlify.app"
-        ? "https://dev-biddit.netlify.app/"
-        : "https://biddit.app/",
+          ? "https://dev-biddit.netlify.app/"
+          : "https://biddit.app/",
   },
   cache: {
     cacheLocation: "localStorage", // Configures cache location. "sessionStorage" is more secure, but "localStorage" gives you SSO between tabs.
     storeAuthStateInCookie: true, // Set this to "true" if you are having issues on IE11 or Edge
   },
   system: {
+    // Increased timeouts to prevent monitor_window_timeout errors
+    iframeHashTimeout: 10000, // Increased from default 6000ms
+    windowHashTimeout: 60000, // Default 60000ms
+    loadFrameTimeout: 10000, // Increased from default 6000ms
+    navigateFrameWait: 500, // Wait time for iframe navigation
     loggerOptions: {
       loggerCallback: (level, message, containsPii) => {
         if (containsPii) {
@@ -52,6 +57,31 @@ export const msalConfig = {
     },
   },
 };
+
+/**
+ * Single MSAL instance shared across the application.
+ * This prevents race conditions and inconsistent state from multiple instances.
+ */
+export const msalInstance = new PublicClientApplication(msalConfig);
+
+/**
+ * Initialize the MSAL instance. Call this once at app startup.
+ */
+let msalInitialized = false;
+export const initializeMsalInstance = async () => {
+  if (!msalInitialized) {
+    await msalInstance.initialize();
+    msalInitialized = true;
+  }
+  return msalInstance;
+};
+
+/**
+ * API scopes required for accessing university integration APIs
+ */
+export const apiScopes = [
+  "https://integration.unisg.ch/api/user_impersonation",
+];
 
 /**
  * Scopes you add here will be prompted for user consent during sign-in.
