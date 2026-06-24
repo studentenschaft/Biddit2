@@ -21,6 +21,7 @@ export const semesterCourseDataSelector = selectorFamily({
           lastFetched: null,
           isFutureSemester: false,
           referenceSemester: null,
+          usingReferenceData: false,
           cisId: null,
           isCurrent: false,
           isProjected: false,
@@ -191,6 +192,10 @@ export const semesterMetadataSelector = selectorFamily({
         isProjected: semesterData.isProjected || false,
         isFutureSemester: semesterData.isFutureSemester || false,
         referenceSemester: semesterData.referenceSemester || null,
+        // True when `available` is a borrowed previous-year preview (sparse/empty
+        // current term). Consumers must treat these courses as belonging to
+        // `referenceSemester`, not this semester. See REFERENCE_SEMESTER.md.
+        usingReferenceData: semesterData.usingReferenceData || false,
         cisId: semesterData.cisId || null,
         lastFetched: semesterData.lastFetched || null,
       };

@@ -2,7 +2,10 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { fetchScoreCardEnrollments } from "../recoil/ApiScorecardEnrollments";
 import { scorecardEnrollmentsState } from "../recoil/scorecardEnrollmentsAtom";
-import { apiClient } from "../helpers/axiosClient";
+import {
+  querySimilarCourses,
+  upsertSimilarCourses,
+} from "../helpers/similarCoursesApi";
 import { authTokenState } from "../recoil/authAtom";
 import {
   selectedSemesterSelector as unifiedSelectedSemesterSelector,
@@ -42,6 +45,16 @@ export default function SmartSearch() {
   );
   const isFutureSemesterSelectedSate = semesterMetadata?.isFutureSemester;
   const referenceSemesterState = semesterMetadata?.referenceSemester;
+  // True when the displayed courses are borrowed from `referenceSemester`:
+  // either a projected future term, or a current-but-sparse term showing a
+  // previous-year preview. In BOTH cases the courses do not belong to the
+  // selected semester, so queries/upserts must use the reference semester.
+  // See REFERENCE_SEMESTER.md. (Historically only isFutureSemester was checked,
+  // which silently mislabeled sparse-current previews as the current term and
+  // polluted the vector DB — e.g. HS25 courses upserted under "HS26".)
+  const usingReferenceData = semesterMetadata?.usingReferenceData;
+  const isReferenceData =
+    isFutureSemesterSelectedSate || usingReferenceData || false;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
   // For future semesters, use the actual selected semester for course filtering (not reference)
@@ -100,10 +113,12 @@ export default function SmartSearch() {
     //eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken]);
 
-  // handle future semester selected
+  // Resolve the semester to use for API calls. When the displayed courses are
+  // borrowed (future projection OR current-but-sparse preview), they belong to
+  // referenceSemester, so all queries/upserts must use it — not the selected term.
   useEffect(() => {
     try {
-      if (isFutureSemesterSelectedSate) {
+      if (isReferenceData) {
         // referenceSemester already stored as shortName
         setReferenceSemesterLocalState(referenceSemesterState || null);
       } else {
@@ -116,7 +131,7 @@ export default function SmartSearch() {
       );
       errorHandlingService.handleError(error);
     }
-  }, [isFutureSemesterSelectedSate, referenceSemesterState]);
+  }, [isReferenceData, referenceSemesterState]);
 
   // Process course data for upsert
   useEffect(() => {
@@ -146,33 +161,19 @@ export default function SmartSearch() {
     }
   }, [coursesCurrentSemester]);
 
-  // upsert relevant course info to backend if no similar courses found
+  // upsert relevant course info to backend if no similar courses found.
+  // Guardrail + payload live in the shared helper so SmartSearch and
+  // SimilarCourses can never drift apart. See REFERENCE_SEMESTER.md.
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
-    try {
-      if (!authToken) {
-        console.warn("Missing auth token for similar courses upsert");
-        return;
-      }
-      const program = programRef.current;
-      const semester =
-        referenceSemesterLocalState || unifiedSelectedSemesterShortName;
-
-      await apiClient.post(
-        "https://api.shsg.ch/similar-courses/upsert",
-        {
-          courses: relevantCourseInfoForUpsert.map((course) => ({
-            courseNumber: course.courseNumber,
-            semester,
-            courseDescription: course.courseContent,
-            category: course.classification,
-            program,
-          })),
-        },
-        authToken
-      );
-    } catch (error) {
-      errorHandlingService.handleError(error);
-    }
+    await upsertSimilarCourses({
+      authToken,
+      courses: relevantCourseInfoForUpsert,
+      program: programRef.current,
+      selectedSemester: unifiedSelectedSemesterShortName,
+      referenceSemester: referenceSemesterState,
+      isReferenceData,
+      source: "SmartSearch",
+    });
   }
 
   // fetch similar courses using search input
@@ -205,7 +206,10 @@ export default function SmartSearch() {
 
     if (programRef.current !== null) {
       try {
-        // For API calls, use reference semester if it's a future semester, otherwise use selected semester
+        // Query the semester the displayed courses actually belong to: the
+        // reference semester when showing borrowed data (future projection or
+        // current-but-sparse preview), otherwise the selected term itself.
+        // referenceSemesterLocalState is populated for both borrowed cases.
         const semesterToUse =
           referenceSemesterLocalState || unifiedSelectedSemesterShortName;
         if (!semesterToUse) {
@@ -215,19 +219,13 @@ export default function SmartSearch() {
           setIsLoading(false);
           return;
         }
-        const response = await apiClient.get(
-          "https://api.shsg.ch/similar-courses/query",
+        const response = await querySimilarCourses({
           authToken,
-          {
-            params: {
-              courseDescription: searchInput,
-              numberOfResults: 10,
-              category: category,
-              program: programRef.current,
-              semester: semesterToUse,
-            },
-          }
-        );
+          courseDescription: searchInput,
+          category,
+          program: programRef.current,
+          semester: semesterToUse,
+        });
 
         setSimilarCourses(response.data);
         console.log("Similar courses:", response.data);
