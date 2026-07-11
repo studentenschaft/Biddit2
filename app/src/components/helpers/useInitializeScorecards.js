@@ -8,6 +8,8 @@ import { currentEnrollmentsState } from '../recoil/currentEnrollmentsAtom';
 import { fetchScoreCardDetails } from '../recoil/ApiScorecardDetails';
 import {
   findMainProgram,
+  buildMainStudyLookup,
+  resolveProgramId,
   buildTranscriptView,
   buildStudyOverviewView,
   calculateProgramStats
@@ -36,6 +38,8 @@ export const useInitializeScoreCards = (handleError) => {
       setScoreCardData(curr => ({ ...curr, loading: true }));
 
       try {
+        const mainStudyLookup = buildMainStudyLookup(currentEnrollments.enrollmentInfos);
+
         const results = await Promise.all(
           currentEnrollments.enrollmentInfos.map(async (enrollment) => {
             const attempt = enrollment.attempt || 1;
@@ -45,19 +49,11 @@ export const useInitializeScoreCards = (handleError) => {
               attempt
             );
 
-            if (!rawScorecard.success) {
-              return {
-                programId: enrollment.studyProgramDescription,
-                data: rawScorecard.data,
-                success: false
-              };
-            } else {
-              return {
-                programId: enrollment.studyProgramDescription,
-                data: rawScorecard.data,
-                success: true
-              };
-            }
+            return {
+              programId: resolveProgramId(enrollment),
+              data: rawScorecard.data,
+              success: rawScorecard.success
+            };
           })
         );
 
@@ -80,7 +76,7 @@ export const useInitializeScoreCards = (handleError) => {
 
         // NEW: Transform and store in unified academic data state
         if (Object.keys(rawScorecards).length > 0) {
-          const mainProgramId = findMainProgram(rawScorecards);
+          const mainProgramId = findMainProgram(rawScorecards, mainStudyLookup);
           const programs = {};
 
           Object.entries(rawScorecards).forEach(([programId, rawData]) => {
@@ -119,7 +115,7 @@ export const useInitializeScoreCards = (handleError) => {
               },
               metadata: {
                 programId,
-                isMainStudy: rawData.isMainStudy || isMainProgram,
+                isMainStudy: isMainProgram,
                 programType: programId.toLowerCase().includes('master') ? 'master' :
                              programId.toLowerCase().includes('bachelor') ? 'bachelor' : 'other',
                 requirementsFulfilled: {
