@@ -15,6 +15,7 @@ const ErrorType = {
   SERVER: "SERVER", // Server errors (5xx)
   CLIENT: "CLIENT", // Client errors (4xx except 401)
   MSAL: "MSAL", // MSAL/Azure AD errors
+  DEGRADED_MODE: "DEGRADED_MODE", // SHSG API disabled by the degraded-mode kill switch
   UNKNOWN: "UNKNOWN", // Unknown errors
 };
 
@@ -34,6 +35,16 @@ const classifyError = (error) => {
       type: ErrorType.NETWORK,
       isRecoverable: true,
       shouldShowToast: false, // Offline modal handles this
+    };
+  }
+
+  // Degraded mode: request was short-circuited client-side by the axios
+  // request interceptor before any network I/O. Never a toast.
+  if (error?.code === "DEGRADED_MODE" || error?.isDegradedModeError) {
+    return {
+      type: ErrorType.DEGRADED_MODE,
+      isRecoverable: true,
+      shouldShowToast: false,
     };
   }
 

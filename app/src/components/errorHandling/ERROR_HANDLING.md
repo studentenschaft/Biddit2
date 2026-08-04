@@ -129,6 +129,7 @@ treated as "recent" for 2 minutes so an unrelated later failure starts fresh.
 | Type | Match | `shouldShowToast` | Handled by |
 | --- | --- | --- | --- |
 | `NETWORK` | `ERR_NETWORK` | `false` | OfflineModal |
+| `DEGRADED_MODE` | `code === "DEGRADED_MODE"` / `isDegradedModeError` | `false` | DegradedModeBanner / DegradedPlaceholder |
 | `MSAL` | `BrowserAuthError` / `InteractionRequired` / monitor_window_timeout / popup errors | `false` | Session modals |
 | `TIMEOUT` | `ECONNABORTED` / "timeout" | only after max retries | toast (real failure) |
 | `AUTH` | 401 | `false` | token refresh / session modals |
@@ -143,6 +144,35 @@ MSAL, and auth errors, those never generate report emails.
 > **Scope note:** generic `404`s are still classified as `CLIENT` → toast. Some
 > endpoints (SmartSearch "no similar courses", ratings) use 404 as normal control
 > flow; silencing those is intentionally **out of scope** for this change.
+
+## 4a. Degraded mode (manual SHSG kill switch)
+
+A manually-toggled "degraded mode" flag lets us disable all `api.shsg.ch`
+traffic client-side during a demand spike, without a deploy. The University
+API (`integration.unisg.ch`) is never affected.
+
+- **Source of truth**: `public/app-status.json`, a static file served from the
+  Netlify CDN (`public/_headers` sets a short `Cache-Control`). Toggling it is
+  a manual edit + deploy of that one file.
+- **`degradedModeService.js`** (`helpers/`) polls `/app-status.json` via a
+  plain `fetch` (not `apiClient` — avoids a circular dependency and needs no
+  auth) on an interval with jitter, and exposes the current flag
+  synchronously via `getDegradedMode()`. It is **fail-open**: any fetch
+  error, non-OK response, bad JSON, or non-boolean `degradedMode` leaves the
+  state unchanged, so a broken/never-succeeding status endpoint means normal
+  mode forever.
+- **Request-interceptor short-circuit** (`axiosClient.js`): if
+  `isShsgHost(config.url)` and `getDegradedMode().isDegradedMode`, the
+  request is rejected with a `DegradedModeError` **before any network I/O**
+  — no request is sent, so it never enters the retry logic or the response
+  interceptor.
+- **`DEGRADED_MODE` error type** (`ErrorHandlingService.jsx`): a rejection
+  carrying `code === "DEGRADED_MODE"` (or `isDegradedModeError`) classifies
+  as `DEGRADED_MODE`, recoverable, `shouldShowToast: false` — it **never**
+  produces a report-email toast.
+- **UI**: `useDegradedMode()` (`common/`) subscribes to the service;
+  `DegradedModeBanner` and `DegradedPlaceholder` (`common/`) consume it to
+  show a non-blocking banner and per-feature placeholders respectively.
 
 ## 5. Configuration knobs
 

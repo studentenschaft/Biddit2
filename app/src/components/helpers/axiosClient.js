@@ -4,6 +4,24 @@ import {
   getRefreshToken,
   handleAuthFailure,
 } from "../auth/tokenService";
+import { getDegradedMode, DegradedModeError } from "./degradedModeService";
+
+const SHSG_HOST = "api.shsg.ch";
+
+/**
+ * Whether a request URL targets the SHSG API host. Relative URLs (e.g. the
+ * `/app-status.json` status document itself) resolve against
+ * `window.location.origin` and are never SHSG.
+ * @param {string} url
+ * @returns {boolean}
+ */
+export const isShsgHost = (url) => {
+  try {
+    return new URL(url, window.location.origin).hostname === SHSG_HOST;
+  } catch {
+    return false;
+  }
+};
 
 // Configuration constants
 const MAX_RETRIES = 3;
@@ -83,6 +101,16 @@ class ApiClient {
           return Promise.reject(new Error("No network connection"));
         }
 
+        // Degraded mode: reject SHSG requests before any network I/O, no
+        // retries and no error toast (see degradedModeService.js).
+        if (isShsgHost(config.url) && getDegradedMode().isDegradedMode) {
+          return Promise.reject(
+            new DegradedModeError(
+              "SHSG API disabled (degraded mode): " + config.url,
+            ),
+          );
+        }
+
         // Add default headers for SHSG API
         const defaultHeaders = {
           "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
@@ -111,6 +139,17 @@ class ApiClient {
         return response;
       },
       async (error) => {
+        // Degraded-mode rejections are created in the request interceptor
+        // before any network I/O and before `config` is touched (see the
+        // degraded-mode short-circuit above), so there is no retry/request
+        // state to evaluate here. Axios chains request- and response-
+        // interceptors on one promise, so this rejection still passes
+        // through this handler - reject it immediately, untouched: no
+        // retries, no offline modal, no error toast.
+        if (error?.isDegradedModeError) {
+          return Promise.reject(error);
+        }
+
         const originalRequest = error.config;
 
         // Handle offline scenario
