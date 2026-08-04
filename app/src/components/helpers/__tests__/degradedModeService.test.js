@@ -242,24 +242,58 @@ describe("degradedModeService", () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });
 
-    it("double-start stops the previous loop before starting a new one", async () => {
+    it("double-start: two starts with NO timer advance between them must not spawn two independent polling loops (regression for the race)", async () => {
       const fetchMock = vi
         .fn()
         .mockResolvedValue(jsonResponse({ degradedMode: false }));
       vi.stubGlobal("fetch", fetchMock);
 
+      // Deliberately no `await`/timer-advance between these two calls: the
+      // first call's initial _fetchStatusOnce() is still an in-flight
+      // microtask when the second call starts. This is exactly the
+      // ordering that exposes the race — a plain `isPolling` boolean can't
+      // tell the two loops apart, so the first (stale) loop's scheduleNext
+      // can still fire and schedule its own timer once its fetch settles.
       startDegradedModePolling({ intervalMs: 100000 });
-      await vi.advanceTimersByTimeAsync(0);
-      expect(fetchMock).toHaveBeenCalledTimes(1);
-
-      // Starting again should not leave two loops running concurrently.
       const secondStop = startDegradedModePolling({ intervalMs: 100000 });
+
+      // Each start's immediate fetch runs synchronously; flush the
+      // resulting `.finally(scheduleNext)` continuations.
       await vi.advanceTimersByTimeAsync(0);
       expect(fetchMock).toHaveBeenCalledTimes(2);
 
       secondStop();
-      await vi.advanceTimersByTimeAsync(500000);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
+      fetchMock.mockClear();
+
+      // A stray timer from an uncancelled first loop would fire somewhere
+      // in [70s, 130s] (100s intervalMs +/- 30s jitter) and cause an extra
+      // fetch that stop() cannot prevent, since only the most recently
+      // written timer is ever tracked by `pollTimeoutId`. With the
+      // generation-token fix, advancing well past that window must produce
+      // zero further fetches.
+      await vi.advanceTimersByTimeAsync(200000);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("stop() from a superseded start is a no-op (does not halt the current loop)", async () => {
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValue(jsonResponse({ degradedMode: false }));
+      vi.stubGlobal("fetch", fetchMock);
+
+      const firstStop = startDegradedModePolling({ intervalMs: 100000 });
+      const secondStop = startDegradedModePolling({ intervalMs: 100000 });
+      await vi.advanceTimersByTimeAsync(0);
+
+      // The stale stop() from the superseded first call must not cancel
+      // the second (current) loop.
+      firstStop();
+      fetchMock.mockClear();
+
+      await vi.advanceTimersByTimeAsync(130000);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      secondStop();
     });
   });
 

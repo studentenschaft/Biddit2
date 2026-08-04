@@ -26,15 +26,21 @@ let message = null;
 const listeners = new Set();
 
 let pollTimeoutId = null;
-let isPolling = false;
+
+// Generation token for the polling loop. Bumped on every start/stop so a
+// stale closure (e.g. a previous start's in-flight initial fetch) can tell
+// it has been superseded and must not schedule a timer or touch
+// `pollTimeoutId` — see `startDegradedModePolling` for why a plain boolean
+// isn't enough here.
+let generation = 0;
 
 /**
  * Custom error thrown by the axios request interceptor when a request to
  * the SHSG API is rejected because degraded mode is active.
  */
 export class DegradedModeError extends Error {
-  constructor(message) {
-    super(message);
+  constructor(errorMessage) {
+    super(errorMessage);
     this.name = "DegradedModeError";
     this.code = "DEGRADED_MODE";
     this.isDegradedModeError = true;
@@ -120,24 +126,31 @@ export const _fetchStatusOnce = async () => {
  * (rather than `setInterval`, which would apply the same fixed delay every
  * time and is harder to reason about/test per-tick).
  *
- * Double-start guard: calling this while already polling stops the previous
- * polling loop first and starts a fresh one with the new options. This is
- * the simplest semantics that can't leave two overlapping loops running.
+ * Double-start guard: calling this while already polling starts a fresh
+ * loop and invalidates the previous one via a generation token. A plain
+ * "isPolling" boolean is not enough here: the initial `_fetchStatusOnce()`
+ * call is async, so if `startDegradedModePolling` is called again before
+ * the first call's initial fetch resolves, the first call's `scheduleNext`
+ * closure would still see a boolean flag as "polling" and schedule its own
+ * timer — two independent loops sharing one `pollTimeoutId`. Bumping
+ * `generation` on every start means each closure can check "am I still the
+ * current generation?" right before it schedules or writes state, so a
+ * superseded loop reliably becomes a no-op instead of racing.
  *
  * @param {{ intervalMs?: number }} [options]
- * @returns {() => void} stop() — halts polling
+ * @returns {() => void} stop() — halts polling started by this call, unless
+ *   a later `startDegradedModePolling` call has already superseded it
  */
 export const startDegradedModePolling = ({ intervalMs = 300000 } = {}) => {
-  if (isPolling) {
-    stopPolling();
-  }
-  isPolling = true;
+  const myGeneration = ++generation;
+  clearScheduledTimeout();
 
   const scheduleNext = () => {
-    if (!isPolling) return;
+    if (myGeneration !== generation) return; // superseded by a later start/stop
     const jitter = Math.random() * 60000 - 30000; // +/- 30s
     const delay = Math.max(0, intervalMs + jitter);
     pollTimeoutId = setTimeout(async () => {
+      if (myGeneration !== generation) return;
       await _fetchStatusOnce();
       scheduleNext();
     }, delay);
@@ -146,11 +159,14 @@ export const startDegradedModePolling = ({ intervalMs = 300000 } = {}) => {
   // Fire immediately, then schedule the first jittered tick once it settles.
   _fetchStatusOnce().finally(scheduleNext);
 
-  return stopPolling;
+  return () => {
+    if (myGeneration !== generation) return; // already superseded; nothing to stop
+    generation++;
+    clearScheduledTimeout();
+  };
 };
 
-function stopPolling() {
-  isPolling = false;
+function clearScheduledTimeout() {
   if (pollTimeoutId !== null) {
     clearTimeout(pollTimeoutId);
     pollTimeoutId = null;
@@ -161,7 +177,8 @@ function stopPolling() {
  * Reset all module state. Test-only.
  */
 export const _resetForTests = () => {
-  stopPolling();
+  generation++; // invalidate any in-flight polling loop
+  clearScheduledTimeout();
   isDegradedMode = false;
   message = null;
   listeners.clear();
