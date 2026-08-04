@@ -120,8 +120,11 @@ Implement a manual, static kill switch:
 1. Edit `app/public/app-status.json`, set `"degradedMode": true`. Optionally
    set `"message"` to a short user-facing string (shown in the banner /
    placeholders); update `"updatedAt"`.
-2. Commit **that file alone** on the deploy branch (see "why solo commit"
-   below) and push.
+2. Commit **that file alone** on whichever branch your Netlify site is
+   configured to build from (check the Netlify site's Site settings → Build
+   & deploy → Branches if unsure — this repo has multiple long-lived
+   branches and no `netlify.toml` pinning one) and push. See "why solo
+   commit" below.
 3. Netlify builds and deploys automatically — typically ~1-2 minutes.
 4. Verify the live file: `curl https://<prod-domain>/app-status.json` and
    confirm `"degradedMode": true` in the response.
