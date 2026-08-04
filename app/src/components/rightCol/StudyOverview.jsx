@@ -13,6 +13,8 @@ import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonStudyOverview } from './LoadingSkeletons';
+import { useDegradedMode } from '../common/useDegradedMode';
+import DegradedPlaceholder from '../common/DegradedPlaceholder';
 import ProgramOverview from './studyOverview/components/ProgramOverview';
 import { adaptAcademicDataForStudyOverview, getMainProgram } from './studyOverview/utils/dataAdapter';
 import { useState, useMemo, useEffect } from 'react';
@@ -22,6 +24,7 @@ const StudyOverview = () => {
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();
+  const { isDegradedMode } = useDegradedMode();
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [selectedSemesters, setSelectedSemesters] = useState({});
   
@@ -70,6 +73,10 @@ const StudyOverview = () => {
   return (
     <div className="flex flex-col px-8 py-4">
       <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
+
+      {isDegradedMode && (
+        <DegradedPlaceholder compact feature="Study plan" className="mb-4" />
+      )}
 
       {/* Render programs exactly like the original StudyOverview */}
       {Object.entries(adaptedData.programs).map(([programId, programData], index, array) => (

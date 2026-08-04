@@ -22,6 +22,8 @@ import { useInitializeScoreCards } from "../../helpers/useInitializeScorecards";
 import { useCurriculumMapCourseLoader } from "../../helpers/useCurriculumMapCourseLoader";
 import usePlanManager from "../../helpers/usePlanManager";
 import { useErrorHandler } from "../../errorHandling/useErrorHandler";
+import { useDegradedMode } from "../../common/useDegradedMode";
+import DegradedPlaceholder from "../../common/DegradedPlaceholder";
 import LoadingText from "../../common/LoadingText";
 import CurriculumGrid from "./CurriculumGrid";
 import ProgramHeader from "./ProgramHeader";
@@ -93,6 +95,7 @@ const CurriculumMap = () => {
   const { loadPlans, importSelectedCourses } = usePlanManager();
   const scorecardFetching = useScorecardFetching();
   const handleError = useErrorHandler();
+  const { isDegradedMode } = useDegradedMode();
 
   // Lazily load course catalogs for every semester the map shows (e.g. past
   // semesters) so course credits resolve to their real ECTS instead of "?".
@@ -156,6 +159,19 @@ const CurriculumMap = () => {
     };
     fetchIfNeeded();
   }, [curriculumData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
+
+  // Curriculum plans are SHSG-backed; bail out before the dnd-kit grid mounts
+  // so the pane doesn't hang on a perpetual loading spinner while degraded.
+  if (isDegradedMode) {
+    return (
+      <div className="flex flex-col h-full px-6 py-4">
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">
+          Curriculum Map
+        </h1>
+        <DegradedPlaceholder feature="Curriculum Map" />
+      </div>
+    );
+  }
 
   // Loading state
   if (!curriculumData.isLoaded || !plansRegistry.isLoaded) {

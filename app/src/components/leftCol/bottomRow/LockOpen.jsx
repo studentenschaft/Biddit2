@@ -11,6 +11,10 @@ import {
 
 import { useCourseSelection } from "../../helpers/useCourseSelection";
 import { calendarEntriesSelector } from "../../recoil/calendarEntriesSelector";
+import { useDegradedMode } from "../../common/useDegradedMode";
+
+const DEGRADED_TOOLTIP = "Wishlist temporarily unavailable — back soon";
+
 /**
  * LockOpen Component
  * Renders an open lock icon that toggles a course in or out of the user’s study plan
@@ -20,6 +24,7 @@ export default function LockOpen({ clg, event }) {
   const authToken = useRecoilValue(authTokenState);
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
   const calendarEntries = useRecoilValue(calendarEntriesSelector);
+  const { isDegradedMode } = useDegradedMode();
   const [isHovered, setIsHovered] = useState(false);
   const selectedCourseIdsRaw = useRecoilValue(
     selectedCoursesSelector(selectedSemesterShortName || "")
@@ -43,6 +48,7 @@ export default function LockOpen({ clg, event }) {
     const COLOR_GRAY = "#9CA3AF"; // gray
     const COLOR_DANGER = "#DC2626"; // red-600
 
+    if (isDegradedMode) return COLOR_GRAY;
     if (!event) return COLOR_GRAY;
 
     const courseNumber =
@@ -65,7 +71,7 @@ export default function LockOpen({ clg, event }) {
     if (isSelected && hasOverlap) return COLOR_WARNING;
     if (isSelected) return COLOR_MAIN;
     return COLOR_GRAY; // not selected (e.g., SimilarCourses): gray
-  }, [calendarEntries, event, selectedCourseIds, isHovered]);
+  }, [calendarEntries, event, selectedCourseIds, isHovered, isDegradedMode]);
 
   return (
     <svg
@@ -74,12 +80,21 @@ export default function LockOpen({ clg, event }) {
       viewBox="0 0 24 24"
       strokeWidth={2}
       stroke="currentColor"
-      className={clg + " transition duration-500 ease-in-out"}
+      className={
+        clg +
+        " transition duration-500 ease-in-out" +
+        (isDegradedMode ? " opacity-50 cursor-not-allowed" : "")
+      }
       style={{ color: computedColor }}
+      title={isDegradedMode ? DEGRADED_TOOLTIP : undefined}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onMouseDown={(e) => {
         e.preventDefault();
+        // Wishlist is SHSG-backed; no-op while degraded.
+        if (isDegradedMode) {
+          return;
+        }
         if (!event) {
           return;
         }

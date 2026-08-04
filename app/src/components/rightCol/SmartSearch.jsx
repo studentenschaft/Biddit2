@@ -24,11 +24,14 @@ import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 // import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
+import { useDegradedMode } from "../common/useDegradedMode";
+import DegradedPlaceholder from "../common/DegradedPlaceholder";
 
 export default function SmartSearch() {
   const authToken = useRecoilValue(authTokenState);
   const [, setScoreCardEnrollments] = useRecoilState(scorecardEnrollmentsState);
   const scorecardFetching = useScorecardFetching();
+  const { isDegradedMode } = useDegradedMode();
 
   // Use new unified course data system for semester selection
   const unifiedSelectedSemesterShortName = useRecoilValue(
@@ -386,6 +389,12 @@ export default function SmartSearch() {
       fetchSimilarCourses();
     }
   };
+
+  // Vector-DB backed search is SHSG-hosted; swap in a placeholder rather
+  // than mounting a search UI that can't return results.
+  if (isDegradedMode) {
+    return <DegradedPlaceholder feature="Smart Search" />;
+  }
 
   return (
     <>
