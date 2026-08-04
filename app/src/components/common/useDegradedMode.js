@@ -14,6 +14,10 @@ export const useDegradedMode = () => {
 
   useEffect(() => {
     const unsubscribe = addDegradedModeListener(setState);
+    // The service state may have changed between the initial useState read
+    // (render time) and this effect's subscription taking effect - re-sync
+    // immediately to close that missed-update window.
+    setState(getDegradedMode());
     return unsubscribe;
   }, []);
 

@@ -152,6 +152,17 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔍 [DEBUG] Current semester ${selectedSemester.shortName} has ${currentSemesterCourses.length} courses`
         );
       } catch (error) {
+        // If the kill switch flipped ON between render (captured isDegradedMode)
+        // and this request landing, the interceptor rejects with a
+        // DegradedModeError here instead of short-circuiting before the call.
+        // Bail out without touching study-plan/unified state - wiping it here
+        // would erase a wishlist loaded before the incident and stamp
+        // lastFetched fresh (touchLastFetched: true), suppressing the
+        // automatic recovery refetch once degraded mode clears.
+        if (error?.isDegradedModeError) {
+          return;
+        }
+
         console.error("❌ Error fetching study plan:", error);
         errorHandlingService.handleError(error);
 

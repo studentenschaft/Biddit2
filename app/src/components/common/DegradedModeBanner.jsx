@@ -10,8 +10,6 @@ const DEFAULT_MESSAGE =
  * `helpers/degradedModeService.js`). The close button collapses the banner
  * for this page load only (plain component state, no localStorage) — it
  * reappears on reload as long as the flag is still on.
- *
- * Not wired into AppStateProvider yet — that happens in a follow-up task.
  */
 const DegradedModeBanner = () => {
   const { isDegradedMode, message } = useDegradedMode();

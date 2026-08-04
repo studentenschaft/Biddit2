@@ -138,12 +138,15 @@ const CurriculumMap = () => {
   // Initialize scorecard data
   useInitializeScoreCards(handleError);
 
-  // Load curriculum plans from API on mount (if not already loaded)
+  // Load curriculum plans from API on mount (if not already loaded).
+  // isDegradedMode is in the deps (and loadPlans itself is guarded against
+  // degraded mode) so that when the kill switch clears, this effect
+  // re-fires and re-triggers the load instead of leaving plans empty.
   useEffect(() => {
-    if (!plansRegistry.isLoaded && authToken) {
+    if (!plansRegistry.isLoaded && authToken && !isDegradedMode) {
       loadPlans();
     }
-  }, [plansRegistry.isLoaded, authToken, loadPlans]);
+  }, [plansRegistry.isLoaded, authToken, loadPlans, isDegradedMode]);
 
   // Auto-fetch if needed
   useEffect(() => {
