@@ -9,6 +9,9 @@ import { render, screen, act, cleanup } from "@testing-library/react";
 // Capture the callbacks the provider registers so we can emit events to it.
 let networkCb = null;
 let sessionCb = null;
+let degradedModeCb = null;
+let startPollingCallCount = 0;
+const stopPollingSpy = vi.fn();
 
 vi.mock("../../helpers/axiosClient", () => ({
   addNetworkEventListener: (cb) => {
@@ -33,6 +36,20 @@ vi.mock("../../auth/tokenService", async (importOriginal) => {
   };
 });
 
+vi.mock("../../helpers/degradedModeService", () => ({
+  getDegradedMode: () => ({ isDegradedMode: false, message: null }),
+  addDegradedModeListener: (cb) => {
+    degradedModeCb = cb;
+    return () => {
+      degradedModeCb = null;
+    };
+  },
+  startDegradedModePolling: () => {
+    startPollingCallCount++;
+    return stopPollingSpy;
+  },
+}));
+
 import { AppStateProvider } from "../AppStateProvider";
 import { SessionEvent } from "../../auth/tokenService";
 
@@ -47,6 +64,9 @@ describe("AppStateProvider", () => {
   beforeEach(() => {
     networkCb = null;
     sessionCb = null;
+    degradedModeCb = null;
+    startPollingCallCount = 0;
+    stopPollingSpy.mockClear();
     sessionStorage.clear();
     Object.defineProperty(navigator, "onLine", {
       value: true,
@@ -98,6 +118,42 @@ describe("AppStateProvider", () => {
     expect(screen.getByText(/refresh your session/i)).toBeInTheDocument();
     expect(
       screen.queryByText(/you appear to be offline/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("starts degraded-mode polling on mount and stops it on unmount", () => {
+    const { unmount } = renderProvider();
+
+    expect(startPollingCallCount).toBe(1);
+    expect(stopPollingSpy).not.toHaveBeenCalled();
+
+    unmount();
+
+    expect(stopPollingSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the degraded-mode banner when the service reports degraded, coexisting with a blocking modal (no precedence change)", () => {
+    renderProvider();
+    act(() =>
+      degradedModeCb({
+        isDegradedMode: true,
+        message: "Some features are temporarily reduced.",
+      }),
+    );
+    act(() => sessionCb({ type: SessionEvent.RENEW }));
+
+    expect(
+      screen.getByText("Some features are temporarily reduced."),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/refresh your session/i)).toBeInTheDocument();
+  });
+
+  it("degraded-mode banner is absent when the service reports normal mode", () => {
+    renderProvider();
+    act(() => degradedModeCb({ isDegradedMode: false, message: null }));
+
+    expect(
+      screen.queryByText(/temporarily reduced/i),
     ).not.toBeInTheDocument();
   });
 });

@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { addNetworkEventListener } from "../helpers/axiosClient";
 import { addSessionEventListener, SessionEvent } from "../auth/tokenService";
+import { startDegradedModePolling } from "../helpers/degradedModeService";
 import { AppStateContext } from "./AppStateContext";
 import OfflineModal from "./OfflineModal";
 import SessionExpiredModal from "./SessionExpiredModal";
 import SessionRenewModal from "./SessionRenewModal";
+import DegradedModeBanner from "./DegradedModeBanner";
 
 /**
  * Provider component that manages global app state and renders blocking modals.
@@ -71,6 +73,14 @@ export const AppStateProvider = ({ children }) => {
     };
   }, []);
 
+  useEffect(() => {
+    // Start the degraded-mode kill-switch poller once, for the app's
+    // lifetime. stop() is generation-aware, so it's safe as a cleanup even
+    // if a later start elsewhere ever supersedes this one.
+    const stop = startDegradedModePolling();
+    return stop;
+  }, []);
+
   const handleRefresh = useCallback(() => {
     window.location.reload();
   }, []);
@@ -92,6 +102,9 @@ export const AppStateProvider = ({ children }) => {
   return (
     <AppStateContext.Provider value={contextValue}>
       {children}
+
+      {/* Non-blocking degraded-mode banner - coexists with the blocking modals below */}
+      <DegradedModeBanner />
 
       {/* Blocking modals - rendered at app root level */}
       <OfflineModal isVisible={showOffline} onRefresh={handleRefresh} />

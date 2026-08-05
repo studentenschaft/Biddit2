@@ -11,6 +11,7 @@ import {
 
 import { useRecoilState, useRecoilValue } from "recoil";
 import { authTokenState } from "../../recoil/authAtom";
+import { useDegradedMode } from "../../common/useDegradedMode";
 
 // import { ReviewCourse } from "./ReviewCourse";
 import { StarIcon } from "@heroicons/react/outline";
@@ -73,6 +74,7 @@ export const ReviewButton = () => {
   // };
 
   const token = useRecoilValue(authTokenState);
+  const { isDegradedMode } = useDegradedMode();
 
   // this object can ultimately be passed to the backend
   // check the handleSubmit function for more details
@@ -180,8 +182,14 @@ export const ReviewButton = () => {
   return (
     <>
       <button
-        className="relative inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
+        className="relative inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
         onClick={() => updateCookie()}
+        disabled={isDegradedMode}
+        title={
+          isDegradedMode
+            ? "Course ratings temporarily unavailable — back soon"
+            : undefined
+        }
       >
         <StarIcon
           className={`block w-6 h-6 ${

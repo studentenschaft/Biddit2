@@ -1,5 +1,6 @@
 import { useRecoilCallback, useRecoilValue } from "recoil";
 import { toast } from "react-toastify";
+import { useDegradedMode } from "../common/useDegradedMode";
 import {
   curriculumPlanState,
   getDefaultPlanState,
@@ -93,6 +94,7 @@ const convertPlannedItemsToPlacements = (plannedItems = {}) => {
  */
 const usePlanManager = () => {
   const token = useRecoilValue(authTokenState);
+  const { isDegradedMode } = useDegradedMode();
 
   /**
    * Load plans from API (call on CurriculumMap mount).
@@ -108,6 +110,11 @@ const usePlanManager = () => {
 
         // Skip if already loaded
         if (registry.isLoaded) return;
+
+        // Degraded mode: SHSG API is disabled. Skip the fetch without
+        // marking the registry isLoaded, so recovery (isDegradedMode
+        // flipping off) can re-trigger a real load via the mount effect.
+        if (isDegradedMode) return;
 
         try {
           const data = await getCurriculumPlans(token);
@@ -143,6 +150,16 @@ const usePlanManager = () => {
             });
           }
         } catch (error) {
+          // The kill switch may have flipped ON between the isDegradedMode
+          // check above and this request landing, in which case the
+          // interceptor rejects with a DegradedModeError here instead. Bail
+          // out silently (no toast) and leave isLoaded false so recovery
+          // re-triggers a real load instead of getting stuck on an empty
+          // registry.
+          if (error?.isDegradedModeError) {
+            return;
+          }
+
           console.error("[usePlanManager] Error loading plans:", error);
           toast.error("Could not load your curriculum plans.", {
             toastId: "plans-load-error",
@@ -154,7 +171,7 @@ const usePlanManager = () => {
           }));
         }
       },
-    [token],
+    [token, isDegradedMode],
   );
 
   /**
