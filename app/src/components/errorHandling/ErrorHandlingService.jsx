@@ -146,8 +146,14 @@ export const errorHandlingService = {
       retryCount: error.config?._retryCount || 0,
     };
 
-    // Always log the error for debugging
-    console.error("Caught error:", errorDetails);
+    // Log for debugging. Degraded-mode short-circuits are expected traffic
+    // (the kill switch flipped on with a request in flight) rather than a
+    // real failure, so they go to console.debug instead of console.error.
+    if (classification.type === ErrorType.DEGRADED_MODE) {
+      console.debug("Caught error:", errorDetails);
+    } else {
+      console.error("Caught error:", errorDetails);
+    }
 
     // Only show toast for non-recoverable errors that should be shown
     if (classification.shouldShowToast) {

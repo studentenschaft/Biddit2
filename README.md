@@ -87,6 +87,15 @@ Biddit2/
 └── vite.config.js         # Vite configuration
 ```
 
+## 🔌 Kill Switch (degraded mode)
+
+During a demand spike (e.g. intro week), SHSG-backed features (wishlist,
+ratings, curriculum map, smart search, custom grades) can be disabled
+client-side via a one-file config toggle, without a backend deploy — course
+browsing, calendar, and transcript stay up. See
+[`docs/KILLSWITCH.md`](docs/KILLSWITCH.md) for how to enable/disable it
+during an incident.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

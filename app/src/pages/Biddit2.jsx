@@ -259,7 +259,11 @@ export default function Biddit2() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden ">
+      {/* mt-/h- offset reserves space below the fixed DegradedModeBanner
+          (see its HEIGHT_CSS_VAR) instead of letting it overlay the tab bar;
+          the var defaults to 0px so this is a no-op when the banner is
+          hidden or collapsed. */}
+      <div className="flex flex-col md:flex-row w-full overflow-hidden mt-[var(--degraded-banner-height,0px)] h-[calc(100vh-var(--degraded-banner-height,0px))]">
         {/* Mobile Menu Button */}
         <div className="md:hidden fixed bottom-10 left-0 z-50 p-4 ">
           <button
