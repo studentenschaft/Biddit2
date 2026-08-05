@@ -112,10 +112,16 @@ export const _fetchStatusOnce = async () => {
     return;
   }
 
+  // `message` is optional: a missing key means the operator wants the
+  // default banner copy restored, so it resets to null. A present-but-wrong
+  // type (e.g. a typo'd non-string, non-null value) is invalid input, so we
+  // fail open and keep whatever message was previously in effect.
   const nextMessage =
-    typeof data.message === "string" || data.message === null
-      ? data.message
-      : message;
+    data.message === undefined
+      ? null
+      : typeof data.message === "string" || data.message === null
+        ? data.message
+        : message;
 
   emitIfChanged(data.degradedMode, nextMessage);
 };

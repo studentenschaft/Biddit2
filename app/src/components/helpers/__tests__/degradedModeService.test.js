@@ -5,6 +5,7 @@
  * apiClient/MSW — see the module doc comment) and covers:
  *  - a successful fetch flips state and notifies listeners only on change
  *  - fail-open behaviour on fetch rejection / non-ok / bad JSON / non-boolean
+ *  - message handling: absent key resets to null, invalid type fails open
  *  - stop() halting the polling loop
  *  - unsubscribe working
  */
@@ -113,6 +114,67 @@ describe("degradedModeService", () => {
 
       expect(fetchMock).toHaveBeenCalledWith("/app-status.json", {
         cache: "no-store",
+      });
+    });
+  });
+
+  describe("_fetchStatusOnce — message handling", () => {
+    it("resets message to null when the key is absent from the document, and notifies listeners", async () => {
+      // Establish a custom message first.
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse({ degradedMode: true, message: "Custom message" }),
+        ),
+      );
+      await _fetchStatusOnce();
+      expect(getDegradedMode()).toEqual({
+        isDegradedMode: true,
+        message: "Custom message",
+      });
+
+      // New document omits `message` entirely (operator removed the key).
+      const listener = vi.fn();
+      addDegradedModeListener(listener);
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse({ degradedMode: true })),
+      );
+      await _fetchStatusOnce();
+
+      expect(getDegradedMode()).toEqual({
+        isDegradedMode: true,
+        message: null,
+      });
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({
+        isDegradedMode: true,
+        message: null,
+      });
+    });
+
+    it("keeps the previous message when the field is present but an invalid type (fail-open on a typo)", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          jsonResponse({ degradedMode: true, message: "Custom message" }),
+        ),
+      );
+      await _fetchStatusOnce();
+      expect(getDegradedMode()).toEqual({
+        isDegradedMode: true,
+        message: "Custom message",
+      });
+
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(jsonResponse({ degradedMode: true, message: 42 })),
+      );
+      await _fetchStatusOnce();
+
+      expect(getDegradedMode()).toEqual({
+        isDegradedMode: true,
+        message: "Custom message",
       });
     });
   });
