@@ -1,7 +1,7 @@
 /**
- * Alignment guard for the tab row: the rendered tabs must match TAB_ORDER
- * exactly, in order. Panel children are stubbed so the assertion is about the
- * tab row only and cannot be broken by panel data fetching.
+ * Alignment guard for the tab row AND the tab panels: both are rendered from
+ * TAB_ORDER, and both are asserted against it here. Panel children are stubbed
+ * so the assertions cannot be broken by panel data fetching.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -27,10 +27,19 @@ vi.mock("../../components/rightCol/CurriculumMap", () => ({
   default: () => <div>curriculum-map-stub</div>,
 }));
 
-const renderTabs = (initializeState) =>
+/** The stub each tab id must render in its panel. */
+const PANEL_STUB = {
+  [TAB.COURSE_DETAILS]: "course-info-stub",
+  [TAB.CALENDAR]: "calendar-stub",
+  [TAB.SUMMARY]: "summary-stub",
+  [TAB.CURRICULUM_MAP]: "curriculum-map-stub",
+  [TAB.TRANSCRIPT]: "transcript-stub",
+};
+
+const renderTabs = ({ selectedTab = 0, initializeState } = {}) =>
   render(
     <RecoilRoot initializeState={initializeState}>
-      <TabComponent selectedTab={0} onTabSelect={() => {}} />
+      <TabComponent selectedTab={selectedTab} onTabSelect={() => {}} />
     </RecoilRoot>,
   );
 
@@ -46,14 +55,32 @@ describe("TabComponent tab row", () => {
   });
 
   it("uses the selected semester for the summary tab label", () => {
-    renderTabs(({ set }) =>
-      set(unifiedCourseDataState, {
-        semesters: {},
-        selectedSemester: "HS26",
-        latestValidTerm: null,
-        selectedCourseInfo: null,
-      }),
-    );
+    renderTabs({
+      initializeState: ({ set }) =>
+        set(unifiedCourseDataState, {
+          semesters: {},
+          selectedSemester: "HS26",
+          latestValidTerm: null,
+          selectedCourseInfo: null,
+        }),
+    });
     expect(tabNames()[TAB_ORDER.indexOf(TAB.SUMMARY)]).toBe("HS26 Summary");
   });
+
+});
+
+describe("TabComponent panels", () => {
+  it.each(TAB_ORDER.map((tabId, index) => [index, tabId]))(
+    "renders the %i-th panel (%s) for the tab at that index",
+    (index, tabId) => {
+      const { unmount } = renderTabs({ selectedTab: index });
+
+      expect(screen.getByText(PANEL_STUB[tabId])).toBeInTheDocument();
+      TAB_ORDER.filter((otherId) => otherId !== tabId).forEach((otherId) => {
+        expect(screen.queryByText(PANEL_STUB[otherId])).not.toBeInTheDocument();
+      });
+
+      unmount();
+    },
+  );
 });
