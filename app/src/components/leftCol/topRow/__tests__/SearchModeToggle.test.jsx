@@ -52,4 +52,26 @@ describe("SearchModeToggle", () => {
     fireEvent.click(screen.getByRole("button", { name: /keyword/i }));
     expect(screen.getByLabelText("results")).toHaveTextContent("0");
   });
+
+  // The retired Smart Search tab explained itself with a green intro panel;
+  // the advice only applies to smart mode, so it follows the mode.
+  it("explains smart search only while smart mode is on", () => {
+    render(
+      <RecoilRoot>
+        <SearchModeToggle />
+      </RecoilRoot>
+    );
+    const hint = /find courses based on what they're really about/i;
+    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /smart/i }));
+    expect(screen.getByText(hint)).toBeInTheDocument();
+    expect(screen.getByText(/try descriptive phrases like/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/"Programming basics" · "History and Asia"/)
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /keyword/i }));
+    expect(screen.queryByText(hint)).not.toBeInTheDocument();
+  });
 });

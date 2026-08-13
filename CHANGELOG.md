@@ -16,7 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   screen width.
 - Smart (semantic) search as a `[Keyword | Smart]` mode on the left-column
   course list. Results render through the normal course rows, so add/lock,
-  drag-to-curriculum-map and click-to-details now work for them.
+  drag-to-curriculum-map and click-to-details now work for them. A compact
+  explainer below the toggle carries over the retired tab's usage hint, shown
+  only in smart mode.
 - Empty state on Course Details when no course is selected.
 - "Try again" card when the Curriculum Map fails to load.
 - GA4 events: `tab_select { from, to }` on user tab changes and
