@@ -104,16 +104,24 @@ describe("TabComponent sticky panels", () => {
   const summaryIndex = TAB_ORDER.indexOf(TAB.SUMMARY);
   const stub = PANEL_STUB[TAB.CURRICULUM_MAP];
 
+  // Must walk the real flow — land on Summary (the default), open the map,
+  // leave again. Starting *at* the map index would pass on the useState
+  // initializer alone, leaving the visit-tracking effect untested.
   it("keeps the Curriculum Map mounted after it has been visited", () => {
-    const { rerender } = renderTabs({ selectedTab: curriculumIndex });
+    const { rerender } = renderTabs({ selectedTab: summaryIndex });
+    const selectTab = (index) =>
+      rerender(
+        <RecoilRoot>
+          <TabComponent selectedTab={index} onTabSelect={() => {}} />
+        </RecoilRoot>,
+      );
+
+    expect(screen.queryByText(stub)).not.toBeInTheDocument();
+
+    selectTab(curriculumIndex);
     expect(screen.getByText(stub)).toBeInTheDocument();
 
-    rerender(
-      <RecoilRoot>
-        <TabComponent selectedTab={summaryIndex} onTabSelect={() => {}} />
-      </RecoilRoot>,
-    );
-
+    selectTab(summaryIndex);
     expect(screen.getByText(PANEL_STUB[TAB.SUMMARY])).toBeInTheDocument();
     expect(screen.getByText(stub)).toBeInTheDocument();
   });
