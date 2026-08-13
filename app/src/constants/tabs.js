@@ -16,8 +16,32 @@ export const TAB_ORDER = [
   TAB.COURSE_DETAILS,
   TAB.CALENDAR,
   TAB.SUMMARY,
-  TAB.TRANSCRIPT,
   TAB.CURRICULUM_MAP,
+  TAB.TRANSCRIPT,
+];
+
+/** Default label per tab id. The Summary label is made semester-specific at render time. */
+export const TAB_LABELS = {
+  [TAB.COURSE_DETAILS]: "Course Details",
+  [TAB.CALENDAR]: "Calendar",
+  [TAB.SUMMARY]: "Semester Summary",
+  [TAB.CURRICULUM_MAP]: "Curriculum Map",
+  [TAB.TRANSCRIPT]: "Transcript",
+};
+
+/**
+ * Visual grouping of the tab row by scope, read left→right as
+ * This-Semester → My-Degree. Flattened, this must equal TAB_ORDER.
+ */
+export const TAB_GROUPS = [
+  {
+    label: "This Semester",
+    tabs: [TAB.COURSE_DETAILS, TAB.CALENDAR, TAB.SUMMARY],
+  },
+  {
+    label: "My Degree",
+    tabs: [TAB.CURRICULUM_MAP, TAB.TRANSCRIPT],
+  },
 ];
 
 export function tabIndexOf(tabId) {

@@ -33,6 +33,7 @@ const formatCredits = (credits, isNormalized = false) => {
 // Styles
 import "./react-tabs.css";
 import LoadingText from "../components/common/LoadingText";
+import IaChangeNotice from "../components/common/IaChangeNotice";
 import { InformationCircleIcon, XCircleIcon } from "@heroicons/react/solid";
 
 // Tab & Contents
@@ -321,6 +322,7 @@ export default function Biddit2() {
             isLeftViewVisibleState ? "hidden md:block" : ""
           }`}
         >
+          <IaChangeNotice />
           <Suspense
             fallback={<LoadingText>Loading dynamic Tab Text...</LoadingText>}
           >
