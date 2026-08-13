@@ -14,6 +14,8 @@ import { describe, expect, it, vi } from "vitest";
 import { server } from "../../../../test/mocks/server";
 import { authTokenState } from "../../../recoil/authAtom";
 import { selectedTabAtom } from "../../../recoil/selectedTabAtom";
+import { selectionOptionsState } from "../../../recoil/selectionOptionsAtom";
+import { smartSearchState } from "../../../recoil/smartSearchAtom";
 import { unifiedAcademicDataState } from "../../../recoil/unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "../../../recoil/unifiedCourseDataAtom";
 import { selectedCourseInfoSelector } from "../../../recoil/unifiedCourseDataSelectors";
@@ -103,19 +105,38 @@ const seedState = ({ set }) => {
 const TabProbe = () => {
   const tab = useRecoilValue(selectedTabAtom);
   const course = useRecoilValue(selectedCourseInfoSelector);
+  const { searchTerm } = useRecoilValue(selectionOptionsState);
+  const { hasSearched } = useRecoilValue(smartSearchState);
   return (
     <>
       <output aria-label="tab">{tab}</output>
       <output aria-label="details">{course?.shortName ?? "none"}</output>
+      <output aria-label="keyword-filter">{searchTerm || "(empty)"}</output>
+      <output aria-label="has-searched">{String(hasSearched)}</output>
     </>
   );
 };
 
-const renderList = () =>
+/**
+ * Mirrors SelectOptions, which renders <SearchTerm key={mode}>: the remount is
+ * the only thing that empties the visible box on a mode switch, so a harness
+ * without the key would silently pass a broken production wiring.
+ */
+const KeyedSearchTerm = () => {
+  const { mode } = useRecoilValue(smartSearchState);
+  return <SearchTerm key={mode} />;
+};
+
+const renderList = (extraSeed) =>
   render(
-    <RecoilRoot initializeState={seedState}>
+    <RecoilRoot
+      initializeState={(recoilInterface) => {
+        seedState(recoilInterface);
+        extraSeed?.(recoilInterface);
+      }}
+    >
       <SearchModeToggle />
-      <SearchTerm />
+      <KeyedSearchTerm />
       <EventListContainer
         termListObject={TERM_LIST}
         selectedSemesterShortName={SEMESTER}
@@ -263,5 +284,57 @@ describe("smart search in the course list", () => {
     expect(upserts.count).toBe(0);
     // And the search must settle rather than hang on the loading row.
     expect(screen.queryByText("Loading courses...")).not.toBeInTheDocument();
+  });
+
+  it("clears the box and the keyword filter when the mode changes", () => {
+    renderList();
+
+    const input = screen.getByPlaceholderText("Search");
+    fireEvent.change(input, { target: { value: "keyword only" } });
+    expect(screen.getByLabelText("keyword-filter")).toHaveTextContent(
+      "keyword only"
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /smart/i }));
+
+    // Both halves matter: the atom drives the pool, the input drives the user's
+    // sense of what is being searched. Leaving either behind shows results for
+    // a query the user has moved on from.
+    expect(
+      screen.getByPlaceholderText("Describe what you want to learn…")
+    ).toHaveValue("");
+    expect(screen.getByLabelText("keyword-filter")).toHaveTextContent(
+      "(empty)"
+    );
+  });
+
+  it("keeps the keyword filter when the already-active mode is clicked", async () => {
+    mockVectorHits();
+    renderList(({ set }) => {
+      set(selectionOptionsState, (prev) => ({
+        ...prev,
+        searchTerm: "keyword only",
+      }));
+      set(smartSearchState, (prev) => ({ ...prev, mode: "smart" }));
+    });
+    runSmartSearch();
+
+    await waitFor(() =>
+      expect(screen.getByText("Machine Learning")).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /smart/i }));
+
+    // Re-clicking the active mode is a "start over" gesture inside that mode:
+    // it drops the smart results but must not wipe the keyword filter the user
+    // set on the other side of the toggle.
+    await waitFor(() =>
+      expect(screen.getByLabelText("has-searched")).toHaveTextContent("false")
+    );
+    expect(screen.queryByText("Machine Learning")).not.toBeInTheDocument();
+    expect(screen.getByText("Keyword Only Course")).toBeInTheDocument();
+    expect(screen.getByLabelText("keyword-filter")).toHaveTextContent(
+      "keyword only"
+    );
   });
 });
