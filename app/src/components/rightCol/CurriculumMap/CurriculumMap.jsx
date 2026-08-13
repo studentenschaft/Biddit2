@@ -201,9 +201,9 @@ const CurriculumMap = () => {
               No Academic Data Found
             </h3>
             <p className="text-gray-600">
-              We couldn&apos;t find any academic data for your account yet. Once
-              your transcript data has loaded, your curriculum map will appear
-              here.
+              We couldn&apos;t find a study program on your transcript. If
+              you&apos;ve only just enrolled, your scorecard may not be
+              published yet.
             </p>
           </div>
         </div>

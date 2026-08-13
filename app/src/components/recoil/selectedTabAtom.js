@@ -3,5 +3,5 @@ import { TAB } from "../../constants/tabs";
 
 export const selectedTabAtom = atom({
   key: "selectedTab",
-  default: TAB.COURSE_DETAILS,
+  default: TAB.SUMMARY,
 });

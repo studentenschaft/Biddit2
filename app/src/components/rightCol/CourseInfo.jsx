@@ -157,6 +157,20 @@ export default function CourseInfo() {
     }
   }, [courseWithRatings, selectedCourse, setCourseWithRatings]);
 
+  if (!selectedCourse || selectedCourse.shortName === undefined) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg p-8 text-center text-gray-600 shadow-sm">
+        <p className="text-lg font-semibold text-gray-800">
+          Select a course to see its details
+        </p>
+        <p className="max-w-sm text-sm">
+          Click any course in the list on the left — its ratings, exam format
+          and description will show up here.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* // Course Name and Link to courses page and course info sheet // */}
@@ -175,9 +189,7 @@ export default function CourseInfo() {
               target="_blank"
               rel="noreferrer"
             >
-              {selectedCourse && selectedCourse.shortName !== undefined
-                ? selectedCourse.shortName
-                : "Click on a course to see details."}
+              {selectedCourse.shortName}
             </a>
             {semesterAbbreviation && (
               <a
@@ -197,34 +209,32 @@ export default function CourseInfo() {
         {/* // ECTS / Classifications / Central? / Lecturers // */}
 
         <div className="overflow-auto scrollbar-hide overscroll-auto">
-          {selectedCourse && selectedCourse.shortName !== undefined ? (
-            <div className="text-xs font-semibold text-gray-700 lg:text-base">
-              <div className="" label="credits and exam info">
-                {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
-                {selectedCourse.classification}{" "}
-                {selectedCourse.achievementFormStatus.isCentral &&
-                selectedCourse.achievementFormStatus.isDeCentral
-                  ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
-                  : selectedCourse.achievementFormStatus.isCentral
-                  ? `| Central (${selectedCourse.achievementFormStatus.description})`
-                  : selectedCourse.achievementFormStatus.isDeCentral
-                  ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
-                  : ""}
-              </div>
-              <div className="mb-4">
-                {(selectedCourse.courses?.[0]?.lecturers ||
-                  selectedCourse.lecturers) &&
-                  (
-                    selectedCourse.courses?.[0]?.lecturers ||
-                    selectedCourse.lecturers
-                  )
-                    .map((prof) => {
-                      return prof.displayName;
-                    })
-                    .join(" • ")}
-              </div>
+          <div className="text-xs font-semibold text-gray-700 lg:text-base">
+            <div className="" label="credits and exam info">
+              {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
+              {selectedCourse.classification}{" "}
+              {selectedCourse.achievementFormStatus.isCentral &&
+              selectedCourse.achievementFormStatus.isDeCentral
+                ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
+                : selectedCourse.achievementFormStatus.isCentral
+                ? `| Central (${selectedCourse.achievementFormStatus.description})`
+                : selectedCourse.achievementFormStatus.isDeCentral
+                ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
+                : ""}
             </div>
-          ) : null}
+            <div className="mb-4">
+              {(selectedCourse.courses?.[0]?.lecturers ||
+                selectedCourse.lecturers) &&
+                (
+                  selectedCourse.courses?.[0]?.lecturers ||
+                  selectedCourse.lecturers
+                )
+                  .map((prof) => {
+                    return prof.displayName;
+                  })
+                  .join(" • ")}
+            </div>
+          </div>
 
           {/* // Course Description // */}
 
