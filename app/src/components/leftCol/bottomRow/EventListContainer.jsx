@@ -34,6 +34,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
 import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 
 // Unified course selectors - PRIMARY DATA SOURCE
 import {
@@ -51,8 +52,6 @@ import { LockClosed } from "./LockClosed";
 import { LockOpen } from "./LockOpen";
 
 // Recoil state
-import { selectedTabAtom } from "../../recoil/selectedTabAtom";
-import { TAB } from "../../../constants/tabs";
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
 // Helper function - moved here for simplicity
@@ -69,11 +68,10 @@ export default function EventListContainer({
   // Simplified recoil state
   const authToken = useRecoilValue(authTokenState);
   const selectionOptions = useRecoilValue(selectionOptionsState);
-  const [, setSelectedTabState] = useRecoilState(selectedTabAtom);
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
-  // Use unified course data for managing selected course info
-  const { updateSelectedCourseInfo, courseData } = useUnifiedCourseData();
+  const openCourseDetails = useOpenCourseDetails();
+  const { courseData } = useUnifiedCourseData();
 
   // Get selected semester object from termListObject
   const selectedSemester = termListObject?.find(
@@ -258,8 +256,7 @@ export default function EventListContainer({
           {...listeners}
           {...attributes}
           onClick={() => {
-            data.updateSelectedCourseInfo(event);
-            data.setSelectedTabState(TAB.COURSE_DETAILS);
+            data.openCourseDetails(event, { source: "course-list" });
             data.setIsLeftViewVisibleState(false);
           }}
           className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-grab hover:shadow-md transition duration-500 ease-in-out ${
@@ -376,8 +373,7 @@ export default function EventListContainer({
     selectedSemesterShortName,
     selectedSemester,
     selectedCourseIds,
-    updateSelectedCourseInfo,
-    setSelectedTabState,
+    openCourseDetails,
     setIsLeftViewVisibleState,
     addOrRemoveCourse,
   };

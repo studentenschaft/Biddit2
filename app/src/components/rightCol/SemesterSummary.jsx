@@ -1,7 +1,6 @@
 // import PropTypes from "prop-types";
 import { useState, useMemo } from "react";
 import { useRecoilValue } from "recoil";
-import { useSetRecoilState } from "recoil";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
 // Import unified selectors
@@ -14,17 +13,14 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
-import { selectedTabAtom } from "../recoil/selectedTabAtom";
-import { TAB } from "../../constants/tabs";
-import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 
 import { Heatmap } from "./Heatmap";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
 export default function SemesterSummary() {
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
-  const setSelectedTab = useSetRecoilState(selectedTabAtom);
+  const openCourseDetails = useOpenCourseDetails();
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
   const [hoveredCourse, setHoveredCourse] = useState(null);
@@ -94,10 +90,7 @@ export default function SemesterSummary() {
   }
 
   function courseSelector(fullEvent) {
-    if (fullEvent) {
-      updateSelectedCourseInfo(fullEvent);
-      setSelectedTab(TAB.COURSE_DETAILS);
-    }
+    openCourseDetails(fullEvent, { source: "semester-summary" });
   }
 
   function checkIfCourseOnDay(course) {

@@ -14,16 +14,14 @@
 
 import { Fragment, useState, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/solid";
 import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
 import { useCurriculumPlanContext } from "./CurriculumPlanContext";
-import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
-import { selectedTabAtom } from "../../recoil/selectedTabAtom";
-import { TAB } from "../../../constants/tabs";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 import { useGridLayout } from "../../helpers/useGridLayout";
 
@@ -48,8 +46,7 @@ const CurriculumGrid = ({
 
   // Hooks for "click course → open details" feature
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
-  const setSelectedTab = useSetRecoilState(selectedTabAtom);
+  const openCourseDetails = useOpenCourseDetails();
 
   const handleCourseClick = useCallback((item) => {
     const semKey = item.semester;
@@ -58,11 +55,8 @@ const CurriculumGrid = ({
       (c) => c.courseNumber === item.courseId || c.id === item.courseId
     );
 
-    if (fullCourse) {
-      updateSelectedCourseInfo(fullCourse);
-      setSelectedTab(TAB.COURSE_DETAILS);
-    }
-  }, [unifiedCourseData, updateSelectedCourseInfo, setSelectedTab]);
+    openCourseDetails(fullCourse, { source: "curriculum-map" });
+  }, [unifiedCourseData, openCourseDetails]);
 
   // Scroll affordance — gradient fades indicating hidden content
   const { scrollContainerRef, canScrollLeft, canScrollRight } =
