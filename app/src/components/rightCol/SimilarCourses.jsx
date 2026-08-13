@@ -141,8 +141,8 @@ export default function SimilarCourses({ selectedCourse }) {
   }, [coursesCurrentSemester]);
   // Upsert the selected term's courses when a query returns nothing, so the
   // vector DB lazily fills in for newly published catalogs. Guardrail + payload
-  // live in the shared helper so SmartSearch and SimilarCourses can never drift
-  // apart. See REFERENCE_SEMESTER.md.
+  // live in the shared helper so smart search and SimilarCourses can never
+  // drift apart. See REFERENCE_SEMESTER.md.
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
     await upsertSimilarCourses({
       authToken,

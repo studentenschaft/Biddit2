@@ -10,7 +10,6 @@ export const TAB = {
   SUMMARY: "summary",
   TRANSCRIPT: "transcript",
   CURRICULUM_MAP: "curriculum-map",
-  SMART_SEARCH: "smart-search",
 };
 
 export const TAB_ORDER = [
@@ -19,7 +18,6 @@ export const TAB_ORDER = [
   TAB.SUMMARY,
   TAB.TRANSCRIPT,
   TAB.CURRICULUM_MAP,
-  TAB.SMART_SEARCH,
 ];
 
 export function tabIndexOf(tabId) {
