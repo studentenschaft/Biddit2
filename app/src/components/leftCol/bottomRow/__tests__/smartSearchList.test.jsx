@@ -141,6 +141,21 @@ const mockVectorHits = () =>
     )
   );
 
+/**
+ * Registers the upsert endpoint and counts the calls, so tests can assert that
+ * the expensive full-catalog upsert only fires on an explicit empty ids list.
+ */
+const countUpserts = () => {
+  const calls = { count: 0 };
+  server.use(
+    http.post("https://api.shsg.ch/similar-courses/upsert", () => {
+      calls.count += 1;
+      return HttpResponse.json({ success: true });
+    })
+  );
+  return calls;
+};
+
 const runSmartSearch = (query = "programming basics") => {
   fireEvent.click(screen.getByRole("button", { name: /smart/i }));
   const input = screen.getByPlaceholderText("Describe what you want to learn…");
@@ -213,13 +228,11 @@ describe("smart search in the course list", () => {
     ).not.toContain("border-main");
   });
 
-  it("shows the empty state when the vector DB has no matches", async () => {
+  it("upserts the catalog and retries when the ids list comes back empty", async () => {
+    const upserts = countUpserts();
     server.use(
       http.get("https://api.shsg.ch/similar-courses/query", () =>
         HttpResponse.json({ ids: [[]], distances: [[]], metadatas: [[]] })
-      ),
-      http.post("https://api.shsg.ch/similar-courses/upsert", () =>
-        HttpResponse.json({ success: true })
       )
     );
     renderList();
@@ -228,5 +241,27 @@ describe("smart search in the course list", () => {
     await waitFor(() =>
       expect(screen.getByText("No matching courses found")).toBeInTheDocument()
     );
+    // Once only: the retry carries attemptedUpsert, so it must not loop.
+    expect(upserts.count).toBe(1);
+  });
+
+  it("never upserts when the response carries no ids list at all", async () => {
+    const upserts = countUpserts();
+    server.use(
+      http.get("https://api.shsg.ch/similar-courses/query", () =>
+        HttpResponse.json({ message: "no embeddings" })
+      )
+    );
+    renderList();
+    runSmartSearch();
+
+    await waitFor(() =>
+      expect(screen.getByText("No matching courses found")).toBeInTheDocument()
+    );
+    // A body without `ids` is the DB declining to answer — posting the whole
+    // catalog on the back of it would be a ~1500-course write for nothing.
+    expect(upserts.count).toBe(0);
+    // And the search must settle rather than hang on the loading row.
+    expect(screen.queryByText("Loading courses...")).not.toBeInTheDocument();
   });
 });

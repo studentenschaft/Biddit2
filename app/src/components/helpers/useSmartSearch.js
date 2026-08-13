@@ -193,12 +193,16 @@ export function useSmartSearch() {
           semester: semesterToUse,
         });
 
-        const ids = response.data?.ids?.[0] ?? [];
+        // Only an explicit empty ids list means "queried fine, nothing stored".
+        // A body without `ids` (e.g. `{ message }`) is the DB declining to
+        // answer and must never trigger a full-catalog upsert.
+        const hasIdsList = Boolean(response.data?.ids && response.data.ids[0]);
+        const ids = hasIdsList ? response.data.ids[0] : [];
         const distances = response.data?.distances?.[0] ?? [];
 
         // Empty result on the first attempt: the term's catalog may not be
         // embedded yet, so upsert it (guardrail applies) and query once more.
-        if (ids.length === 0 && !attemptedUpsert) {
+        if (hasIdsList && ids.length === 0 && !attemptedUpsert) {
           await upsertRelevantCourseInfo();
           await fetchSimilarCourses(query, category, true);
           return;
