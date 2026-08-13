@@ -190,8 +190,9 @@ export default function SemesterSummary() {
 
   if (currCourses.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-sm font-medium text-gray-500 align-middle md:text-base">
-        You have no allocated or selected courses.
+      <div className="flex items-center justify-center h-full px-4 text-sm font-medium text-center text-gray-500 align-middle md:text-base">
+        You have no allocated or selected courses. Browse the course list on the
+        left and click + to start planning your semester.
       </div>
     );
   } else {

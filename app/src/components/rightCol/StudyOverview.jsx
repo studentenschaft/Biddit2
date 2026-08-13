@@ -97,15 +97,15 @@ const StudyOverview = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center space-x-3">
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">Step 1</span>
-                    <span>Click <strong>&quot;Load Study Data&quot;</strong> above to fetch completed courses</span>
+                    <span>Your completed courses load <strong>automatically</strong> once your transcript is available</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Step 2</span>
-                    <span>Go to <strong>Course Selection</strong> tab to pick future courses</span>
+                    <span>Pick future courses with <strong>+</strong> in the course list on the left</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">Step 3</span>
-                    <span>Return here to see colorful <strong>semester bars</strong>!</span>
+                    <span>Return here for your colorful <strong>semester bars</strong> — <strong>Semester Summary</strong> and <strong>Calendar</strong> show the same plan</span>
                   </div>
                 </div>
               </div>

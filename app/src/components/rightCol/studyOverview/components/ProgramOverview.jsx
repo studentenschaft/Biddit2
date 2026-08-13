@@ -84,7 +84,7 @@ const ProgramOverview = ({
           maxSemesterCredits={maxSemesterCredits}
         />
         <div className="mt-2 flex flex-col items-end text-right">
-          <ProgramSummaryRow program={program} rawScorecard={rawScorecard} />
+          <ProgramSummaryRow rawScorecard={rawScorecard} />
         </div>
       </div>
 

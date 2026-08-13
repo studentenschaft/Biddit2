@@ -138,10 +138,20 @@ a non-Tab, non-focusable child cannot shift the bookkeeping. It is
 
 - Delete the dead `recoil/scorecardEnrollmentsAtom.js` and
   `recoil/ApiScorecardEnrollments.jsx`.
-- Re-check `helpers/studyOverviewHelpers.js` **after the Study Overview restore
-  lands**: `getTypeColor`, `filterCoursesForSemester`,
-  `calculateSemesterCredits` and `sortCoursesByType` lost all callers while the
-  component tree was gone; prune whichever the restored components do not use.
+- `helpers/studyOverviewHelpers.js` needs no pruning: the restore gave
+  `getTypeColor`, `filterCoursesForSemester`, `calculateSemesterCredits` and
+  `sortCoursesByType` their callers back (5/3/8/5 external references). The
+  dead-export analysis this bullet used to carry only applies if Study Overview
+  is retired again.
+- Two files under `rightCol/studyOverview/` have zero importers and were
+  restored byte-identically with the rest of the tree: `utils/
+  studyOverviewUtils.js` (159 lines) and the `components/index.js` barrel, which
+  every consumer bypasses by importing the components directly. Pre-existing
+  dead weight, not introduced here; delete with the component or sooner.
+- The smart-mode toggle lives inside the collapsible *Search & Filter* panel, so
+  collapsing it hides the escape hatch back to keyword mode while smart results
+  stay on screen. Either lift the toggle out of the collapsible region or keep a
+  mode indicator visible when it is collapsed.
 - Add a cap and backoff to the 800 ms smart-search program retry in
   `helpers/useSmartSearch.js`.
 - Extract the shared `extractQueryIds` response parsing in
