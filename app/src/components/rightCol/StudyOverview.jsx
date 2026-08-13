@@ -14,6 +14,7 @@ import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonStudyOverview } from './LoadingSkeletons';
 import ProgramOverview from './studyOverview/components/ProgramOverview';
+import StudyOverviewMigrationNotice from './studyOverview/components/StudyOverviewMigrationNotice';
 import { adaptAcademicDataForStudyOverview, getMainProgram } from './studyOverview/utils/dataAdapter';
 import { useState, useMemo, useEffect } from 'react';
 
@@ -59,6 +60,7 @@ const StudyOverview = () => {
     return (
       <div className="flex flex-col px-8 py-4">
         <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
+        <StudyOverviewMigrationNotice />
         <div className="mb-6">
           <LoadingText>Loading your saved courses...</LoadingText>
           <LoadingSkeletonStudyOverview />
@@ -70,6 +72,7 @@ const StudyOverview = () => {
   return (
     <div className="flex flex-col px-8 py-4">
       <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
+      <StudyOverviewMigrationNotice />
 
       {/* Render programs exactly like the original StudyOverview */}
       {Object.entries(adaptedData.programs).map(([programId, programData], index, array) => (
