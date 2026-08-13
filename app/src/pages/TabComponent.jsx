@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
-import "react-tabs/style/react-tabs.css";
 import LoadingText from "../components/common/LoadingText";
 import ErrorBoundary from "../components/errorHandling/ErrorBoundary";
 import {
@@ -77,10 +76,14 @@ const TAB_PANEL_CONTENT = {
 const STICKY_TAB_IDS = new Set([TAB.CURRICULUM_MAP]);
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
-  // Below md the five tabs keep their natural width and the row scrolls;
-  // from md up they share the row equally as before.
+  // Below md the five tabs keep their natural width and the row scrolls; from
+  // md up they share the row equally and may wrap again (md:min-w-0), so a
+  // narrow desktop column cannot push the last tab out of the hidden overflow.
+  // The focus ring must be a Tailwind utility: react-tabs' default `react-tabs__tab`
+  // class is a defaultProp that this className replaces, so a stylesheet rule on
+  // it would never match.
   const tabStyle =
-    "flex-none min-w-max whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1";
+    "flex-none min-w-max md:min-w-0 whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
 
   // Access selected semester from unified system
   const selectedSemester = useRecoilValue(selectedSemesterSelector);

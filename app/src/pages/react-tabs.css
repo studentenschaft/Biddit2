@@ -1,41 +1,11 @@
-.react-tabs {
-  -webkit-tap-highlight-color: transparent;
-}
-
-.react-tabs__tab-list {
-  border-bottom: 1px solid #aaa;
-  margin: 0 0 10px;
-  padding: 0;
-}
-
-.react-tabs__tab {
-  display: inline-block;
-  border: 1px solid transparent;
-  border-bottom: none;
-  bottom: -1px;
-  position: relative;
-  list-style: none;
-  padding: 12px 24px;
-  cursor: pointer;
-  background: #9ca3af;
-}
+/* react-tabs sets its default classes (`react-tabs`, `__tab-list`, `__tab`) via
+   defaultProps, so the className TabComponent passes REPLACES them — only the
+   classes the library adds on top can be styled here: selectedClassName and the
+   panel classes. Everything else lives in TabComponent's Tailwind classes. */
 
 .react-tabs__tab--selected {
-  border-color: #aaa;
   border-radius: 5px 5px 0 0;
   background: #006625 !important;
-}
-
-.react-tabs__tab--disabled {
-  color: GrayText;
-  cursor: default;
-}
-
-/* Keyboard focus must stay visible (WCAG 2.4.7). Roving tabindex puts focus on
-   the selected tab, so suppressing the outline there hid it entirely. */
-.react-tabs__tab:focus-visible {
-  outline: 2px solid #1f2937;
-  outline-offset: 2px;
 }
 
 .react-tabs__tab-panel {

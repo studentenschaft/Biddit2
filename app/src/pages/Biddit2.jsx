@@ -1,6 +1,5 @@
 import { Suspense, useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import "react-tabs/style/react-tabs.css";
 import { SelectSemester } from "../components/leftCol/topRow/SelectOptions";
 import { SideNav } from "../components/leftCol/sideNav/SideNav";
 

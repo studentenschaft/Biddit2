@@ -84,12 +84,48 @@ describe("TabComponent tab row", () => {
     expect(tabList.className).toContain("scrollbar-hide");
     expect(tabList.className).toContain("md:overflow-visible");
     // Tabs keep their natural width while scrolling, and only share the row
-    // equally once there is space for it.
+    // equally once there is space for it. md:min-w-0 restores the min-content
+    // floor on desktop so a narrow column cannot push the last tab out of the
+    // Tabs root's hidden overflow.
     screen.getAllByRole("tab").forEach((tab) => {
       expect(tab.className).toContain("flex-none");
       expect(tab.className).toContain("whitespace-nowrap");
+      expect(tab.className).toContain("min-w-max");
+      expect(tab.className).toContain("md:min-w-0");
       expect(tab.className).toContain("md:flex-1");
     });
+  });
+
+  /**
+   * react-tabs declares `react-tabs__tab` as a *defaultProp*, so the className
+   * TabComponent passes replaces it — a stylesheet rule on `.react-tabs__tab`
+   * matches nothing. The focus ring (WCAG 2.4.7) must therefore ride on the
+   * Tailwind classes, and only `react-tabs__tab--selected` (selectedClassName)
+   * survives on the element. Both halves are pinned here so the ring cannot
+   * silently die again.
+   */
+  it("carries a visible keyboard focus ring on every tab", () => {
+    renderTabs();
+    screen.getAllByRole("tab").forEach((tab) => {
+      expect(tab.className).toContain("focus-visible:outline-2");
+      expect(tab.className).toContain("focus-visible:outline-offset-2");
+      expect(tab.className).toContain("focus-visible:outline-gray-800");
+    });
+  });
+
+  it("does not receive the react-tabs default classes it would style against", () => {
+    renderTabs();
+    expect(screen.getByRole("tablist").className).not.toContain(
+      "react-tabs__tab-list",
+    );
+    screen.getAllByRole("tab").forEach((tab) => {
+      expect(tab.className.split(/\s+/)).not.toContain("react-tabs__tab");
+    });
+    // The selected marker DOES land — it is a separate prop the component
+    // leaves at its default, and react-tabs.css still targets it.
+    expect(screen.getAllByRole("tab")[0].className).toContain(
+      "react-tabs__tab--selected",
+    );
   });
 
   it("hides the decorative group headings on small screens", () => {
