@@ -77,8 +77,10 @@ const TAB_PANEL_CONTENT = {
 const STICKY_TAB_IDS = new Set([TAB.CURRICULUM_MAP]);
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
+  // Below md the five tabs keep their natural width and the row scrolls;
+  // from md up they share the row equally as before.
   const tabStyle =
-    "flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1";
+    "flex-none min-w-max whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1";
 
   // Access selected semester from unified system
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
@@ -121,9 +123,11 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
       selectedIndex={selectedTab}
       onSelect={onTabSelect}
     >
+      {/* Decorative group headings: the static width split cannot follow the
+          tabs once the row scrolls, so they only show from md up. */}
       <div
         aria-hidden="true"
-        className="flex w-full px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500"
+        className="hidden md:flex w-full px-1 pt-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500"
       >
         {TAB_GROUPS.map(({ label, tabs }) => (
           <span
@@ -135,7 +139,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
           </span>
         ))}
       </div>
-      <TabList className="flex w-full p-1">
+      <TabList className="flex w-full p-1 overflow-x-auto scrollbar-hide md:overflow-visible">
         {TAB_ORDER.map((tabId) => (
           <Tab
             key={tabId}

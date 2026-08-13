@@ -26,27 +26,16 @@
   background: #006625 !important;
 }
 
-.react-tabs__tab--selected:focus-visible {
-  outline: none !important;
-}
-
 .react-tabs__tab--disabled {
   color: GrayText;
   cursor: default;
 }
 
-.react-tabs__tab:focus {
-  outline: none;
-}
-
-.react-tabs__tab:focus:after {
-  content: "";
-  position: absolute;
-  height: 5px;
-  left: -4px;
-  right: -4px;
-  bottom: -5px;
-  background: #fff;
+/* Keyboard focus must stay visible (WCAG 2.4.7). Roving tabindex puts focus on
+   the selected tab, so suppressing the outline there hid it entirely. */
+.react-tabs__tab:focus-visible {
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
 }
 
 .react-tabs__tab-panel {
@@ -57,28 +46,4 @@
   display: block;
   height: 100%;
   overflow: auto;
-}
-
-
-/* Mobile tab styles */
-@media (max-width: 768px) {
-  .react-tabs__tab-list {
-    display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    margin: 0 -1rem;
-    padding: 0.5rem 1rem;
-  }
-
-  .react-tabs__tab-list::-webkit-scrollbar {
-    display: none;
-  }
-
-  .react-tabs__tab {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    padding: 0.5rem 1rem;
-    font-size: 0.875rem;
-  }
 }

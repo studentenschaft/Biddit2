@@ -76,6 +76,31 @@ describe("TabComponent tab row", () => {
     expect(tabsRoot.className).toContain("min-h-0");
     expect(tabsRoot.className).not.toContain("h-full");
   });
+
+  it("scrolls the tab row horizontally on small screens", () => {
+    renderTabs();
+    const tabList = screen.getByRole("tablist");
+    expect(tabList.className).toContain("overflow-x-auto");
+    expect(tabList.className).toContain("scrollbar-hide");
+    expect(tabList.className).toContain("md:overflow-visible");
+    // Tabs keep their natural width while scrolling, and only share the row
+    // equally once there is space for it.
+    screen.getAllByRole("tab").forEach((tab) => {
+      expect(tab.className).toContain("flex-none");
+      expect(tab.className).toContain("whitespace-nowrap");
+      expect(tab.className).toContain("md:flex-1");
+    });
+  });
+
+  it("hides the decorative group headings on small screens", () => {
+    renderTabs();
+    // The scope labels sit directly above the tab row; their static width
+    // split cannot track the tabs once the row scrolls.
+    const groupHeadings = screen.getByRole("tablist").previousElementSibling;
+    expect(groupHeadings).toHaveAttribute("aria-hidden", "true");
+    expect(groupHeadings.className).toContain("hidden");
+    expect(groupHeadings.className).toContain("md:flex");
+  });
 });
 
 describe("TabComponent panels", () => {
