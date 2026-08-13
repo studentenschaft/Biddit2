@@ -55,5 +55,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   returns an explicit empty ids list, never when the response omits `ids`.
 - `ExaminationTypes` is fetched once per session instead of on every tab visit.
 - The tab panel stays inside the viewport while the IA notice is shown.
+- The side-nav ratings and about dialogs no longer render underneath the
+  Curriculum Map's sticky headers and course chips; the ratings backdrop now
+  dims the page instead of only blurring it. (Pre-existing on `dev`.)
 
 See `docs/adr/0002-tab-ia-group-and-retire.md` for the rationale and trade-offs.

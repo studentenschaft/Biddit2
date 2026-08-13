@@ -202,7 +202,17 @@ export const ReviewButton = () => {
         <Transition.Root show={open} as={Fragment}>
           <Dialog
             as="div"
-            className="relative z-10"
+            /**
+             * z-[60], not z-10. The dialog portals to document.body, so its
+             * `relative z-index` is compared against the page's own layers in
+             * the root stacking context — and the Curriculum Map's sticky
+             * header cells (z-20) and its popovers/dropdowns (z-50) used to
+             * win, painting the grid over the open dialog. 60 clears every
+             * in-page layer while staying under the z-[9999] app-state
+             * blockers (session expired / renew / offline), which must be able
+             * to cover this dialog in turn.
+             */
+            className="relative z-[60]"
             // initialFocus={cancelButtonRef}
             onClose={setOpen}
           >
@@ -215,7 +225,10 @@ export const ReviewButton = () => {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <div className="fixed inset-0 transition-opacity backdrop-filter backdrop-blur" />
+              {/* Tinted, not blur-only: an untinted backdrop left the whole
+                  course grid legible behind the dialog. Matches the
+                  bg-slate-900/60 the app-state modals already use. */}
+              <div className="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-sm" />
             </Transition.Child>
 
             <div className="fixed inset-0 z-10 overflow-y-auto">
