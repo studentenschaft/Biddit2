@@ -133,6 +133,22 @@ const CurriculumGrid = ({
     isCategoryCollapsed,
   });
 
+  // Build lookup map for parent completion status
+  // IMPORTANT: Must be defined before early return to satisfy React hooks rules
+  const parentCompletionMap = useMemo(() => {
+    const map = {};
+    if (categoryHierarchy) {
+      categoryHierarchy.forEach((parent) => {
+        if (parent.isComplete) {
+          parent.children?.forEach((child) => {
+            map[child.path] = true;
+          });
+        }
+      });
+    }
+    return map;
+  }, [categoryHierarchy]);
+
   // Ensure we have data to display
   if (!categories?.length || !semesters?.length) {
     return (
@@ -147,21 +163,6 @@ const CurriculumGrid = ({
 
   // Use hierarchy if available, otherwise fall back to flat structure
   const hasHierarchy = categoryHierarchy?.length > 0;
-
-  // Build lookup map for parent completion status
-  const parentCompletionMap = useMemo(() => {
-    const map = {};
-    if (categoryHierarchy) {
-      categoryHierarchy.forEach((parent) => {
-        if (parent.isComplete) {
-          parent.children?.forEach((child) => {
-            map[child.path] = true;
-          });
-        }
-      });
-    }
-    return map;
-  }, [categoryHierarchy]);
 
   const leafCategories = categories;
 

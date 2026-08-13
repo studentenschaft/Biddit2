@@ -44,19 +44,13 @@ export const useCourseInfoData = (params) => {
     useUnifiedCourseData();
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
 
-  // Handle null parameters AFTER calling all hooks
-  if (!params) {
-    return {
-      isCourseDataLoading: false,
-      courseData: [],
-      hasData: false
-    };
-  }
-
   const { authToken, selectedSemester } = params || {};
 
   // Fetch course data effect
   useEffect(() => {
+    // Without params there is nothing to fetch and no state to reset.
+    if (!params) return;
+
     const fetchTerm = (cisId) =>
       axios.get(
         `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
@@ -153,6 +147,15 @@ export const useCourseInfoData = (params) => {
     selectedSemester?.shortName,
     selectedSemester?.referenceCisId,
   ]);
+
+  // Handle null parameters AFTER calling all hooks
+  if (!params) {
+    return {
+      isCourseDataLoading: false,
+      courseData: [],
+      hasData: false,
+    };
+  }
 
   return {
     isCourseDataLoading,
