@@ -12,6 +12,7 @@
 
 import { useRecoilValue } from "recoil";
 import { useState, useEffect, useMemo } from "react";
+import PropTypes from "prop-types";
 import { DownloadIcon, ArrowLeftIcon } from "@heroicons/react/solid";
 import { EyeIcon, EyeOffIcon, SwitchHorizontalIcon } from "@heroicons/react/outline";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
@@ -64,7 +65,7 @@ const DragHint = ({ onDismiss }) => {
           {" "}
           from the Course List on the left into the grid. To get all your previously saved courses into the Curriculum map, click {" "}
         </span>
-        <span className="font-medium">"Import Selected Courses"</span>
+        <span className="font-medium">&quot;Import Selected Courses&quot;</span>
         <span className="text-blue-600">
           .
         </span>
@@ -84,6 +85,10 @@ const DragHint = ({ onDismiss }) => {
       )}
     </div>
   );
+};
+
+DragHint.propTypes = {
+  onDismiss: PropTypes.func,
 };
 
 const CurriculumMap = () => {

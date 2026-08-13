@@ -249,7 +249,6 @@ export const semesterCoursesSelector = selectorFamily({
 
             if (import.meta?.env?.DEV) {
               // Minimal debug snapshot
-              // eslint-disable-next-line no-console
               console.debug(
                 "[semesterCoursesSelector] enrolled:",
                 semester,
@@ -297,7 +296,6 @@ export const semesterCoursesSelector = selectorFamily({
               });
 
             if (import.meta?.env?.DEV) {
-              // eslint-disable-next-line no-console
               console.debug(
                 "[semesterCoursesSelector] selected:",
                 semester,

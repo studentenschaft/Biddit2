@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import { afterAll, afterEach, beforeAll } from "vitest";
 import { server } from "./mocks/server";
 import { resetErrorMode } from "./mocks/handlers";
 

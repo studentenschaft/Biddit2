@@ -18,7 +18,7 @@ export default function AboutButton() {
       <button
         aria-label="About"
         className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
-        onClick={(e) => updateCookie()}
+        onClick={() => updateCookie()}
       >
         <InformationCircleIcon className="block w-6 h-6" aria-hidden="true" />
       </button>
