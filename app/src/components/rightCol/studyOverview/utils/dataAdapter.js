@@ -10,10 +10,9 @@
 /**
  * Converts unified academic data to the format expected by ProgramOverview
  * @param {Object} academicData - Data from unifiedAcademicDataSelector
- * @param {Object} unifiedCourseData - Optional unified course data for enrichment
  * @returns {Object} - Adapted data for ProgramOverview components
  */
-export const adaptAcademicDataForStudyOverview = (academicData, unifiedCourseData = null) => {
+export const adaptAcademicDataForStudyOverview = (academicData) => {
   console.group('🔄 [dataAdapter] CONVERTING ACADEMIC DATA');
   console.log('Input academicData:', academicData);
   
@@ -141,7 +140,7 @@ export const getMainProgram = (adaptedData) => {
   
   // Strategy 1: Look for explicitly marked main program
   let selectedProgram = programEntries.find(
-    ([programId, programData]) => programData.isMainProgram
+    ([, programData]) => programData.isMainProgram
   );
   
   if (selectedProgram) {

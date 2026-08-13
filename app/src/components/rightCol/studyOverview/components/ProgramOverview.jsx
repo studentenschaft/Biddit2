@@ -5,7 +5,8 @@
  * Sub-components extracted to separate files for better maintainability.
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import {
   useCurrentSemester,
   getTypeColor,
@@ -106,6 +107,14 @@ const ProgramOverview = ({
       </div>
     </div>
   );
+};
+
+ProgramOverview.propTypes = {
+  program: PropTypes.string,
+  semesters: PropTypes.object,
+  selectedSemester: PropTypes.string,
+  setSelectedSemester: PropTypes.func,
+  rawScorecard: PropTypes.object,
 };
 
 export default ProgramOverview;

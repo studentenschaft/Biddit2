@@ -4,9 +4,9 @@
  * Credits summary display showing earned and remaining ECTS.
  */
 
-import React from 'react';
+import PropTypes from 'prop-types';
 
-const ProgramSummaryRow = ({ program, rawScorecard }) => {
+const ProgramSummaryRow = ({ rawScorecard }) => {
   const programTotalRequired = rawScorecard?.items?.[0]?.maxCredits
     ? parseFloat(rawScorecard.items[0].maxCredits)
     : 0;
@@ -29,6 +29,17 @@ const ProgramSummaryRow = ({ program, rawScorecard }) => {
       </div>
     </div>
   );
+};
+
+ProgramSummaryRow.propTypes = {
+  rawScorecard: PropTypes.shape({
+    items: PropTypes.arrayOf(
+      PropTypes.shape({
+        maxCredits: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        sumOfCredits: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      })
+    ),
+  }),
 };
 
 export default ProgramSummaryRow;

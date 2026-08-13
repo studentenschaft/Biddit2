@@ -4,7 +4,7 @@
  * Renders list of semester rows for the study overview.
  */
 
-import React from 'react';
+import PropTypes from 'prop-types';
 import SemesterRow from './SemesterRow';
 
 const SemesterList = ({
@@ -29,6 +29,14 @@ const SemesterList = ({
       ))}
     </>
   );
+};
+
+SemesterList.propTypes = {
+  sortedSemesters: PropTypes.array.isRequired,
+  selectedSemester: PropTypes.string,
+  setSelectedSemester: PropTypes.func,
+  setHoveredCourse: PropTypes.func,
+  maxSemesterCredits: PropTypes.number,
 };
 
 export default SemesterList;

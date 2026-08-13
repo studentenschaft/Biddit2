@@ -5,7 +5,7 @@
  * Shows semester name, visual course representation, ECTS total, and grade/details.
  */
 
-import React from 'react';
+import PropTypes from 'prop-types';
 import { useSetRecoilState } from 'recoil';
 import { selectedTabAtom } from '../../../recoil/selectedTabAtom';
 import {
@@ -111,6 +111,15 @@ const SemesterRow = ({
       </div>
     </div>
   );
+};
+
+SemesterRow.propTypes = {
+  semester: PropTypes.string.isRequired,
+  courses: PropTypes.array,
+  selectedSemester: PropTypes.string,
+  setSelectedSemester: PropTypes.func,
+  setHoveredCourse: PropTypes.func,
+  maxSemesterCredits: PropTypes.number,
 };
 
 export default SemesterRow;

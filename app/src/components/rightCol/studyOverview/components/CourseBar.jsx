@@ -5,7 +5,7 @@
  * Shows course as a proportionally-sized colored bar based on credits.
  */
 
-import React from 'react';
+import PropTypes from 'prop-types';
 import { getTypeColor } from '../../../helpers/studyOverviewHelpers';
 
 const CourseBar = ({ course, setHoveredCourse, maxSemesterCredits }) => {
@@ -27,6 +27,16 @@ const CourseBar = ({ course, setHoveredCourse, maxSemesterCredits }) => {
       title={!isEnriched ? "Loading course details..." : course.name}
     />
   );
+};
+
+CourseBar.propTypes = {
+  course: PropTypes.shape({
+    isEnriched: PropTypes.bool,
+    credits: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+    name: PropTypes.string,
+  }).isRequired,
+  setHoveredCourse: PropTypes.func.isRequired,
+  maxSemesterCredits: PropTypes.number,
 };
 
 export default CourseBar;
