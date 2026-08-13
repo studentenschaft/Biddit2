@@ -60,8 +60,9 @@ Both display reference courses, but they reach that state differently:
 
 ## Why this matters: the vector DB
 
-`SmartSearch` and `SimilarCourses` query and upsert an embeddings DB keyed by
-`semester`. They must use the semester the courses **actually belong to**:
+The left-column smart-search mode (`helpers/useSmartSearch.js`) and
+`SimilarCourses` query and upsert an embeddings DB keyed by `semester`. They
+must use the semester the courses **actually belong to**:
 
 - **Query**: use `referenceSemester` when borrowed, else the selected term. (A
   user viewing the `HS26` preview expects `HS25` matches, because that is the
@@ -79,7 +80,8 @@ In commit `32de03a` the sparse-current-term preview was added, but:
 2. The reference link was not reliably surfaced to consumers, and the consumers
    only checked `isFutureSemester` (false for a current term).
 
-Result: `SmartSearch`'s live upsert tagged `HS25` courses with
+Result: the semantic search's live upsert (then the `SmartSearch` tab, now
+`useSmartSearch`) tagged `HS25` courses with
 `semester: "HS26"` and wrote them to the DB, and queries hit the polluted
 `HS26` namespace instead of `HS25`. The fixes in this document's invariants
 (expose `usingReferenceData`, route on `isFutureSemester || usingReferenceData`,

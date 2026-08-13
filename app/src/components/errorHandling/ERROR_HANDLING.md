@@ -141,7 +141,8 @@ user to email `biddit@shsg.ch`. By keeping `shouldShowToast: false` for network,
 MSAL, and auth errors, those never generate report emails.
 
 > **Scope note:** generic `404`s are still classified as `CLIENT` → toast. Some
-> endpoints (SmartSearch "no similar courses", ratings) use 404 as normal control
+> endpoints (the `/similar-courses` vector DB's "no similar courses" — used by
+> `helpers/useSmartSearch.js` and `SimilarCourses` — and ratings) use 404 as normal control
 > flow; silencing those is intentionally **out of scope** for this change.
 
 ## 5. Configuration knobs
