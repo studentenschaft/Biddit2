@@ -52,6 +52,7 @@ import { LockOpen } from "./LockOpen";
 
 // Recoil state
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
+import { TAB } from "../../../constants/tabs";
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
 // Helper function - moved here for simplicity
@@ -258,7 +259,7 @@ export default function EventListContainer({
           {...attributes}
           onClick={() => {
             data.updateSelectedCourseInfo(event);
-            data.setSelectedTabState(0);
+            data.setSelectedTabState(TAB.COURSE_DETAILS);
             data.setIsLeftViewVisibleState(false);
           }}
           className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-grab hover:shadow-md transition duration-500 ease-in-out ${

@@ -23,6 +23,7 @@ import { useCurriculumPlanContext } from "./CurriculumPlanContext";
 import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
+import { TAB } from "../../../constants/tabs";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 import { useGridLayout } from "../../helpers/useGridLayout";
 
@@ -59,7 +60,7 @@ const CurriculumGrid = ({
 
     if (fullCourse) {
       updateSelectedCourseInfo(fullCourse);
-      setSelectedTab(0);
+      setSelectedTab(TAB.COURSE_DETAILS);
     }
   }, [unifiedCourseData, updateSelectedCourseInfo, setSelectedTab]);
 

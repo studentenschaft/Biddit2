@@ -15,6 +15,7 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
+import { TAB } from "../../constants/tabs";
 import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
 
 import { Heatmap } from "./Heatmap";
@@ -95,7 +96,7 @@ export default function SemesterSummary() {
   function courseSelector(fullEvent) {
     if (fullEvent) {
       updateSelectedCourseInfo(fullEvent);
-      setSelectedTab(0);
+      setSelectedTab(TAB.COURSE_DETAILS);
     }
   }
 

@@ -8,6 +8,7 @@
 import PropTypes from 'prop-types';
 import { useSetRecoilState } from 'recoil';
 import { selectedTabAtom } from '../../../recoil/selectedTabAtom';
+import { TAB } from '../../../../constants/tabs';
 import {
   useCurrentSemester,
   removeSpacesFromSemesterName,
@@ -92,7 +93,7 @@ const SemesterRow = ({
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setSelectedTab(2);
+              setSelectedTab(TAB.SUMMARY);
             }}
             className="bg-green-800 text-white px-2 md:px-4 py-1.5 rounded
               hover:bg-green-700 active:bg-green-900
