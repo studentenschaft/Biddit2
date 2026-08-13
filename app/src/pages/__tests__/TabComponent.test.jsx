@@ -4,10 +4,10 @@
  * so the assertions cannot be broken by panel data fetching.
  */
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { RecoilRoot } from "recoil";
-import { TAB, TAB_LABELS, TAB_ORDER } from "../../constants/tabs";
+import { TAB, TAB_GROUPS, TAB_LABELS, TAB_ORDER } from "../../constants/tabs";
 import { unifiedCourseDataState } from "../../components/recoil/unifiedCourseDataAtom";
 import TabComponent from "../TabComponent";
 
@@ -26,6 +26,9 @@ vi.mock("../../components/rightCol/Transcript", () => ({
 vi.mock("../../components/rightCol/CurriculumMap", () => ({
   default: () => <div>curriculum-map-stub</div>,
 }));
+vi.mock("../../components/rightCol/StudyOverview", () => ({
+  default: () => <div>study-overview-stub</div>,
+}));
 
 /** The stub each tab id must render in its panel. */
 const PANEL_STUB = {
@@ -33,6 +36,7 @@ const PANEL_STUB = {
   [TAB.CALENDAR]: "calendar-stub",
   [TAB.SUMMARY]: "summary-stub",
   [TAB.CURRICULUM_MAP]: "curriculum-map-stub",
+  [TAB.STUDY_OVERVIEW]: "study-overview-stub",
   [TAB.TRANSCRIPT]: "transcript-stub",
 };
 
@@ -130,6 +134,55 @@ describe("TabComponent tab row", () => {
     // leaves at its default, and react-tabs.css still targets it.
     expect(screen.getAllByRole("tab")[0].className).toContain(
       "react-tabs__tab--selected",
+    );
+  });
+
+  /**
+   * The divider is a non-Tab <li> inside react-tabs' <ul role="tablist">.
+   * react-tabs indexes tabs by tabsRole (getTabsCount/deepMap) and by the
+   * [data-rttab] siblings (handleClick), so an extra child must not shift the
+   * bookkeeping — the tab count assertion above is the regression guard, and
+   * it is repeated here against the divider explicitly.
+   */
+  it("separates the scope groups with a divider that is not a tab", () => {
+    renderTabs();
+    const dividers = screen.getAllByTestId("tab-group-divider");
+    expect(dividers).toHaveLength(TAB_GROUPS.length - 1);
+    expect(screen.getAllByRole("tab")).toHaveLength(TAB_ORDER.length);
+
+    const [divider] = dividers;
+    // Owned children of role="tablist" must be tabs, so the rule is hidden.
+    expect(divider).toHaveAttribute("aria-hidden", "true");
+    expect(divider).not.toHaveAttribute("data-rttab");
+    expect(divider.tagName).toBe("LI");
+    // Visible at both widths (no md: prefix), full row height, hairline grey.
+    expect(divider.className).toContain("w-px");
+    expect(divider.className).toContain("self-stretch");
+    expect(divider.className).toContain("bg-gray-300");
+    expect(divider.className).not.toContain("hidden");
+
+    // It sits immediately before the first tab of the second group.
+    const firstMyDegreeTab = screen.getByText(
+      TAB_LABELS[TAB_GROUPS[1].tabs[0]],
+    );
+    expect(divider.nextElementSibling).toBe(firstMyDegreeTab);
+  });
+
+  // react-tabs derives the clicked index from the [data-rttab] siblings of the
+  // clicked node, so a stray <li> in the row could silently offset selection.
+  it("still reports the TAB_ORDER index of a tab clicked after the divider", () => {
+    const onTabSelect = vi.fn();
+    render(
+      <RecoilRoot>
+        <TabComponent selectedTab={0} onTabSelect={onTabSelect} />
+      </RecoilRoot>,
+    );
+    const lastTabId = TAB_ORDER[TAB_ORDER.length - 1];
+    fireEvent.click(screen.getByText(TAB_LABELS[lastTabId]));
+    expect(onTabSelect).toHaveBeenCalledWith(
+      TAB_ORDER.indexOf(lastTabId),
+      0,
+      expect.anything(),
     );
   });
 

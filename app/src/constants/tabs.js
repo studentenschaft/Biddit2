@@ -10,6 +10,7 @@ export const TAB = {
   SUMMARY: "summary",
   TRANSCRIPT: "transcript",
   CURRICULUM_MAP: "curriculum-map",
+  STUDY_OVERVIEW: "study-overview",
 };
 
 /** Default label per tab id. The Summary label is made semester-specific at render time. */
@@ -18,6 +19,7 @@ export const TAB_LABELS = {
   [TAB.CALENDAR]: "Calendar",
   [TAB.SUMMARY]: "Semester Summary",
   [TAB.CURRICULUM_MAP]: "Curriculum Map",
+  [TAB.STUDY_OVERVIEW]: "Study Overview",
   [TAB.TRANSCRIPT]: "Transcript",
 };
 
@@ -32,7 +34,7 @@ export const TAB_GROUPS = [
   },
   {
     label: "My Degree",
-    tabs: [TAB.CURRICULUM_MAP, TAB.TRANSCRIPT],
+    tabs: [TAB.CURRICULUM_MAP, TAB.STUDY_OVERVIEW, TAB.TRANSCRIPT],
   },
 ];
 

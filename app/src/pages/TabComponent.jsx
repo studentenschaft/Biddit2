@@ -19,6 +19,7 @@ import Calendar from "../components/rightCol/Calendar";
 import SemesterSummary from "../components/rightCol/SemesterSummary";
 import Transcript from "../components/rightCol/Transcript";
 import CurriculumMap from "../components/rightCol/CurriculumMap";
+import StudyOverview from "../components/rightCol/StudyOverview";
 
 
 // For dynamic tab text
@@ -29,7 +30,7 @@ import { useRecoilValue } from "recoil";
  * Tab row and panels are both rendered from TAB_ORDER, so a reorder in
  * constants/tabs.js moves the label and its panel together.
  *
- * Ids that start a group get the gap that acts as the group divider.
+ * Ids that start a group get the divider rule rendered in front of them.
  */
 const GROUP_START_IDS = new Set(TAB_GROUPS.slice(1).map(({ tabs }) => tabs[0]));
 
@@ -52,6 +53,11 @@ const TAB_PANEL_CONTENT = {
   [TAB.CURRICULUM_MAP]: (
     <Suspense fallback={<LoadingText>Loading Curriculum Map...</LoadingText>}>
       <CurriculumMap />
+    </Suspense>
+  ),
+  [TAB.STUDY_OVERVIEW]: (
+    <Suspense fallback={<LoadingText>Loading Study Overview...</LoadingText>}>
+      <StudyOverview />
     </Suspense>
   ),
   [TAB.TRANSCRIPT]: <Transcript />,
@@ -85,6 +91,13 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
   // it would never match.
   const tabStyle =
     "flex-none min-w-max md:min-w-0 whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
+
+  // Group divider: a hairline rule between the scope groups, at every width.
+  // It is an <li> because TabList renders a <ul>, and aria-hidden because
+  // role="tablist" only owns role="tab" children. react-tabs is unaffected by
+  // it: getTabsCount/deepMap only visit nodes whose type carries a tabsRole,
+  // and handleClick derives the index from the [data-rttab] siblings only.
+  const dividerStyle = "mx-2 my-1 w-px flex-none self-stretch bg-gray-300";
 
   // The Summary tab names the semester it summarises.
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
@@ -134,16 +147,24 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
         ))}
       </div>
       <TabList className="flex w-full p-1 overflow-x-auto scrollbar-hide md:overflow-visible">
-        {TAB_ORDER.map((tabId) => (
-          <Tab
-            key={tabId}
-            className={
-              GROUP_START_IDS.has(tabId) ? `${tabStyle} ml-4` : tabStyle
-            }
-          >
-            {labelFor(tabId)}
-          </Tab>
-        ))}
+        {TAB_ORDER.flatMap((tabId) => {
+          const tab = (
+            <Tab key={tabId} className={tabStyle}>
+              {labelFor(tabId)}
+            </Tab>
+          );
+          return GROUP_START_IDS.has(tabId)
+            ? [
+                <li
+                  key={`${tabId}-divider`}
+                  aria-hidden="true"
+                  data-testid="tab-group-divider"
+                  className={dividerStyle}
+                />,
+                tab,
+              ]
+            : [tab];
+        })}
       </TabList>
 
       {TAB_ORDER.map((tabId) => (

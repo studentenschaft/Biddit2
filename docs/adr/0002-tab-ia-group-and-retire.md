@@ -55,6 +55,13 @@ derived from the groups via `flatMap` so the two cannot drift. `tabIndexOf` /
 `tabIdAt` convert at the react-tabs boundary; nothing outside that boundary
 speaks in indices any more.
 
+The group boundary is drawn by a hairline `<li>` rule inside react-tabs'
+`<ul role="tablist">` rather than by a bare margin, so the split is visible on
+mobile too. It is safe because react-tabs indexes tabs by their `tabsRole`
+(`getTabsCount`/`deepMap`) and, on click, by the `[data-rttab]` siblings only —
+a non-Tab, non-focusable child cannot shift the bookkeeping. It is
+`aria-hidden` because a `tablist` may only own `tab` children.
+
 **Retirements and moves:**
 
 - **Study Overview retained for now.** It was initially removed as

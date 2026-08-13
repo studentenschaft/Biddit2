@@ -12,7 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tab row grouped by scope — *This Semester* (Course Details · Calendar ·
   Semester Summary) and *My Degree* (Curriculum Map · Study Overview ·
   Transcript) — driven from the new `constants/tabs.js` (`TAB`, `TAB_GROUPS`,
-  `TAB_ORDER`, `TAB_LABELS`).
+  `TAB_ORDER`, `TAB_LABELS`). A hairline rule separates the two groups at every
+  screen width.
 - Smart (semantic) search as a `[Keyword | Smart]` mode on the left-column
   course list. Results render through the normal course rows, so add/lock,
   drag-to-curriculum-map and click-to-details now work for them.

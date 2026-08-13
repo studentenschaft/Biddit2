@@ -2,7 +2,9 @@
  * IaChangeNotice.jsx
  *
  * One-time banner explaining the tab restructuring: Smart Search moved into the
- * course list and Study Overview was retired in favour of the Curriculum Map.
+ * course list, and the remaining tabs are grouped by scope. It must not claim
+ * Study Overview is gone — that tab is retained (see ADR 0002) and carries its
+ * own migration notice.
  * Dismissal is remembered in localStorage, matching CurriculumMapBetaNotice.
  */
 
@@ -23,8 +25,8 @@ export default function IaChangeNotice() {
       <InformationCircleIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
       <p className="flex-1 text-sm text-blue-800">
         We tidied up: Smart Search now lives in the course list on the left
-        (toggle Keyword / Smart), and Study Overview has been retired in favor of
-        the Curriculum Map.
+        (toggle Keyword / Smart), and the tabs are grouped by scope — This
+        Semester and My Degree.
       </p>
       <button
         type="button"
