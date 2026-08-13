@@ -318,8 +318,8 @@ export default function Biddit2() {
           </Suspense>
         </div>
         <div
-          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 ${
-            isLeftViewVisibleState ? "hidden md:block" : ""
+          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
+            isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
           <IaChangeNotice />

@@ -75,9 +75,12 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
   const labelFor = (tabId) =>
     tabId === TAB.SUMMARY ? dynamicSummaryText : TAB_LABELS[tabId];
 
+  // The root uses flex-1 + min-h-0 rather than h-full: siblings such as
+  // IaChangeNotice share the right column's flex column, so the tabs shrink
+  // around them instead of pushing the panel below the fold.
   return (
     <Tabs
-      className="flex flex-col w-full h-full overflow-hidden"
+      className="flex flex-col w-full flex-1 min-h-0 overflow-hidden"
       selectedIndex={selectedTab}
       onSelect={onTabSelect}
     >

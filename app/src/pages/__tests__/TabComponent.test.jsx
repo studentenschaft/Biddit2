@@ -67,6 +67,15 @@ describe("TabComponent tab row", () => {
     expect(tabNames()[TAB_ORDER.indexOf(TAB.SUMMARY)]).toBe("HS26 Summary");
   });
 
+  it("fills the flex column instead of forcing its own height", () => {
+    renderTabs();
+    // The tabs root is the element owning the tablist; it must shrink to the
+    // space left by siblings (e.g. IaChangeNotice) rather than claim h-full.
+    const tabsRoot = screen.getByRole("tablist").parentElement;
+    expect(tabsRoot.className).toContain("flex-1");
+    expect(tabsRoot.className).toContain("min-h-0");
+    expect(tabsRoot.className).not.toContain("h-full");
+  });
 });
 
 describe("TabComponent panels", () => {
