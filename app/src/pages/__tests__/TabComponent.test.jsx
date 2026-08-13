@@ -107,6 +107,11 @@ describe("TabComponent tab row", () => {
   it("carries a visible keyboard focus ring on every tab", () => {
     renderTabs();
     screen.getAllByRole("tab").forEach((tab) => {
+      // The bare `focus-visible:outline` sets outline-style: solid. Without it
+      // the width/offset/color utilities paint nothing and the ring silently
+      // degrades to the UA default — so it is asserted as a whole token, not
+      // as a substring of `focus-visible:outline-2`.
+      expect(tab.className.split(/\s+/)).toContain("focus-visible:outline");
       expect(tab.className).toContain("focus-visible:outline-2");
       expect(tab.className).toContain("focus-visible:outline-offset-2");
       expect(tab.className).toContain("focus-visible:outline-gray-800");
