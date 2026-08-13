@@ -93,3 +93,33 @@ describe("TabComponent panels", () => {
     },
   );
 });
+
+/**
+ * The Curriculum Map holds drag/plan/scroll state, so it survives tab
+ * switches once opened — but it must not mount before the user opens it: its
+ * loaders would run at startup and its welcome dialog portals to the body.
+ */
+describe("TabComponent sticky panels", () => {
+  const curriculumIndex = TAB_ORDER.indexOf(TAB.CURRICULUM_MAP);
+  const summaryIndex = TAB_ORDER.indexOf(TAB.SUMMARY);
+  const stub = PANEL_STUB[TAB.CURRICULUM_MAP];
+
+  it("keeps the Curriculum Map mounted after it has been visited", () => {
+    const { rerender } = renderTabs({ selectedTab: curriculumIndex });
+    expect(screen.getByText(stub)).toBeInTheDocument();
+
+    rerender(
+      <RecoilRoot>
+        <TabComponent selectedTab={summaryIndex} onTabSelect={() => {}} />
+      </RecoilRoot>,
+    );
+
+    expect(screen.getByText(PANEL_STUB[TAB.SUMMARY])).toBeInTheDocument();
+    expect(screen.getByText(stub)).toBeInTheDocument();
+  });
+
+  it("does not mount the Curriculum Map before its tab is visited", () => {
+    renderTabs({ selectedTab: summaryIndex });
+    expect(screen.queryByText(stub)).not.toBeInTheDocument();
+  });
+});

@@ -101,7 +101,11 @@ export default function CourseInfo() {
   }
 
   useEffect(() => {
-    if (authToken) {
+    // The list is static, but this panel remounts on every tab visit — the atom
+    // that caches it is what keeps the fetch to once per session.
+    const alreadyLoaded =
+      examinationIdState && Object.keys(examinationIdState).length > 0;
+    if (authToken && !alreadyLoaded) {
       fetchExaminationIds();
     }
     //never include setters
