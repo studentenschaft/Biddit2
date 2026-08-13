@@ -1,5 +1,10 @@
 import { selector, selectorFamily } from "recoil";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
+import { smartSearchState, orderSmartResults } from "./smartSearchAtom";
+import {
+  getCourseIdentifier,
+  lookupCourseRating,
+} from "../helpers/courseUtils";
 
 /**
  * Selector to get all course data for a specific semester
@@ -350,6 +355,46 @@ export const semesterCisIdSelector = selectorFamily({
       // For regular semesters, use their own CIS ID
       return semesterData.cisId;
     },
+});
+
+/**
+ * Smart (semantic) search results for the selected semester, best match first.
+ *
+ * The vector DB returns ids only, so they are resolved against the semester's
+ * `available` courses. `available` carries no enrolled/selected flags (those are
+ * attached to `filtered` by updateFilteredCourses), so they are re-attached here
+ * — otherwise a wishlisted course would render with a "+" instead of its lock in
+ * the shared EventListContainer row.
+ */
+export const smartSearchResultsSelector = selector({
+  key: "smartSearchResultsSelector",
+  get: ({ get }) => {
+    const search = get(smartSearchState);
+    const courseData = get(unifiedCourseDataState);
+    const semester = courseData.selectedSemester;
+    const semesterData = courseData.semesters?.[semester];
+    const available = semesterData?.available || [];
+
+    const ordered = orderSmartResults({
+      resultIds: search.resultIds,
+      distances: search.distances,
+      courses: available,
+    });
+
+    const enrolledIds = semesterData?.enrolledIds || [];
+    const selectedIds = semesterData?.selectedIds || [];
+    const ratings = semesterData?.ratings || {};
+
+    return ordered.map((course) => {
+      const courseNumber = getCourseIdentifier(course);
+      return {
+        ...course,
+        avgRating: lookupCourseRating(course, ratings) || course.avgRating,
+        enrolled: !!courseNumber && enrolledIds.includes(courseNumber),
+        selected: !!courseNumber && selectedIds.includes(courseNumber),
+      };
+    });
+  },
 });
 
 /**

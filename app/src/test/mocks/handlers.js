@@ -139,6 +139,13 @@ const mockData = {
     currentTerm: "FS26",
     phases: [],
   },
+  // Vector-DB shape: one array per query. Tests that need hits override this
+  // handler with server.use().
+  similarCourses: {
+    ids: [[]],
+    distances: [[]],
+    metadatas: [[]],
+  },
 };
 
 /**
@@ -217,6 +224,14 @@ const shsgHandlers = [
     if (errorResponse) return errorResponse;
 
     return HttpResponse.json({ similarCourses: [] });
+  }),
+
+  // GET /similar-courses/query — the shape querySimilarCourses actually calls
+  http.get(`${SHSG_API}/similar-courses/query`, async ({ request }) => {
+    const errorResponse = await maybeSimulateError(request.url);
+    if (errorResponse) return errorResponse;
+
+    return HttpResponse.json(mockData.similarCourses);
   }),
 
   // GET /scorecard-enrollments/*
