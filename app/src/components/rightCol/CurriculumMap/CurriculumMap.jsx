@@ -201,8 +201,9 @@ const CurriculumMap = () => {
               No Academic Data Found
             </h3>
             <p className="text-gray-600">
-              Load your study data from the Study Overview tab to see your
-              curriculum map.
+              We couldn&apos;t find any academic data for your account yet. Once
+              your transcript data has loaded, your curriculum map will appear
+              here.
             </p>
           </div>
         </div>

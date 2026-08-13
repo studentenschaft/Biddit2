@@ -12,7 +12,6 @@ import CourseInfo from "../components/rightCol/CourseInfo";
 import Calendar from "../components/rightCol/Calendar";
 import SemesterSummary from "../components/rightCol/SemesterSummary";
 import Transcript from "../components/rightCol/Transcript";
-import StudyOverview from "../components/rightCol/StudyOverview";
 import SmartSearch from "../components/rightCol/SmartSearch";
 import CurriculumMap from "../components/rightCol/CurriculumMap";
 
@@ -51,7 +50,6 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
         <Tab className={tabStyle}>Calendar</Tab>
         <Tab className={tabStyle}>{dynamicSummaryText}</Tab>
         <Tab className={tabStyle}>Transcript</Tab>
-        <Tab className={tabStyle}>Study Overview</Tab>
         <Tab className={tabStyle}>Curriculum Map</Tab>
         <Tab className={tabStyle}>Smart Search</Tab>
       </TabList>
@@ -84,15 +82,6 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
       <TabPanel>
         <ErrorBoundary>
           <Transcript />
-        </ErrorBoundary>
-      </TabPanel>
-      <TabPanel>
-        <ErrorBoundary>
-          <Suspense
-            fallback={<LoadingText>Loading Study Overview...</LoadingText>}
-          >
-            <StudyOverview />
-          </Suspense>
         </ErrorBoundary>
       </TabPanel>
       <TabPanel>

@@ -9,7 +9,6 @@ export const TAB = {
   CALENDAR: "calendar",
   SUMMARY: "summary",
   TRANSCRIPT: "transcript",
-  STUDY_OVERVIEW: "study-overview",
   CURRICULUM_MAP: "curriculum-map",
   SMART_SEARCH: "smart-search",
 };
@@ -19,7 +18,6 @@ export const TAB_ORDER = [
   TAB.CALENDAR,
   TAB.SUMMARY,
   TAB.TRANSCRIPT,
-  TAB.STUDY_OVERVIEW,
   TAB.CURRICULUM_MAP,
   TAB.SMART_SEARCH,
 ];
