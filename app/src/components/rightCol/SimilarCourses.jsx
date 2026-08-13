@@ -21,7 +21,7 @@ import LoadingText from "../common/LoadingText";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
 export default function SimilarCourses({ selectedCourse }) {
@@ -69,8 +69,8 @@ export default function SimilarCourses({ selectedCourse }) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingLong, setIsLoadingLong] = useState(false);
-  // Allow setting the current CourseInfo when user clicks a similar course title
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
+  // Allow showing course details when user clicks a similar course title
+  const openCourseDetails = useOpenCourseDetails();
 
   // Derive program from unified data with robust fallbacks
   const derivedProgram =
@@ -548,7 +548,9 @@ export default function SimilarCourses({ selectedCourse }) {
                         const course = coursesCurrentSemester.find(
                           (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         );
-                        if (course) updateSelectedCourseInfo(course);
+                        openCourseDetails(course, {
+                          source: "similar-courses",
+                        });
                       }}
                       title="Show course details"
                     >

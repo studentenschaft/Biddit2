@@ -7,7 +7,8 @@ import { SideNav } from "../components/leftCol/sideNav/SideNav";
 // Recoil
 import { useRecoilState } from "recoil";
 import { selectedTabAtom } from "../components/recoil/selectedTabAtom";
-import { tabIndexOf, tabIdAt } from "../constants/tabs";
+import { tabIndexOf } from "../constants/tabs";
+import { makeTabSelectHandler } from "./tabSelectHandler";
 
 // DnD Kit for drag-and-drop between EventListContainer and CurriculumMap
 import {
@@ -325,7 +326,10 @@ export default function Biddit2() {
           >
             <TabComponent
               selectedTab={tabIndexOf(selectedTabState)}
-              onTabSelect={(index) => setSelectedTabState(tabIdAt(index))}
+              onTabSelect={makeTabSelectHandler(
+                selectedTabState,
+                setSelectedTabState
+              )}
             />
           </Suspense>
         </div>
