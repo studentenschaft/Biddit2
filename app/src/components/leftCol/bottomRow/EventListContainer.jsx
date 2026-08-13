@@ -40,7 +40,9 @@ import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 import {
   semesterCoursesSelector,
   selectedCoursesSelector,
+  smartSearchResultsSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
+import { smartSearchState } from "../../recoil/smartSearchAtom";
 
 // Icons
 import { PlusIcon } from "@heroicons/react/outline";
@@ -97,6 +99,15 @@ export default function EventListContainer({
         type: "filtered",
       })
     ) || [];
+
+  // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
+  // matches once a query has run; the rows themselves are identical, so add,
+  // lock, drag-to-curriculum-map and click-to-details keep working.
+  const smartSearch = useRecoilValue(smartSearchState);
+  const smartResults = useRecoilValue(smartSearchResultsSelector);
+  const smartActive = smartSearch.mode === "smart" && smartSearch.hasSearched;
+  const displayedCourses = smartActive ? smartResults : filteredCourses;
+  const isListLoading = isLoading || (smartActive && smartSearch.isLoading);
 
   /**
    * ========================= DEV LOGGING UTILITIES =========================
@@ -369,7 +380,7 @@ export default function EventListContainer({
 
   // Prepare itemData for Row component (includes all needed callbacks and state)
   const itemData = {
-    filteredCourses,
+    filteredCourses: displayedCourses,
     selectedSemesterShortName,
     selectedSemester,
     selectedCourseIds,
@@ -387,16 +398,16 @@ export default function EventListContainer({
           <FixedSizeList
             className="overflow-auto text-sm scrollbar-hide"
             height={height}
-            itemCount={isLoading ? 1 : filteredCourses?.length || 1}
+            itemCount={isListLoading ? 1 : displayedCourses?.length || 1}
             itemSize={75}
             width={width}
             itemData={itemData}
           >
             {({ index, style, data }) => {
-              if (isLoading) {
+              if (isListLoading) {
                 return <LoadingRow style={style} />;
               }
-              if (!filteredCourses || filteredCourses.length === 0) {
+              if (!displayedCourses || displayedCourses.length === 0) {
                 return <NoCoursesRow style={style} />;
               }
               return <Row index={index} style={style} data={data} />;

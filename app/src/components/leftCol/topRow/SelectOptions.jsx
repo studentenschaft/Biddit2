@@ -11,6 +11,7 @@ import { SelectLanguage } from "./SelectLanguage";
 import { SelectLecturer } from "./SelectLecturer";
 import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
+import SearchModeToggle from "./SearchModeToggle";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
 
@@ -126,6 +127,7 @@ export default function SelectSemester() {
             <SelectLanguage />
             <SelectRatings />
           </div>
+          <SearchModeToggle />
           <SearchTerm />
         </div>
       )}
