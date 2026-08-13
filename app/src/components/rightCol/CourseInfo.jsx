@@ -352,9 +352,7 @@ export default function CourseInfo() {
               Exam Information
             </h2>
             <div className="pb-1">
-              {selectedCourse &&
-              examInformationState &&
-              examInformationState !== undefined ? (
+              {examInformationState ? (
                 examInformationState.examinationParts.map((part, index) => {
                   return (
                     <div key={index} className="w-full text-sm">
@@ -385,22 +383,21 @@ export default function CourseInfo() {
               <Collapsible label="Learning Objectives" CloseOnToggle={false}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.learningObjectives,
+                    __html: selectedCourse.learningObjectives,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Content" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseContent,
+                    __html: selectedCourse.courseContent,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Prerequisites" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html:
-                      selectedCourse && selectedCourse.coursePrerequisites,
+                    __html: selectedCourse.coursePrerequisites,
                   }}
                 />
               </Collapsible>
@@ -408,29 +405,27 @@ export default function CourseInfo() {
               <Collapsible label="Structure" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseStructure,
+                    __html: selectedCourse.courseStructure,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Literature" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseLiterature,
+                    __html: selectedCourse.courseLiterature,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Additional Information" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html:
-                      selectedCourse &&
-                      selectedCourse.courseAdditionalInformation,
+                    __html: selectedCourse.courseAdditionalInformation,
                   }}
                 />
               </Collapsible>
             </div>
           </section>
-          {selectedCourse && <SimilarCourses selectedCourse={selectedCourse} />}
+          <SimilarCourses selectedCourse={selectedCourse} />
         </div>
       </div>
     </>

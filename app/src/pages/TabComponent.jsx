@@ -77,29 +77,20 @@ const STICKY_TAB_IDS = new Set([TAB.CURRICULUM_MAP]);
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
   // Below md the five tabs keep their natural width and the row scrolls; from
-  // md up they share the row equally and may wrap again (md:min-w-0), so a
-  // narrow desktop column cannot push the last tab out of the hidden overflow.
+  // md up they share the row equally. Labels never wrap (whitespace-nowrap),
+  // so md:min-w-0 lets a tab shrink below its min-content width and clip its
+  // label rather than push the last tab out of the hidden overflow.
   // The focus ring must be a Tailwind utility: react-tabs' default `react-tabs__tab`
   // class is a defaultProp that this className replaces, so a stylesheet rule on
   // it would never match.
   const tabStyle =
     "flex-none min-w-max md:min-w-0 whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
 
-  // Access selected semester from unified system
+  // The Summary tab names the semester it summarises.
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
-
-  // Local state for dynamic tab text
-  const [dynamicSummaryText, setDynamicSummaryText] = useState(
-    TAB_LABELS[TAB.SUMMARY],
-  );
-
-  useEffect(() => {
-    if (selectedSemester) {
-      // Update dynamic tab text without blocking render
-      const newSummaryText = `${selectedSemester} Summary`;
-      setDynamicSummaryText(newSummaryText);
-    }
-  }, [selectedSemester]);
+  const summaryLabel = selectedSemester
+    ? `${selectedSemester} Summary`
+    : TAB_LABELS[TAB.SUMMARY];
 
   // Tabs the user has opened at least once — a sticky panel only starts
   // surviving switches after its first visit.
@@ -115,7 +106,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
   }, [selectedTab]);
 
   const labelFor = (tabId) =>
-    tabId === TAB.SUMMARY ? dynamicSummaryText : TAB_LABELS[tabId];
+    tabId === TAB.SUMMARY ? summaryLabel : TAB_LABELS[tabId];
 
   // The root uses flex-1 + min-h-0 rather than h-full: siblings such as
   // IaChangeNotice share the right column's flex column, so the tabs shrink

@@ -1,18 +1,29 @@
-import { useRecoilState } from "recoil";
+import { useRecoilState, useSetRecoilState } from "recoil";
+import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
 
 const baseStyle =
   "flex-1 py-1 text-xs font-medium rounded-md transition-colors";
 
+const MODES = [
+  ["keyword", "Keyword"],
+  ["smart", "Smart ✨"],
+];
+
 /**
  * Switches the course list between keyword filtering and semantic search.
- * Changing mode drops any previous smart results so the list never shows
- * matches for a query the user has moved on from.
+ * Changing mode drops any previous smart results and the keyword filter term,
+ * so the list never shows matches for a query the user has moved on from.
+ * The visible input is cleared by SelectOptions keying <SearchTerm> on the mode.
  */
 export default function SearchModeToggle() {
   const [search, setSearch] = useRecoilState(smartSearchState);
+  const setSelectionOptions = useSetRecoilState(selectionOptionsState);
 
-  const setMode = (mode) =>
+  const setMode = (mode) => {
+    if (mode !== search.mode) {
+      setSelectionOptions((prev) => ({ ...prev, searchTerm: "" }));
+    }
     setSearch((prev) => ({
       ...prev,
       mode,
@@ -20,6 +31,7 @@ export default function SearchModeToggle() {
       resultIds: [],
       distances: [],
     }));
+  };
 
   return (
     <div
@@ -27,32 +39,21 @@ export default function SearchModeToggle() {
       role="group"
       aria-label="Search mode"
     >
-      <button
-        type="button"
-        onClick={() => setMode("keyword")}
-        aria-pressed={search.mode === "keyword"}
-        className={`${baseStyle} ${
-          search.mode === "keyword"
-            ? "bg-hsg-800 text-white"
-            : "text-gray-600 hover:bg-gray-200"
-        }`}
-      >
-        Keyword
-      </button>
-      <button
-        type="button"
-        onClick={() => setMode("smart")}
-        aria-pressed={search.mode === "smart"}
-        className={`${baseStyle} ${
-          search.mode === "smart"
-            ? "bg-hsg-800 text-white"
-            : "text-gray-600 hover:bg-gray-200"
-        }`}
-      >
-        Smart ✨
-      </button>
+      {MODES.map(([mode, label]) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => setMode(mode)}
+          aria-pressed={search.mode === mode}
+          className={`${baseStyle} ${
+            search.mode === mode
+              ? "bg-hsg-800 text-white"
+              : "text-gray-600 hover:bg-gray-200"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
-
-export { SearchModeToggle };

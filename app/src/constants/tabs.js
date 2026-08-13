@@ -2,7 +2,7 @@
  * Named identifiers for the right-column tabs.
  * The Recoil atom stores these ids; react-tabs works with indices,
  * so Biddit2.jsx converts at the boundary via tabIndexOf/tabIdAt.
- * Reordering TAB_ORDER reorders the tab row without breaking navigation.
+ * Reordering TAB_GROUPS reorders the tab row without breaking navigation.
  */
 export const TAB = {
   COURSE_DETAILS: "course-details",
@@ -11,14 +11,6 @@ export const TAB = {
   TRANSCRIPT: "transcript",
   CURRICULUM_MAP: "curriculum-map",
 };
-
-export const TAB_ORDER = [
-  TAB.COURSE_DETAILS,
-  TAB.CALENDAR,
-  TAB.SUMMARY,
-  TAB.CURRICULUM_MAP,
-  TAB.TRANSCRIPT,
-];
 
 /** Default label per tab id. The Summary label is made semester-specific at render time. */
 export const TAB_LABELS = {
@@ -31,7 +23,7 @@ export const TAB_LABELS = {
 
 /**
  * Visual grouping of the tab row by scope, read left→right as
- * This-Semester → My-Degree. Flattened, this must equal TAB_ORDER.
+ * This-Semester → My-Degree. This is the single source of tab order.
  */
 export const TAB_GROUPS = [
   {
@@ -43,6 +35,9 @@ export const TAB_GROUPS = [
     tabs: [TAB.CURRICULUM_MAP, TAB.TRANSCRIPT],
   },
 ];
+
+/** Left→right tab order, derived from the groups so the two cannot drift. */
+export const TAB_ORDER = TAB_GROUPS.flatMap((group) => group.tabs);
 
 export function tabIndexOf(tabId) {
   const index = TAB_ORDER.indexOf(tabId);

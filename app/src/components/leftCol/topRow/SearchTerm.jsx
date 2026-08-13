@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
@@ -10,17 +10,10 @@ const SearchTerm = () => {
   const { mode } = useRecoilValue(smartSearchState);
   const { runSearch } = useSmartSearch();
 
+  // Switching modes remounts this component (SelectOptions keys it on the
+  // mode), which is what empties the box so a keyword filter never lingers
+  // behind a smart query and vice versa.
   const isSmartMode = mode === "smart";
-
-  // Switching modes resets the box so a keyword filter never lingers behind a
-  // smart query (and vice versa). Skips the initial mount.
-  const previousModeRef = useRef(mode);
-  useEffect(() => {
-    if (previousModeRef.current === mode) return;
-    previousModeRef.current = mode;
-    setSearchTerm("");
-    setSelectionOptions((prev) => ({ ...prev, searchTerm: "" }));
-  }, [mode, setSelectionOptions]);
 
   const handleSearch = (e) => {
     const value = e.target.value;

@@ -10,7 +10,7 @@
  * to course objects is `smartSearchResultsSelector`.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import { querySimilarCourses, upsertSimilarCourses } from "./similarCoursesApi";
 import { useScorecardFetching } from "./useScorecardFetching";
@@ -49,8 +49,6 @@ export function useSmartSearch() {
   const usingReferenceData = semesterMetadata?.usingReferenceData;
   const isReferenceData =
     isFutureSemesterSelectedSate || usingReferenceData || false;
-  const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
-    useState(null);
 
   // Retrieve available courses for the actual selected semester (not reference)
   const coursesCurrentSemester = useRecoilValue(
@@ -76,54 +74,33 @@ export function useSmartSearch() {
     programRef.current = derivedProgram;
   }, [derivedProgram]);
 
-  // Resolve the semester to use for API calls. When the displayed courses are
-  // borrowed (future projection OR current-but-sparse preview), they belong to
-  // referenceSemester, so all queries/upserts must use it — not the selected term.
-  useEffect(() => {
-    try {
-      if (isReferenceData) {
-        // referenceSemester already stored as shortName
-        setReferenceSemesterLocalState(referenceSemesterState || null);
-      } else {
-        setReferenceSemesterLocalState(null);
-      }
-    } catch (error) {
-      console.error(
-        "Error setting reference semester local state in smartSearch:",
-        error
-      );
-      errorHandlingService.handleError(error);
-    }
-  }, [isReferenceData, referenceSemesterState]);
+  // The semester to use for API calls. When the displayed courses are borrowed
+  // (future projection OR current-but-sparse preview), they belong to
+  // referenceSemester, so all queries/upserts must use it — not the selected
+  // term. Null means "use the selected semester itself".
+  const referenceSemesterLocalState = isReferenceData
+    ? referenceSemesterState || null
+    : null;
 
   // Process course data for upsert. Built on demand rather than in an effect:
   // this hook now lives in the always-mounted left column, and the payload is
   // only needed on the rare empty/404 path.
   function buildRelevantCourseInfoForUpsert() {
-    try {
-      if (!coursesCurrentSemester) return [];
-      return coursesCurrentSemester
-        .map((course) => {
-          if (!course.courseNumber) {
-            console.warn("Missing course number for course:", course);
-            return null;
-          }
-          return {
-            courseNumber: course.courseNumber,
-            shortName: course.shortName,
-            classification: course.classification,
-            courseContent: course.courseContent,
-          };
-        })
-        .filter((course) => course !== null);
-    } catch (error) {
-      console.error(
-        "Error building relevant course info for upsert in smartSearch:",
-        error
-      );
-      errorHandlingService.handleError(error);
-      return [];
-    }
+    if (!coursesCurrentSemester) return [];
+    return coursesCurrentSemester
+      .map((course) => {
+        if (!course.courseNumber) {
+          console.warn("Missing course number for course:", course);
+          return null;
+        }
+        return {
+          courseNumber: course.courseNumber,
+          shortName: course.shortName,
+          classification: course.classification,
+          courseContent: course.courseContent,
+        };
+      })
+      .filter((course) => course !== null);
   }
 
   // upsert relevant course info to backend if no similar courses found.
@@ -263,5 +240,3 @@ export function useSmartSearch() {
 
   return { runSearch };
 }
-
-export default useSmartSearch;

@@ -149,17 +149,9 @@ export const useCourseInfoData = (params) => {
   ]);
 
   // Handle null parameters AFTER calling all hooks
-  if (!params) {
-    return {
-      isCourseDataLoading: false,
-      courseData: [],
-      hasData: false,
-    };
-  }
+  if (!params) return { isCourseDataLoading: false };
 
-  return {
-    isCourseDataLoading,
-  };
+  return { isCourseDataLoading };
 };
 
 export default useCourseInfoData;

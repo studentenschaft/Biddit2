@@ -1,14 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  TAB,
-  TAB_GROUPS,
-  TAB_LABELS,
-  TAB_ORDER,
-  tabIndexOf,
-  tabIdAt,
-} from "../tabs";
+import { TAB, TAB_LABELS, TAB_ORDER, tabIndexOf, tabIdAt } from "../tabs";
 
 describe("tab constants", () => {
+  // TAB_ORDER is the flattened TAB_GROUPS, so this also guards the grouping:
+  // a tab dropped from or duplicated across groups fails here.
   it("orders every tab exactly once", () => {
     expect(new Set(TAB_ORDER).size).toBe(TAB_ORDER.length);
     expect(TAB_ORDER.length).toBe(Object.keys(TAB).length);
@@ -24,10 +19,6 @@ describe("tab constants", () => {
 
   it("labels every ordered tab exactly once", () => {
     expect(Object.keys(TAB_LABELS).sort()).toEqual([...TAB_ORDER].sort());
-  });
-
-  it("groups exactly the ordered tabs, in order", () => {
-    expect(TAB_GROUPS.flatMap(({ tabs }) => tabs)).toEqual(TAB_ORDER);
   });
 
   it("falls back to the first tab for unknown values", () => {
