@@ -4,6 +4,11 @@ import { atom } from "recoil";
  * Search mode + semantic-search results for the left-column course list.
  * "keyword" keeps the existing `selectionOptions.searchTerm` filtering;
  * "smart" replaces the displayed list with vector-DB matches.
+ *
+ * `semesterQueried` records which semester the stored ids answer for. The ids
+ * are only meaningful against that term's catalog, so consumers must treat the
+ * results as absent while another semester is selected — see
+ * `smartSearchActiveSelector`.
  */
 export const smartSearchState = atom({
   key: "smartSearchState",
@@ -14,6 +19,7 @@ export const smartSearchState = atom({
     distances: [],
     isLoading: false,
     hasSearched: false,
+    semesterQueried: null,
   },
 });
 

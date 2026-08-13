@@ -41,6 +41,7 @@ import {
   semesterCoursesSelector,
   selectedCoursesSelector,
   smartSearchResultsSelector,
+  smartSearchActiveSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
 
@@ -101,11 +102,12 @@ export default function EventListContainer({
     ) || [];
 
   // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
-  // matches once a query has run; the rows themselves are identical, so add,
-  // lock, drag-to-curriculum-map and click-to-details keep working.
+  // matches once a query has run for the selected semester; the rows themselves
+  // are identical, so add, lock, drag-to-curriculum-map and click-to-details
+  // keep working.
   const smartSearch = useRecoilValue(smartSearchState);
   const smartResults = useRecoilValue(smartSearchResultsSelector);
-  const smartActive = smartSearch.mode === "smart" && smartSearch.hasSearched;
+  const smartActive = useRecoilValue(smartSearchActiveSelector);
   const displayedCourses = smartActive ? smartResults : filteredCourses;
   const isListLoading = isLoading || (smartActive && smartSearch.isLoading);
 

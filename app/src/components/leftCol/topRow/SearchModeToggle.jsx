@@ -47,6 +47,7 @@ export default function SearchModeToggle() {
       hasSearched: false,
       resultIds: [],
       distances: [],
+      semesterQueried: null,
     }));
   };
 

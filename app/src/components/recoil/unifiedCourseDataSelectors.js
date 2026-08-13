@@ -358,6 +358,29 @@ export const semesterCisIdSelector = selectorFamily({
 });
 
 /**
+ * Whether the course list should be showing smart-search results right now.
+ *
+ * A stored answer only applies to the semester it was asked about: the vector DB
+ * returns bare ids, so resolving them against another term's catalog would show
+ * that term's courses ranked by the old term's answer, with nothing on screen
+ * saying so. Switching away therefore falls back to the keyword-filtered pool,
+ * and switching back makes the answer valid again — no state is discarded,
+ * because re-running the same query against the same term would return it.
+ */
+export const smartSearchActiveSelector = selector({
+  key: "smartSearchActiveSelector",
+  get: ({ get }) => {
+    const search = get(smartSearchState);
+    const { selectedSemester } = get(unifiedCourseDataState);
+    return (
+      search.mode === "smart" &&
+      search.hasSearched &&
+      search.semesterQueried === selectedSemester
+    );
+  },
+});
+
+/**
  * Smart (semantic) search results for the selected semester, best match first.
  *
  * The vector DB returns ids only, so they are resolved against the semester's

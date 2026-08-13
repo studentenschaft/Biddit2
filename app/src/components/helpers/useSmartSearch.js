@@ -223,6 +223,10 @@ export function useSmartSearch() {
   /**
    * Run a semantic search for `query` against the selected semester.
    * Empty queries are ignored, matching the retired tab's behaviour.
+   *
+   * `semesterQueried` is stamped here rather than on the response so it names
+   * the term the question was asked about, even if the user switches semesters
+   * while the request is in flight.
    */
   const runSearch = async (query) => {
     const trimmedQuery = (query || "").trim();
@@ -233,6 +237,7 @@ export function useSmartSearch() {
       query: trimmedQuery,
       isLoading: true,
       hasSearched: true,
+      semesterQueried: selectedSemesterShortName,
     }));
 
     await fetchSimilarCourses(trimmedQuery);

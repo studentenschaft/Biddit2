@@ -8,7 +8,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { RecoilRoot, useRecoilValue } from "recoil";
+import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { server } from "../../../../test/mocks/server";
@@ -38,6 +38,7 @@ vi.mock("../../../helpers/useEventListDataManager", () => ({
 }));
 
 const SEMESTER = "HS25";
+const OTHER_SEMESTER = "FS26";
 
 const ML = {
   id: "ml",
@@ -60,6 +61,15 @@ const KEYWORD_ONLY = {
   classification: "Core",
   credits: 400,
 };
+// Only in the other semester's catalog, so its presence proves which semester
+// the list is actually reading.
+const NEXT_TERM_COURSE = {
+  id: "nt",
+  courseNumber: "2,002,1.00",
+  shortName: "Next Term Course",
+  classification: "Core",
+  credits: 400,
+};
 
 const TERM_LIST = [
   {
@@ -67,6 +77,13 @@ const TERM_LIST = [
     id: "hs25",
     shortName: SEMESTER,
     isCurrent: true,
+    isProjected: false,
+  },
+  {
+    cisId: "cis-fs26",
+    id: "fs26",
+    shortName: OTHER_SEMESTER,
+    isCurrent: false,
     isProjected: false,
   },
 ];
@@ -93,6 +110,21 @@ const seedState = ({ set }) => {
         usingReferenceData: false,
         cisId: "cis-hs25",
         isCurrent: true,
+        isProjected: false,
+      },
+      [OTHER_SEMESTER]: {
+        enrolledIds: [],
+        available: [NEXT_TERM_COURSE],
+        selectedIds: [],
+        filtered: [NEXT_TERM_COURSE],
+        studyPlan: [],
+        ratings: {},
+        lastFetched: null,
+        isFutureSemester: false,
+        referenceSemester: null,
+        usingReferenceData: false,
+        cisId: "cis-fs26",
+        isCurrent: false,
         isProjected: false,
       },
     },
@@ -127,6 +159,38 @@ const KeyedSearchTerm = () => {
   return <SearchTerm key={mode} />;
 };
 
+/**
+ * Mirrors production, where the semester prop and `selectedSemester` in the atom
+ * come from the same source and therefore always move together — a harness that
+ * pinned the prop could not observe a semester switch at all.
+ */
+const SemesterAwareList = () => {
+  const { selectedSemester } = useRecoilValue(unifiedCourseDataState);
+  const setCourseData = useSetRecoilState(unifiedCourseDataState);
+  return (
+    <>
+      <EventListContainer
+        termListObject={TERM_LIST}
+        selectedSemesterShortName={selectedSemester}
+      />
+      {[SEMESTER, OTHER_SEMESTER].map((semester) => (
+        <button
+          key={semester}
+          type="button"
+          onClick={() =>
+            setCourseData((prev) => ({ ...prev, selectedSemester: semester }))
+          }
+        >
+          {`switch to ${semester}`}
+        </button>
+      ))}
+    </>
+  );
+};
+
+const switchSemester = (semester) =>
+  fireEvent.click(screen.getByRole("button", { name: `switch to ${semester}` }));
+
 const renderList = (extraSeed) =>
   render(
     <RecoilRoot
@@ -137,10 +201,7 @@ const renderList = (extraSeed) =>
     >
       <SearchModeToggle />
       <KeyedSearchTerm />
-      <EventListContainer
-        termListObject={TERM_LIST}
-        selectedSemesterShortName={SEMESTER}
-      />
+      <SemesterAwareList />
       <TabProbe />
     </RecoilRoot>
   );
@@ -284,6 +345,50 @@ describe("smart search in the course list", () => {
     expect(upserts.count).toBe(0);
     // And the search must settle rather than hang on the loading row.
     expect(screen.queryByText("Loading courses...")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the keyword pool when the semester changes under the results", async () => {
+    mockVectorHits();
+    renderList();
+    runSmartSearch();
+
+    await waitFor(() =>
+      expect(screen.getByText("Machine Learning")).toBeInTheDocument()
+    );
+
+    switchSemester(OTHER_SEMESTER);
+
+    // The ids answer the old semester's question; resolving them against the new
+    // semester's catalog would rank whatever happens to share a course number.
+    await waitFor(() =>
+      expect(screen.getByText("Next Term Course")).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Machine Learning")).not.toBeInTheDocument();
+    expect(screen.queryByText("Data Visualisation")).not.toBeInTheDocument();
+  });
+
+  it("shows the results again when the queried semester is reselected", async () => {
+    mockVectorHits();
+    renderList();
+    runSmartSearch();
+
+    await waitFor(() =>
+      expect(screen.getByText("Machine Learning")).toBeInTheDocument()
+    );
+
+    switchSemester(OTHER_SEMESTER);
+    await waitFor(() =>
+      expect(screen.getByText("Next Term Course")).toBeInTheDocument()
+    );
+
+    switchSemester(SEMESTER);
+
+    // Coming back makes the stored answer valid again — the query really was
+    // asked about this semester, so re-running it would return the same ids.
+    await waitFor(() =>
+      expect(screen.getByText("Machine Learning")).toBeInTheDocument()
+    );
+    expect(screen.queryByText("Next Term Course")).not.toBeInTheDocument();
   });
 
   it("clears the box and the keyword filter when the mode changes", () => {
