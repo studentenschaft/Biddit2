@@ -249,4 +249,33 @@ describe("TabComponent sticky panels", () => {
     renderTabs({ selectedTab: summaryIndex });
     expect(screen.queryByText(stub)).not.toBeInTheDocument();
   });
+
+  /**
+   * The complement of the test above, and the one that pins STICKY_TAB_IDS to
+   * exactly {curriculum-map}: without it, adding any other id to the set is a
+   * silent change. Staying mounted is the exception — Calendar in particular
+   * must NOT, because FullCalendar measures a zero-width container inside
+   * `display: none`.
+   */
+  it.each(TAB_ORDER.filter((tabId) => tabId !== TAB.CURRICULUM_MAP))(
+    "tears the %s panel down again once its tab is left",
+    (tabId) => {
+      const tabIndex = TAB_ORDER.indexOf(tabId);
+      const elsewhere = TAB_ORDER.findIndex((otherId) => otherId !== tabId);
+
+      const { rerender } = renderTabs({ selectedTab: elsewhere });
+      const selectTab = (index) =>
+        rerender(
+          <RecoilRoot>
+            <TabComponent selectedTab={index} onTabSelect={() => {}} />
+          </RecoilRoot>,
+        );
+
+      selectTab(tabIndex);
+      expect(screen.getByText(PANEL_STUB[tabId])).toBeInTheDocument();
+
+      selectTab(elsewhere);
+      expect(screen.queryByText(PANEL_STUB[tabId])).not.toBeInTheDocument();
+    },
+  );
 });

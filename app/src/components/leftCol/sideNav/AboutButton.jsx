@@ -40,7 +40,8 @@ export default function AboutButton() {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <div className="fixed inset-0 transition-opacity backdrop-filter backdrop-blur" />
+              {/* Tinted, not blur-only — see the note in ReviewButton. */}
+              <div className="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-sm" />
             </Transition.Child>
 
             <div className="fixed inset-0 z-10 overflow-y-auto">

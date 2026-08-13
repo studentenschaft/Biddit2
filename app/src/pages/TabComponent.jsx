@@ -82,7 +82,7 @@ const TAB_PANEL_CONTENT = {
 const STICKY_TAB_IDS = new Set([TAB.CURRICULUM_MAP]);
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
-  // Below md the five tabs keep their natural width and the row scrolls; from
+  // Below md the tabs keep their natural width and the row scrolls; from
   // md up they share the row equally. Labels never wrap (whitespace-nowrap),
   // so md:min-w-0 lets a tab shrink below its min-content width and clip its
   // label rather than push the last tab out of the hidden overflow.
