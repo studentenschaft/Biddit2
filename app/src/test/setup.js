@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { server } from "./mocks/server";
 import { resetErrorMode } from "./mocks/handlers";
 
@@ -7,6 +7,15 @@ import { resetErrorMode } from "./mocks/handlers";
  * Global test setup for Vitest
  * Initializes MSW server for API mocking
  */
+
+// No test should load the gtag script or hit Google. Per-file mocks override this.
+vi.mock("react-ga4", () => ({
+  default: {
+    initialize: vi.fn(),
+    event: vi.fn(),
+    gtag: vi.fn(),
+  },
+}));
 
 // Start MSW server before all tests
 beforeAll(() => {

@@ -1,5 +1,5 @@
 import { useSetRecoilState } from "recoil";
-import ReactGA from "react-ga4";
+import { trackCourseDetailsOpened } from "./analytics";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
 import { TAB } from "../../constants/tabs";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
@@ -17,6 +17,6 @@ export function useOpenCourseDetails() {
     if (!course) return;
     updateSelectedCourseInfo(course);
     setSelectedTab(TAB.COURSE_DETAILS);
-    ReactGA.event("course_details_opened", { source });
+    trackCourseDetailsOpened(source);
   };
 }

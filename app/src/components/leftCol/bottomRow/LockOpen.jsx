@@ -78,8 +78,10 @@ export default function LockOpen({ clg, event }) {
       style={{ color: computedColor }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      onMouseDown={(e) => {
-        e.preventDefault();
+      onClick={(e) => {
+        // The lock owns the toggle: stop the click from also reaching a
+        // parent button that calls addOrRemoveCourse (double removal).
+        e.stopPropagation();
         if (!event) {
           return;
         }

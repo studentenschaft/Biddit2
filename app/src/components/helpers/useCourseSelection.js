@@ -7,6 +7,7 @@ import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { trackWishlistChange } from "./analytics";
 
 // Helper function to normalize credits from API format to display format
 const normalizeCredits = (credits) => {
@@ -85,6 +86,14 @@ export function useCourseSelection({
       calendarEntry: course.calendarEntry || [],
       courseNumber: course.courseNumber || course.coursesNumber || "",
     };
+
+    trackWishlistChange({
+      action: isCourseSelected ? "remove" : "add",
+      courseNumber,
+      credits: minimalCourse.credits,
+      classification: course.classification,
+      semester: normalizedCourseSemester,
+    });
 
     // Update local selected courses (indexed by semester index)
     setLocalSelectedCourses((prevCourses) => {

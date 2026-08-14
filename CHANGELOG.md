@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - "Try again" card when the Curriculum Map fails to load.
 - GA4 events: `tab_select { from, to }` on user tab changes and
   `course_details_opened { source }` on every path into Course Details.
+- GA4 events for the remaining core interactions: `column_switch`,
+  `wishlist_change`, `wishlist_cleared` and `semester_switch`.
 - One-time dismissible notice explaining the new tab layout
   (`biddit-ia-notice-dismissed-v1` in `localStorage`).
 
@@ -36,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   index↔id conversion happens only at the react-tabs boundary.
 - All "open course details" navigation goes through the single
   `useOpenCourseDetails` hook.
+- `tab_select` is emitted from a `selectedTabAtom` effect instead of the
+  react-tabs click handler, so it now also covers programmatic tab changes and
+  the tab a session lands on (`from: null`).
 - Curriculum Map is sticky-mounted: it mounts on first visit and stays mounted,
   so its state survives tab switches (scroll position does not).
 - Tab focus ring is delivered via Tailwind `focus-visible:` utilities; the
@@ -63,5 +68,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   an em dash until the lookup lands, and for parts whose type id is missing from
   it. (Latent on `dev`, where Course Details was the default tab and had already
   loaded the lookup long before any course could be clicked.)
+- Pageviews were counted twice — gtag's own `send_page_view` fired on config
+  on top of the app's manual pageview; `page_view` is now sent once per
+  navigation.
+- Dev servers, localhost and the `dev-biddit.netlify.app` preview no longer
+  report into the production property; analytics is gated on a production
+  build *and* the `biddit.app` hostname (the invalid `debug: true` init option
+  is gone).
+- GA4 initializes only after MSAL reports `InteractionStatus.None`, and every
+  hit carries a `page_location` rebuilt from origin + pathname — an OAuth
+  authorization code or query string can never reach analytics. All analytics
+  goes through the single `helpers/analytics.js` adapter (`react-ga4` is not
+  imported anywhere else); events emitted before init are queued and flushed
+  in call order.
+- Deselecting a course from the course list no longer runs the removal twice
+  (the lock icon's `mousedown` and the surrounding button's `click` both
+  called `addOrRemoveCourse` — one duplicate delete request per deselect, and
+  it would have double-counted `wishlist_change` removals).
 
-See `docs/adr/0002-tab-ia-group-and-retire.md` for the rationale and trade-offs.
+**On deploy day:** register the GA4 custom definitions the same day — they are
+not retroactive. Event-scoped dimensions `from`, `to`, `source`, `action`,
+`semester`, `previous_semester`, `column`, `classification`; numeric custom
+metrics `credits`, `count`; user-scoped dimension `app_version`.
+`course_number` stays unregistered by design (cardinality; use BigQuery or
+DebugView). Smoke-check in DebugView on `biddit.app`: exactly one `page_view`
+per navigation, session starts with `page_view` then
+`tab_select { from: null, to: summary }`, `page_location` never contains
+`#code` or `?` on any event, and dev hosts emit nothing.
