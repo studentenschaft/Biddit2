@@ -20,6 +20,13 @@ import {
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+
+// The course sheet and the ExaminationTypes lookup are fetched independently, so
+// the sheet can arrive first. Until the lookup lands — or if it has no entry for
+// an id — the type cell has no name to show, but the part's remark and weightage
+// are still worth rendering.
+const UNKNOWN_EXAM_TYPE = "—";
+
 export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
@@ -101,7 +108,11 @@ export default function CourseInfo() {
   }
 
   useEffect(() => {
-    if (authToken) {
+    // The list is static, but this panel remounts on every tab visit — the atom
+    // that caches it is what keeps the fetch to once per session.
+    const alreadyLoaded =
+      examinationIdState && Object.keys(examinationIdState).length > 0;
+    if (authToken && !alreadyLoaded) {
       fetchExaminationIds();
     }
     //never include setters
@@ -157,6 +168,20 @@ export default function CourseInfo() {
     }
   }, [courseWithRatings, selectedCourse, setCourseWithRatings]);
 
+  if (!selectedCourse || selectedCourse.shortName === undefined) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-2 rounded-lg p-8 text-center text-gray-600 shadow-sm">
+        <p className="text-lg font-semibold text-gray-800">
+          Select a course to see its details
+        </p>
+        <p className="max-w-sm text-sm">
+          Click any course in the list on the left — its ratings, exam format
+          and description will show up here.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* // Course Name and Link to courses page and course info sheet // */}
@@ -175,9 +200,7 @@ export default function CourseInfo() {
               target="_blank"
               rel="noreferrer"
             >
-              {selectedCourse && selectedCourse.shortName !== undefined
-                ? selectedCourse.shortName
-                : "Click on a course to see details."}
+              {selectedCourse.shortName}
             </a>
             {semesterAbbreviation && (
               <a
@@ -197,34 +220,32 @@ export default function CourseInfo() {
         {/* // ECTS / Classifications / Central? / Lecturers // */}
 
         <div className="overflow-auto scrollbar-hide overscroll-auto">
-          {selectedCourse && selectedCourse.shortName !== undefined ? (
-            <div className="text-xs font-semibold text-gray-700 lg:text-base">
-              <div className="" label="credits and exam info">
-                {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
-                {selectedCourse.classification}{" "}
-                {selectedCourse.achievementFormStatus.isCentral &&
-                selectedCourse.achievementFormStatus.isDeCentral
-                  ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
-                  : selectedCourse.achievementFormStatus.isCentral
-                  ? `| Central (${selectedCourse.achievementFormStatus.description})`
-                  : selectedCourse.achievementFormStatus.isDeCentral
-                  ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
-                  : ""}
-              </div>
-              <div className="mb-4">
-                {(selectedCourse.courses?.[0]?.lecturers ||
-                  selectedCourse.lecturers) &&
-                  (
-                    selectedCourse.courses?.[0]?.lecturers ||
-                    selectedCourse.lecturers
-                  )
-                    .map((prof) => {
-                      return prof.displayName;
-                    })
-                    .join(" • ")}
-              </div>
+          <div className="text-xs font-semibold text-gray-700 lg:text-base">
+            <div className="" label="credits and exam info">
+              {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
+              {selectedCourse.classification}{" "}
+              {selectedCourse.achievementFormStatus.isCentral &&
+              selectedCourse.achievementFormStatus.isDeCentral
+                ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
+                : selectedCourse.achievementFormStatus.isCentral
+                ? `| Central (${selectedCourse.achievementFormStatus.description})`
+                : selectedCourse.achievementFormStatus.isDeCentral
+                ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
+                : ""}
             </div>
-          ) : null}
+            <div className="mb-4">
+              {(selectedCourse.courses?.[0]?.lecturers ||
+                selectedCourse.lecturers) &&
+                (
+                  selectedCourse.courses?.[0]?.lecturers ||
+                  selectedCourse.lecturers
+                )
+                  .map((prof) => {
+                    return prof.displayName;
+                  })
+                  .join(" • ")}
+            </div>
+          </div>
 
           {/* // Course Description // */}
 
@@ -338,15 +359,14 @@ export default function CourseInfo() {
               Exam Information
             </h2>
             <div className="pb-1">
-              {selectedCourse &&
-              examInformationState &&
-              examInformationState !== undefined ? (
+              {examInformationState ? (
                 examInformationState.examinationParts.map((part, index) => {
                   return (
                     <div key={index} className="w-full text-sm">
                       <div className="grid grid-cols-3">
                         <div className="font-semibold">
-                          {examinationIdState[part.examinationTypeId].shortName}
+                          {examinationIdState?.[part.examinationTypeId]
+                            ?.shortName ?? UNKNOWN_EXAM_TYPE}
                         </div>
                         <div>{part.remark}</div>
                         <div className="text-left">{part.weightage / 100}%</div>
@@ -371,22 +391,21 @@ export default function CourseInfo() {
               <Collapsible label="Learning Objectives" CloseOnToggle={false}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.learningObjectives,
+                    __html: selectedCourse.learningObjectives,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Content" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseContent,
+                    __html: selectedCourse.courseContent,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Prerequisites" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html:
-                      selectedCourse && selectedCourse.coursePrerequisites,
+                    __html: selectedCourse.coursePrerequisites,
                   }}
                 />
               </Collapsible>
@@ -394,29 +413,27 @@ export default function CourseInfo() {
               <Collapsible label="Structure" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseStructure,
+                    __html: selectedCourse.courseStructure,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Literature" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html: selectedCourse && selectedCourse.courseLiterature,
+                    __html: selectedCourse.courseLiterature,
                   }}
                 />
               </Collapsible>
               <Collapsible label="Additional Information" CloseOnToggle={true}>
                 <div
                   dangerouslySetInnerHTML={{
-                    __html:
-                      selectedCourse &&
-                      selectedCourse.courseAdditionalInformation,
+                    __html: selectedCourse.courseAdditionalInformation,
                   }}
                 />
               </Collapsible>
             </div>
           </section>
-          {selectedCourse && <SimilarCourses selectedCourse={selectedCourse} />}
+          <SimilarCourses selectedCourse={selectedCourse} />
         </div>
       </div>
     </>

@@ -12,6 +12,7 @@
 
 import { useRecoilValue } from "recoil";
 import { useState, useEffect, useMemo } from "react";
+import PropTypes from "prop-types";
 import { DownloadIcon, ArrowLeftIcon } from "@heroicons/react/solid";
 import { EyeIcon, EyeOffIcon, SwitchHorizontalIcon } from "@heroicons/react/outline";
 import { curriculumMapSelector } from "../../recoil/curriculumMapSelector";
@@ -64,7 +65,7 @@ const DragHint = ({ onDismiss }) => {
           {" "}
           from the Course List on the left into the grid. To get all your previously saved courses into the Curriculum map, click {" "}
         </span>
-        <span className="font-medium">"Import Selected Courses"</span>
+        <span className="font-medium">&quot;Import Selected Courses&quot;</span>
         <span className="text-blue-600">
           .
         </span>
@@ -84,6 +85,10 @@ const DragHint = ({ onDismiss }) => {
       )}
     </div>
   );
+};
+
+DragHint.propTypes = {
+  onDismiss: PropTypes.func,
 };
 
 const CurriculumMap = () => {
@@ -157,6 +162,42 @@ const CurriculumMap = () => {
     fetchIfNeeded();
   }, [curriculumData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
 
+  // This panel stays mounted across tab switches, so `fetchAttempted` now lives
+  // for the whole session — a failed first attempt is no longer cleared by a
+  // remount. Without an explicit retry the map would sit on its skeleton until
+  // a full page reload, so surface the failure and let the user re-arm it.
+  const loadFailed =
+    fetchAttempted &&
+    !curriculumData.isLoaded &&
+    !scorecardFetching.loading &&
+    Boolean(scorecardFetching.error);
+
+  if (loadFailed) {
+    return (
+      <div className="flex flex-col h-full px-6 py-4">
+        <h1 className="text-2xl font-bold mb-4 text-gray-900">
+          Curriculum Map
+        </h1>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center py-8 bg-white rounded-lg border border-gray-200 max-w-md p-6">
+            <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              Could not load your curriculum
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Your academic data didn&apos;t come back from the university.
+            </p>
+            <button
+              onClick={() => setFetchAttempted(false)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-hsg-600 hover:bg-hsg-700 rounded-md transition-colors shadow-sm"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Loading state
   if (!curriculumData.isLoaded || !plansRegistry.isLoaded) {
     return (
@@ -196,8 +237,9 @@ const CurriculumMap = () => {
               No Academic Data Found
             </h3>
             <p className="text-gray-600">
-              Load your study data from the Study Overview tab to see your
-              curriculum map.
+              We couldn&apos;t find a study program on your transcript. If
+              you&apos;ve only just enrolled, your scorecard may not be
+              published yet.
             </p>
           </div>
         </div>

@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import PropTypes from 'prop-types';
 import { RecoilRoot } from 'recoil';
 import { DndContext } from '@dnd-kit/core';
 import CoursePicker from '../CoursePicker';
@@ -51,6 +52,11 @@ const TestWrapper = ({ children, initialState = {} }) => {
       <DndContext>{children}</DndContext>
     </RecoilRoot>
   );
+};
+
+TestWrapper.propTypes = {
+  children: PropTypes.node,
+  initialState: PropTypes.object,
 };
 
 describe('CoursePicker', () => {

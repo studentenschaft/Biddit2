@@ -5,12 +5,14 @@ import { useTermSelection } from "../../helpers/useTermSelection";
 import { useUnifiedSemesterState } from "../../helpers/useUnifiedSemesterState";
 import { selectedSemesterSelector } from "../../recoil/unifiedCourseDataSelectors";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
+import { smartSearchState } from "../../recoil/smartSearchAtom";
 import { SelectClassification } from "./SelectClassification";
 import { SelectEcts } from "./SelectEcts";
 import { SelectLanguage } from "./SelectLanguage";
 import { SelectLecturer } from "./SelectLecturer";
 import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
+import SearchModeToggle from "./SearchModeToggle";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
 
@@ -23,6 +25,9 @@ export default function SelectSemester() {
 
   // Unified semester state hook for setting selected semester
   const { setSelectedSemester } = useUnifiedSemesterState();
+
+  // Keying SearchTerm on the search mode empties the box on every mode switch.
+  const { mode: searchMode } = useRecoilValue(smartSearchState);
 
   // UI state
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -126,7 +131,8 @@ export default function SelectSemester() {
             <SelectLanguage />
             <SelectRatings />
           </div>
-          <SearchTerm />
+          <SearchModeToggle />
+          <SearchTerm key={searchMode} />
         </div>
       )}
 

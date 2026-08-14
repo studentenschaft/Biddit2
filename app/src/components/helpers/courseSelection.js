@@ -79,11 +79,7 @@ export async function processCourseSelection({
         // If selected semester is in the future compared to current semester,
         // use name matching
         if (compareSemesters(normalizedTarget, currentSem) > 0) {
-
-          // if match: console log, then return
-          if (studyPlansData.some(plan => normalizeSemesterName(plan.id) === normalizedTarget)) {
-          }
-          return studyPlansData.find(plan => 
+          return studyPlansData.find(plan =>
             normalizeSemesterName(plan.id) === normalizedTarget
           );
         }

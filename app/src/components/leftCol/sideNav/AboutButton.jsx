@@ -18,7 +18,7 @@ export default function AboutButton() {
       <button
         aria-label="About"
         className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
-        onClick={(e) => updateCookie()}
+        onClick={() => updateCookie()}
       >
         <InformationCircleIcon className="block w-6 h-6" aria-hidden="true" />
       </button>
@@ -26,7 +26,8 @@ export default function AboutButton() {
         <Transition.Root show={open} as={Fragment}>
           <Dialog
             as="div"
-            className="relative z-10"
+            // Same stacking ladder as ReviewButton — see the note there.
+            className="relative z-[60]"
             initialFocus={cancelButtonRef}
             onClose={setOpen}
           >
@@ -39,7 +40,8 @@ export default function AboutButton() {
               leaveFrom="opacity-100"
               leaveTo="opacity-0"
             >
-              <div className="fixed inset-0 transition-opacity backdrop-filter backdrop-blur" />
+              {/* Tinted, not blur-only — see the note in ReviewButton. */}
+              <div className="fixed inset-0 transition-opacity bg-slate-900/60 backdrop-blur-sm" />
             </Transition.Child>
 
             <div className="fixed inset-0 z-10 overflow-y-auto">

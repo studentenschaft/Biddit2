@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import { describe, expect, it } from "vitest";
 import { selectedTabAtom } from "../../../../recoil/selectedTabAtom";
+import { TAB } from "../../../../../constants/tabs";
 import StudyOverviewMigrationNotice from "../StudyOverviewMigrationNotice";
 
 const SelectedTabValue = () => {
@@ -12,7 +13,7 @@ const SelectedTabValue = () => {
 const renderNotice = () =>
   render(
     <RecoilRoot
-      initializeState={({ set }) => set(selectedTabAtom, 4)}
+      initializeState={({ set }) => set(selectedTabAtom, TAB.STUDY_OVERVIEW)}
     >
       <StudyOverviewMigrationNotice />
       <SelectedTabValue />
@@ -35,7 +36,9 @@ describe("StudyOverviewMigrationNotice", () => {
       screen.getByRole("button", { name: /open curriculum map/i }),
     );
 
-    expect(screen.getByLabelText(/selected tab/i)).toHaveTextContent("5");
+    expect(screen.getByLabelText(/selected tab/i)).toHaveTextContent(
+      TAB.CURRICULUM_MAP,
+    );
   });
 
   it("has no dismiss control and remains visible after remounting", () => {

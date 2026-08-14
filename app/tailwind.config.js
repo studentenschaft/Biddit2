@@ -1,3 +1,7 @@
+import forms from "@tailwindcss/forms";
+import scrollbarHide from "tailwind-scrollbar-hide";
+import typography from "@tailwindcss/typography";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
@@ -68,9 +72,5 @@ export default {
       backgroundColor: ["active"],
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("tailwind-scrollbar-hide"),
-    require("@tailwindcss/typography"),
-  ],
+  plugins: [forms, scrollbarHide, typography],
 };

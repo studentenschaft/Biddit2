@@ -14,15 +14,14 @@
 
 import { Fragment, useState, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import { useRecoilValue, useSetRecoilState } from "recoil";
+import { useRecoilValue } from "recoil";
 import { ChevronLeftIcon, ChevronRightIcon, PlusIcon } from "@heroicons/react/solid";
 import CategoryHeader from "./CategoryHeader";
 import SemesterRow from "./SemesterRow";
 import PlanCell from "./PlanCell";
 import { useCurriculumPlanContext } from "./CurriculumPlanContext";
-import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
-import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 import { useGridLayout } from "../../helpers/useGridLayout";
 
@@ -47,8 +46,7 @@ const CurriculumGrid = ({
 
   // Hooks for "click course → open details" feature
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
-  const setSelectedTab = useSetRecoilState(selectedTabAtom);
+  const openCourseDetails = useOpenCourseDetails();
 
   const handleCourseClick = useCallback((item) => {
     const semKey = item.semester;
@@ -57,11 +55,8 @@ const CurriculumGrid = ({
       (c) => c.courseNumber === item.courseId || c.id === item.courseId
     );
 
-    if (fullCourse) {
-      updateSelectedCourseInfo(fullCourse);
-      setSelectedTab(0);
-    }
-  }, [unifiedCourseData, updateSelectedCourseInfo, setSelectedTab]);
+    openCourseDetails(fullCourse, { source: "curriculum-map" });
+  }, [unifiedCourseData, openCourseDetails]);
 
   // Scroll affordance — gradient fades indicating hidden content
   const { scrollContainerRef, canScrollLeft, canScrollRight } =
@@ -133,6 +128,22 @@ const CurriculumGrid = ({
     isCategoryCollapsed,
   });
 
+  // Build lookup map for parent completion status
+  // IMPORTANT: Must be defined before early return to satisfy React hooks rules
+  const parentCompletionMap = useMemo(() => {
+    const map = {};
+    if (categoryHierarchy) {
+      categoryHierarchy.forEach((parent) => {
+        if (parent.isComplete) {
+          parent.children?.forEach((child) => {
+            map[child.path] = true;
+          });
+        }
+      });
+    }
+    return map;
+  }, [categoryHierarchy]);
+
   // Ensure we have data to display
   if (!categories?.length || !semesters?.length) {
     return (
@@ -147,21 +158,6 @@ const CurriculumGrid = ({
 
   // Use hierarchy if available, otherwise fall back to flat structure
   const hasHierarchy = categoryHierarchy?.length > 0;
-
-  // Build lookup map for parent completion status
-  const parentCompletionMap = useMemo(() => {
-    const map = {};
-    if (categoryHierarchy) {
-      categoryHierarchy.forEach((parent) => {
-        if (parent.isComplete) {
-          parent.children?.forEach((child) => {
-            map[child.path] = true;
-          });
-        }
-      });
-    }
-    return map;
-  }, [categoryHierarchy]);
 
   const leafCategories = categories;
 

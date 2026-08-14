@@ -5,6 +5,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import PropTypes from 'prop-types';
 import { DndContext } from '@dnd-kit/core';
 import { RecoilRoot } from 'recoil';
 import PlanItem from '../PlanItem';
@@ -18,6 +19,10 @@ const TestWrapper = ({ children }) => (
     </CurriculumPlanProvider>
   </RecoilRoot>
 );
+
+TestWrapper.propTypes = {
+  children: PropTypes.node,
+};
 
 describe('PlanItem', () => {
   const defaultItem = {
@@ -256,7 +261,6 @@ describe('PlanItem', () => {
 
       const { container } = render(
         <TestWrapper>
-          {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events */}
           <div onClick={parentClick}>
             <PlanItem item={defaultItem} semesterKey="FS26" onCourseClick={vi.fn()} />
           </div>

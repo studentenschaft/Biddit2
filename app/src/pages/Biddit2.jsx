@@ -1,12 +1,13 @@
 import { Suspense, useState, useCallback } from "react";
 import PropTypes from "prop-types";
-import "react-tabs/style/react-tabs.css";
 import { SelectSemester } from "../components/leftCol/topRow/SelectOptions";
 import { SideNav } from "../components/leftCol/sideNav/SideNav";
 
 // Recoil
 import { useRecoilState } from "recoil";
 import { selectedTabAtom } from "../components/recoil/selectedTabAtom";
+import { tabIndexOf } from "../constants/tabs";
+import { makeTabSelectHandler } from "./tabSelectHandler";
 
 // DnD Kit for drag-and-drop between EventListContainer and CurriculumMap
 import {
@@ -31,6 +32,7 @@ const formatCredits = (credits, isNormalized = false) => {
 // Styles
 import "./react-tabs.css";
 import LoadingText from "../components/common/LoadingText";
+import IaChangeNotice from "../components/common/IaChangeNotice";
 import { InformationCircleIcon, XCircleIcon } from "@heroicons/react/solid";
 
 // Tab & Contents
@@ -315,16 +317,20 @@ export default function Biddit2() {
           </Suspense>
         </div>
         <div
-          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 ${
-            isLeftViewVisibleState ? "hidden md:block" : ""
+          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
+            isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
+          <IaChangeNotice />
           <Suspense
             fallback={<LoadingText>Loading dynamic Tab Text...</LoadingText>}
           >
             <TabComponent
-              selectedTab={selectedTabState}
-              onTabSelect={(index) => setSelectedTabState(index)}
+              selectedTab={tabIndexOf(selectedTabState)}
+              onTabSelect={makeTabSelectHandler(
+                selectedTabState,
+                setSelectedTabState
+              )}
             />
           </Suspense>
         </div>

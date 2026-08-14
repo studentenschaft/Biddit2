@@ -1,8 +1,7 @@
 import { InformationCircleIcon } from "@heroicons/react/outline";
 import { useSetRecoilState } from "recoil";
 import { selectedTabAtom } from "../../../recoil/selectedTabAtom";
-
-const CURRICULUM_MAP_TAB_INDEX = 5;
+import { TAB } from "../../../../constants/tabs";
 
 const StudyOverviewMigrationNotice = () => {
   const setSelectedTab = useSetRecoilState(selectedTabAtom);
@@ -14,7 +13,7 @@ const StudyOverviewMigrationNotice = () => {
         Study Overview will soon be replaced by the new Curriculum Map. {" "}
         <button
           type="button"
-          onClick={() => setSelectedTab(CURRICULUM_MAP_TAB_INDEX)}
+          onClick={() => setSelectedTab(TAB.CURRICULUM_MAP)}
           className="font-medium underline decoration-amber-400 underline-offset-2 hover:text-amber-900"
         >
           Open Curriculum Map →

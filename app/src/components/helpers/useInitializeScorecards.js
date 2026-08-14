@@ -152,5 +152,8 @@ export const useInitializeScoreCards = (handleError) => {
     if (authToken && currentEnrollments?.enrollmentInfos) {
       fetchAllScorecards();
     }
+    // existingData.isLoaded/.loading are read-only guards this effect itself
+    // flips; listing them would re-trigger the effect during its own fetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authToken, currentEnrollments, handleError, setScoreCardData, setUnifiedAcademicData, unifiedCourseData]);
 };
