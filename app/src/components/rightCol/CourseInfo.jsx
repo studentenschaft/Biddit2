@@ -20,6 +20,13 @@ import {
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+
+// The course sheet and the ExaminationTypes lookup are fetched independently, so
+// the sheet can arrive first. Until the lookup lands — or if it has no entry for
+// an id — the type cell has no name to show, but the part's remark and weightage
+// are still worth rendering.
+const UNKNOWN_EXAM_TYPE = "—";
+
 export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
@@ -358,7 +365,8 @@ export default function CourseInfo() {
                     <div key={index} className="w-full text-sm">
                       <div className="grid grid-cols-3">
                         <div className="font-semibold">
-                          {examinationIdState[part.examinationTypeId].shortName}
+                          {examinationIdState?.[part.examinationTypeId]
+                            ?.shortName ?? UNKNOWN_EXAM_TYPE}
                         </div>
                         <div>{part.remark}</div>
                         <div className="text-left">{part.weightage / 100}%</div>

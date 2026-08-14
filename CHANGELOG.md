@@ -58,5 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The side-nav ratings and about dialogs no longer render underneath the
   Curriculum Map's sticky headers and course chips; the ratings backdrop now
   dims the page instead of only blurring it. (Pre-existing on `dev`.)
+- Opening a course no longer crashes Course Details when the course sheet
+  arrives before the `ExaminationTypes` lookup. The exam-type cell falls back to
+  an em dash until the lookup lands, and for parts whose type id is missing from
+  it. (Latent on `dev`, where Course Details was the default tab and had already
+  loaded the lookup long before any course could be clicked.)
 
 See `docs/adr/0002-tab-ia-group-and-retire.md` for the rationale and trade-offs.
