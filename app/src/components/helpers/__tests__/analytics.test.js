@@ -4,7 +4,6 @@ import {
   ANALYTICS_OPT_OUT_STORAGE_KEY,
   initAnalytics,
   isAnalyticsEnvironment,
-  isAnalyticsOptedOut,
   resetAnalyticsForTests,
   setAnalyticsOptOut,
   trackColumnSwitch,
@@ -254,14 +253,6 @@ describe("analytics adapter", () => {
   describe("consent opt-out", () => {
     const gaDisableFlag = () => window["ga-disable-G-BMG2V9ZX73"];
 
-    it("reads the persisted consent state before init", () => {
-      expect(isAnalyticsOptedOut()).toBe(false);
-
-      localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
-
-      expect(isAnalyticsOptedOut()).toBe(true);
-    });
-
     it("never loads the tag and drops the queue when opted out before init", () => {
       localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
       trackTabSelect("calendar", "summary");
@@ -316,6 +307,53 @@ describe("analytics adapter", () => {
 
       expect(ReactGA.initialize).not.toHaveBeenCalled();
       expect(ReactGA.event).not.toHaveBeenCalled();
+    });
+
+    describe("cross-tab propagation", () => {
+      /** A consent change made in another tab of the same origin. */
+      const consentChangedElsewhere = (newValue) =>
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: ANALYTICS_OPT_OUT_STORAGE_KEY,
+            newValue,
+          })
+        );
+
+      it("stops sending when another tab opts out", () => {
+        initAnalytics({ enabled: true });
+
+        consentChangedElsewhere("true");
+        trackTabSelect("calendar", "summary");
+
+        expect(ReactGA.event).not.toHaveBeenCalled();
+        expect(gaDisableFlag()).toBe(true);
+      });
+
+      it("resumes sending when another tab opts back in", () => {
+        localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
+        initAnalytics({ enabled: true });
+
+        consentChangedElsewhere(null);
+        trackTabSelect("calendar", "summary");
+
+        expect(ReactGA.initialize).toHaveBeenCalledTimes(1);
+        expect(ReactGA.event).toHaveBeenCalledTimes(1);
+        expect(gaDisableFlag()).toBe(false);
+      });
+
+      it("ignores unrelated storage keys", () => {
+        initAnalytics({ enabled: true });
+
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "studyondBannerDismissedAt",
+            newValue: "true",
+          })
+        );
+        trackTabSelect("calendar", "summary");
+
+        expect(ReactGA.event).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

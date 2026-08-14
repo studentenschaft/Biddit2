@@ -45,19 +45,20 @@ GA call site — the single-adapter rule from ADR 0003 still holds.
   account — the choice is not personal data we want to sync).
 - `isAnalyticsOptedOut()` reads that key. Safe to call before `initAnalytics`,
   so UI can render the current state at any time.
-- `setAnalyticsOptOut(optedOut)` persists the choice **and applies it
-  immediately, in both directions, without a reload**:
-  - **Opting out** sets the per-event gate `enabled = false` and, for a tag
-    that is already loaded, sets Google's documented per-hit kill switch
-    `window["ga-disable-G-BMG2V9ZX73"] = true`. Two independent barriers: the
-    adapter stops emitting, and gtag itself stops sending.
-  - **Opting back in** clears the key, clears the window flag and — if
-    `initAnalytics` already ran while the visitor was opted out, so the tag
-    was never loaded — loads it now via the internal `loadGa()`.
-- Two module flags support this: `environmentEnabled` remembers the
-  environment-gate result on its own (so a later opt-in can only re-enable
-  where analytics was allowed in the first place), and `gaLoaded` guards
-  `ReactGA.initialize` against a double load on a late opt-in.
+- `setAnalyticsOptOut(optedOut)` persists the choice and hands it to the
+  private `applyConsent(optedOut)`, which enforces it **immediately, in both
+  directions, without a reload**: opting out flips the per-event gate
+  `enabled = false` and sets Google's documented per-hit kill switch
+  `window["ga-disable-G-BMG2V9ZX73"] = true` (two independent barriers — the
+  adapter stops emitting and gtag itself stops sending); opting back in clears
+  both and, if `initAnalytics` already ran while the visitor was opted out so
+  the tag was never loaded, loads it now via `loadGa()`.
+- Three module flags support this: `enabled` is the per-event gate,
+  `environmentEnabled` remembers the environment-gate result on its own (so a
+  later opt-in can only re-enable where analytics was allowed in the first
+  place), and `gaLoaded` guards `ReactGA.initialize` against a double load.
+- A module-level `storage` listener routes a consent change made in *another*
+  tab through the same `applyConsent`, without writing storage back.
 - At init, `enabled = environmentEnabled && !isAnalyticsOptedOut()`. Opt-out
   wins even over the `enabled: true` test override, which is what makes the
   behaviour testable in jsdom.
@@ -74,6 +75,10 @@ GA call site — the single-adapter rule from ADR 0003 still holds.
   but the script and any cookies it already set stay until the page is left.
   Removing them would require a reload, which we judged worse for the user
   than a silent, inert script.
+- The choice propagates across open tabs of the same browser: a tab that is
+  already running picks up an opt-out (or opt-in) made elsewhere via the
+  `storage` event and applies it without a reload, so a second tab left open
+  cannot keep reporting after the visitor has refused.
 - The setting is per device and per browser profile, and is lost when site
   data is cleared. Acceptable: the fallback state is the lawful default
   (analytics on, refusable at any time), not a silent re-enable of something

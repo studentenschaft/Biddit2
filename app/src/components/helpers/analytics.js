@@ -70,26 +70,43 @@ export const isAnalyticsOptedOut = () =>
   localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY) === "true";
 
 /**
- * Persist consent and apply it immediately, both directions, no reload:
- * opting out flips the per-event gate and sets Google's documented
- * window["ga-disable-<id>"] kill switch for the already-loaded tag;
- * opting back in re-enables and (if init ran while opted out) loads the tag now.
+ * Apply a consent decision to this tab, both directions, no reload: opting out
+ * flips the per-event gate and sets Google's documented window["ga-disable-<id>"]
+ * kill switch for the already-loaded tag; opting back in re-enables and (if init
+ * ran while opted out) loads the tag now. Does not touch localStorage — the
+ * caller owns persistence.
  */
-export const setAnalyticsOptOut = (optedOut) => {
+const applyConsent = (optedOut) => {
   if (optedOut) {
-    localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
     window[GA_DISABLE_WINDOW_KEY] = true;
     enabled = false;
     return;
   }
 
-  localStorage.removeItem(ANALYTICS_OPT_OUT_STORAGE_KEY);
   window[GA_DISABLE_WINDOW_KEY] = false;
   if (initialized && environmentEnabled) {
     loadGa();
     enabled = true;
   }
 };
+
+/** Persist consent and apply it to this tab immediately. */
+export const setAnalyticsOptOut = (optedOut) => {
+  if (optedOut) {
+    localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
+  } else {
+    localStorage.removeItem(ANALYTICS_OPT_OUT_STORAGE_KEY);
+  }
+  applyConsent(optedOut);
+};
+
+// A choice made in another tab writes the same key; `storage` fires only in the
+// other tabs, so this re-applies it here without writing storage back.
+window.addEventListener("storage", (event) => {
+  if (event.key === ANALYTICS_OPT_OUT_STORAGE_KEY) {
+    applyConsent(event.newValue === "true");
+  }
+});
 
 /**
  * Initialize GA4 once per page load. Idempotent — later calls are no-ops.
