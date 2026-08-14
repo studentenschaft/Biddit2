@@ -24,6 +24,7 @@ import { Biddit2 } from "./pages/Biddit2.jsx";
 import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
+import AnalyticsNotice from "./components/common/AnalyticsNotice.jsx";
 import { AppStateProvider } from "./components/common/AppStateProvider.jsx";
 import { initAnalytics, trackPageView } from "./components/helpers/analytics";
 import { selectedTabAtom } from "./components/recoil/selectedTabAtom";
@@ -66,6 +67,8 @@ const App = () => {
         <div className="App">
           <BrowserRouter>
             <Analytics /> {/* Pageviews, events, MSAL-gated GA4 startup */}
+            {/* Outside both templates: logged-out visitors see it too */}
+            <AnalyticsNotice />
             <AuthenticatedTemplate>
               <StudyondBanner />
               <Routes>
