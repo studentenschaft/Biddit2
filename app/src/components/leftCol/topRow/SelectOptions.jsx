@@ -15,6 +15,7 @@ import { SearchTerm } from "./SearchTerm";
 import SearchModeToggle from "./SearchModeToggle";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
+import { trackSemesterSwitch } from "../../helpers/analytics";
 
 export default function SelectSemester() {
   // SIMPLIFIED: Get termListObject from new useTermSelection hook
@@ -43,6 +44,12 @@ export default function SelectSemester() {
     const latestValidTerm =
       termListObject?.find((term) => term.isCurrent)?.shortName ||
       termListObject?.[0]?.shortName;
+
+    // Re-picking the active semester is a no-op for reporting
+    if (selectedShortName !== selectedSemesterShortName) {
+      trackSemesterSwitch(selectedShortName, selectedSemesterShortName);
+    }
+
     setSelectedSemester(selectedShortName, termListObject, latestValidTerm);
   };
 

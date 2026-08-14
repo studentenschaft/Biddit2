@@ -1,13 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import { describe, expect, it, vi } from "vitest";
-import ReactGA from "react-ga4";
+import { trackCourseDetailsOpened } from "../analytics";
 import { selectedTabAtom } from "../../recoil/selectedTabAtom";
 import { selectedCourseInfoSelector } from "../../recoil/unifiedCourseDataSelectors";
 import { TAB } from "../../../constants/tabs";
 import { useOpenCourseDetails } from "../useOpenCourseDetails";
 
-vi.mock("react-ga4", () => ({ default: { event: vi.fn() } }));
+vi.mock("../analytics", () => ({
+  trackCourseDetailsOpened: vi.fn(),
+  trackTabSelect: vi.fn(),
+}));
 
 const COURSE = { shortName: "Advanced Cybersecurity", courseNumber: "1234" };
 
@@ -42,9 +45,7 @@ describe("useOpenCourseDetails", () => {
     fireEvent.click(screen.getByRole("button", { name: "open" }));
     expect(screen.getByLabelText("tab")).toHaveTextContent(TAB.COURSE_DETAILS);
     expect(screen.getByLabelText("course")).toHaveTextContent("Advanced Cybersecurity");
-    expect(ReactGA.event).toHaveBeenCalledWith("course_details_opened", {
-      source: "course-list",
-    });
+    expect(trackCourseDetailsOpened).toHaveBeenCalledWith("course-list");
   });
 
   it("ignores falsy courses", () => {

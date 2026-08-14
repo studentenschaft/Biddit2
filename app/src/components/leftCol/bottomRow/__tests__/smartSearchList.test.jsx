@@ -24,8 +24,6 @@ import SearchModeToggle from "../../topRow/SearchModeToggle";
 import { SearchTerm } from "../../topRow/SearchTerm";
 import EventListContainer from "../EventListContainer";
 
-vi.mock("react-ga4", () => ({ default: { event: vi.fn() } }));
-
 // AutoSizer measures to 0x0 in jsdom, which would render no rows at all.
 vi.mock("react-virtualized-auto-sizer", () => ({
   default: ({ children }) => children({ height: 600, width: 400 }),

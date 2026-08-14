@@ -21,6 +21,7 @@ import React, { useMemo, useCallback } from 'react';
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
 import { studyPlanAtom } from '../recoil/studyPlanAtom';
 import { deleteCourse } from '../helpers/api';
+import { trackWishlistCleared } from '../helpers/analytics';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
@@ -346,6 +347,8 @@ const Transcript = () => {
 
     const totalCourses = allPlansWithCourses.reduce((sum, plan) => sum + plan.courses.length, 0);
     console.log(`🧹 [Transcript] Clearing ${totalCourses} courses from ${allPlansWithCourses.length} study plans`);
+
+    trackWishlistCleared(totalCourses);
 
     try {
       // Iterate over each saved course and call the deleteCourse API.
