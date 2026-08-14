@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import ReactGA from "react-ga4";
 import {
+  ANALYTICS_OPT_OUT_STORAGE_KEY,
   initAnalytics,
   isAnalyticsEnvironment,
+  isAnalyticsOptedOut,
   resetAnalyticsForTests,
+  setAnalyticsOptOut,
   trackColumnSwitch,
   trackCourseDetailsOpened,
   trackPageView,
@@ -19,6 +22,7 @@ describe("analytics adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetAnalyticsForTests();
+    localStorage.clear();
     window.history.replaceState({}, "", "/");
   });
 
@@ -244,6 +248,74 @@ describe("analytics adapter", () => {
         "course_details_opened",
         expect.objectContaining({ source: "course-list" })
       );
+    });
+  });
+
+  describe("consent opt-out", () => {
+    const gaDisableFlag = () => window["ga-disable-G-BMG2V9ZX73"];
+
+    it("reads the persisted consent state before init", () => {
+      expect(isAnalyticsOptedOut()).toBe(false);
+
+      localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
+
+      expect(isAnalyticsOptedOut()).toBe(true);
+    });
+
+    it("never loads the tag and drops the queue when opted out before init", () => {
+      localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
+      trackTabSelect("calendar", "summary");
+
+      initAnalytics({ enabled: true, initialView: "summary" });
+
+      expect(ReactGA.initialize).not.toHaveBeenCalled();
+      expect(ReactGA.event).not.toHaveBeenCalled();
+    });
+
+    it("stops sending the moment the visitor opts out, without a reload", () => {
+      initAnalytics({ enabled: true });
+
+      setAnalyticsOptOut(true);
+      trackTabSelect("calendar", "summary");
+
+      expect(ReactGA.event).not.toHaveBeenCalled();
+      expect(gaDisableFlag()).toBe(true);
+      expect(localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY)).toBe("true");
+    });
+
+    it("resumes sending on opt-in without loading the tag twice", () => {
+      initAnalytics({ enabled: true });
+      setAnalyticsOptOut(true);
+
+      setAnalyticsOptOut(false);
+      trackTabSelect("calendar", "summary");
+
+      expect(ReactGA.event).toHaveBeenCalledTimes(1);
+      expect(gaDisableFlag()).toBe(false);
+      expect(localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY)).toBeNull();
+      expect(ReactGA.initialize).toHaveBeenCalledTimes(1);
+    });
+
+    it("loads the tag late when the visitor opts in after an opted-out init", () => {
+      localStorage.setItem(ANALYTICS_OPT_OUT_STORAGE_KEY, "true");
+      initAnalytics({ enabled: true });
+      expect(ReactGA.initialize).not.toHaveBeenCalled();
+
+      setAnalyticsOptOut(false);
+      trackTabSelect("calendar", "summary");
+
+      expect(ReactGA.initialize).toHaveBeenCalledTimes(1);
+      expect(ReactGA.event).toHaveBeenCalledTimes(1);
+    });
+
+    it("stays silent on opt-in when the environment gate is off", () => {
+      initAnalytics({ enabled: false });
+
+      setAnalyticsOptOut(false);
+      trackTabSelect("calendar", "summary");
+
+      expect(ReactGA.initialize).not.toHaveBeenCalled();
+      expect(ReactGA.event).not.toHaveBeenCalled();
     });
   });
 });
