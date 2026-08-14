@@ -6,6 +6,21 @@ import {
   IconFiles,
   IconX,
 } from "@tabler/icons-react";
+import { ANALYTICS_NOTICE_STORAGE_KEY } from "./AnalyticsNotice";
+import {
+  isAnalyticsEnvironment,
+  isAnalyticsOptedOut,
+} from "../helpers/analytics";
+
+/**
+ * The analytics notice occupies the same corner and is a legal disclosure, so
+ * this promo waits until it has been answered. Outside analytics environments
+ * the notice never renders and nothing is withheld.
+ */
+const isAnalyticsNoticePending = () =>
+  isAnalyticsEnvironment() &&
+  localStorage.getItem(ANALYTICS_NOTICE_STORAGE_KEY) !== "true" &&
+  !isAnalyticsOptedOut();
 
 const getLastResetDate = () => {
   const now = new Date();
@@ -23,7 +38,8 @@ const StudyondBanner = () => {
   useEffect(() => {
     const dismissedAt = localStorage.getItem("studyondBannerDismissedAt");
     const shouldShow =
-      !dismissedAt || new Date(dismissedAt) < getLastResetDate();
+      (!dismissedAt || new Date(dismissedAt) < getLastResetDate()) &&
+      !isAnalyticsNoticePending();
     if (shouldShow) {
       setTimeout(() => {
         setIsVisible(true);
@@ -36,7 +52,10 @@ const StudyondBanner = () => {
     setIsAnimating(false);
     setTimeout(() => {
       setIsVisible(false);
-      localStorage.setItem("studyondBannerDismissedAt", new Date().toISOString());
+      localStorage.setItem(
+        "studyondBannerDismissedAt",
+        new Date().toISOString(),
+      );
     }, 300);
   };
 

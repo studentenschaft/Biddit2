@@ -3,6 +3,7 @@ import shsg_logo_icon_title_white from "../../../assets/SHSG_Logo_Icon_Title_sma
 import { ContactButton } from "./ContactButton";
 import { PrivacyButton } from "./PrivacyButton";
 import { AboutButton } from "./AboutButton";
+import { AnalyticsButton } from "./AnalyticsButton";
 import { LogoutButton } from "./LogoutButton";
 import { ReviewButton } from "./ReviewButton";
 import { StarIcon } from "@heroicons/react/outline";
@@ -40,6 +41,9 @@ export default function SideNav() {
         </div>
         <div className="py-1">
           <PrivacyButton />
+        </div>
+        <div className="py-1">
+          <AnalyticsButton />
         </div>
         <div className="py-1">
           <ContactButton />
