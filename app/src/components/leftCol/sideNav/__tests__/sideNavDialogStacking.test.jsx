@@ -1,5 +1,5 @@
 /**
- * Stacking guard for the side-nav dialogs (ratings, about and analytics).
+ * Stacking guard for the side-nav dialogs (ratings, about, analytics and privacy).
  *
  * They all portal to document.body, so the z-index on their root competes with the
  * page's own layers in the *root* stacking context — nothing between #root and
@@ -21,6 +21,7 @@ import { coursesTakenForRatingState } from "../../../recoil/coursesTakenForRatin
 import { ReviewButton } from "../ReviewButton";
 import AboutButton from "../AboutButton";
 import AnalyticsButton from "../AnalyticsButton";
+import PrivacyButton from "../PrivacyButton";
 
 const DIALOG_Z_INDEX = 60;
 
@@ -56,6 +57,12 @@ const renderAnalytics = () => {
   return result;
 };
 
+const renderPrivacy = () => {
+  const result = render(<PrivacyButton />);
+  fireEvent.click(screen.getByRole("button", { name: "Privacy" }));
+  return result;
+};
+
 const dialogRoot = () => document.querySelector('[id^="headlessui-dialog-"]');
 
 /** The highest layer the Curriculum Map draws on, read from its own source. */
@@ -74,6 +81,7 @@ describe.each([
   ["ratings", renderRatings],
   ["about", renderAbout],
   ["analytics", renderAnalytics],
+  ["privacy", renderPrivacy],
 ])("%s dialog stacking", (_name, renderOpen) => {
   it("portals out of the side nav so its layer is compared at the page root", () => {
     const { container } = renderOpen();
