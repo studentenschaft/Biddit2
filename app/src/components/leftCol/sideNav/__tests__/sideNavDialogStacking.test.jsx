@@ -1,7 +1,7 @@
 /**
- * Stacking guard for the side-nav dialogs (ratings and about).
+ * Stacking guard for the side-nav dialogs (ratings, about and analytics).
  *
- * Both portal to document.body, so the z-index on their root competes with the
+ * They all portal to document.body, so the z-index on their root competes with the
  * page's own layers in the *root* stacking context — nothing between #root and
  * the Curriculum Map grid establishes one. At z-10 they lost to the grid's
  * sticky header cells (z-20) and its popovers/dropdowns (z-50), which painted
@@ -20,6 +20,7 @@ import { reviewMenuModalState } from "../../../recoil/reviewMenuModal";
 import { coursesTakenForRatingState } from "../../../recoil/coursesTakenForRatings";
 import { ReviewButton } from "../ReviewButton";
 import AboutButton from "../AboutButton";
+import AnalyticsButton from "../AnalyticsButton";
 
 const DIALOG_Z_INDEX = 60;
 
@@ -49,6 +50,12 @@ const renderAbout = () => {
   return result;
 };
 
+const renderAnalytics = () => {
+  const result = render(<AnalyticsButton />);
+  fireEvent.click(screen.getByRole("button", { name: "Analytics settings" }));
+  return result;
+};
+
 const dialogRoot = () => document.querySelector('[id^="headlessui-dialog-"]');
 
 /** The highest layer the Curriculum Map draws on, read from its own source. */
@@ -66,6 +73,7 @@ const curriculumMapCeiling = () => {
 describe.each([
   ["ratings", renderRatings],
   ["about", renderAbout],
+  ["analytics", renderAnalytics],
 ])("%s dialog stacking", (_name, renderOpen) => {
   it("portals out of the side nav so its layer is compared at the page root", () => {
     const { container } = renderOpen();
