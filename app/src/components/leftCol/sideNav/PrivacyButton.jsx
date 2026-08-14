@@ -49,7 +49,8 @@ export function PrivacyDialog({ open, onClose }) {
         </h4>
         <p className="mt-1 text-sm text-gray-500">
           We use Google Analytics to collect aggregate usage statistics (page
-          views, tab switches, wishlist actions) to improve Biddit. Data may 
+          views, tab switches, wishlist actions) to improve Biddit. Google sets
+          cookies for this (<code>_ga</code>, valid about two years). Data may
           be transferred to Google LLC in the United
           States under the Swiss–U.S. Data Privacy Framework. You can opt out at
           any time via Analytics settings (the chart icon in this side bar);
