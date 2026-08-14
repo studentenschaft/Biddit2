@@ -4,6 +4,29 @@ import PrivacyButton from "../PrivacyButton";
 
 const SHSG_POLICY_URL = "https://shsg.ch/privacy-policy";
 
+/**
+ * Disclosures the dialog must carry — the FADP/TCA information duties plus the
+ * factual claims we make about where data goes. Each entry is asserted against
+ * the opened dialog's text.
+ */
+const REQUIRED_DISCLOSURES = [
+  ["operator", /Student Union of the University of St\. Gallen \(SHSG\)/i],
+  ["contact address", /biddit@shsg\.ch/],
+  ["login mechanism", /Microsoft Entra ID/],
+  ["login identity reaching SHSG", /include your HSG login identity/i],
+  ["storage location", /stored on SHSG servers in Switzerland/i],
+  ["hashed key", /keyed by a hashed identifier/i],
+  ["analytics provider", /Google Analytics/],
+  ["analytics cookie names", /_ga_BMG2V9ZX73/],
+  ["transfer basis", /Swiss–U\.S\. Data Privacy Framework/],
+  ["opt-out route", /opt out at any time via Analytics settings/i],
+  ["FADP rights", /Swiss Federal Act on Data Protection \(FADP\)/],
+  [
+    "supervisory authority",
+    /Federal Data Protection and Information Commissioner \(FDPIC\)/,
+  ],
+];
+
 /** Renders the trigger, opens the dialog and returns its element. */
 const openDialog = () => {
   render(<PrivacyButton />);
@@ -20,29 +43,8 @@ describe("PrivacyButton", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 
-  it("discloses who operates Biddit and where to reach them", () => {
-    const dialog = openDialog();
-    expect(dialog).toHaveTextContent(
-      /Student Union of the University of St\. Gallen \(SHSG\)/i,
-    );
-    expect(dialog).toHaveTextContent(/biddit@shsg\.ch/);
-  });
-
-  it("explains login and where course and plan data live", () => {
-    const dialog = openDialog();
-    expect(dialog).toHaveTextContent(/Microsoft Entra ID/);
-    expect(dialog).toHaveTextContent(/pseudonymously/i);
-    expect(dialog).toHaveTextContent(/Switzerland/);
-  });
-
-  it("names the analytics cookies, the transfer basis and the opt-out", () => {
-    const dialog = openDialog();
-    expect(dialog).toHaveTextContent(/Google Analytics/);
-    expect(dialog).toHaveTextContent(/_ga_BMG2V9ZX73/);
-    expect(dialog).toHaveTextContent(/Swiss–U\.S\. Data Privacy Framework/);
-    expect(dialog).toHaveTextContent(
-      /opt out at any time via Analytics settings/i,
-    );
+  it.each(REQUIRED_DISCLOSURES)("discloses the %s", (_label, pattern) => {
+    expect(openDialog()).toHaveTextContent(pattern);
   });
 
   it("does not claim that opting out removes cookies already set", () => {
@@ -51,14 +53,10 @@ describe("PrivacyButton", () => {
     expect(dialog.textContent).not.toMatch(/remov\w* .{0,20}cookies/i);
   });
 
-  it("states the FADP rights and the supervisory authority", () => {
-    const dialog = openDialog();
-    expect(dialog).toHaveTextContent(
-      /Swiss Federal Act on Data Protection \(FADP\)/,
-    );
-    expect(dialog).toHaveTextContent(
-      /Federal Data Protection and Information Commissioner \(FDPIC\)/,
-    );
+  it("does not claim the stored data is pseudonymous", () => {
+    // Requests to SHSG carry the HSG login identity, so the data is not
+    // pseudonymous towards SHSG — see the wording in the dialog.
+    expect(openDialog().textContent).not.toMatch(/pseudonym/i);
   });
 
   it("links out to the SHSG privacy policy from inside the dialog", () => {
