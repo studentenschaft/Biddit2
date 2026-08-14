@@ -41,8 +41,7 @@ export function PrivacyDialog({ open, onClose }) {
           are stored in your browser. Course information comes from University
           of St. Gallen APIs. When you use Biddit, requests to SHSG&apos;s
           server include your HSG login identity. Your wishlist and study plans
-          are stored on SHSG servers in Switzerland, keyed by a hashed
-          identifier.
+          are stored on SHSG servers in Switzerland.
         </p>
 
         <h4 className="mt-3 font-medium text-gray-900">
@@ -50,9 +49,8 @@ export function PrivacyDialog({ open, onClose }) {
         </h4>
         <p className="mt-1 text-sm text-gray-500">
           We use Google Analytics to collect aggregate usage statistics (page
-          views, tab switches, wishlist actions) to improve Biddit. Google sets
-          the cookies <code>_ga</code> and <code>_ga_BMG2V9ZX73</code> (lifetime
-          approx. 2 years). Data may be transferred to Google LLC in the United
+          views, tab switches, wishlist actions) to improve Biddit. Data may 
+          be transferred to Google LLC in the United
           States under the Swiss–U.S. Data Privacy Framework. You can opt out at
           any time via Analytics settings (the chart icon in this side bar);
           opting out takes effect immediately and is stored per browser.
