@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import AnalyticsButton from "../AnalyticsButton";
 import {
@@ -14,7 +14,10 @@ const openDialog = () => {
   return result;
 };
 
-const toggle = () => screen.getByRole("switch", { name: /enable analytics/i });
+// The accessible name is the visible label itself (WCAG 2.5.3), not an
+// sr-only duplicate.
+const toggle = () =>
+  screen.getByRole("switch", { name: /send anonymous usage data/i });
 
 describe("AnalyticsButton", () => {
   beforeEach(() => {
@@ -58,6 +61,17 @@ describe("AnalyticsButton", () => {
 
     expect(localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY)).toBeNull();
     expect(toggle()).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("toggles from the visible label, not just the switch", async () => {
+    openDialog();
+    // Headless UI forwards the label click to the switch asynchronously.
+    await act(async () => {
+      fireEvent.click(screen.getByText("Send anonymous usage data"));
+    });
+
+    expect(localStorage.getItem(ANALYTICS_OPT_OUT_STORAGE_KEY)).toBe("true");
+    expect(toggle()).toHaveAttribute("aria-checked", "false");
   });
 
   it("points at the privacy policy for the full details", () => {
