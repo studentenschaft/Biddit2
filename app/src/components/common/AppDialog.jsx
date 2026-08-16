@@ -11,9 +11,19 @@ import { Dialog, Transition } from "@headlessui/react";
  * backdrop has to dim rather than only blur.
  */
 
-/** Panel classes the dialogs share; per-dialog extras come via panelClassName. */
+/**
+ * Panel classes the dialogs share; per-dialog extras come via panelClassName.
+ *
+ * Mobile-first, and deliberately so: `sm:w-full sm:max-w-lg` gave the panel no
+ * width at all below 640px, so on a phone it shrink-wrapped its prose into a
+ * narrow ragged column. `w-full max-w-lg` is the same desktop box and a full
+ * phone-width one below it. `max-h-[85vh] overflow-y-auto` likewise replaces
+ * the per-dialog `overflow-hidden`, which clipped the tail of a long
+ * disclosure on a short viewport instead of scrolling it — a consumer that
+ * needs a different cap should override only max-h, not re-declare overflow.
+ */
 const PANEL_BASE_CLASS =
-  "relative px-4 pt-5 pb-4 text-center transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:max-w-lg sm:w-full sm:p-6";
+  "relative w-full max-w-lg max-h-[85vh] overflow-y-auto px-4 pt-5 pb-4 text-center transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:p-6";
 
 export default function AppDialog({
   open,

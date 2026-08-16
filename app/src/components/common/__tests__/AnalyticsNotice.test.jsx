@@ -33,6 +33,22 @@ describe("AnalyticsNotice", () => {
     );
   });
 
+  it("only takes taps on the card it paints", () => {
+    // The fixed box spans left-4 right-4 on a phone and parks the card in the
+    // corner at sm+, so it is wider than the blue card in both cases. Left
+    // interactive, everything it overhung swallowed taps meant for the course
+    // list behind it — measured on a 390x844 phone as one wishlist button
+    // fully buried and two more ~70% covered.
+    render(<AnalyticsNotice analyticsActive />);
+    const card = screen.getByRole("status");
+    expect(card.className).toContain("pointer-events-auto");
+    expect(card.parentElement.className).toContain("pointer-events-none");
+    // The wrapper positions; the card must not, or the hit area is the wrapper
+    // again.
+    expect(card.className).not.toContain("fixed");
+    expect(card.parentElement.className).toContain("fixed");
+  });
+
   it("announces itself to screen readers", () => {
     render(<AnalyticsNotice analyticsActive />);
     expect(screen.getByRole("status")).toContainElement(

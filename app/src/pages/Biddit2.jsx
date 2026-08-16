@@ -2,6 +2,7 @@ import { Suspense, useState, useCallback } from "react";
 import PropTypes from "prop-types";
 import { SelectSemester } from "../components/leftCol/topRow/SelectOptions";
 import { SideNav } from "../components/leftCol/sideNav/SideNav";
+import { MobileNavDrawer } from "../components/leftCol/sideNav/MobileNavDrawer";
 
 // Recoil
 import { useRecoilState } from "recoil";
@@ -77,6 +78,7 @@ export default function Biddit2() {
   const [selectedTabState, setSelectedTabState] =
     useRecoilState(selectedTabAtom);
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
+  const closeSideNav = useCallback(() => setIsSideNavOpen(false), []);
   // for mobile view
   const [isLeftViewVisibleState, setIsLeftViewVisibleState] =
     useRecoilState(isLeftViewVisible);
@@ -262,9 +264,15 @@ export default function Biddit2() {
       onDragCancel={handleDragCancel}
     >
       <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden ">
-        {/* Mobile Menu Button */}
-        <div className="md:hidden fixed bottom-10 left-0 z-50 p-4 ">
+        {/* Mobile Menu Button — z-[54] keeps it above the drawer's z-[52]
+            backdrop and z-[53] panel, so it stays the visible close control
+            while the drawer is open. The whole band sits above the in-page
+            z-50 layer because AnalyticsNotice (the fixed cookie notice) lives
+            there and used to paint over the backdrop; see MobileNavDrawer.jsx
+            for the full ladder. */}
+        <div className="md:hidden fixed bottom-10 left-0 z-[54] p-4 ">
           <button
+            aria-label={isSideNavOpen ? "Close menu" : "Open menu"}
             onClick={() => setIsSideNavOpen(!isSideNavOpen)}
             className="p-2 rounded-md bg-white shadow-lg "
           >
@@ -275,10 +283,14 @@ export default function Biddit2() {
             )}
           </button>
         </div>
-        {/* Side Navigation */}
-        <div className={`md:block ${isSideNavOpen ? "block" : "hidden"}`}>
+        {/* Side Navigation — the static rail, desktop only. Below md it must
+            never be in flow: as a flex child of this flex-col root it rendered
+            as a full-width block above the content. The phone gets the overlay
+            drawer below instead. */}
+        <div className="hidden md:block">
           <SideNav />
         </div>
+        <MobileNavDrawer open={isSideNavOpen} onClose={closeSideNav} />
         {/* Mobile View Toggle */}
         <div className="md:hidden fixed bottom-0 w-full bg-hsg-800 flex justify-around p-2 z-20 shadow-lg">
           <button

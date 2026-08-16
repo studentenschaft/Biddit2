@@ -1,7 +1,9 @@
 import { useRef, useState } from "react";
+import PropTypes from "prop-types";
 import { Switch } from "@headlessui/react";
 import { ChartBarIcon } from "@heroicons/react/outline";
 import AppDialog from "../../common/AppDialog";
+import { NAV_LABELS, navItemClassName } from "./navItem";
 import {
   isAnalyticsOptedOut,
   setAnalyticsOptOut,
@@ -12,7 +14,7 @@ import {
  * the first-visit AnalyticsNotice points at. Consent itself lives in
  * helpers/analytics.js; this is only its control surface.
  */
-export default function AnalyticsButton() {
+export default function AnalyticsButton({ showLabel = false }) {
   const [open, setOpen] = useState(false);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(
     () => !isAnalyticsOptedOut(),
@@ -34,17 +36,19 @@ export default function AnalyticsButton() {
   return (
     <>
       <button
-        aria-label="Analytics settings"
-        className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
+        // The visible label is the accessible name in label mode; both come
+        // from NAV_LABELS so they cannot disagree.
+        aria-label={showLabel ? undefined : NAV_LABELS.analytics}
+        className={navItemClassName(showLabel)}
         onClick={openDialog}
       >
-        <ChartBarIcon className="block w-6 h-6" aria-hidden="true" />
+        <ChartBarIcon className="block w-6 h-6 shrink-0" aria-hidden="true" />
+        {showLabel && <span>{NAV_LABELS.analytics}</span>}
       </button>
       <AppDialog
         open={open}
         onClose={setOpen}
         title="Analytics"
-        panelClassName="overflow-hidden"
         initialFocus={closeButtonRef}
       >
         <div className="mt-2 space-y-2 text-left text-gray-500">
@@ -90,5 +94,9 @@ export default function AnalyticsButton() {
     </>
   );
 }
+
+AnalyticsButton.propTypes = {
+  showLabel: PropTypes.bool,
+};
 
 export { AnalyticsButton };

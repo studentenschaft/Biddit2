@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { ShieldCheckIcon } from "@heroicons/react/outline";
 import AppDialog from "../../common/AppDialog";
+import { NAV_LABELS, navItemClassName } from "./navItem";
 
 /**
  * Biddit's own privacy disclosure, shown in-app rather than linked out: the
@@ -18,8 +19,7 @@ export function PrivacyDialog({ open, onClose }) {
     <AppDialog
       open={open}
       onClose={onClose}
-      title="Privacy"
-      panelClassName="max-h-[70vh] overflow-y-auto"
+      title={NAV_LABELS.privacy}
       initialFocus={closeButtonRef}
     >
       <div className="text-left">
@@ -101,21 +101,31 @@ PrivacyDialog.propTypes = {
 };
 
 /** Side-nav trigger (shield icon) for the privacy disclosure. */
-export default function PrivacyButton() {
+export default function PrivacyButton({ showLabel = false }) {
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <button
-        aria-label="Privacy"
-        className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
+        // The visible label is the accessible name in label mode; both come
+        // from NAV_LABELS so they cannot disagree.
+        aria-label={showLabel ? undefined : NAV_LABELS.privacy}
+        className={navItemClassName(showLabel)}
         onClick={() => setOpen(true)}
       >
-        <ShieldCheckIcon className="block w-6 h-6" aria-hidden="true" />
+        <ShieldCheckIcon
+          className="block w-6 h-6 shrink-0"
+          aria-hidden="true"
+        />
+        {showLabel && <span>{NAV_LABELS.privacy}</span>}
       </button>
       <PrivacyDialog open={open} onClose={() => setOpen(false)} />
     </>
   );
 }
+
+PrivacyButton.propTypes = {
+  showLabel: PropTypes.bool,
+};
 
 export { PrivacyButton };

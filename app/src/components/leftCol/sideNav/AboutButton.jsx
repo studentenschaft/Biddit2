@@ -1,9 +1,11 @@
 import { useState, useRef } from "react";
+import PropTypes from "prop-types";
 import { InformationCircleIcon } from "@heroicons/react/outline";
 import AppDialog from "../../common/AppDialog";
+import { NAV_LABELS, navItemClassName } from "./navItem";
 
 // Button for AboutModal
-export default function AboutButton() {
+export default function AboutButton({ showLabel = false }) {
   const [open, setOpen] = useState(false);
 
   function updateCookie() {
@@ -15,17 +17,22 @@ export default function AboutButton() {
   return (
     <>
       <button
-        aria-label="About"
-        className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
+        // The visible label is the accessible name in label mode; both come
+        // from NAV_LABELS so they cannot disagree.
+        aria-label={showLabel ? undefined : NAV_LABELS.about}
+        className={navItemClassName(showLabel)}
         onClick={() => updateCookie()}
       >
-        <InformationCircleIcon className="block w-6 h-6" aria-hidden="true" />
+        <InformationCircleIcon
+          className="block w-6 h-6 shrink-0"
+          aria-hidden="true"
+        />
+        {showLabel && <span>{NAV_LABELS.about}</span>}
       </button>
       <AppDialog
         open={open}
         onClose={setOpen}
         title="Biddit V2: A New Chapter Begins 🚀"
-        panelClassName="overflow-hidden"
         initialFocus={cancelButtonRef}
       >
         <div className="mt-2 text-gray-500 text-md">
@@ -100,5 +107,9 @@ export default function AboutButton() {
     </>
   );
 }
+
+AboutButton.propTypes = {
+  showLabel: PropTypes.bool,
+};
 
 export { AboutButton };

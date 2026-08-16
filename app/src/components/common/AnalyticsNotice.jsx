@@ -43,49 +43,63 @@ export default function AnalyticsNotice({
   };
 
   return (
-    // bottom-28 on mobile clears the side-nav toggle (fixed bottom-10 + p-4)
-    // and the bottom tab bar beneath it; both are md:hidden.
-    <div
-      role="status"
-      className="fixed bottom-28 left-4 right-4 z-50 flex items-start gap-2.5 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-lg sm:left-auto sm:max-w-md md:bottom-4"
-    >
-      <InformationCircleIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
-      <div className="flex-1 text-sm text-blue-800">
-        <p>
-          Biddit uses cookies for the HSG login and Google Analytics for
-          anonymous usage statistics. Analytics is optional — you can opt out
-          now, or at any time later via Analytics settings (chart icon) in the
-          side bar after signing in.
-        </p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
-          <button
-            type="button"
-            className="font-medium underline"
-            onClick={() => {
-              setAnalyticsOptOut(true);
-              dismiss();
-            }}
-          >
-            Opt out of analytics
-          </button>
-          <button
-            type="button"
-            className="font-medium underline"
-            onClick={() => setPrivacyOpen(true)}
-          >
-            Privacy details
-          </button>
-        </div>
-      </div>
-      <button
-        type="button"
-        aria-label="Dismiss"
-        onClick={dismiss}
-        className="text-blue-500 hover:text-blue-800"
+    // The fixed element is a positioning wrapper only, and takes no pointer
+    // events: on a phone it stretches the full width (left-4 right-4), and at
+    // sm+ `justify-end` parks the card in the corner while the wrapper still
+    // spans the row. Anything it caught outside the blue card is a tap meant
+    // for the course list behind it — the notice's hit area has to be exactly
+    // the box it paints, which is what pointer-events-auto on the card gives.
+    //
+    // bottom-28 on mobile clears the side-nav toggle (fixed bottom-10 + p-4,
+    // 72px tall) and the bottom tab bar beneath it; both are md:hidden. It
+    // cannot go lower: the toggle draws at z-50 over this notice and would
+    // land on the opt-out and privacy links in the card's bottom-left corner.
+    <div className="pointer-events-none fixed bottom-28 left-4 right-4 z-50 flex justify-end md:bottom-4">
+      <div
+        role="status"
+        className="pointer-events-auto flex w-full items-start gap-2.5 rounded-md border border-blue-200 bg-blue-50 p-3 shadow-lg sm:max-w-md"
       >
-        <XIcon className="h-4 w-4" />
-      </button>
-      <PrivacyDialog open={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+        <InformationCircleIcon className="mt-0.5 h-5 w-5 flex-shrink-0 text-blue-600" />
+        <div className="flex-1 text-sm text-blue-800">
+          <p>
+            Biddit uses cookies for the HSG login and Google Analytics for
+            anonymous usage statistics. Analytics is optional — you can opt out
+            now, or at any time later via Analytics settings (chart icon) in the
+            side bar after signing in.
+          </p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2">
+            <button
+              type="button"
+              className="font-medium underline"
+              onClick={() => {
+                setAnalyticsOptOut(true);
+                dismiss();
+              }}
+            >
+              Opt out of analytics
+            </button>
+            <button
+              type="button"
+              className="font-medium underline"
+              onClick={() => setPrivacyOpen(true)}
+            >
+              Privacy details
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          aria-label="Dismiss"
+          onClick={dismiss}
+          className="text-blue-500 hover:text-blue-800"
+        >
+          <XIcon className="h-4 w-4" />
+        </button>
+        <PrivacyDialog
+          open={privacyOpen}
+          onClose={() => setPrivacyOpen(false)}
+        />
+      </div>
     </div>
   );
 }

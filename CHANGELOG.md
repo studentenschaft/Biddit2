@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Mobile: tap on a calendar event opens a bottom sheet with the full course
+  name, time, room and conflicts (desktop keeps the hover tooltip).
+- Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
+  About · Privacy · Analytics settings · Contact · Log out) with a dimmed
+  tap-to-close backdrop; the desktop icon rail is unchanged.
+- Mobile: tab row shows edge fades with chevron buttons when tabs overflow,
+  auto-scrolls the selected tab into view, and carries inline group labels.
 - Tab row grouped by scope — *This Semester* (Course Details · Calendar ·
   Semester Summary) and *My Degree* (Curriculum Map · Study Overview ·
   Transcript) — driven from the new `constants/tabs.js` (`TAB`, `TAB_GROUPS`,
@@ -45,7 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so its state survives tab switches (scroll position does not).
 - Tab focus ring is delivered via Tailwind `focus-visible:` utilities; the
   vendor react-tabs stylesheet imports were dropped.
-- On mobile the tab row scrolls horizontally and the scope labels are hidden.
+- On mobile the tab row scrolls horizontally with edge-fade chevron
+  affordances, and compact group labels ride inline with the row instead of
+  the desktop headings.
 
 ### Removed
 
@@ -54,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Mobile: calendar day columns regain usable width (compact toolbar replaces
+  the flanking nav columns below 768px, gutters reduced).
+- Mobile: Review and About dialogs fit the screen (responsive widths,
+  single-column grids, always-visible sticky close button, max-height with
+  scrolling via the shared `AppDialog` shell).
+- Mobile: Semester Summary "Events"/"ECTS" headers no longer overlap; ECTS
+  values render without trailing zeros (6 instead of 6.00).
+- Cookie notice wrapper no longer intercepts taps outside the visible card.
+- Calendar `hiddenDays` was passed as a string instead of an array.
 - Clicking a smart-search result opens Course Details, and adding one to the
   wishlist persists (both were broken in the old Smart Search tab).
 - The full course catalog is only upserted to the vector DB when the query

@@ -16,12 +16,24 @@ import "./calendar.css";
 import { useRecoilValue } from "recoil";
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
+import CalendarEventSheet from "./CalendarEventSheet";
+
+// The event sheet is the touch-only stand-in for the hover tooltip, so it is
+// gated to the same breakpoint the mobile layout uses (Tailwind md = 768px).
+import { isMobileViewport } from "../helpers/isMobileViewport";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
 import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
+
+// Same clock everywhere: the hover tooltip and the event sheet describe the
+// same event, so they must not disagree about whether it is 14:15 or 02:15 PM.
+const formatEventTime = (date) =>
+  date
+    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : "";
 
 // Implementation of calendar widget
 export default function Calendar() {
@@ -34,13 +46,13 @@ export default function Calendar() {
   const calendarRef = React.useRef();
   // Add state to track initial date for mounting the calendar
   const [initialDate, setInitialDate] = React.useState(new Date());
+  // Details of the event tapped/clicked by the user, shown in a bottom sheet
+  const [selectedEvent, setSelectedEvent] = React.useState(null);
 
   // Get future semester state
   const isFutureSemesterSelectedState = useRecoilValue(
     isFutureSemesterSelected,
   );
-
-  console.log("Final Events:", finalEvents);
 
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
@@ -59,6 +71,12 @@ export default function Calendar() {
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
+    // The open sheet describes one event out of the set that just changed —
+    // after a semester switch or a course removal that event may no longer
+    // exist, so the sheet would sit there showing a dead entry. The navigation
+    // handlers below do the same for the same reason.
+    setSelectedEvent(null);
+
     if (finalEvents && finalEvents.length > 0) {
       // Sort events by start date
       const sortedEvents = [...finalEvents].sort(
@@ -127,6 +145,25 @@ export default function Calendar() {
     info.el.setAttribute("data-conflicts-with", conflictsWith.join(", "));
   };
 
+  // Details shown when tapping an event (the only detail affordance on touch
+  // devices, where the hover tooltip never triggers).
+  //
+  // Mobile only, and gated here rather than with `md:hidden` on the sheet: the
+  // sheet is a Headless UI Dialog, so a merely invisible one would still be
+  // mounted, trap focus and make the page inert. Desktop keeps the tooltip and
+  // must not have its course list dimmed by a full-width bottom sheet.
+  const clickEvent = (arg) => {
+    if (!isMobileViewport()) return;
+
+    setSelectedEvent({
+      title: arg.event.title,
+      startTime: formatEventTime(arg.event.start),
+      endTime: formatEventTime(arg.event.end),
+      room: arg.event.extendedProps.room,
+      conflictsWith: arg.event.extendedProps.conflictsWith || [],
+    });
+  };
+
   // Text to be displayed when hovering
   function renderEventContent(eventInfo) {
     return (
@@ -141,6 +178,7 @@ export default function Calendar() {
   }
 
   const WeekChange = (value) => {
+    setSelectedEvent(null);
     let calendarApi = calendarRef.current.getApi();
 
     // Navigate
@@ -157,6 +195,7 @@ export default function Calendar() {
   const NavigateToDate = (targetDate) => {
     if (!targetDate) return;
 
+    setSelectedEvent(null);
     let calendarApi = calendarRef.current.getApi();
     calendarApi.gotoDate(targetDate);
 
@@ -168,6 +207,7 @@ export default function Calendar() {
   };
 
   const Today = () => {
+    setSelectedEvent(null);
     let calendarApi = calendarRef.current.getApi();
 
     // Navigate to today
@@ -181,6 +221,13 @@ export default function Calendar() {
     setCalendarKey((prev) => prev + 1);
   };
 
+  // Shared navigation handlers, used by both the desktop side columns and the
+  // compact mobile toolbar
+  const goToStart = () => NavigateToDate(firstEventDate);
+  const goToEnd = () => NavigateToDate(lastEventDate);
+  const goToPrevWeek = () => WeekChange("prev");
+  const goToNextWeek = () => WeekChange("next");
+
   var cal = {
     firstDay: "1",
     dayHeaderFormat: {
@@ -190,9 +237,6 @@ export default function Calendar() {
     },
     eventColor: "#006625",
   };
-
-  // handle future semesters
-  console.log("isFutureSemesterSelected:", isFutureSemesterSelectedState);
 
   return (
     <>
@@ -268,23 +312,31 @@ export default function Calendar() {
           <LoadingText>Loading calendar entries...</LoadingText>
         </div>
       ) : (
-        <div className="flex w-full h-full">
-          {/* Left navigation */}
-          <div className="flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
-            {/* Navigation buttons */}
-            <div className="flex flex-col items-center gap-2 mb-4">
+        <div className="flex flex-col w-full h-full">
+          {/* Mobile navigation toolbar: replaces the side columns below md so
+              the calendar gets the full viewport width */}
+          <div className="flex md:hidden items-center justify-between gap-1 pb-2">
+            <button
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              onClick={goToPrevWeek}
+              aria-label="Previous week"
+            >
+              <ChevronLeftIcon aria-hidden="true" className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-1">
               <button
-                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
-                onClick={() => NavigateToDate(firstEventDate)}
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-2 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs"
+                onClick={goToStart}
                 aria-label="Go to semester start"
               >
-                <ChevronDoubleLeftIcon className="w-3 h-3" />
+                <ChevronDoubleLeftIcon className="w-3 h-3" aria-hidden="true" />
                 Start
               </button>
 
               {!isFutureSemesterSelectedState && (
                 <button
-                  className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                  className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-2 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 flex items-center gap-1 font-medium text-xs"
                   onClick={Today}
                   aria-label="Go to today"
                 >
@@ -293,63 +345,122 @@ export default function Calendar() {
               )}
 
               <button
-                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
-                onClick={() => NavigateToDate(lastEventDate)}
+                className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-2 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs"
+                onClick={goToEnd}
                 aria-label="Go to semester end"
               >
                 End
-                <ChevronDoubleRightIcon className="w-3 h-3" />
+                <ChevronDoubleRightIcon
+                  className="w-3 h-3"
+                  aria-hidden="true"
+                />
               </button>
             </div>
 
-            <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
-              <ChevronLeftIcon
-                aria-hidden="true"
-                className="w-10 h-full text-gray-500 align-middle "
-                onClick={() => WeekChange("prev")}
-              />
-            </div>
+            <button
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
+              onClick={goToNextWeek}
+              aria-label="Next week"
+            >
+              <ChevronRightIcon aria-hidden="true" className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Calendar */}
-          <div className="relative flex-1" key={calendarKey}>
-            <FullCalendar
-              ref={calendarRef}
-              plugins={[timeGridPlugin, dayGridPlugin]}
-              initialView="timeGridWeek"
-              initialDate={initialDate} // This ensures correct date on mount
-              height="100%"
-              events={finalEvents}
-              firstDay={cal.firstDay}
-              slotMinTime="08:00:00"
-              slotMaxTime="22:00:00"
-              hiddenDays="[0]"
-              eventColor="#006625"
-              expandRows={true}
-              slotEventOverlap={false}
-              eventContent={renderEventContent}
-              eventMouseEnter={hoverEvent}
-              allDaySlot={false}
-              headerToolbar={false}
-              footerToolbar={false}
-              slotLabelFormat={cal.eventTimeFormat}
-              slotLabelInterval={cal.slotLabelInterval}
-              dayHeaderFormat={cal.dayHeaderFormat}
-              rerenderDelay={10}
-            />
-          </div>
-          {/* Right navigation */}
-          <div className="flex items-center mt-7">
-            <div className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300">
-              <ChevronRightIcon
-                aria-hidden="true"
-                className="w-10 text-gray-500 align-middle "
-                onClick={() => WeekChange("next")}
+          <div className="flex flex-1 min-h-0 w-full">
+            {/* Left navigation */}
+            <div className="hidden md:flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
+              {/* Navigation buttons */}
+              <div className="flex flex-col items-center gap-2 mb-4">
+                <button
+                  className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                  onClick={goToStart}
+                  aria-label="Go to semester start"
+                >
+                  <ChevronDoubleLeftIcon className="w-3 h-3" />
+                  Start
+                </button>
+
+                {!isFutureSemesterSelectedState && (
+                  <button
+                    className="bg-gray-600 hover:bg-gray-700 active:bg-gray-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                    onClick={Today}
+                    aria-label="Go to today"
+                  >
+                    Today
+                  </button>
+                )}
+
+                <button
+                  className="bg-hsg-600 hover:bg-hsg-700 active:bg-hsg-800 text-white px-3 py-1.5 rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 focus:ring-offset-2 flex items-center gap-1 font-medium text-xs"
+                  onClick={goToEnd}
+                  aria-label="Go to semester end"
+                >
+                  End
+                  <ChevronDoubleRightIcon className="w-3 h-3" />
+                </button>
+              </div>
+
+              <button
+                className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+                onClick={goToPrevWeek}
+                aria-label="Previous week"
+              >
+                <ChevronLeftIcon
+                  aria-hidden="true"
+                  className="w-10 h-full text-gray-500 align-middle "
+                />
+              </button>
+            </div>
+
+            {/* Calendar */}
+            <div className="relative flex-1" key={calendarKey}>
+              <FullCalendar
+                ref={calendarRef}
+                plugins={[timeGridPlugin, dayGridPlugin]}
+                initialView="timeGridWeek"
+                initialDate={initialDate} // This ensures correct date on mount
+                height="100%"
+                events={finalEvents}
+                firstDay={cal.firstDay}
+                slotMinTime="08:00:00"
+                slotMaxTime="22:00:00"
+                hiddenDays={[0]}
+                eventColor="#006625"
+                expandRows={true}
+                slotEventOverlap={false}
+                eventContent={renderEventContent}
+                eventMouseEnter={hoverEvent}
+                eventClick={clickEvent}
+                allDaySlot={false}
+                headerToolbar={false}
+                footerToolbar={false}
+                slotLabelFormat={cal.eventTimeFormat}
+                slotLabelInterval={cal.slotLabelInterval}
+                dayHeaderFormat={cal.dayHeaderFormat}
+                rerenderDelay={10}
               />
+            </div>
+            {/* Right navigation */}
+            <div className="hidden md:flex items-center mt-7">
+              <button
+                className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300"
+                onClick={goToNextWeek}
+                aria-label="Next week"
+              >
+                <ChevronRightIcon
+                  aria-hidden="true"
+                  className="w-10 text-gray-500 align-middle "
+                />
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      <CalendarEventSheet
+        event={selectedEvent}
+        onClose={() => setSelectedEvent(null)}
+      />
     </>
   );
 }

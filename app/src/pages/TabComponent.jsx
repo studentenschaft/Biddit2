@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
+import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
 import LoadingText from "../components/common/LoadingText";
 import ErrorBoundary from "../components/errorHandling/ErrorBoundary";
+import { useHorizontalScrollAffordance } from "../components/helpers/useHorizontalScrollAffordance";
 import {
   TAB,
   TAB_GROUPS,
@@ -33,6 +35,18 @@ import { useRecoilValue } from "recoil";
  * Ids that start a group get the divider rule rendered in front of them.
  */
 const GROUP_START_IDS = new Set(TAB_GROUPS.slice(1).map(({ tabs }) => tabs[0]));
+
+/**
+ * Group label per first tab of a group. Below md the headings above the row
+ * are hidden (their static width split cannot follow a scrolling row), so the
+ * label rides inside the row instead and scrolls with the tabs it names.
+ */
+const GROUP_LABEL_BY_FIRST_TAB = new Map(
+  TAB_GROUPS.map(({ label, tabs }) => [tabs[0], label]),
+);
+
+/** Share of the visible row a chevron tap travels. */
+const SCROLL_STEP_RATIO = 0.6;
 
 const TAB_PANEL_CONTENT = {
   [TAB.COURSE_DETAILS]: (
@@ -99,6 +113,23 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
   // and handleClick derives the index from the [data-rttab] siblings only.
   const dividerStyle = "mx-2 my-1 w-px flex-none self-stretch bg-gray-300";
 
+  // Scope label inside the scrolling row, mobile only: at md+ the headings
+  // above the row do this job. aria-hidden for the same reason as the divider
+  // — role="tablist" only owns role="tab" children.
+  const groupLabelStyle =
+    "md:hidden mx-1 flex-none self-center whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-gray-500";
+
+  // Edge fades that tell the user the row continues. Decoration only, and
+  // wider than the control they sit under: as a tap target a w-12 fade at each
+  // end swallowed ~96px of a 390px row, so a tab the gradient merely grazed
+  // could not be selected at all.
+  const fadeStyle = "md:hidden pointer-events-none absolute inset-y-0 w-12";
+
+  // The step control itself: the chevron and little more, so it covers only
+  // the outermost sliver of the row.
+  const fadeButtonStyle =
+    "md:hidden absolute inset-y-0 flex w-8 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
+
   // The Summary tab names the semester it summarises.
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
   const summaryLabel = selectedSemester
@@ -117,6 +148,31 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
       visited.has(tabId) ? visited : new Set(visited).add(tabId),
     );
   }, [selectedTab]);
+
+  // Below md the row scrolls, so the selected tab can sit off-screen after a
+  // swipe-free selection (deep link, keyboard, restored state).
+  const { scrollContainerRef, canScrollLeft, canScrollRight } =
+    useHorizontalScrollAffordance();
+
+  useEffect(() => {
+    const row = scrollContainerRef.current;
+    // react-tabs owns the Tab nodes (it overwrites any tabRef we pass), so the
+    // selected one is read back off the row by index.
+    const tab = row?.querySelectorAll('[role="tab"]')[selectedTab];
+    // jsdom has no scrollIntoView; feature-detect rather than swallow errors.
+    if (tab && typeof tab.scrollIntoView === "function") {
+      tab.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }
+  }, [selectedTab, scrollContainerRef]);
+
+  const scrollRowBy = (direction) => {
+    const row = scrollContainerRef.current;
+    if (!row || typeof row.scrollBy !== "function") return;
+    row.scrollBy({
+      left: direction * row.clientWidth * SCROLL_STEP_RATIO,
+      behavior: "smooth",
+    });
+  };
 
   const labelFor = (tabId) =>
     tabId === TAB.SUMMARY ? summaryLabel : TAB_LABELS[tabId];
@@ -146,26 +202,94 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
           </span>
         ))}
       </div>
-      <TabList className="flex w-full p-1 overflow-x-auto scrollbar-hide md:overflow-visible">
-        {TAB_ORDER.flatMap((tabId) => {
-          const tab = (
-            <Tab key={tabId} className={tabStyle}>
-              {labelFor(tabId)}
-            </Tab>
-          );
-          return GROUP_START_IDS.has(tabId)
-            ? [
-                <li
-                  key={`${tabId}-divider`}
-                  aria-hidden="true"
-                  data-testid="tab-group-divider"
-                  className={dividerStyle}
-                />,
-                tab,
-              ]
-            : [tab];
-        })}
-      </TabList>
+      {/* The row itself scrolls below md; the fades overlay its edges, so both
+          live in a positioned wrapper. react-tabs finds the TabList through it
+          (deepMap recurses into non-tab children). */}
+      <div className="relative">
+        <div
+          ref={scrollContainerRef}
+          className="overflow-x-auto scrollbar-hide md:overflow-visible"
+        >
+          {/* min-w-max lets the row grow past the viewport and scroll; at md+
+              md:min-w-0 hands the width back so the tabs share it equally. */}
+          <TabList className="flex w-full min-w-max md:min-w-0 p-1">
+            {TAB_ORDER.flatMap((tabId) => {
+              const tab = (
+                <Tab key={tabId} className={tabStyle}>
+                  {labelFor(tabId)}
+                </Tab>
+              );
+              const before = [];
+              if (GROUP_START_IDS.has(tabId)) {
+                before.push(
+                  <li
+                    key={`${tabId}-divider`}
+                    aria-hidden="true"
+                    data-testid="tab-group-divider"
+                    className={dividerStyle}
+                  />,
+                );
+              }
+              const groupLabel = GROUP_LABEL_BY_FIRST_TAB.get(tabId);
+              if (groupLabel) {
+                before.push(
+                  <li
+                    key={`${tabId}-group-label`}
+                    aria-hidden="true"
+                    data-testid="tab-group-label"
+                    className={groupLabelStyle}
+                  >
+                    {groupLabel}
+                  </li>,
+                );
+              }
+              return [...before, tab];
+            })}
+          </TabList>
+        </div>
+        {canScrollLeft && (
+          <>
+            <div
+              aria-hidden="true"
+              data-testid="tab-scroll-fade-left"
+              className={`${fadeStyle} left-0`}
+              style={{
+                background:
+                  "linear-gradient(to right, rgba(255,255,255,1), transparent)",
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Scroll tabs left"
+              onClick={() => scrollRowBy(-1)}
+              className={`${fadeButtonStyle} left-0`}
+            >
+              <ChevronLeftIcon className="w-5 h-5 text-gray-600" />
+            </button>
+          </>
+        )}
+        {canScrollRight && (
+          <>
+            <div
+              aria-hidden="true"
+              data-testid="tab-scroll-fade-right"
+              className={`${fadeStyle} right-0`}
+              style={{
+                background:
+                  "linear-gradient(to left, rgba(255,255,255,1), transparent)",
+              }}
+            />
+            <button
+              type="button"
+              aria-label="Scroll tabs right"
+              onClick={() => scrollRowBy(1)}
+              className={`${fadeButtonStyle} right-0`}
+            >
+              <ChevronRightIcon className="w-5 h-5 text-gray-600" />
+            </button>
+          </>
+        )}
+      </div>
 
       {TAB_ORDER.map((tabId) => (
         <TabPanel
