@@ -342,6 +342,28 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
 };
 
 /**
+ * Credit stats for one semester's courses.
+ *
+ * `plannedCredits` counts only wishlist courses and placeholders — courses the
+ * user merely intends to take. Enrolled (in-progress) courses are real
+ * commitments: they count toward `totalCredits` but never toward planned.
+ */
+const computeSemesterCreditStats = (semesterCourses) => {
+  const sumCredits = (courses) =>
+    courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+
+  return {
+    totalCredits: sumCredits(semesterCourses),
+    completedCredits: sumCredits(semesterCourses.filter((c) => c.isCompleted)),
+    plannedCredits: sumCredits(
+      semesterCourses.filter(
+        (c) => c.status === "planned" || c.status === "placeholder",
+      ),
+    ),
+  };
+};
+
+/**
  * Match a course classification to a category using direct name match,
  * then fuzzy keyword match as fallback.
  *
@@ -891,20 +913,10 @@ export const curriculumMapSelector = selector({
       const semesterCourses = Object.values(
         coursesBySemesterAndCategory[semKey] || {},
       ).flat();
-      const totalCredits = semesterCourses.reduce(
-        (sum, c) => sum + (c.credits || 0),
-        0,
-      );
-      const completedCredits = semesterCourses
-        .filter((c) => c.isCompleted)
-        .reduce((sum, c) => sum + (c.credits || 0), 0);
-
       return {
         key: semKey,
         status: getSemesterStatus(semKey),
-        totalCredits,
-        completedCredits,
-        plannedCredits: totalCredits - completedCredits,
+        ...computeSemesterCreditStats(semesterCourses),
         courseCount: semesterCourses.length,
         note: curriculumPlan.semesterNotes?.[semKey] || "",
       };
@@ -1070,4 +1082,5 @@ export const _testHelpers = {
   buildCategoryHierarchy,
   matchClassificationToCategory,
   estimateCompletion,
+  computeSemesterCreditStats,
 };

@@ -20,6 +20,7 @@ const {
   flattenCategoriesForGrid,
   matchClassificationToCategory,
   estimateCompletion,
+  computeSemesterCreditStats,
 } = _testHelpers;
 
 // ── normalizeSemesterKey ──────────────────────────────────────────────────
@@ -414,5 +415,54 @@ describe('estimateCompletion', () => {
 
   it('returns "TBD" when no semesters available', () => {
     expect(estimateCompletion(180, 0, [])).toBe('TBD');
+  });
+});
+
+// ── computeSemesterCreditStats ────────────────────────────────────────────
+
+describe('computeSemesterCreditStats', () => {
+  const completed = { status: 'completed', isCompleted: true, credits: 6 };
+  const enrolled = { status: 'enrolled', isCompleted: false, credits: 4 };
+  const planned = { status: 'planned', isCompleted: false, credits: 30 };
+  const placeholder = { status: 'placeholder', credits: 8 };
+
+  it('counts only wishlist/placeholder courses as planned, not enrolled ones', () => {
+    const stats = computeSemesterCreditStats([
+      completed,
+      enrolled,
+      planned,
+      placeholder,
+    ]);
+
+    expect(stats.totalCredits).toBe(48);
+    expect(stats.completedCredits).toBe(6);
+    expect(stats.plannedCredits).toBe(38);
+  });
+
+  it('a purely planned semester has planned == total (the FS27 thesis case)', () => {
+    const stats = computeSemesterCreditStats([planned]);
+
+    expect(stats.totalCredits).toBe(30);
+    expect(stats.plannedCredits).toBe(30);
+    expect(stats.completedCredits).toBe(0);
+  });
+
+  it('enrolled in-progress courses count toward total only', () => {
+    const stats = computeSemesterCreditStats([enrolled]);
+
+    expect(stats.totalCredits).toBe(4);
+    expect(stats.plannedCredits).toBe(0);
+    expect(stats.completedCredits).toBe(0);
+  });
+
+  it('handles empty input and missing credits', () => {
+    expect(computeSemesterCreditStats([])).toEqual({
+      totalCredits: 0,
+      completedCredits: 0,
+      plannedCredits: 0,
+    });
+    expect(
+      computeSemesterCreditStats([{ status: 'planned' }]).plannedCredits,
+    ).toBe(0);
   });
 });

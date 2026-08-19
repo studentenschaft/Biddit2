@@ -67,7 +67,7 @@ const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
         </div>
         {status !== "completed" && plannedCredits > 0 && (
           <div className="text-[9px] text-gray-500 mt-0.5">
-            +{plannedCredits} planned
+            incl. {plannedCredits} planned
           </div>
         )}
         {onSetNote && (
@@ -134,7 +134,7 @@ const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
       {/* Planned credits indicator for non-completed semesters */}
       {status !== "completed" && plannedCredits > 0 && (
         <div className="text-[9px] text-gray-500 mt-0.5">
-          +{plannedCredits} planned
+          incl. {plannedCredits} planned
         </div>
       )}
 
