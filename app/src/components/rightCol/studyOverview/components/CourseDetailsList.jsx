@@ -5,7 +5,7 @@
  * Shows course name, type, credits, and grade in a list format.
  */
 
-import React from 'react';
+import PropTypes from 'prop-types';
 import { LockClosed } from '../../../leftCol/bottomRow/LockClosed';
 import {
   useCurrentSemester,
@@ -78,6 +78,15 @@ const CourseDetailsList = ({ courses, selectedSemester, hoveredCourse }) => {
       </div>
     </div>
   );
+};
+
+CourseDetailsList.propTypes = {
+  courses: PropTypes.array,
+  selectedSemester: PropTypes.string,
+  hoveredCourse: PropTypes.shape({
+    name: PropTypes.string,
+    type: PropTypes.string,
+  }),
 };
 
 export default CourseDetailsList;

@@ -21,6 +21,7 @@ import React, { useMemo, useCallback } from 'react';
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
 import { studyPlanAtom } from '../recoil/studyPlanAtom';
 import { deleteCourse } from '../helpers/api';
+import { trackWishlistCleared } from '../helpers/analytics';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
@@ -37,13 +38,10 @@ const Transcript = () => {
   const [scorecardError] = useState(false);
 
   // Course data loading infrastructure (shared with StudyOverview)
-  const {
-    isLoading: isCourseLoading,
-    isEnrichmentReady,
-    hasEnrichmentDataForSemester,
-    totalSemestersNeeded,
-    termListObject
-  } = useUnifiedCourseLoader(authToken, unifiedCourseData);
+  const { totalSemestersNeeded } = useUnifiedCourseLoader(
+    authToken,
+    unifiedCourseData
+  );
   
   
   // State needed for GradeTranscript component
@@ -84,6 +82,9 @@ const Transcript = () => {
     return {
       items: [hierarchicalData]
     };
+    // Depending on the whole academicData object would recompute on every
+    // selector identity change; the fields actually read are listed explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [academicData.isLoaded, academicData.transcriptView, academicData.programs, totalSemestersNeeded]);
   
   // Helper function to normalize classification names to match transcript categories
@@ -146,6 +147,9 @@ const Transcript = () => {
     
     console.log('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
     return allWishlistCourses;
+    // Depending on the whole academicData object would recompute on every
+    // selector identity change; the fields actually read are listed explicitly.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [academicData.isLoaded, academicData.studyOverviewView, academicData.programs, normalizeClassification]);
 
   /**
@@ -195,13 +199,11 @@ const Transcript = () => {
           ].filter(Boolean);
           
           let categoryWishlist = null;
-          let matchedKey = null;
-          
+
           // Try exact matches first
           for (const key of possibleMatches) {
             if (wishlistMap[key]) {
               categoryWishlist = wishlistMap[key];
-              matchedKey = key;
               break;
             }
           }
@@ -345,6 +347,8 @@ const Transcript = () => {
 
     const totalCourses = allPlansWithCourses.reduce((sum, plan) => sum + plan.courses.length, 0);
     console.log(`🧹 [Transcript] Clearing ${totalCourses} courses from ${allPlansWithCourses.length} study plans`);
+
+    trackWishlistCleared(totalCourses);
 
     try {
       // Iterate over each saved course and call the deleteCourse API.

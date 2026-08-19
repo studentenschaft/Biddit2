@@ -4,14 +4,18 @@ import Select from "react-select";
 import { useTermSelection } from "../../helpers/useTermSelection";
 import { useUnifiedSemesterState } from "../../helpers/useUnifiedSemesterState";
 import { selectedSemesterSelector } from "../../recoil/unifiedCourseDataSelectors";
+import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
+import { smartSearchState } from "../../recoil/smartSearchAtom";
 import { SelectClassification } from "./SelectClassification";
 import { SelectEcts } from "./SelectEcts";
 import { SelectLanguage } from "./SelectLanguage";
 import { SelectLecturer } from "./SelectLecturer";
 import { SelectRatings } from "./SelectRatings";
 import { SearchTerm } from "./SearchTerm";
+import SearchModeToggle from "./SearchModeToggle";
 import { EventListContainer } from "../bottomRow/EventListContainer";
 import ErrorBoundary from "../../../components/errorHandling/ErrorBoundary";
+import { trackSemesterSwitch } from "../../helpers/analytics";
 
 export default function SelectSemester() {
   // SIMPLIFIED: Get termListObject from new useTermSelection hook
@@ -22,6 +26,9 @@ export default function SelectSemester() {
 
   // Unified semester state hook for setting selected semester
   const { setSelectedSemester } = useUnifiedSemesterState();
+
+  // Keying SearchTerm on the search mode empties the box on every mode switch.
+  const { mode: searchMode } = useRecoilValue(smartSearchState);
 
   // UI state
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -37,6 +44,12 @@ export default function SelectSemester() {
     const latestValidTerm =
       termListObject?.find((term) => term.isCurrent)?.shortName ||
       termListObject?.[0]?.shortName;
+
+    // Re-picking the active semester is a no-op for reporting
+    if (selectedShortName !== selectedSemesterShortName) {
+      trackSemesterSwitch(selectedShortName, selectedSemesterShortName);
+    }
+
     setSelectedSemester(selectedShortName, termListObject, latestValidTerm);
   };
 
@@ -44,7 +57,15 @@ export default function SelectSemester() {
   const selectedSemesterData = termListObject?.find(
     (term) => term.shortName === selectedSemesterShortName
   );
-  const isFutureSemester = selectedSemesterData?.isProjected || false;
+  const isFutureSemester = selectedSemesterData?.isProjected || selectedSemesterData?.isFuture || false;
+
+  // The current term can also be showing last-year's catalog as a preview
+  // (when it isn't published yet or its own catalog errored). Surface the same
+  // disclaimer in that case.
+  const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
+  const isShowingReferenceData =
+    !!unifiedCourseData?.semesters?.[selectedSemesterShortName]?.usingReferenceData;
+  const showPreviewDisclaimer = isFutureSemester || isShowingReferenceData;
 
   // SIMPLIFIED: Create sorted term names from termListObject
   const sortedTermShortNames =
@@ -86,7 +107,7 @@ export default function SelectSemester() {
         placeholder="Select Semester"
       />
 
-      {isFutureSemester && (
+      {showPreviewDisclaimer && (
         <h5 className="mt-4 mb-2 text-sm font-medium leading-6 text-gray-500">
           Disclaimer: The course data for your currently selected semester is
           not yet confirmed and may not be accurate. We display it as a preview
@@ -117,17 +138,20 @@ export default function SelectSemester() {
             <SelectLanguage />
             <SelectRatings />
           </div>
-          <SearchTerm />
+          <SearchModeToggle />
+          <SearchTerm key={searchMode} />
         </div>
       )}
 
-      <ErrorBoundary>
-        {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
-        <EventListContainer
-          termListObject={termListObject || []}
-          selectedSemesterShortName={selectedSemesterShortName || ""}
-        />
-      </ErrorBoundary>
+      <div className="flex-1 min-h-0">
+        <ErrorBoundary>
+          {/* SIMPLIFIED: Pass termListObject and selectedSemesterShortName */}
+          <EventListContainer
+            termListObject={termListObject || []}
+            selectedSemesterShortName={selectedSemesterShortName || ""}
+          />
+        </ErrorBoundary>
+      </div>
     </>
   );
 }

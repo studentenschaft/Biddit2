@@ -14,7 +14,8 @@ import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonStudyOverview } from './LoadingSkeletons';
 import ProgramOverview from './studyOverview/components/ProgramOverview';
-import { adaptAcademicDataForStudyOverview, getMainProgram } from './studyOverview/utils/dataAdapter';
+import StudyOverviewMigrationNotice from './studyOverview/components/StudyOverviewMigrationNotice';
+import { adaptAcademicDataForStudyOverview } from './studyOverview/utils/dataAdapter';
 import { useState, useMemo, useEffect } from 'react';
 
 const StudyOverview = () => {
@@ -25,22 +26,14 @@ const StudyOverview = () => {
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [selectedSemesters, setSelectedSemesters] = useState({});
   
-  // Course data loading infrastructure
-  const {
-    isLoading,
-    isEnrichmentReady,
-    hasEnrichmentDataForSemester,
-    totalSemestersNeeded,
-    termListObject
-  } = useUnifiedCourseLoader(authToken, unifiedCourseData);
+  // Course data loading infrastructure (called for its loading side effects)
+  useUnifiedCourseLoader(authToken, unifiedCourseData);
 
   // Convert our unified data to the format expected by ProgramOverview with course enrichment
-  const adaptedData = useMemo(() => 
-    adaptAcademicDataForStudyOverview(academicData, unifiedCourseData), 
-    [academicData, unifiedCourseData]
+  const adaptedData = useMemo(
+    () => adaptAcademicDataForStudyOverview(academicData),
+    [academicData]
   );
-  const mainProgram = useMemo(() => getMainProgram(adaptedData), [adaptedData]);
-
 
   // Auto-fetch scorecard data if not loaded and haven't tried yet
   useEffect(() => {
@@ -59,6 +52,7 @@ const StudyOverview = () => {
     return (
       <div className="flex flex-col px-8 py-4">
         <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
+        <StudyOverviewMigrationNotice />
         <div className="mb-6">
           <LoadingText>Loading your saved courses...</LoadingText>
           <LoadingSkeletonStudyOverview />
@@ -70,6 +64,7 @@ const StudyOverview = () => {
   return (
     <div className="flex flex-col px-8 py-4">
       <h1 className="text-2xl font-bold mb-4">Study Overview</h1>
+      <StudyOverviewMigrationNotice />
 
       {/* Render programs exactly like the original StudyOverview */}
       {Object.entries(adaptedData.programs).map(([programId, programData], index, array) => (
@@ -102,15 +97,15 @@ const StudyOverview = () => {
                 <div className="space-y-3 text-sm">
                   <div className="flex items-center space-x-3">
                     <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">Step 1</span>
-                    <span>Click <strong>"Load Study Data"</strong> above to fetch completed courses</span>
+                    <span>Your completed courses load <strong>automatically</strong> once your transcript is available</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs font-medium">Step 2</span>
-                    <span>Go to <strong>Course Selection</strong> tab to pick future courses</span>
+                    <span>Pick future courses with <strong>+</strong> in the course list on the left</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded text-xs font-medium">Step 3</span>
-                    <span>Return here to see colorful <strong>semester bars</strong>!</span>
+                    <span>Return here for your colorful <strong>semester bars</strong> — <strong>Semester Summary</strong> and <strong>Calendar</strong> show the same plan</span>
                   </div>
                 </div>
               </div>

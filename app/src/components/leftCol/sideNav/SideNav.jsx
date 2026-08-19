@@ -1,17 +1,30 @@
 import { Suspense } from "react";
+import PropTypes from "prop-types";
 import shsg_logo_icon_title_white from "../../../assets/SHSG_Logo_Icon_Title_small_white.png";
 import { ContactButton } from "./ContactButton";
 import { PrivacyButton } from "./PrivacyButton";
 import { AboutButton } from "./AboutButton";
+import { AnalyticsButton } from "./AnalyticsButton";
 import { LogoutButton } from "./LogoutButton";
 import { ReviewButton } from "./ReviewButton";
 import { StarIcon } from "@heroicons/react/outline";
+import { NAV_LABELS, navItemClassName } from "./navItem";
 
-// container holding logo and several buttons
-export default function SideNav() {
+/**
+ * Container holding the logo and the nav entries.
+ *
+ * Two variants, one item list: the desktop rail is icon-only (`showLabels`
+ * false, the historical look), while the mobile drawer shows a visible label
+ * beside each icon — six unexplained icons is not a menu a first-time user can
+ * read. Keeping both variants here means an entry can never exist in one and
+ * not the other.
+ */
+export default function SideNav({ showLabels = false }) {
   return (
     <div
-      className="items-center justify-start p-3 mr-4 flex-col flex bg-hsg-800 h-full"
+      className={`justify-start p-3 flex-col flex bg-hsg-800 h-full ${
+        showLabels ? "w-full items-stretch" : "items-center mr-4"
+      }`}
       style={{ margin: "0" }}
     >
       <div className="flex flex-col mb-8">
@@ -23,33 +36,41 @@ export default function SideNav() {
           />
         </a>
       </div>
-      <div className="flex flex-col">
+      <div className={`flex flex-col ${showLabels ? "w-full" : ""}`}>
         <Suspense
           fallback={
-            <div className="inline-flex items-center justify-center p-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800 relative">
-              <StarIcon className="block w-6 h-6" aria-hidden="true" />
+            <div className={navItemClassName(showLabels)}>
+              <StarIcon className="block w-6 h-6 shrink-0" aria-hidden="true" />
+              {showLabels && <span>{NAV_LABELS.review}</span>}
             </div>
           }
         >
           <div className="py-1">
-            <ReviewButton />{" "}
+            <ReviewButton showLabel={showLabels} />{" "}
           </div>
         </Suspense>
         <div className="py-1">
-          <AboutButton />
+          <AboutButton showLabel={showLabels} />
         </div>
         <div className="py-1">
-          <PrivacyButton />
+          <PrivacyButton showLabel={showLabels} />
         </div>
         <div className="py-1">
-          <ContactButton />
+          <AnalyticsButton showLabel={showLabels} />
         </div>
         <div className="py-1">
-          <LogoutButton />
+          <ContactButton showLabel={showLabels} />
+        </div>
+        <div className="py-1">
+          <LogoutButton showLabel={showLabels} />
         </div>
       </div>
     </div>
   );
 }
+
+SideNav.propTypes = {
+  showLabels: PropTypes.bool,
+};
 
 export { SideNav };

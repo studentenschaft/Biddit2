@@ -9,27 +9,52 @@
 import { transformScorecard } from './transformScorecard';
 
 /**
+ * Resolve the program key for an enrollment from the University enrollments API.
+ * @param {Object} enrollment - A single entry from enrollmentInfos
+ * @returns {string|number|null} - Program key or null
+ */
+export const resolveProgramId = (enrollment) =>
+  enrollment?.studyProgramDescription ||
+  enrollment?.programName ||
+  enrollment?.studyRegulationId ||
+  null;
+
+export const buildMainStudyLookup = (enrollmentInfos = []) =>
+  (enrollmentInfos || []).reduce((acc, enrollment) => {
+    const programId = resolveProgramId(enrollment);
+    if (programId != null) {
+      acc[programId] = enrollment?.isMainStudy === true;
+    }
+    return acc;
+  }, {});
+
+/**
  * Find the main program using intelligent fallback strategy
- * Priority: explicitly marked > Master > Bachelor > first available
+ * Priority: authoritative isMainStudy flag > Master > Bachelor > first available
  * @param {Object} programs - Object with programId keys and program data values
+ * @param {Object} [mainStudyLookup] - Optional { programId: boolean } from
+ *   buildMainStudyLookup; when supplied, a program flagged true wins outright.
  * @returns {string|null} - The main program ID or null if no programs
  */
-export const findMainProgram = (programs) => {
+export const findMainProgram = (programs, mainStudyLookup = null) => {
   if (!programs || Object.keys(programs).length === 0) {
     return null;
   }
 
   const programEntries = Object.entries(programs);
 
-  // Strategy 1: Look for explicitly marked main program
-  const explicitMain = programEntries.find(([, data]) => data.isMainStudy);
+  // Strategy 1: Honor the authoritative isMainStudy flag from the enrollments API,
+  // whether provided as a lookup or already present on the program data.
+  const explicitMain = programEntries.find(([programId, data]) =>
+    (mainStudyLookup && mainStudyLookup[programId] === true) || data?.isMainStudy === true
+  );
   if (explicitMain) {
     return explicitMain[0];
   }
 
   // Strategy 2: Prefer Master programs
   const masterProgram = programEntries.find(([programId]) =>
-    programId.toLowerCase().includes('master')
+    String(programId).toLowerCase().includes('master')
   );
   if (masterProgram) {
     return masterProgram[0];
@@ -37,7 +62,7 @@ export const findMainProgram = (programs) => {
 
   // Strategy 3: Then Bachelor programs
   const bachelorProgram = programEntries.find(([programId]) =>
-    programId.toLowerCase().includes('bachelor')
+    String(programId).toLowerCase().includes('bachelor')
   );
   if (bachelorProgram) {
     return bachelorProgram[0];

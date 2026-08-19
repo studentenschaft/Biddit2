@@ -26,6 +26,12 @@ const DEFAULT_SEMESTER_STRUCTURE = {
   lastFetched: null,
   isFutureSemester: false,
   referenceSemester: null,
+  // True when `available` holds a previous-year same-season catalog standing in
+  // for a term that isn't published yet (or whose own catalog errored). These
+  // courses do NOT belong to this semester — they belong to `referenceSemester`.
+  // See REFERENCE_SEMESTER.md. Critical for routing similar-courses queries and
+  // for refusing to upsert borrowed courses under the wrong semester key.
+  usingReferenceData: false,
   cisId: null,
   isCurrent: false,
   isProjected: false,
@@ -353,7 +359,7 @@ export function useUnifiedCourseData() {
    * Update available courses for a semester
    * Flattens nested courses from the courses array to make exercise groups selectable
    */
-  const updateAvailableCourses = (semesterShortName, courses) => {
+  const updateAvailableCourses = (semesterShortName, courses, meta = {}) => {
     const flattenedCourses = [];
     
     (courses || []).forEach(parentCourse => {
@@ -391,11 +397,44 @@ export function useUnifiedCourseData() {
 
     patchSemester(
       semesterShortName,
-      { available: flattenedCourses },
+      {
+        available: flattenedCourses,
+        // True when these courses are a previous-year preview standing in for a
+        // term that isn't published yet (or whose catalog errored). Drives the
+        // existing "preview" disclaimer for the current term AND tells the
+        // similar-courses query/upsert that these courses belong to
+        // `referenceSemester`, not to `semesterShortName`. See REFERENCE_SEMESTER.md.
+        usingReferenceData: !!meta.usingReferenceData,
+      },
       { touchLastFetched: true }
     );
+
+    // Keep the preview flag and its source semester in lockstep. `referenceSemester`
+    // is normally seeded at init time by useEventListDataManager, but init ordering
+    // can leave a current sparse term with referenceSemester=null. Downstream
+    // consumers must NEVER rely on the usingReferenceData flag alone — they need a
+    // valid source semester to attribute borrowed courses to. So whenever we load
+    // a preview we actively resolve and store referenceSemester, preferring the
+    // caller's value but falling back to the deterministic same-season previous-year
+    // rule so it is ALWAYS populated for current sparse terms. See REFERENCE_SEMESTER.md.
+    // (referenceSemester is a guarded metadata key, so it must go through
+    // updateSemesterMetadata, not the plain patch above.)
+    if (meta.usingReferenceData) {
+      const resolvedReference =
+        meta.referenceSemester || computeExpectedReference(semesterShortName);
+      if (resolvedReference) {
+        updateSemesterMetadata(semesterShortName, {
+          referenceSemester: resolvedReference,
+        });
+      } else {
+        console.warn(
+          `⚠️ [updateAvailableCourses] ${semesterShortName} is showing preview data but no referenceSemester could be resolved; similar-courses routing may be incorrect.`
+        );
+      }
+    }
+
     console.log(
-      `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)`
+      `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)${meta.usingReferenceData ? ` [preview from ${meta.referenceSemester || "reference"}]` : ""}`
     );
   };
 

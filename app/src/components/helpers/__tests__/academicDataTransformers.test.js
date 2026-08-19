@@ -3,7 +3,7 @@
  * Unit tests for academic data transformation utilities
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   findMainProgram,
   extractCompletedCourses,
@@ -11,7 +11,9 @@ import {
   calculateProgramStats,
   enrichCourseFromAvailable,
   getAvailableCoursesWithFallback,
-  buildSemesterStudyOverview
+  buildSemesterStudyOverview,
+  resolveProgramId,
+  buildMainStudyLookup
 } from '../academicDataTransformers';
 
 describe('findMainProgram', () => {
@@ -54,6 +56,78 @@ describe('findMainProgram', () => {
       'Certificate in Data Science': {}
     };
     expect(findMainProgram(programs)).toBe('Minor in Economics');
+  });
+
+  it('honors the authoritative isMainStudy lookup over name heuristics and order', () => {
+    // Real bug: a student admitted with conditions has an "Admission conditions"
+    // pseudo-program listed first, and the real master's description uses "M.A."
+    // (no literal "master"). The name heuristic and first-entry fallback both
+    // pick the admission-conditions entry; the enrollments API marks the M.A. as main.
+    const programs = {
+      'Admission conditions for non-specialised M.A. in Business Administration': {},
+      'M.A. in Business Administration': {}
+    };
+    const mainStudyLookup = {
+      'Admission conditions for non-specialised M.A. in Business Administration': false,
+      'M.A. in Business Administration': true
+    };
+    expect(findMainProgram(programs, mainStudyLookup)).toBe('M.A. in Business Administration');
+  });
+
+  it('falls back to name heuristics when the lookup marks none as main', () => {
+    const programs = {
+      'Bachelor in Law': {},
+      'Master in Finance': {}
+    };
+    const mainStudyLookup = {
+      'Bachelor in Law': false,
+      'Master in Finance': false
+    };
+    expect(findMainProgram(programs, mainStudyLookup)).toBe('Master in Finance');
+  });
+});
+
+describe('resolveProgramId', () => {
+  it('prefers studyProgramDescription', () => {
+    const enrollment = {
+      studyProgramDescription: 'Master of Science in Computer Science',
+      studyRegulationId: 379
+    };
+    expect(resolveProgramId(enrollment)).toBe('Master of Science in Computer Science');
+  });
+
+  it('falls back to studyRegulationId when description is absent', () => {
+    expect(resolveProgramId({ studyRegulationId: 379 })).toBe(379);
+  });
+
+  it('returns null for empty enrollment', () => {
+    expect(resolveProgramId(null)).toBeNull();
+    expect(resolveProgramId({})).toBeNull();
+  });
+});
+
+describe('buildMainStudyLookup', () => {
+  it('maps each program id to its authoritative isMainStudy flag', () => {
+    const enrollmentInfos = [
+      {
+        studyProgramDescription: 'Admission conditions for non-specialised M.A. in Business Administration',
+        isMainStudy: false
+      },
+      {
+        studyProgramDescription: 'M.A. in Business Administration',
+        isMainStudy: true
+      }
+    ];
+    expect(buildMainStudyLookup(enrollmentInfos)).toEqual({
+      'Admission conditions for non-specialised M.A. in Business Administration': false,
+      'M.A. in Business Administration': true
+    });
+  });
+
+  it('treats a missing isMainStudy as false and tolerates empty input', () => {
+    expect(buildMainStudyLookup([{ studyProgramDescription: 'X' }])).toEqual({ X: false });
+    expect(buildMainStudyLookup([])).toEqual({});
+    expect(buildMainStudyLookup(undefined)).toEqual({});
   });
 });
 

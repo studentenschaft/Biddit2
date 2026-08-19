@@ -75,17 +75,12 @@ export function useEventListDataManager(
         `🔄 [SIMPLIFIED] Initializing unified semester data for: ${selectedSemester.shortName}`
       );
 
-      // Initialize with all metadata from termListObject
       initializeUnifiedSemester(selectedSemester.shortName, {
         cisId: selectedSemester.cisId,
         isCurrent: selectedSemester.isCurrent,
         isProjected: selectedSemester.isProjected,
-        isFutureSemester: selectedSemester.isProjected, // isProjected implies future semester
-        referenceSemester: selectedSemester.isProjected
-          ? // For projected semesters, we'll need to determine reference semester
-            // This can be done by finding the latest valid term from unified state
-            null
-          : null,
+        isFutureSemester: selectedSemester.isFuture || selectedSemester.isProjected,
+        referenceSemester: selectedSemester.referenceSemester || null,
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

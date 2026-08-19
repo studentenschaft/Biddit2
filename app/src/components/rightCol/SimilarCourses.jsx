@@ -9,7 +9,10 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
 import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-import { apiClient } from "../helpers/axiosClient";
+import {
+  querySimilarCourses,
+  upsertSimilarCourses,
+} from "../helpers/similarCoursesApi";
 import { authTokenState } from "../recoil/authAtom";
 import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
@@ -18,7 +21,7 @@ import LoadingText from "../common/LoadingText";
 
 // Import error handling service
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
 
 export default function SimilarCourses({ selectedCourse }) {
@@ -36,17 +39,26 @@ export default function SimilarCourses({ selectedCourse }) {
     semesterMetadataSelector(selectedSemesterShortName)
   );
 
-  const [, setRelevantCourseInfoForUpsert] = useState([]); // Keep for potential future use when upsert is re-enabled
+  const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
+    useState([]);
   const [similarCourses, setSimilarCourses] = useState([]);
 
   // Use metadata from unified system instead of separate atoms
   const isFutureSemesterSelectedState =
     semesterMetadata?.isFutureSemester || false;
   const referenceSemesterState = semesterMetadata?.referenceSemester;
+  // True when the displayed courses are borrowed from referenceSemester: a
+  // projected future term OR a current-but-sparse term showing a previous-year
+  // preview. In both cases queries must target referenceSemester, not the
+  // selected term. Checking usingReferenceData (not just isFutureSemester) is
+  // what prevents querying the wrong semester key. See REFERENCE_SEMESTER.md.
+  const usingReferenceData = semesterMetadata?.usingReferenceData || false;
+  const isReferenceData = isFutureSemesterSelectedState || usingReferenceData;
   const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
     useState(null);
 
-  // Compute effective semester for API calls: use reference semester if future, otherwise selected
+  // Compute effective semester for API calls: use reference semester when the
+  // displayed courses are borrowed, otherwise the selected term.
   const effectiveSemesterShortName =
     referenceSemesterLocalState || selectedSemesterShortName || null;
 
@@ -56,9 +68,9 @@ export default function SimilarCourses({ selectedCourse }) {
   );
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingLong] = useState(false); // Keep for when upsert is re-enabled
-  // Allow setting the current CourseInfo when user clicks a similar course title
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
+  const [isLoadingLong, setIsLoadingLong] = useState(false);
+  // Allow showing course details when user clicks a similar course title
+  const openCourseDetails = useOpenCourseDetails();
 
   // Derive program from unified data with robust fallbacks
   const derivedProgram =
@@ -77,11 +89,12 @@ export default function SimilarCourses({ selectedCourse }) {
     programRef.current = derivedProgram;
   }, [derivedProgram]);
 
-  // handle future semester selected
-  // set true reference semester if future semester selected
+  // Resolve the semester to use for API calls. When the displayed courses are
+  // borrowed (future projection OR current-but-sparse preview) they belong to
+  // referenceSemester, so queries/upserts must target it — not the selected term.
   useEffect(() => {
     try {
-      if (isFutureSemesterSelectedState) {
+      if (isReferenceData) {
         // referenceSemester is already a shortName string in unified state
         setReferenceSemesterLocalState(referenceSemesterState || null);
       } else {
@@ -94,7 +107,7 @@ export default function SimilarCourses({ selectedCourse }) {
       );
       errorHandlingService.handleError(error);
     }
-  }, [isFutureSemesterSelectedState, referenceSemesterState]);
+  }, [isReferenceData, referenceSemesterState]);
 
   // set courses of current semester based on selected semester (always use real semester, not reference)
   // Note: coursesCurrentSemester is now directly loaded from unified selector using selectedSemesterShortName
@@ -126,46 +139,22 @@ export default function SimilarCourses({ selectedCourse }) {
       errorHandlingService.handleError(error);
     }
   }, [coursesCurrentSemester]);
-  // TODO: Reintroduce once logs are showing and we can verify that correct data will be uploaded (once new semester data is published that is not yet in backend)
-  // DISABLED: Upsert mechanism commented out until tested by Quality Control
-  /*
+  // Upsert the selected term's courses when a query returns nothing, so the
+  // vector DB lazily fills in for newly published catalogs. Guardrail + payload
+  // live in the shared helper so smart search and SimilarCourses can never
+  // drift apart. See REFERENCE_SEMESTER.md.
   async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
-    setIsLoadingLong(true);
-
-    // might be better to clean up the course descriptions before upsert, database reset advised when applied (breaks filter out identical courses)
-    // courseDescription: course.courseContent
-    //           ? course.courseContent
-    //               .replace(/<[^>]+>/g, "") // Remove HTML tags
-    //               .replace(/\s+/g, " ") // Replace multiple spaces with a single space
-    //               .trim() // Trim leading and trailing spaces
-    //           : "",
-
-    try {
-      await axios.post(
-        "https://api.shsg.ch/similar-courses/upsert",
-        {
-          courses: relevantCourseInfoForUpsert.map((course) => ({
-            courseNumber: course.courseNumber,
-            semester: referenceSemesterLocalState
-              ? referenceSemesterLocalState
-              : selectedSemesterShortName,
-            courseDescription: course.courseContent,
-            category: course.classification,
-            program: program,
-          })),
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-    } catch (error) {
-      console.error("Error adding courses:", error);
-      errorHandlingService.handleError(error);
-    }
+    await upsertSimilarCourses({
+      authToken,
+      courses: relevantCourseInfoForUpsert,
+      program: programRef.current,
+      selectedSemester: selectedSemesterShortName,
+      referenceSemester: referenceSemesterState,
+      isReferenceData,
+      source: "SimilarCourses",
+    });
   }
-  */
+
   // if button is clicked, fetch similar courses
   async function fetchSimilarCourses(
     selectedCourse,
@@ -211,19 +200,13 @@ export default function SimilarCourses({ selectedCourse }) {
         //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
         //   .trim(); // Trim leading and trailing spaces
 
-        const response = await apiClient.get(
-          "https://api.shsg.ch/similar-courses/query",
+        const response = await querySimilarCourses({
           authToken,
-          {
-            params: {
-              courseDescription: selectedCourse.courseContent,
-              numberOfResults: 10,
-              category: category,
-              program: programRef.current,
-              semester: semesterToUse,
-            },
-          }
-        );
+          courseDescription: selectedCourse.courseContent,
+          category,
+          program: programRef.current,
+          semester: semesterToUse,
+        });
 
         setSimilarCourses(response.data);
         console.log("Similar courses:", response.data);
@@ -236,35 +219,21 @@ export default function SimilarCourses({ selectedCourse }) {
           response.data.ids[0].length === 0 &&
           !attemptedUpsert
         ) {
-          // DISABLED: Upsert mechanism commented out until tested by Quality Control
-          console.log(
-            "No similar courses found - upsert mechanism disabled for quality control testing"
-          );
-          /*
-        setIsLoadingLong(true);
-        await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-        setIsLoadingLong(false);
-        // Pass true to indicate we've already attempted an upsert
-        fetchSimilarCourses(selectedCourse, category, true);
-        */
+          setIsLoadingLong(true);
+          await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
+          setIsLoadingLong(false);
+          // Pass true to indicate we've already attempted an upsert
+          fetchSimilarCourses(selectedCourse, category, true);
         }
       } catch (error) {
         console.error("Error querying database:", error);
         if (error.response && error.response.status === 404) {
           console.log("No courses found, attempting upsert");
           if (!attemptedUpsert) {
-            // DISABLED: Upsert mechanism commented out until tested by Quality Control
-            console.log(
-              "Upsert mechanism disabled for quality control testing"
-            );
-            /*
-          setIsLoadingLong(true);
-          await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-          setIsLoadingLong(false);
-          fetchSimilarCourses(selectedCourse, category, true);
-          */
-            // For now, just set empty results
-            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
+            setIsLoadingLong(true);
+            await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
+            setIsLoadingLong(false);
+            fetchSimilarCourses(selectedCourse, category, true);
           } else {
             setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
           }
@@ -579,7 +548,9 @@ export default function SimilarCourses({ selectedCourse }) {
                         const course = coursesCurrentSemester.find(
                           (c) => c.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                         );
-                        if (course) updateSelectedCourseInfo(course);
+                        openCourseDetails(course, {
+                          source: "similar-courses",
+                        });
                       }}
                       title="Show course details"
                     >

@@ -1,14 +1,26 @@
 import { useState } from "react";
-import { useRecoilState } from "recoil";
+import { useRecoilState, useRecoilValue } from "recoil";
 import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
+import { smartSearchState } from "../../recoil/smartSearchAtom";
+import { useSmartSearch } from "../../helpers/useSmartSearch";
 
 const SearchTerm = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [, setSelectionOptions] = useRecoilState(selectionOptionsState);
+  const { mode } = useRecoilValue(smartSearchState);
+  const { runSearch } = useSmartSearch();
+
+  // Switching modes remounts this component (SelectOptions keys it on the
+  // mode), which is what empties the box so a keyword filter never lingers
+  // behind a smart query and vice versa.
+  const isSmartMode = mode === "smart";
 
   const handleSearch = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
+    // Smart queries are sentences, not filters: they must never narrow the
+    // keyword-filtered pool. They are only sent on Enter.
+    if (isSmartMode) return;
     setSelectionOptions((prev) => ({
       ...prev,
       searchTerm: value,
@@ -16,11 +28,18 @@ const SearchTerm = () => {
   };
 
   const handleFocus = () => {
+    if (isSmartMode) return; // keep the query so it can be edited and re-run
     setSearchTerm("");
     setSelectionOptions((prev) => ({
       ...prev,
       searchTerm: "",
     }));
+  };
+
+  const handleKeyDown = (e) => {
+    if (isSmartMode && e.key === "Enter") {
+      runSearch(searchTerm);
+    }
   };
 
   return (
@@ -46,10 +65,13 @@ const SearchTerm = () => {
         name="courseSearch"
         id="courseSearch"
         className="block w-full pl-10 border-gray-300 rounded-md shadow-sm focus:border-hsg-600 focus:ring-hsg-600 sm:text-sm"
-        placeholder="Search"
+        placeholder={
+          isSmartMode ? "Describe what you want to learn…" : "Search"
+        }
         value={searchTerm}
         onChange={handleSearch}
         onFocus={handleFocus}
+        onKeyDown={handleKeyDown}
         style={{ marginBottom: "10px" }}
       />
     </div>

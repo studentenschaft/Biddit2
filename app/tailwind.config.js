@@ -1,3 +1,7 @@
+import forms from "@tailwindcss/forms";
+import scrollbarHide from "tailwind-scrollbar-hide";
+import typography from "@tailwindcss/typography";
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
@@ -29,6 +33,11 @@ export default {
         "hsg-700": "#007A2D",
         "hsg-800": "#006625",
         "hsg-900": "#00521E",
+        // Official HSG brand palette — used for curriculum-map note colors
+        "hsg-green": "#00802F",
+        "hsg-blue": "#73A5AF",
+        "hsg-coral": "#EB6969",
+        "hsg-yellow": "#FFF04B",
       },
       width: {
         "1/8": "12.5%",
@@ -63,9 +72,5 @@ export default {
       backgroundColor: ["active"],
     },
   },
-  plugins: [
-    require("@tailwindcss/forms"),
-    require("tailwind-scrollbar-hide"),
-    require("@tailwindcss/typography"),
-  ],
+  plugins: [forms, scrollbarHide, typography],
 };

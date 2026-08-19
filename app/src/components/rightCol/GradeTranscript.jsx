@@ -418,7 +418,7 @@ const GradeTranscript = ({
     };
   }, [scorecardDetails, getCustomGrade]);
   
-  const { overallAvgGrade, overallCustomAvg } = overallCalculations;
+  const { overallCustomAvg } = overallCalculations;
 
   return (
     <div className="p-4 bg-white">

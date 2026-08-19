@@ -1,10 +1,12 @@
 import { AuthenticatedTemplate } from "@azure/msal-react";
 import { useNavigate } from "react-router-dom";
 import { useMsal } from "@azure/msal-react";
+import PropTypes from "prop-types";
 import { LogoutIcon } from "@heroicons/react/outline";
+import { NAV_LABELS, navItemClassName } from "./navItem";
 // import { useEffect } from "react";
 
-export default function LogoutButton() {
+export default function LogoutButton({ showLabel = false }) {
   const { instance } = useMsal();
   const activeAccount = instance.getActiveAccount();
   const accounts = instance.getAllAccounts();
@@ -19,9 +21,11 @@ export default function LogoutButton() {
       {(activeAccount || accounts.length > 0) && (
         <button
           onClick={handleLogoutRedirect}
-          className="inline-flex items-center justify-center p-2 text-white rounded-md hover:bg-hsg-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-white active:bg-hsg-800"
+          aria-label={showLabel ? undefined : NAV_LABELS.logout}
+          className={navItemClassName(showLabel)}
         >
-          <LogoutIcon className="block w-6 h-6" aria-hidden="true" />
+          <LogoutIcon className="block w-6 h-6 shrink-0" aria-hidden="true" />
+          {showLabel && <span>{NAV_LABELS.logout}</span>}
         </button>
       )}
       {console.log("Active Account:", activeAccount)}
@@ -29,4 +33,8 @@ export default function LogoutButton() {
     </AuthenticatedTemplate>
   );
 }
+LogoutButton.propTypes = {
+  showLabel: PropTypes.bool,
+};
+
 export { LogoutButton };

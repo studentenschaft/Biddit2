@@ -1,5 +1,10 @@
 import { selector, selectorFamily } from "recoil";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
+import { smartSearchState, orderSmartResults } from "./smartSearchAtom";
+import {
+  getCourseIdentifier,
+  lookupCourseRating,
+} from "../helpers/courseUtils";
 
 /**
  * Selector to get all course data for a specific semester
@@ -21,6 +26,7 @@ export const semesterCourseDataSelector = selectorFamily({
           lastFetched: null,
           isFutureSemester: false,
           referenceSemester: null,
+          usingReferenceData: false,
           cisId: null,
           isCurrent: false,
           isProjected: false,
@@ -191,6 +197,10 @@ export const semesterMetadataSelector = selectorFamily({
         isProjected: semesterData.isProjected || false,
         isFutureSemester: semesterData.isFutureSemester || false,
         referenceSemester: semesterData.referenceSemester || null,
+        // True when `available` is a borrowed previous-year preview (sparse/empty
+        // current term). Consumers must treat these courses as belonging to
+        // `referenceSemester`, not this semester. See REFERENCE_SEMESTER.md.
+        usingReferenceData: semesterData.usingReferenceData || false,
         cisId: semesterData.cisId || null,
         lastFetched: semesterData.lastFetched || null,
       };
@@ -244,7 +254,6 @@ export const semesterCoursesSelector = selectorFamily({
 
             if (import.meta?.env?.DEV) {
               // Minimal debug snapshot
-              // eslint-disable-next-line no-console
               console.debug(
                 "[semesterCoursesSelector] enrolled:",
                 semester,
@@ -292,7 +301,6 @@ export const semesterCoursesSelector = selectorFamily({
               });
 
             if (import.meta?.env?.DEV) {
-              // eslint-disable-next-line no-console
               console.debug(
                 "[semesterCoursesSelector] selected:",
                 semester,
@@ -312,6 +320,50 @@ export const semesterCoursesSelector = selectorFamily({
         default:
           return semesterData.available || [];
       }
+    },
+});
+
+/**
+ * The user's courses for a semester: enrolled ∪ selected, deduped by course
+ * identifier (courseNumber, falling back to id).
+ *
+ * Single source of truth for "my courses" as *domain* state. It is deliberately
+ * independent of the search panel's `filtered` pool, which is view state — a
+ * course must not drop out of the schedule because a filter hides it from the
+ * browsing list (see docs/BUG-calendar-entries-filter-leak.md).
+ *
+ * A course present in both lists appears once and keeps both flags.
+ */
+export const myCoursesSelector = selectorFamily({
+  key: "myCoursesSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const enrolled = get(
+        semesterCoursesSelector({
+          semester: semesterShortName,
+          type: "enrolled",
+        })
+      );
+      const selected = get(
+        semesterCoursesSelector({
+          semester: semesterShortName,
+          type: "selected",
+        })
+      );
+
+      // Both pools already carry correct dual enrolled/selected flags
+      // (each type cross-checks the other id list), so first-wins dedup
+      // by identifier is sufficient.
+      const byIdentifier = new Map();
+      [...enrolled, ...selected].forEach((course) => {
+        const identifier = getCourseIdentifier(course);
+        if (!byIdentifier.has(identifier)) {
+          byIdentifier.set(identifier, course);
+        }
+      });
+
+      return Array.from(byIdentifier.values());
     },
 });
 
@@ -347,6 +399,69 @@ export const semesterCisIdSelector = selectorFamily({
       // For regular semesters, use their own CIS ID
       return semesterData.cisId;
     },
+});
+
+/**
+ * Whether the course list should be showing smart-search results right now.
+ *
+ * A stored answer only applies to the semester it was asked about: the vector DB
+ * returns bare ids, so resolving them against another term's catalog would show
+ * that term's courses ranked by the old term's answer, with nothing on screen
+ * saying so. Switching away therefore falls back to the keyword-filtered pool,
+ * and switching back makes the answer valid again — no state is discarded,
+ * because re-running the same query against the same term would return it.
+ */
+export const smartSearchActiveSelector = selector({
+  key: "smartSearchActiveSelector",
+  get: ({ get }) => {
+    const search = get(smartSearchState);
+    const { selectedSemester } = get(unifiedCourseDataState);
+    return (
+      search.mode === "smart" &&
+      search.hasSearched &&
+      search.semesterQueried === selectedSemester
+    );
+  },
+});
+
+/**
+ * Smart (semantic) search results for the selected semester, best match first.
+ *
+ * The vector DB returns ids only, so they are resolved against the semester's
+ * `available` courses. `available` carries no enrolled/selected flags (those are
+ * attached to `filtered` by updateFilteredCourses), so they are re-attached here
+ * — otherwise a wishlisted course would render with a "+" instead of its lock in
+ * the shared EventListContainer row.
+ */
+export const smartSearchResultsSelector = selector({
+  key: "smartSearchResultsSelector",
+  get: ({ get }) => {
+    const search = get(smartSearchState);
+    const courseData = get(unifiedCourseDataState);
+    const semester = courseData.selectedSemester;
+    const semesterData = courseData.semesters?.[semester];
+    const available = semesterData?.available || [];
+
+    const ordered = orderSmartResults({
+      resultIds: search.resultIds,
+      distances: search.distances,
+      courses: available,
+    });
+
+    const enrolledIds = semesterData?.enrolledIds || [];
+    const selectedIds = semesterData?.selectedIds || [];
+    const ratings = semesterData?.ratings || {};
+
+    return ordered.map((course) => {
+      const courseNumber = getCourseIdentifier(course);
+      return {
+        ...course,
+        avgRating: lookupCourseRating(course, ratings) || course.avgRating,
+        enrolled: !!courseNumber && enrolledIds.includes(courseNumber),
+        selected: !!courseNumber && selectedIds.includes(courseNumber),
+      };
+    });
+  },
 });
 
 /**

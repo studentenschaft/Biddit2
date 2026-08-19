@@ -8,40 +8,48 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import ReactGA from "react-ga4"; // Google Analytics 4 Library
 import {
   AuthenticatedTemplate,
   UnauthenticatedTemplate,
+  useMsal,
 } from "@azure/msal-react";
+import { InteractionStatus } from "@azure/msal-browser";
+import { useRecoilValue } from "recoil";
 
 // Components
 import { Biddit2 } from "./pages/Biddit2.jsx";
 import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
+import AnalyticsNotice from "./components/common/AnalyticsNotice.jsx";
+import { AppStateProvider } from "./components/common/AppStateProvider.jsx";
+import { initAnalytics, trackPageView } from "./components/helpers/analytics";
+import { selectedTabAtom } from "./components/recoil/selectedTabAtom";
 
-
-// Initialize GA4 with Measurement ID and enable debug mode (for now)
-const GA_MEASUREMENT_ID = "G-BMG2V9ZX73";
-ReactGA.initialize(GA_MEASUREMENT_ID, { debug: true });
-
-// Function to set user properties globally
-const setUserProperties = () => {
-  window.gtag("set", "user_properties", {
-    app_version: "v2", //  custom property for tracking app version
-  });
-};
-
-// Track Page Views
-const TrackPageView = () => {
+/**
+ * Pageview tracking plus GA4 startup. Init waits until MSAL has finished
+ * processing the redirect, so the OAuth code fragment is stripped from the
+ * URL before anything is reported.
+ */
+const Analytics = () => {
   const location = useLocation();
+  const { inProgress } = useMsal();
+  // Ref, not a dependency: the landing tab is read once at init time and
+  // must not re-run the effect on every later tab switch.
+  const currentTabRef = useRef(useRecoilValue(selectedTabAtom));
 
   useEffect(() => {
-    ReactGA.send({ hitType: "pageview", page: location.pathname });
-  }, [location]);
+    trackPageView(location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    if (inProgress === InteractionStatus.None) {
+      initAnalytics({ initialView: currentTabRef.current });
+    }
+  }, [inProgress]);
 
   return null;
 };
@@ -53,53 +61,53 @@ const App = () => {
    * only render their children if a user is authenticated or unauthenticated, respectively. For more, visit:
    * https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-react/docs/getting-started.md
    */
-  useEffect(() => {
-    setUserProperties(); // Set user properties globally when app loads
-  }, []);
   return (
     <ErrorBoundary>
-      <div className="App">
-        <BrowserRouter>
-          <TrackPageView /> {/* Tracks active users & page views */}
-          <AuthenticatedTemplate>
-            <StudyondBanner />
-
-            <Routes>
-              <Route
-                path="/"
-                element={
-                  <ErrorBoundary>
-                    <Biddit2 />
-                  </ErrorBoundary>
-                }
-              />
-              <Route
-                path="/biddit2"
-                element={
-                  <ErrorBoundary>
-                    <Biddit2 />
-                  </ErrorBoundary>
-                }
-              />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </AuthenticatedTemplate>
-          <UnauthenticatedTemplate>
-            <Routes>
-              <Route
-                path="/login"
-                element={
-                  <ErrorBoundary>
-                    <Login />
-                  </ErrorBoundary>
-                }
-              />
-              <Route path="*" element={<Navigate to="/login" />} />
-            </Routes>
-          </UnauthenticatedTemplate>
-        </BrowserRouter>
-        <ToastContainer />
-      </div>
+      <AppStateProvider>
+        <div className="App">
+          <BrowserRouter>
+            <Analytics /> {/* Pageviews, events, MSAL-gated GA4 startup */}
+            {/* Outside both templates: logged-out visitors see it too */}
+            <AnalyticsNotice />
+            <AuthenticatedTemplate>
+              <StudyondBanner />
+              <Routes>
+                <Route
+                  path="/"
+                  element={
+                    <ErrorBoundary>
+                      <Biddit2 />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route
+                  path="/biddit2"
+                  element={
+                    <ErrorBoundary>
+                      <Biddit2 />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/" />} />
+              </Routes>
+            </AuthenticatedTemplate>
+            <UnauthenticatedTemplate>
+              <Routes>
+                <Route
+                  path="/login"
+                  element={
+                    <ErrorBoundary>
+                      <Login />
+                    </ErrorBoundary>
+                  }
+                />
+                <Route path="*" element={<Navigate to="/login" />} />
+              </Routes>
+            </UnauthenticatedTemplate>
+          </BrowserRouter>
+          <ToastContainer />
+        </div>
+      </AppStateProvider>
     </ErrorBoundary>
   );
 };

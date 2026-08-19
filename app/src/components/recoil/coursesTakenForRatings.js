@@ -72,7 +72,7 @@ export const coursesTakenForRatingState = atom({
             return acc;
           }, {});
 
-        async function loadRatingCourses(semesterName, timeSegmentId) {
+        const loadRatingCourses = async (semesterName, timeSegmentId) => {
           try {
             const res = await apiClient.get(
               `https://integration.unisg.ch/eventapi/MyCourses/byTerm/${timeSegmentId}`,
@@ -86,7 +86,7 @@ export const coursesTakenForRatingState = atom({
             );
             return { id: semesterName, data: [] };
           }
-        }
+        };
 
         const data = await Promise.all(
           Object.entries(ratableSemesters).map(

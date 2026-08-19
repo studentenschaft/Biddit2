@@ -1,7 +1,7 @@
 import { useMsal } from "@azure/msal-react";
 import { loginRequest } from "../components/auth/authConfig";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import SHSGLogo from "../assets/SHSG_Logo_Circle_100x100mm_RGB_green.png";
 
@@ -29,11 +29,9 @@ export default function Login() {
       navigate("/biddit2", { replace: true });
     }
   }, [instance, navigate]);
-  const [showCookieBanner, setShowCookieBanner] = useState(true);
-  const handleCookieBanner = () => {
-    setShowCookieBanner(false);
-  };
 
+  // Cookie/analytics disclosure lives in AnalyticsNotice (mounted in App.jsx
+  // outside both auth templates), which is also where the opt-out sits.
   return (
     <>
       <div id="root">
@@ -101,55 +99,6 @@ export default function Login() {
                 </div>
               </div>
             </div>
-            {showCookieBanner && (
-              <div className="fixed bottom-0 w-full flex pb-2 sm:pb-5 z-50 block">
-                <div className="p-2 bg-white rounded-lg shadow-lg sm:p-3 mx-auto text-xs">
-                  <div className="flex flex-wrap items-center justify-between">
-                    <div className="flex items-center flex-1">
-                      <p className="ml-3 font-medium text-gray-500 mr-4">
-                        <span className="">
-                          We use cookies for the HSG login, as well as Google
-                          Analytics.
-
-                        </span>
-                      </p>
-                      <a
-                        href="https://shsg.ch/privacy-policy"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="font-medium text-hsg-600 hover:text-hsg-500 mr-4"
-                      >
-                        SHSG Privacy Notice
-                        <span aria-hidden="true"> →</span>
-                      </a>
-                    </div>
-                    <div className="flex-shrink-0 order-2 sm:order-3 sm:ml-2">
-                      <button
-                        type="button"
-                        className="flex -mr-1 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-white"
-                        onClick={handleCookieBanner}
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          className="w-6 h-6 text-gray-500"
-                          aria-hidden="true"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M6 18L18 6M6 6l12 12"
-                          ></path>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

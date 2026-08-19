@@ -14,15 +14,12 @@ import { fetchScoreCardDetails } from "../recoil/ApiScorecardDetails";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import {
   findMainProgram,
+  buildMainStudyLookup,
+  resolveProgramId,
   buildTranscriptView,
   buildStudyOverviewView,
   calculateProgramStats
 } from "./academicDataTransformers";
-
-const resolveProgramId = (enrollment) =>
-  enrollment.studyProgramDescription ||
-  enrollment.programName ||
-  enrollment.studyRegulationId;
 
 /**
  * Hook that exposes a single `fetchAll` method to populate scorecard data.
@@ -74,6 +71,11 @@ export const useScorecardFetching = () => {
           throw new Error("No enrollment information available.");
         }
 
+        // Authoritative main-study flag lives on the enrollments API, not on the
+        // scorecard details. Capture it before scorecards are fetched so program
+        // selection never falls back to name-based heuristics.
+        const mainStudyLookup = buildMainStudyLookup(enrollmentInfos);
+
         const results = await Promise.all(
           enrollmentInfos.map(async (enrollment) => {
             const attempt = enrollment.attempt || 1;
@@ -121,7 +123,7 @@ export const useScorecardFetching = () => {
 
         // NEW: Transform and store in unified academic data state
         if (Object.keys(rawScorecards).length > 0) {
-          const mainProgramId = findMainProgram(rawScorecards);
+          const mainProgramId = findMainProgram(rawScorecards, mainStudyLookup);
           const programs = {};
 
           Object.entries(rawScorecards).forEach(([programId, rawData]) => {
@@ -160,7 +162,7 @@ export const useScorecardFetching = () => {
               },
               metadata: {
                 programId,
-                isMainStudy: rawData.isMainStudy || isMainProgram,
+                isMainStudy: isMainProgram,
                 programType: programId.toLowerCase().includes('master') ? 'master' :
                              programId.toLowerCase().includes('bachelor') ? 'bachelor' : 'other',
                 requirementsFulfilled: {

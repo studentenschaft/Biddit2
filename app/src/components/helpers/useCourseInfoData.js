@@ -24,6 +24,11 @@ import axios from "axios";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
+// A term shows its previous-year same-season catalog as a preview until it has
+// published at least this many courses (or if its own catalog errors). Counts
+// parent courses as returned by the API (before exercise-group flattening).
+export const REFERENCE_FALLBACK_MIN_COURSES = 10;
+
 /**
  * Custom hook for managing course information data
  *
@@ -39,19 +44,26 @@ export const useCourseInfoData = (params) => {
     useUnifiedCourseData();
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
 
-  // Handle null parameters AFTER calling all hooks
-  if (!params) {
-    return {
-      isCourseDataLoading: false,
-      courseData: [],
-      hasData: false
-    };
-  }
-
   const { authToken, selectedSemester } = params || {};
 
   // Fetch course data effect
   useEffect(() => {
+    // Without params there is nothing to fetch and no state to reset.
+    if (!params) return;
+
+    const fetchTerm = (cisId) =>
+      axios.get(
+        `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
+        {
+          headers: {
+            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+            "X-RequestedLanguage": "EN",
+            "API-Version": "1",
+            Authorization: `Bearer ${authToken}`,
+          },
+        }
+      );
+
     const fetchCourseData = async () => {
       // Only fetch if we have required data
       if (!selectedSemester?.cisId || !selectedSemester?.shortName) {
@@ -61,42 +73,62 @@ export const useCourseInfoData = (params) => {
 
       setIsCourseDataLoading(true);
 
-      try {
-        console.log(
-          `🔄 [SIMPLIFIED] Fetching course data for semester: ${selectedSemester.shortName}, CIS ID: ${selectedSemester.cisId}`
-        );
+      const hasReference =
+        selectedSemester.referenceCisId &&
+        selectedSemester.referenceCisId !== selectedSemester.cisId;
 
-        const response = await axios.get(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${selectedSemester.cisId}`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-
-        console.log(
-          `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} course information sheets for ${selectedSemester.shortName}`
-        );
-
-        // Debug: Log the response if we get 0 courses
-        if (response.data.length === 0) {
-          console.warn(
-            `⚠️ [DEBUG] No courses returned for semester ${selectedSemester.shortName} (CIS ID: ${selectedSemester.cisId}). This might be normal for future semesters.`
+      // Load the same-season previous-year catalog as a preview. Returns true
+      // when reference data was stored.
+      const loadReference = async (reason) => {
+        if (!hasReference) return false;
+        try {
+          const refResponse = await fetchTerm(selectedSemester.referenceCisId);
+          console.log(
+            `🔄 [${reason}] Previewing ${selectedSemester.shortName} with ${refResponse.data.length} courses from reference ${selectedSemester.referenceSemester}`
           );
+          updateUnifiedAvailableCourses(
+            selectedSemester.shortName,
+            refResponse.data,
+            {
+              usingReferenceData: true,
+              referenceSemester: selectedSemester.referenceSemester,
+            }
+          );
+          return true;
+        } catch (refError) {
+          console.warn(
+            `⚠️ Failed to fetch reference semester ${selectedSemester.referenceSemester} for ${selectedSemester.shortName}`,
+            refError
+          );
+          return false;
+        }
+      };
+
+      try {
+        const response = await fetchTerm(selectedSemester.cisId);
+        const count = response.data?.length || 0;
+        console.log(
+          `✅ Fetched ${count} course sheets for ${selectedSemester.shortName}`
+        );
+
+        // Until a term has a real, non-trivial catalog, show last year's
+        // same-season courses as a preview instead of an empty/near-empty list.
+        if (count < REFERENCE_FALLBACK_MIN_COURSES && (await loadReference("sparse"))) {
+          return;
         }
 
-        // Update ONLY unified available courses state (no more legacy atoms)
         updateUnifiedAvailableCourses(
           selectedSemester.shortName,
-          response.data
+          response.data || [],
+          { usingReferenceData: false }
         );
       } catch (error) {
+        // The term's own catalog errored (e.g. the EventApi 500s for a term).
+        // Prefer a previous-year preview over surfacing a hard error.
         console.error("❌ Error fetching course data:", error);
-        errorHandlingService.handleError(error);
+        if (!(await loadReference("error"))) {
+          errorHandlingService.handleError(error);
+        }
       } finally {
         setIsCourseDataLoading(false);
       }
@@ -109,11 +141,17 @@ export const useCourseInfoData = (params) => {
       setIsCourseDataLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemester?.cisId, selectedSemester?.shortName]);
+  }, [
+    authToken,
+    selectedSemester?.cisId,
+    selectedSemester?.shortName,
+    selectedSemester?.referenceCisId,
+  ]);
 
-  return {
-    isCourseDataLoading,
-  };
+  // Handle null parameters AFTER calling all hooks
+  if (!params) return { isCourseDataLoading: false };
+
+  return { isCourseDataLoading };
 };
 
 export default useCourseInfoData;

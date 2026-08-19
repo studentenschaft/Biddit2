@@ -10,10 +10,9 @@
 /**
  * Converts unified academic data to the format expected by ProgramOverview
  * @param {Object} academicData - Data from unifiedAcademicDataSelector
- * @param {Object} unifiedCourseData - Optional unified course data for enrichment
  * @returns {Object} - Adapted data for ProgramOverview components
  */
-export const adaptAcademicDataForStudyOverview = (academicData, unifiedCourseData = null) => {
+export const adaptAcademicDataForStudyOverview = (academicData) => {
   console.group('🔄 [dataAdapter] CONVERTING ACADEMIC DATA');
   console.log('Input academicData:', academicData);
   
@@ -51,7 +50,10 @@ export const adaptAcademicDataForStudyOverview = (academicData, unifiedCourseDat
             gradeText: course.gradeText,
             type: course.type || course.classification || 'core',
             big_type: course.big_type,
-            isEnriched: true, // Enrolled courses are always enriched
+            id: course.id || course.courseId,
+            courseId: course.courseId || course.id,
+            courseNumber: course.courseNumber,
+            isEnriched: true,
             source: 'enrolled'
           });
         });
@@ -138,7 +140,7 @@ export const getMainProgram = (adaptedData) => {
   
   // Strategy 1: Look for explicitly marked main program
   let selectedProgram = programEntries.find(
-    ([programId, programData]) => programData.isMainProgram
+    ([, programData]) => programData.isMainProgram
   );
   
   if (selectedProgram) {

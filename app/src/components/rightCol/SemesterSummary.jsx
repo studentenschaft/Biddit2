@@ -1,12 +1,11 @@
 // import PropTypes from "prop-types";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRecoilValue } from "recoil";
-import { useSetRecoilState } from "recoil";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
 // Import unified selectors
 import {
-  semesterCoursesSelector,
+  myCoursesSelector,
   selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
@@ -14,16 +13,46 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
-import { selectedTabAtom } from "../recoil/selectedTabAtom";
-import { useUnifiedCourseData } from "../helpers/useUnifiedCourseData";
+import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 
 import { Heatmap } from "./Heatmap";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
+/**
+ * The column template every row of the summary shares.
+ *
+ * `grid-cols-12 gap-4` alone could not survive a phone: at 390px the eleven
+ * 16px gaps ate 176 of the ~342 available pixels, leaving twelve tracks of
+ * ~14px. "Events" and "ECTS" each occupy one of those tracks and had nothing
+ * clipping them, so both labels overflowed their track and painted on top of
+ * each other — the reported "EvenBCTS". Below md the numeric columns therefore
+ * get fixed tracks wide enough for their own headers, the text columns get
+ * `minmax(0, …fr)` so they truncate instead of pushing, and the gap shrinks.
+ * From md up the original twelve-column layout is restored untouched.
+ */
+const ROW_GRID_CLASSES =
+  "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 md:grid-cols-12 md:gap-4";
+
+/**
+ * ECTS the way people write them: 6, not 6.00 — while 7.5 stays 7.5.
+ *
+ * Credits arrive from the course API in hundredths (600 = 6 ECTS) and are not
+ * reliably numbers, hence the Number() coercion. The toFixed(2) round-trip is
+ * only there to shed the float noise a running sum of hundredths picks up
+ * (30.000000000000004), never to round a genuine fraction away.
+ */
+// Exported for its own tests; the same rule is disabled in
+// CurriculumPlanContext.jsx for the same reason.
+// eslint-disable-next-line react-refresh/only-export-components
+export function formatEcts(value) {
+  const credits = Number(value);
+  if (!Number.isFinite(credits)) return "0";
+  return String(Number(credits.toFixed(2)));
+}
+
 export default function SemesterSummary() {
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
-  const setSelectedTab = useSetRecoilState(selectedTabAtom);
+  const openCourseDetails = useOpenCourseDetails();
   const [courseOnDay, setCourseOnDay] = useState([]);
   const [hoveredDate, setHoveredDate] = useState(null);
   const [hoveredCourse, setHoveredCourse] = useState(null);
@@ -34,39 +63,9 @@ export default function SemesterSummary() {
   // Use unified course data system - get selected semester from selector
   const selectedSemesterState = useRecoilValue(selectedSemesterSelector);
 
-  // Get enrolled and selected courses from unified system (full course objects)
-  const enrolledCourses = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "enrolled",
-    })
-  );
-
-  const selectedCourses = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "selected",
-    })
-  );
-
-  // Get current courses using unified data
-  const currCourses = useMemo(() => {
-    // Use unified data from the new system
-    if (selectedSemesterState) {
-      // Merge and deduplicate courses
-      const allCourses = [...enrolledCourses, ...selectedCourses];
-      const uniqueCourses = allCourses.filter(
-        (course, index, arr) =>
-          arr.findIndex(
-            (c) => c.id === course.id || c.courseNumber === course.courseNumber
-          ) === index
-      );
-
-      return uniqueCourses;
-    }
-
-    return [];
-  }, [selectedSemesterState, enrolledCourses, selectedCourses]);
+  // The user's courses (enrolled ∪ selected) — same source as the calendar,
+  // so the table and the schedule cannot drift apart.
+  const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
@@ -93,10 +92,7 @@ export default function SemesterSummary() {
   }
 
   function courseSelector(fullEvent) {
-    if (fullEvent) {
-      updateSelectedCourseInfo(fullEvent);
-      setSelectedTab(0);
-    }
+    openCourseDetails(fullEvent, { source: "semester-summary" });
   }
 
   function checkIfCourseOnDay(course) {
@@ -196,8 +192,9 @@ export default function SemesterSummary() {
 
   if (currCourses.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-sm font-medium text-gray-500 align-middle md:text-base">
-        You have no allocated or selected courses.
+      <div className="flex items-center justify-center h-full px-4 text-sm font-medium text-center text-gray-500 align-middle md:text-base">
+        You have no allocated or selected courses. Browse the course list on the
+        left and click + to start planning your semester.
       </div>
     );
   } else {
@@ -230,13 +227,17 @@ export default function SemesterSummary() {
           setHoveredDate={setHoveredDate}
         />
         <div className="w-full h-full">
-          <div className="grid grid-cols-12 gap-4 px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded">
+          <div
+            className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
+          >
             <div className="text-center"></div>
-            <div className="col-span-6 truncate">Course</div>
+            <div className="min-w-0 truncate md:col-span-6">Course</div>
 
-            <div className="col-span-3 truncate ">Classification</div>
-            <div className="text-center">Events</div>
-            <div className="text-center">ECTS </div>
+            <div className="min-w-0 truncate md:col-span-3">Classification</div>
+            {/* whitespace-nowrap: these two must never wrap or spill into one
+                another, so their tracks are sized for the labels as one line. */}
+            <div className="text-center whitespace-nowrap">Events</div>
+            <div className="text-center whitespace-nowrap">ECTS</div>
           </div>
           <div className="inline-block w-full h-full min-w-full align-middle">
             <div className="ring-1 ring-black ring-opacity-5 md:rounded-lg ">
@@ -246,7 +247,7 @@ export default function SemesterSummary() {
                 return (
                   <div
                     key={index}
-                    className={`grid grid-cols-12 gap-4 px-2 py-1 text-sm text-gray-900 rounded group hover:bg-gray-300 ${
+                    className={`${ROW_GRID_CLASSES} px-2 py-1 text-sm text-gray-900 rounded group hover:bg-gray-300 ${
                       checkIfCourseOnDay(course) ? "bg-gray-300" : ""
                     }`}
                     onMouseEnter={() => {
@@ -284,7 +285,7 @@ export default function SemesterSummary() {
                       </div>
                     </div>
                     <div
-                      className={`col-span-6 font-semibold truncate cursor-pointer `}
+                      className="min-w-0 font-semibold truncate cursor-pointer md:col-span-6"
                       onClick={() => courseSelector(course)}
                     >
                       {course.shortName}
@@ -301,7 +302,7 @@ export default function SemesterSummary() {
                       )}
                     </div>
 
-                    <div className="col-span-3">
+                    <div className="min-w-0 md:col-span-3">
                       <div className="truncate ">{course.classification}</div>
                     </div>
                     <div className="text-center">
@@ -310,34 +311,35 @@ export default function SemesterSummary() {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="">
-                        {(course.credits / 100).toFixed(2)}
-                      </div>
+                      <div className="">{formatEcts(course.credits / 100)}</div>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className="grid grid-cols-12 gap-4 px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded">
+          <div
+            className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
+          >
             <div className="text-center truncate">Total</div>
 
-            <div className="col-span-6 truncate ">
+            <div className="min-w-0 truncate md:col-span-6">
               {currCourses.length} Courses
             </div>
-            <div className="col-span-3 text-center"></div>
+            <div className="min-w-0 text-center md:col-span-3"></div>
             <div className="text-center">{totalEvents}</div>
+            {/* Five cells, matching the header and the rows. A sixth, empty one
+                used to sit here and wrap onto a phantom second grid row. */}
             <div className="text-center relative">
               <span className={totalCredits > 30 ? "text-red-500" : ""}>
-                {totalCredits.toFixed(2)}
+                {formatEcts(totalCredits)}
               </span>
               {totalCredits > 30 && (
-                <div className=" mb-2  text-gray-500 text-xs rounded py-1 px-2">
+                <div className=" mb-2 break-words text-gray-500 text-xs rounded py-1 px-2">
                   Warning: Exceeds recommended credit limit
                 </div>
               )}
             </div>
-            <div className="text-center"></div>
           </div>
         </div>
       </div>

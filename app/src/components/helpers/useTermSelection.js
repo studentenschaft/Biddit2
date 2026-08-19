@@ -8,6 +8,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 import { termListState } from "../recoil/termListState";
+import { getCurrentSemesterInfo } from "../recoil/curriculumPlanAtom";
 
 /**
  * SIMPLIFIED Custom hook to handle term selection logic
@@ -175,16 +176,10 @@ export function useTermSelection() {
           let latestValidTerm = null;
           let primaryTermShortName = null;
 
-          // Calendar-based current semester: FS = Feb–May, HS = everything else
-          const now = new Date();
-          const month = now.getMonth();
-          const yr = now.getFullYear() % 100;
-          const isHS = month === 0 || month >= 5;
-          const semYear = isHS && month === 0 ? yr - 1 : yr;
-          const calendarSemKey = `${isHS ? "HS" : "FS"}${semYear}`;
-
+          // Prefer calendar-based semester, fall back to API's isCurrent flag
+          const { currentSemKey } = getCurrentSemesterInfo();
           const calendarTerm = termIdList.find(
-            (t) => t.shortName === calendarSemKey
+            (t) => t.shortName === currentSemKey
           );
 
           if (calendarTerm) {
@@ -285,20 +280,52 @@ export function useTermSelection() {
           const allTerms = [...termIdList, ...artificialFutureSemesters];
           const allSortedTerms = sortTerms(allTerms.map((t) => t.shortName));
 
+          // Resolve a reference term's cisId. The dropdown only keeps the 3 most
+          // recent terms (allTerms), but a reference like FS25 for FS26 can be
+          // older and still fetchable — so fall back to the full raw term list.
+          const resolveReferenceCisId = (name) => {
+            const inWindow = allTerms.find((t) => t.shortName === name);
+            if (inWindow?.cisId) return inWindow.cisId;
+            const raw = (cisIdListAtom || []).find(
+              (t) => t.shortName === name
+            );
+            return raw?.id || null;
+          };
+
           const builtTermListObject = allSortedTerms
             .map((shortName) => {
               const termData = allTerms.find((t) => t.shortName === shortName);
               if (!termData) return null;
 
-              // Find the current semester as marked by the API
-              const currentSemester =
-                currentTerms.length > 0 ? currentTerms[0].shortName : null;
+              // Use calendar-based current semester (not the API's isCurrent flag)
+              // The API may mark a future term as "current" before courses are published
+              const calendarCurrent = latestValidTerm || primaryTermShortName;
 
-              // Determine if this is a future semester (newer than current semester)
-              const isFuture = currentSemester
+              const isFuture = calendarCurrent
                 ? allSortedTerms.indexOf(shortName) >
-                  allSortedTerms.indexOf(currentSemester)
+                  allSortedTerms.indexOf(calendarCurrent)
                 : false;
+
+              // Same-season previous year as reference (e.g. HS26 -> HS25).
+              // Computed for every semester (not only future ones) so the course
+              // list can preview last year's catalog whenever a term isn't yet
+              // published or its own catalog errors — including the current term.
+              let referenceSemester = termData.referenceSemester || null;
+              let referenceCisId = null;
+              if (!referenceSemester) {
+                const season = shortName.slice(0, 2);
+                const year = parseInt(shortName.slice(2), 10);
+                if (!isNaN(year) && year > 0) {
+                  const refName = `${season}${(year - 1).toString().padStart(2, "0")}`;
+                  const cisId = resolveReferenceCisId(refName);
+                  if (cisId) {
+                    referenceSemester = refName;
+                    referenceCisId = cisId;
+                  }
+                }
+              } else {
+                referenceCisId = resolveReferenceCisId(referenceSemester);
+              }
 
               // isProjected = artificially generated (not from API)
               // isFuture = newer than current semester (could be real API data or artificial)
@@ -309,6 +336,8 @@ export function useTermSelection() {
                 isCurrent: termData.isCurrent || false,
                 isProjected: termData.isFuture || false, // Only artificial semesters are "projected"
                 isFuture: isFuture, // Any semester newer than current semester
+                referenceSemester,
+                referenceCisId,
               };
             })
             .filter(Boolean);
@@ -334,6 +363,9 @@ export function useTermSelection() {
         }
       })();
     }
+    // Intentionally runs once (guarded by initialSelectionMadeRef); cisIdListAtom
+    // and the Recoil setters are stable for the lifetime of this build.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     authToken,
     termIdList,
