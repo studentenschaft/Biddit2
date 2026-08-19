@@ -3,7 +3,7 @@ import moment from "moment/moment";
 
 // Import unified course data
 import {
-  semesterCoursesSelector,
+  myCoursesSelector,
   selectedSemesterSelector,
 } from "./unifiedCourseDataSelectors";
 
@@ -162,44 +162,9 @@ export const calendarEntriesSelector = selector({
       return [];
     }
 
-    // Try to use unified course data first, fallback to legacy system
-    let currentCourses = [];
-    try {
-      // Get courses from unified system for current semester
-      // Get available courses that have been filtered (includes selected/enrolled flags)
-      const filteredCourses = get(
-        semesterCoursesSelector({
-          semester: semShortName,
-          type: "filtered",
-        }),
-      );
-
-      if (filteredCourses && filteredCourses.length > 0) {
-        // Filter for enrolled or selected courses from unified system
-        currentCourses = filteredCourses.filter(
-          (course) => course.enrolled || course.selected,
-        );
-        console.debug(
-          "CalendarEntriesSelector - Using unified filtered courses:",
-          currentCourses,
-        );
-      } else {
-        throw new Error("No unified courses available, falling back to legacy");
-      }
-    } catch (error) {
-      console.debug(
-        "CalendarEntriesSelector - Falling back to legacy data:",
-        error.message,
-      );
-
-      console.debug(
-        "CalendarEntriesSelector - currentCourses:",
-        currentCourses,
-      );
-    }
-
-    // Use currentCourses as the relevant courses for the calendar
-    const relevantCourses = currentCourses;
+    // The schedule is domain state: enrolled ∪ selected, never the search
+    // panel's `filtered` view state (docs/BUG-calendar-entries-filter-leak.md).
+    const relevantCourses = get(myCoursesSelector(semShortName));
 
     // Build collision groups using Union-Find algorithm
     const { entryMetadata } = buildCollisionGroups(relevantCourses);

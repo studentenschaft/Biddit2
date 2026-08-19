@@ -62,6 +62,10 @@ vi.mock("../../recoil/unifiedCourseDataSelectors", async () => {
       key: "test-semesterCourses",
       default: ({ type }) => (type === "enrolled" ? COURSES : []),
     }),
+    myCoursesSelector: atomFamily({
+      key: "test-myCourses",
+      default: COURSES,
+    }),
   };
 });
 

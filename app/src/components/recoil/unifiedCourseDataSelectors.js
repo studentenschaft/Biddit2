@@ -324,6 +324,50 @@ export const semesterCoursesSelector = selectorFamily({
 });
 
 /**
+ * The user's courses for a semester: enrolled ∪ selected, deduped by course
+ * identifier (courseNumber, falling back to id).
+ *
+ * Single source of truth for "my courses" as *domain* state. It is deliberately
+ * independent of the search panel's `filtered` pool, which is view state — a
+ * course must not drop out of the schedule because a filter hides it from the
+ * browsing list (see docs/BUG-calendar-entries-filter-leak.md).
+ *
+ * A course present in both lists appears once and keeps both flags.
+ */
+export const myCoursesSelector = selectorFamily({
+  key: "myCoursesSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const enrolled = get(
+        semesterCoursesSelector({
+          semester: semesterShortName,
+          type: "enrolled",
+        })
+      );
+      const selected = get(
+        semesterCoursesSelector({
+          semester: semesterShortName,
+          type: "selected",
+        })
+      );
+
+      // Both pools already carry correct dual enrolled/selected flags
+      // (each type cross-checks the other id list), so first-wins dedup
+      // by identifier is sufficient.
+      const byIdentifier = new Map();
+      [...enrolled, ...selected].forEach((course) => {
+        const identifier = getCourseIdentifier(course);
+        if (!byIdentifier.has(identifier)) {
+          byIdentifier.set(identifier, course);
+        }
+      });
+
+      return Array.from(byIdentifier.values());
+    },
+});
+
+/**
  * Selector to get the selected course info
  */
 export const selectedCourseInfoSelector = selector({

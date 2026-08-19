@@ -1,11 +1,11 @@
 // import PropTypes from "prop-types";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useRecoilValue } from "recoil";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
 // Import unified selectors
 import {
-  semesterCoursesSelector,
+  myCoursesSelector,
   selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
@@ -63,39 +63,9 @@ export default function SemesterSummary() {
   // Use unified course data system - get selected semester from selector
   const selectedSemesterState = useRecoilValue(selectedSemesterSelector);
 
-  // Get enrolled and selected courses from unified system (full course objects)
-  const enrolledCourses = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "enrolled",
-    })
-  );
-
-  const selectedCourses = useRecoilValue(
-    semesterCoursesSelector({
-      semester: selectedSemesterState,
-      type: "selected",
-    })
-  );
-
-  // Get current courses using unified data
-  const currCourses = useMemo(() => {
-    // Use unified data from the new system
-    if (selectedSemesterState) {
-      // Merge and deduplicate courses
-      const allCourses = [...enrolledCourses, ...selectedCourses];
-      const uniqueCourses = allCourses.filter(
-        (course, index, arr) =>
-          arr.findIndex(
-            (c) => c.id === course.id || c.courseNumber === course.courseNumber
-          ) === index
-      );
-
-      return uniqueCourses;
-    }
-
-    return [];
-  }, [selectedSemesterState, enrolledCourses, selectedCourses]);
+  // The user's courses (enrolled ∪ selected) — same source as the calendar,
+  // so the table and the schedule cannot drift apart.
+  const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
