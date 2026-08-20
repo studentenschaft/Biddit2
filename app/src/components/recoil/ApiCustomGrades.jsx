@@ -33,7 +33,7 @@ export async function updateCustomGrade(token, courseNumber, grade) {
 export async function deleteCustomGrade(token, courseNumber) {
   try {
     const response = await apiClient.delete(
-      `${API_URL}/${courseNumber}`,
+      `${API_URL}/${encodeURIComponent(courseNumber)}`,
       token
     );
     return response.data;
