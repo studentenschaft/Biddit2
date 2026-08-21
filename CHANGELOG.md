@@ -63,6 +63,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Curriculum Map: category rows honour per-category **minimum** credits.
+  Previously only a parent's total was checked, so *Core Studies* showed
+  55/54 as complete even though *Basic Courses* sat at 9 against a minimum of
+  12. Leaf headers now show the full requirement range (`9 / 12–27 ECTS`),
+  credits earned beyond a category's maximum no longer count toward its parent
+  and are surfaced as a `+N` badge, and categories with no requirement at all
+  are no longer permanently green.
 - Mobile: calendar day columns regain usable width (compact toolbar replaces
   the flanking nav columns below 768px, gutters reduced).
 - Mobile: Review and About dialogs fit the screen (responsive widths,

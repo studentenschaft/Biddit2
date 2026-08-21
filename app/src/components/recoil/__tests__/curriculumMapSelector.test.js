@@ -10,7 +10,14 @@ import {
   _testHelpers,
   normalizeCourseCredits,
   findCreditsInAnySemester,
+  formatCreditRange,
+  getRequirementThreshold,
+  getFillPercentage,
 } from '../curriculumMapSelector';
+import MBI from '../../testing/mockData/Scorecard_MBI.json';
+import BBWL from '../../testing/mockData/Scorecard_BBWL.json';
+import BIA from '../../testing/mockData/Scorecard_BIA.json';
+import BSC from '../../testing/mockData/Scorecard_BSC.json';
 
 const {
   normalizeSemesterKey,
@@ -18,6 +25,10 @@ const {
   extractCategoryHierarchy,
   extractCoursesFromHierarchy,
   flattenCategoriesForGrid,
+  buildCategoryHierarchy,
+  meetsRequirement,
+  fallsShort,
+  summarizeLeafCredits,
   matchClassificationToCategory,
   estimateCompletion,
   computeSemesterCreditStats,
@@ -464,5 +475,245 @@ describe('computeSemesterCreditStats', () => {
     expect(
       computeSemesterCreditStats([{ status: 'planned' }]).plannedCredits,
     ).toBe(0);
+  });
+});
+
+// ── Credit requirements: minimums, caps and parent roll-up ────────────────
+
+describe('meetsRequirement', () => {
+  it('never treats a category with no requirement as complete', () => {
+    // Guards the `total >= 0` bug: min 0 / max 0 categories (e.g. "Languages")
+    // used to be permanently green.
+    expect(meetsRequirement({ minCredits: 0, maxCredits: 0, earnedCredits: 0 }))
+      .toBe(false);
+  });
+
+  it('uses the minimum as the threshold when one is set', () => {
+    const cat = { minCredits: 12, maxCredits: 27 };
+    expect(meetsRequirement({ ...cat, earnedCredits: 9 })).toBe(false);
+    expect(meetsRequirement({ ...cat, earnedCredits: 12 })).toBe(true);
+  });
+
+  it('falls back to the maximum when there is no minimum', () => {
+    expect(meetsRequirement({ minCredits: 0, maxCredits: 9, earnedCredits: 9 }))
+      .toBe(true);
+  });
+});
+
+describe('buildCategoryHierarchy', () => {
+  // Mirrors the MacFin case from the bug report: the parent's total clears its
+  // own target only because one child is over its ceiling while another is
+  // short of its floor.
+  const macFinLeaves = [
+    { id: 'c', name: 'Compulsory Subjects', path: 'CS/Compulsory', topLevelParentId: 'core',
+      minCredits: 15, maxCredits: 15, earnedCredits: 15, plannedCredits: 0 },
+    { id: 'b', name: 'Basic Courses', path: 'CS/Basic', topLevelParentId: 'core',
+      minCredits: 12, maxCredits: 27, earnedCredits: 9, plannedCredits: 0 },
+    { id: 'a', name: 'Advanced Courses', path: 'CS/Advanced', topLevelParentId: 'core',
+      minCredits: 12, maxCredits: 24, earnedCredits: 21, plannedCredits: 0 },
+    { id: 'e', name: 'Electives', path: 'CS/Electives', topLevelParentId: 'core',
+      minCredits: 0, maxCredits: 9, earnedCredits: 10, plannedCredits: 0 },
+  ];
+  // Wrapped in a program root, as the real scorecard is: buildCategoryHierarchy
+  // skips a lone top-level wrapper and groups by its children.
+  const program = [{
+    id: 'prog', name: 'MacFin', path: 'MacFin',
+    minCredits: 90, maxCredits: 90,
+    children: [{
+      id: 'core', name: 'Core Studies', path: 'CS',
+      minCredits: 54, maxCredits: 54, children: [{ id: 'x' }],
+    }],
+  }];
+
+  it('is not complete when a child is below its minimum', () => {
+    const [core] = buildCategoryHierarchy(program, macFinLeaves);
+
+    // 15 + 9 + 21 + min(10, 9) — the elective overshoot does not count.
+    expect(core.countedTotal).toBe(54);
+    expect(core.excessCredits).toBe(1);
+    expect(core.isComplete).toBe(false);
+  });
+
+  it('is complete once the short child reaches its minimum', () => {
+    const leaves = macFinLeaves.map((l) =>
+      l.id === 'b' ? { ...l, earnedCredits: 12 } : l,
+    );
+    const [core] = buildCategoryHierarchy(program, leaves);
+
+    expect(core.isComplete).toBe(true);
+    expect(core.countedTotal).toBe(54);
+    // 58 credits held against a 54-credit parent: 1 lost to the elective
+    // ceiling, 3 more to the parent's. Excess is reported, never a blocker.
+    expect(core.excessCredits).toBe(4);
+  });
+
+  it('is not held back by children that have no minimum', () => {
+    // Two shapes that must never block a parent, both from the real BBWL /
+    // BIA / BSC scorecards:
+    //   "Skills"    min 0 / max 12 — a ceiling, not an obligation
+    //   "Languages" min 0 / max  0 — no requirement at all, so it can never
+    //                                itself be "complete"
+    // Gating on every-child-complete would keep Contextual Studies grey
+    // forever for three of the four shipped programs.
+    const leaves = [
+      { id: 'aoc', name: 'Area of Concentration', path: 'CX/AoC', topLevelParentId: 'ctx',
+        minCredits: 12, maxCredits: 24, earnedCredits: 20, plannedCredits: 0 },
+      { id: 'sk', name: 'Skills', path: 'CX/Skills', topLevelParentId: 'ctx',
+        minCredits: 0, maxCredits: 12, earnedCredits: 4, plannedCredits: 0 },
+      { id: 'lang', name: 'Languages', path: 'CX/Languages', topLevelParentId: 'ctx',
+        minCredits: 0, maxCredits: 0, earnedCredits: 4, plannedCredits: 0 },
+    ];
+    const bbwl = [{
+      id: 'prog', name: 'BBWL', path: 'BBWL',
+      minCredits: 120, maxCredits: 120,
+      children: [{
+        id: 'ctx', name: 'Contextual Studies', path: 'CX',
+        minCredits: 24, maxCredits: 24, children: [{ id: 'x' }],
+      }],
+    }];
+
+    const [ctx] = buildCategoryHierarchy(bbwl, leaves);
+
+    // Capped at Contextual Studies' own ceiling of 24; the surplus 4 is
+    // reported rather than inflating the total.
+    expect(ctx.countedTotal).toBe(24);
+    expect(ctx.excessCredits).toBe(4);
+    expect(ctx.isComplete).toBe(true);
+  });
+});
+
+describe('fallsShort', () => {
+  it('is not the negation of meetsRequirement', () => {
+    // A maximum is a ceiling, not an obligation. "Skills" (min 0 / max 12) at 4
+    // is under-filled, so it is not complete — but it is not deficient either,
+    // and must not hold its parent back.
+    const skills = { minCredits: 0, maxCredits: 12, earnedCredits: 4 };
+
+    expect(meetsRequirement(skills)).toBe(false);
+    expect(fallsShort(skills)).toBe(false);
+  });
+
+  it('flags only an unmet explicit minimum', () => {
+    expect(fallsShort({ minCredits: 12, maxCredits: 27, earnedCredits: 9 })).toBe(true);
+    expect(fallsShort({ minCredits: 12, maxCredits: 27, earnedCredits: 12 })).toBe(false);
+    expect(fallsShort({ minCredits: 0, maxCredits: 0, earnedCredits: 0 })).toBe(false);
+  });
+});
+
+describe('summarizeLeafCredits', () => {
+  it('caps each leaf at its own ceiling and reports the surplus', () => {
+    const { countedTotal, excessCredits } = summarizeLeafCredits([
+      { minCredits: 0, maxCredits: 9, earnedCredits: 10 },
+      { minCredits: 12, maxCredits: 24, earnedCredits: 21 },
+    ]);
+    expect(countedTotal).toBe(30);
+    expect(excessCredits).toBe(1);
+  });
+
+  it('treats a zero maximum as no ceiling', () => {
+    // "Languages" is min 0 / max 0 and its credits still count toward the
+    // parent — the university's own roll-up includes them.
+    const { countedTotal, excessCredits } = summarizeLeafCredits([
+      { minCredits: 0, maxCredits: 0, earnedCredits: 4 },
+    ]);
+    expect(countedTotal).toBe(4);
+    expect(excessCredits).toBe(0);
+  });
+
+  it('counts planned credits alongside earned ones', () => {
+    const { countedTotal } = summarizeLeafCredits([
+      { minCredits: 6, maxCredits: 12, earnedCredits: 3, plannedCredits: 4 },
+    ]);
+    expect(countedTotal).toBe(7);
+  });
+
+  it('is empty-safe', () => {
+    expect(summarizeLeafCredits([])).toEqual({
+      countedTotal: 0,
+      excessCredits: 0,
+      allLeavesMeetRequirement: true,
+    });
+  });
+});
+
+describe('formatCreditRange', () => {
+  it('renders a true range with an en dash', () => {
+    expect(formatCreditRange({ minCredits: 12, maxCredits: 27 })).toBe('12–27');
+  });
+
+  it('collapses to a single figure when the bounds coincide', () => {
+    expect(formatCreditRange({ minCredits: 15, maxCredits: 15 })).toBe('15');
+  });
+
+  it('collapses to the effective threshold when only one bound is set', () => {
+    expect(formatCreditRange({ minCredits: 0, maxCredits: 12 })).toBe('12');
+    expect(formatCreditRange({ minCredits: 12, maxCredits: 0 })).toBe('12');
+  });
+
+  it('renders nothing when there is no requirement', () => {
+    expect(formatCreditRange({ minCredits: 0, maxCredits: 0 })).toBe('');
+    expect(formatCreditRange()).toBe('');
+  });
+});
+
+describe('getFillPercentage', () => {
+  it('is denominated by the requirement threshold, not the ceiling', () => {
+    // min 12 / max 24 at 12 is complete, so the bar must read full even though
+    // the label still advertises a ceiling of 24.
+    expect(getFillPercentage(12, { minCredits: 12, maxCredits: 24 })).toBe(100);
+    expect(getFillPercentage(9, { minCredits: 12, maxCredits: 27 })).toBe(75);
+  });
+
+  it('clamps and stays finite without a requirement', () => {
+    expect(getFillPercentage(30, { minCredits: 12, maxCredits: 24 })).toBe(100);
+    expect(getFillPercentage(4, { minCredits: 0, maxCredits: 0 })).toBe(0);
+  });
+});
+
+describe('getRequirementThreshold', () => {
+  it('prefers the minimum, falling back to the maximum', () => {
+    expect(getRequirementThreshold({ minCredits: 12, maxCredits: 27 })).toBe(12);
+    expect(getRequirementThreshold({ minCredits: 0, maxCredits: 12 })).toBe(12);
+    expect(getRequirementThreshold({ minCredits: 0, maxCredits: 0 })).toBe(0);
+    expect(getRequirementThreshold()).toBe(0);
+  });
+});
+
+describe('roll-up against real scorecards', () => {
+  const findNode = (items, name) => {
+    for (const it of items || []) {
+      if (it.description === name) return it;
+      const found = findNode(it.items, name);
+      if (found) return found;
+    }
+    return null;
+  };
+
+  it.each([
+    ['MBI', MBI],
+    ['BBWL', BBWL],
+    ['BIA', BIA],
+    ['BSC', BSC],
+  ])('reproduces the university’s own totals for %s', (_name, raw) => {
+    const categories = extractCategoryHierarchy(raw.items);
+    const hierarchy = buildCategoryHierarchy(
+      categories,
+      flattenCategoriesForGrid(categories),
+    );
+
+    expect(hierarchy.length).toBeGreaterThan(0);
+
+    for (const parent of hierarchy) {
+      const apiSum = findNode(raw.items, parent.name)?.sumOfCredits;
+      // Some nodes ship without a total (BIA's Contextual Studies); we derive
+      // one from the leaves, so there is nothing to compare against.
+      if (apiSum == null) continue;
+
+      // No shipped scorecard has a category over its ceiling, so our roll-up
+      // must land on the university's number exactly. If capping ever starts
+      // discarding credits it should not, this is what catches it.
+      expect(parent.countedTotal).toBe(parseFloat(apiSum));
+      expect(parent.excessCredits).toBe(0);
+    }
   });
 });

@@ -91,7 +91,8 @@ vi.mock("../../helpers/useOpenCourseDetails", () => ({
   useOpenCourseDetails: () => vi.fn(),
 }));
 
-import SemesterSummary, { formatEcts } from "../SemesterSummary";
+import SemesterSummary from "../SemesterSummary";
+import { formatEcts } from "../../helpers/formatEcts";
 
 const renderSummary = () =>
   render(

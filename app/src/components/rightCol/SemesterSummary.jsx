@@ -14,6 +14,7 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
+import { formatEcts } from "../helpers/formatEcts";
 
 import { Heatmap } from "./Heatmap";
 
@@ -34,22 +35,6 @@ import { Heatmap } from "./Heatmap";
 const ROW_GRID_CLASSES =
   "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 md:grid-cols-12 md:gap-4";
 
-/**
- * ECTS the way people write them: 6, not 6.00 — while 7.5 stays 7.5.
- *
- * Credits arrive from the course API in hundredths (600 = 6 ECTS) and are not
- * reliably numbers, hence the Number() coercion. The toFixed(2) round-trip is
- * only there to shed the float noise a running sum of hundredths picks up
- * (30.000000000000004), never to round a genuine fraction away.
- */
-// Exported for its own tests; the same rule is disabled in
-// CurriculumPlanContext.jsx for the same reason.
-// eslint-disable-next-line react-refresh/only-export-components
-export function formatEcts(value) {
-  const credits = Number(value);
-  if (!Number.isFinite(credits)) return "0";
-  return String(Number(credits.toFixed(2)));
-}
 
 export default function SemesterSummary() {
   const openCourseDetails = useOpenCourseDetails();
