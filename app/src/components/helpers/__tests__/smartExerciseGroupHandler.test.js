@@ -269,6 +269,41 @@ describe("smartExerciseGroupHandler", () => {
     expect(zeroed).toHaveLength(1);
   });
 
+  // --- Curriculum map placeholders (user-authored, never catalog duplicates) ---
+
+  it("keeps credits on every placeholder that shares a label with another", () => {
+    const courses = [
+      { id: "placeholder-1700000000000-abc123def", name: "Wahlkurs", label: "Wahlkurs", credits: 4, status: "placeholder", isPlaceholder: true },
+      { id: "placeholder-1700000000001-xyz789ghi", name: "Wahlkurs", label: "Wahlkurs", credits: 4, status: "placeholder", isPlaceholder: true },
+      { id: "placeholder-1700000000002-jkl456mno", name: "Wahlkurs", label: "Wahlkurs", credits: 4, status: "placeholder", isPlaceholder: true },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.map(c => c.credits)).toEqual([4, 4, 4]);
+  });
+
+  it("keeps credits on a placeholder labelled like a real course in the same semester", () => {
+    const courses = [
+      { name: "Advanced Cybersecurity", credits: 400, courseNumber: "7,850,1.00" },
+      { id: "placeholder-1700000000000-abc123def", name: "Advanced Cybersecurity", label: "Advanced Cybersecurity", credits: 400, status: "placeholder", isPlaceholder: true },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.map(c => c.credits)).toEqual([400, 400]);
+  });
+
+  it("still zeroes real exercise groups when placeholders sit alongside them", () => {
+    const courses = [
+      { name: "Advanced Cybersecurity", credits: 400, courseNumber: "7,850,1.00" },
+      { id: "placeholder-1700000000000-abc123def", name: "Wahlkurs", label: "Wahlkurs", credits: 400, status: "placeholder", isPlaceholder: true },
+      { name: "Advanced Cybersecurity: Exercises", credits: 400, courseNumber: "7,850,2.00" },
+      { id: "placeholder-1700000000001-xyz789ghi", name: "Wahlkurs", label: "Wahlkurs", credits: 400, status: "placeholder", isPlaceholder: true },
+    ];
+
+    const processed = processExerciseGroupECTS(courses);
+    expect(processed.map(c => c.credits)).toEqual([400, 400, 0, 400]);
+  });
+
   it("does NOT deduplicate same-named courses when identifier falls back to name", () => {
     const courses = [
       { name: "Einführung in das Operations-Management", credits: 400 },

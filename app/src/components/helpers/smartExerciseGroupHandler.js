@@ -89,6 +89,12 @@ export const isLikelySubgroupByNumber = (course, courseGroup) => {
   );
 };
 
+// Curriculum map placeholders are user-authored intent ("TBD elective, 4 ECTS"),
+// not catalog entries. Two placeholders with the same label are deliberately
+// distinct, so they must never be treated as lecture/exercise-group duplicates.
+export const isPlaceholderEntry = (course) =>
+  Boolean(course && (course.isPlaceholder || course.status === 'placeholder'));
+
 const createCourseIdentifier = (course) => {
   return course.id || 
          course.hierarchy || 
@@ -103,7 +109,9 @@ export const processExerciseGroupECTS = (courses) => {
     return courses || [];
   }
   
-  const courseGroups = groupCoursesByBaseName(courses);
+  const courseGroups = groupCoursesByBaseName(
+    courses.filter(course => !isPlaceholderEntry(course))
+  );
   const shouldZeroECTS = new Set();
   
   courseGroups.forEach((courseGroup) => {
@@ -143,7 +151,7 @@ export const processExerciseGroupECTS = (courses) => {
   return courses.map(course => {
     const identifier = createCourseIdentifier(course);
     
-    if (shouldZeroECTS.has(identifier)) {
+    if (!isPlaceholderEntry(course) && shouldZeroECTS.has(identifier)) {
       return { ...course, credits: 0 };
     }
     
