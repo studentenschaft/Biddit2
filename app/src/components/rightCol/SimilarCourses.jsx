@@ -529,14 +529,6 @@ export default function SimilarCourses({ selectedCourse }) {
                                 : "hover:text-green-600"
                             }`}
                             event={course}
-                            onClick={() => {
-                              const updatedSelectedCourses = isSelected(course)
-                                ? selectedCourses.filter(
-                                    (c) => c !== course.courseNumber
-                                  )
-                                : [...selectedCourses, course.courseNumber];
-                              setSelectedCourses(updatedSelectedCourses);
-                            }}
                           />
                         );
                       })()}

@@ -287,17 +287,17 @@ export function useUnifiedCourseData() {
             sanitizedPatch.referenceSemester,
             "PATCH-AUTO-INIT"
           );
-        } else if (
-          patch.referenceSemester !== undefined &&
-          !allowMetadataOverwrite
-        )
-          return {
-            ...prev,
-            semesters: {
-              ...(prev.semesters || {}),
-              [semesterShortName]: merged,
-            },
-          };
+        }
+        // Every auto-init returns here; falling through would merge into
+        // `undefined` and drop `base`.
+        validateReferenceInvariant(semesterShortName, merged);
+        return {
+          ...prev,
+          semesters: {
+            ...(prev.semesters || {}),
+            [semesterShortName]: merged,
+          },
+        };
       }
 
       // Guard metadata unless explicitly allowed

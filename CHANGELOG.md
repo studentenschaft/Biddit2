@@ -63,6 +63,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Transcript: saved courses from past semesters can be removed again. The
+  open-lock button next to a saved course did nothing at all — `LockOpen`
+  called `stopPropagation()` before checking whether it had a course to
+  toggle, so it swallowed the click and the wrapping button never fired. It
+  now only claims the click when it actually owns the toggle.
+- Transcript: "Clear All Saved Courses" no longer answers "No saved courses
+  found to clear" for everyone. It collected its delete list from
+  `studyPlanAtom`, which nothing has written since the study-plan fetch moved
+  to `useStudyPlanDataSimplified`; it now reads the study plans from the
+  server, covering every semester the backend knows about. A failed lookup is
+  reported as a failure instead of as an empty wishlist, and a partial wipe
+  reports `Cleared N of M` rather than announcing a clean sweep.
+- Semesters created from study-plan data are no longer built as partial
+  objects. `patchSemester`'s auto-initialization `return` hung off an
+  `else if`, so an ordinary `{selectedIds}` patch fell through and produced a
+  semester with no `enrolledIds`, `available` or metadata.
+
 - Curriculum Map: category rows honour per-category **minimum** credits.
   Previously only a parent's total was checked, so *Core Studies* showed
   55/54 as complete even though *Basic Courses* sat at 9 against a minimum of

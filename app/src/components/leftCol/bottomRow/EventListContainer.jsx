@@ -330,12 +330,7 @@ export default function EventListContainer({
           {isEnrolled ? (
             <LockClosed clg="w-6 h-6 " event={event} />
           ) : isSelected ? (
-            <LockOpen
-              clg="w-6 h-6 "
-              event={event}
-              selectedCourseIds={data.selectedCourseIds}
-              setSelectedCourseIds={null} // Not needed anymore
-            />
+            <LockOpen clg="w-6 h-6 " event={event} />
           ) : (
             <PlusIcon
               className={`w-6 h-6 ${

@@ -15,7 +15,7 @@ import { calendarEntriesSelector } from "../../recoil/calendarEntriesSelector";
  * LockOpen Component
  * Renders an open lock icon that toggles a course in or out of the user’s study plan
  */
-export default function LockOpen({ clg, event }) {
+function LockOpen({ clg, event }) {
   // Recoil states (NO LOCAL STATE)
   const authToken = useRecoilValue(authTokenState);
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
@@ -79,12 +79,13 @@ export default function LockOpen({ clg, event }) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={(e) => {
-        // The lock owns the toggle: stop the click from also reaching a
-        // parent button that calls addOrRemoveCourse (double removal).
-        e.stopPropagation();
+        // No event: this is a plain icon, so let the wrapping button own the click.
         if (!event) {
           return;
         }
+        // The lock owns the toggle: stop the click from also reaching a
+        // parent button that calls addOrRemoveCourse (double removal).
+        e.stopPropagation();
         // Safety guard: ignore toggles for enrolled (assigned) courses
         if (event.enrolled) {
           return;
@@ -107,3 +108,4 @@ LockOpen.propTypes = {
 };
 
 export { LockOpen };
+export default LockOpen;
