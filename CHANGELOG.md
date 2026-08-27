@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exam dates in Course Details. The "Exam Information" section now shows the
+  central exam date, time, duration and a BYOD badge for the selected course,
+  read from the ingested `public/exams/<SEMESTER>.json`. Courses are joined to
+  the plan on their two-segment root, so an exercise group inherits its parent
+  lecture's exam. Alternative dates are labelled and sorted after the ordinary
+  one; oral exams point at Compass for the individual slot; decentral-only
+  courses say the lecturer schedules them. A missing or unrecognised artifact
+  renders nothing rather than an error, and courses borrowed from a reference
+  semester never show dates at all. Rationale in ADR 0008.
 - Offline exam-schedule ingestion (`npm run ingest:exams`): converts the HSG
   central exam-plan PDF into a validated `app/public/exams/<SEMESTER>.json`.
   Ships `public/exams/HS26.json` — 178 written exams over 15 dates plus the
@@ -70,6 +79,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Course Details no longer crashes on a course without
+  `achievementFormStatus`. The central/decentral line read three fields off it
+  unguarded, so any catalog entry missing the object took the whole panel down.
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to
