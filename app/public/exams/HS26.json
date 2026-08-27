@@ -1,0 +1,2648 @@
+{
+  "schemaVersion": 1,
+  "semester": "HS26",
+  "sourceTermLabel": "Winter 2027",
+  "examPeriod": {
+    "start": "2027-01-18",
+    "end": "2027-02-20"
+  },
+  "oralExamPeriod": {
+    "start": "2027-01-30",
+    "end": "2027-02-20"
+  },
+  "source": {
+    "file": "docs/exams/Prüfungsplan OT Winter 2027.pdf",
+    "publishedAt": "2026-08-18"
+  },
+  "written": [
+    {
+      "id": "OT-2027-01-18-0915-3,200",
+      "date": "2027-01-18",
+      "slot": "09:15",
+      "startIso": "2027-01-18T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,200"
+      ],
+      "title": "Mikroökonomik II"
+    },
+    {
+      "id": "OT-2027-01-18-0915-3,202",
+      "date": "2027-01-18",
+      "slot": "09:15",
+      "startIso": "2027-01-18T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,202"
+      ],
+      "title": "Microeconomics II"
+    },
+    {
+      "id": "OT-2027-01-18-1515-1,908",
+      "date": "2027-01-18",
+      "slot": "15:15",
+      "startIso": "2027-01-18T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,908"
+      ],
+      "title": "Linear Algebra"
+    },
+    {
+      "id": "OT-2027-01-18-1515-5,500",
+      "date": "2027-01-18",
+      "slot": "15:15",
+      "startIso": "2027-01-18T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,500"
+      ],
+      "title": "Aktienrecht"
+    },
+    {
+      "id": "OT-2027-01-18-1515-7,116",
+      "date": "2027-01-18",
+      "slot": "15:15",
+      "startIso": "2027-01-18T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,116"
+      ],
+      "title": "Digital Auditing"
+    },
+    {
+      "id": "OT-2027-01-18-1515-7,254",
+      "date": "2027-01-18",
+      "slot": "15:15",
+      "startIso": "2027-01-18T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,254"
+      ],
+      "title": "Adv. Macro II: Asset Prices, Fluctuations + Unempl."
+    },
+    {
+      "id": "OT-2027-01-18-1515-7,400",
+      "date": "2027-01-18",
+      "slot": "15:15",
+      "startIso": "2027-01-18T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,400"
+      ],
+      "title": "Kolloquium Öffentliches Recht"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,805",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,805"
+      ],
+      "title": "German A2"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,811",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,811"
+      ],
+      "title": "Englisch C1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,814",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,814"
+      ],
+      "title": "Englisch C1 (English for Law)"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,834",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,834"
+      ],
+      "title": "Italienisch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,842",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,842"
+      ],
+      "title": "Spanisch B2"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,846",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,846"
+      ],
+      "title": "Spanisch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,847",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,847"
+      ],
+      "title": "Spanish B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,852",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,852"
+      ],
+      "title": "Portugiesisch A2"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,863",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,863"
+      ],
+      "title": "Chinese A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,872",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,872"
+      ],
+      "title": "Japanisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,873",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,873"
+      ],
+      "title": "Japanese A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,882",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,882"
+      ],
+      "title": "Russisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,883",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "2,883"
+      ],
+      "title": "Russian A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-2,892",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "2,892"
+      ],
+      "title": "Arabisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,802|4,802",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,802",
+        "4,802"
+      ],
+      "title": "Deutsch C1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,802|4,802",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,802",
+        "4,802"
+      ],
+      "title": "Deutsch C1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,804|4,804",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,804",
+        "4,804"
+      ],
+      "title": "Deutsch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,804|4,804",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,804",
+        "4,804"
+      ],
+      "title": "Deutsch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,805|4,805",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,805",
+        "4,805"
+      ],
+      "title": "Deutsch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,814|4,814",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,814",
+        "4,814"
+      ],
+      "title": "Englisch C1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,814|4,814",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,814",
+        "4,814"
+      ],
+      "title": "Englisch C1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,815",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,815"
+      ],
+      "title": "Englisch C1 (English for Law)"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,824|4,824",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,824",
+        "4,824"
+      ],
+      "title": "Französisch C1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,826|4,826",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,826",
+        "4,826"
+      ],
+      "title": "Französisch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,826|4,826",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,826",
+        "4,826"
+      ],
+      "title": "Französisch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,827|4,827",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,827",
+        "4,827"
+      ],
+      "title": "French B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,834",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,834"
+      ],
+      "title": "Italienisch B2"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,844|4,844",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,844",
+        "4,844"
+      ],
+      "title": "Spanisch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,844|4,844",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,844",
+        "4,844"
+      ],
+      "title": "Spanisch B2"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,854",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,854"
+      ],
+      "title": "Portugiesisch A2"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,864|4,864",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,864",
+        "4,864"
+      ],
+      "title": "Chinesisch A1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,864|4,864",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,864",
+        "4,864"
+      ],
+      "title": "Chinesisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,865|4,865",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,865",
+        "4,865"
+      ],
+      "title": "Chinese A1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,865|4,865",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,865",
+        "4,865"
+      ],
+      "title": "Chinese A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,874|4,872",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,874",
+        "4,872"
+      ],
+      "title": "Japanisch A1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,874|4,872",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,874",
+        "4,872"
+      ],
+      "title": "Japanisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-3,884|4,884",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,884",
+        "4,884"
+      ],
+      "title": "Russisch A1"
+    },
+    {
+      "id": "OT-2027-01-19-0915-3,884|4,884",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,884",
+        "4,884"
+      ],
+      "title": "Russisch A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,836",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,836"
+      ],
+      "title": "Italienisch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,846",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,846"
+      ],
+      "title": "Spanisch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,847",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,847"
+      ],
+      "title": "Spanish B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,852",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,852"
+      ],
+      "title": "Portugiesisch B1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,885",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,885"
+      ],
+      "title": "Russian A1"
+    },
+    {
+      "id": "AT-2027-01-19-0915-4,892",
+      "date": "2027-01-19",
+      "slot": "09:15",
+      "startIso": "2027-01-19T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,892"
+      ],
+      "title": "Arabisch A1"
+    },
+    {
+      "id": "OT-2027-01-19-1515-3,900",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,900"
+      ],
+      "title": "Entwurf von Softwaresystemen"
+    },
+    {
+      "id": "OT-2027-01-19-1515-5,123",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 60,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,123"
+      ],
+      "title": "Stress und Resilienz in Hochleistungskontexten"
+    },
+    {
+      "id": "OT-2027-01-19-1515-5,300",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "5,300"
+      ],
+      "title": "International Law"
+    },
+    {
+      "id": "OT-2027-01-19-1515-7,354",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,354"
+      ],
+      "title": "Data Analytics and Causal Inference"
+    },
+    {
+      "id": "OT-2027-01-19-1515-7,418",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,418"
+      ],
+      "title": "Arbeitsrecht I"
+    },
+    {
+      "id": "OT-2027-01-19-1515-7,850",
+      "date": "2027-01-19",
+      "slot": "15:15",
+      "startIso": "2027-01-19T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,850"
+      ],
+      "title": "Advanced Cybersecurity"
+    },
+    {
+      "id": "OT-2027-01-20-0915-1,170",
+      "date": "2027-01-20",
+      "slot": "09:15",
+      "startIso": "2027-01-20T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,170"
+      ],
+      "title": "Rechtswissenschaft I A"
+    },
+    {
+      "id": "OT-2027-01-20-0915-1,172",
+      "date": "2027-01-20",
+      "slot": "09:15",
+      "startIso": "2027-01-20T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,172"
+      ],
+      "title": "Law I A"
+    },
+    {
+      "id": "OT-2027-01-20-1515-3,432",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,432"
+      ],
+      "title": "Unternehmensrecht"
+    },
+    {
+      "id": "OT-2027-01-20-1515-7,100",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,100"
+      ],
+      "title": "Management Accounting"
+    },
+    {
+      "id": "OT-2027-01-20-1515-7,102",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,102"
+      ],
+      "title": "Management Accounting"
+    },
+    {
+      "id": "OT-2027-01-20-1515-7,202",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,202"
+      ],
+      "title": "International Management (SIM)"
+    },
+    {
+      "id": "OT-2027-01-20-1515-7,221",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,221"
+      ],
+      "title": "Finance and Management Accounting I"
+    },
+    {
+      "id": "OT-2027-01-20-1515-7,474",
+      "date": "2027-01-20",
+      "slot": "15:15",
+      "startIso": "2027-01-20T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,474"
+      ],
+      "title": "The International Legal Order"
+    },
+    {
+      "id": "OT-2027-01-21-0915-3,120",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,120"
+      ],
+      "title": "Methoden: Statistik"
+    },
+    {
+      "id": "OT-2027-01-21-0915-3,220",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,220"
+      ],
+      "title": "Data Analytics I: Statistik (VWL)"
+    },
+    {
+      "id": "OT-2027-01-21-0915-3,222",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,222"
+      ],
+      "title": "Data Analytics I: Statistics (Economics)"
+    },
+    {
+      "id": "OT-2027-01-21-0915-3,426",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,426"
+      ],
+      "title": "Strafrecht BT"
+    },
+    {
+      "id": "OT-2027-01-21-0915-3,502",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,502"
+      ],
+      "title": "Strafrecht AT & BT"
+    },
+    {
+      "id": "AT-2027-01-21-0915-4,120",
+      "date": "2027-01-21",
+      "slot": "09:15",
+      "startIso": "2027-01-21T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,120"
+      ],
+      "title": "Methods: Statistics"
+    },
+    {
+      "id": "OT-2027-01-21-1515-1,900",
+      "date": "2027-01-21",
+      "slot": "15:15",
+      "startIso": "2027-01-21T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,900"
+      ],
+      "title": "Grundlagen der Informatik"
+    },
+    {
+      "id": "OT-2027-01-21-1515-3,770",
+      "date": "2027-01-21",
+      "slot": "15:15",
+      "startIso": "2027-01-21T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,770"
+      ],
+      "title": "GK./Found. Crs.: How Media + Tech. Shape Our World"
+    },
+    {
+      "id": "OT-2027-01-21-1515-7,000",
+      "date": "2027-01-21",
+      "slot": "15:15",
+      "startIso": "2027-01-21T15:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,000"
+      ],
+      "title": "Grundlagen Business Innovation"
+    },
+    {
+      "id": "OT-2027-01-21-1515-7,404",
+      "date": "2027-01-21",
+      "slot": "15:15",
+      "startIso": "2027-01-21T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,404"
+      ],
+      "title": "Methodenlehre"
+    },
+    {
+      "id": "OT-2027-01-21-1515-7,852",
+      "date": "2027-01-21",
+      "slot": "15:15",
+      "startIso": "2027-01-21T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,852"
+      ],
+      "title": "User-Centred Design"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,800",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,800"
+      ],
+      "title": "Deutsch C2"
+    },
+    {
+      "id": "AT-2027-01-22-0915-3,810|4,810",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,810",
+        "4,810"
+      ],
+      "title": "Englisch C2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,810|4,810",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,810",
+        "4,810"
+      ],
+      "title": "Englisch C2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,811|4,811",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,811",
+        "4,811"
+      ],
+      "title": "Englisch C2 (Lawyers)"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,842|4,842",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,842",
+        "4,842"
+      ],
+      "title": "Spanisch C1"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,851",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,851"
+      ],
+      "title": "Portuguese B2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,862",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,862"
+      ],
+      "title": "Chinesisch A2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,872",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,872"
+      ],
+      "title": "Japanisch A2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,882",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,882"
+      ],
+      "title": "Russisch A2"
+    },
+    {
+      "id": "OT-2027-01-22-0915-3,892",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,892"
+      ],
+      "title": "Arabisch A2"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,830",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,830"
+      ],
+      "title": "Italienisch C1"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,863",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,863"
+      ],
+      "title": "Chinese A2"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,866",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,866"
+      ],
+      "title": "Chinese B1"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,874",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,874"
+      ],
+      "title": "Japanisch B1"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,883",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,883"
+      ],
+      "title": "Russian A2"
+    },
+    {
+      "id": "AT-2027-01-22-0915-4,886",
+      "date": "2027-01-22",
+      "slot": "09:15",
+      "startIso": "2027-01-22T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,886"
+      ],
+      "title": "Russisch B1"
+    },
+    {
+      "id": "OT-2027-01-22-1515-3,420",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,420"
+      ],
+      "title": "Öffentliches Recht - Grundrechte"
+    },
+    {
+      "id": "OT-2027-01-22-1515-3,902",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,902"
+      ],
+      "title": "Distributed Systems"
+    },
+    {
+      "id": "OT-2027-01-22-1515-5,124",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "5,124"
+      ],
+      "title": "Digital Transformation Strategy"
+    },
+    {
+      "id": "OT-2027-01-22-1515-5,267",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,267"
+      ],
+      "title": "Ökonomie des Glücks"
+    },
+    {
+      "id": "OT-2027-01-22-1515-7,204",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,204"
+      ],
+      "title": "Strategic Leadership (SIM)"
+    },
+    {
+      "id": "OT-2027-01-22-1515-7,223",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,223"
+      ],
+      "title": "Leadership"
+    },
+    {
+      "id": "OT-2027-01-22-1515-7,256",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,256"
+      ],
+      "title": "Adv. Micro II: Game Theory and Information Econ."
+    },
+    {
+      "id": "OT-2027-01-22-1515-7,700",
+      "date": "2027-01-22",
+      "slot": "15:15",
+      "startIso": "2027-01-22T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,700"
+      ],
+      "title": "Recht/Law: Rechtsmedizin"
+    },
+    {
+      "id": "OT-2027-01-25-0915-3,145",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,145"
+      ],
+      "title": "Business and Tax Law"
+    },
+    {
+      "id": "AT-2027-01-25-0915-4,145",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,145"
+      ],
+      "title": "Wirtschafts- und Steuerrecht"
+    },
+    {
+      "id": "AT-2027-01-25-0915-5,402|6,402",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,402",
+        "6,402"
+      ],
+      "title": "Steuerrecht"
+    },
+    {
+      "id": "OT-2027-01-25-0915-5,402|6,402",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,402",
+        "6,402"
+      ],
+      "title": "Steuerrecht"
+    },
+    {
+      "id": "AT-2027-01-25-0915-7,408|8,417",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,408",
+        "8,417"
+      ],
+      "title": "Internationales Privat- und Zivilverfahrensrecht"
+    },
+    {
+      "id": "OT-2027-01-25-0915-7,408|8,417",
+      "date": "2027-01-25",
+      "slot": "09:15",
+      "startIso": "2027-01-25T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,408",
+        "8,417"
+      ],
+      "title": "Internationales Privat- und Zivilverfahrensrecht"
+    },
+    {
+      "id": "OT-2027-01-25-1515-3,232",
+      "date": "2027-01-25",
+      "slot": "15:15",
+      "startIso": "2027-01-25T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,232"
+      ],
+      "title": "Mathematical Tools for Economists"
+    },
+    {
+      "id": "OT-2027-01-25-1515-7,170",
+      "date": "2027-01-25",
+      "slot": "15:15",
+      "startIso": "2027-01-25T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,170"
+      ],
+      "title": "Impact Investing"
+    },
+    {
+      "id": "OT-2027-01-25-1515-7,220",
+      "date": "2027-01-25",
+      "slot": "15:15",
+      "startIso": "2027-01-25T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,220"
+      ],
+      "title": "Strategy I"
+    },
+    {
+      "id": "OT-2027-01-25-1515-7,854",
+      "date": "2027-01-25",
+      "slot": "15:15",
+      "startIso": "2027-01-25T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,854"
+      ],
+      "title": "Machine Learning"
+    },
+    {
+      "id": "OT-2027-01-26-0915-1,100",
+      "date": "2027-01-26",
+      "slot": "09:15",
+      "startIso": "2027-01-26T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,100"
+      ],
+      "title": "Betriebswirtschaftslehre A"
+    },
+    {
+      "id": "OT-2027-01-26-0915-1,102",
+      "date": "2027-01-26",
+      "slot": "09:15",
+      "startIso": "2027-01-26T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,102"
+      ],
+      "title": "Business Administration A"
+    },
+    {
+      "id": "OT-2027-01-26-1515-1,902",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,902"
+      ],
+      "title": "Introduction to Programming"
+    },
+    {
+      "id": "OT-2027-01-26-1515-3,306",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,306"
+      ],
+      "title": "Quantitative Methoden"
+    },
+    {
+      "id": "OT-2027-01-26-1515-3,307",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,307"
+      ],
+      "title": "Quantitative Methods"
+    },
+    {
+      "id": "OT-2027-01-26-1515-3,904",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,904"
+      ],
+      "title": "Datenbanken"
+    },
+    {
+      "id": "AT-2027-01-26-1515-5,133|6,135",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "5,133",
+        "6,135"
+      ],
+      "title": "International Management"
+    },
+    {
+      "id": "OT-2027-01-26-1515-5,133|6,135",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "5,133",
+        "6,135"
+      ],
+      "title": "International Management"
+    },
+    {
+      "id": "AT-2027-01-26-1515-5,417|6,417",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,417",
+        "6,417"
+      ],
+      "title": "Verfahrensrecht: ZPO"
+    },
+    {
+      "id": "OT-2027-01-26-1515-5,417|6,417",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,417",
+        "6,417"
+      ],
+      "title": "Verfahrensrecht: ZPO"
+    },
+    {
+      "id": "OT-2027-01-26-1515-7,127",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,127"
+      ],
+      "title": "Taxes and Business Strategy"
+    },
+    {
+      "id": "OT-2027-01-26-1515-7,402",
+      "date": "2027-01-26",
+      "slot": "15:15",
+      "startIso": "2027-01-26T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,402"
+      ],
+      "title": "Kolloquium Privatrecht"
+    },
+    {
+      "id": "OT-2027-01-27-0915-5,400",
+      "date": "2027-01-27",
+      "slot": "09:15",
+      "startIso": "2027-01-27T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,400"
+      ],
+      "title": "Verwaltungsrecht: Grundl.und öffentl. Wirtschaftsr."
+    },
+    {
+      "id": "OT-2027-01-27-0915-7,002",
+      "date": "2027-01-27",
+      "slot": "09:15",
+      "startIso": "2027-01-27T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,002"
+      ],
+      "title": "Business Innovation II: Build. and Transf. Business"
+    },
+    {
+      "id": "OT-2027-01-27-0915-7,206",
+      "date": "2027-01-27",
+      "slot": "09:15",
+      "startIso": "2027-01-27T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,206"
+      ],
+      "title": "Financial Management (SIM)"
+    },
+    {
+      "id": "OT-2027-01-27-0915-7,856",
+      "date": "2027-01-27",
+      "slot": "09:15",
+      "startIso": "2027-01-27T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,856"
+      ],
+      "title": "Advanced Software and Systems Engineering"
+    },
+    {
+      "id": "OT-2027-01-27-1515-3,210",
+      "date": "2027-01-27",
+      "slot": "15:15",
+      "startIso": "2027-01-27T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,210"
+      ],
+      "title": "Makroökonomik II"
+    },
+    {
+      "id": "OT-2027-01-27-1515-3,212",
+      "date": "2027-01-27",
+      "slot": "15:15",
+      "startIso": "2027-01-27T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,212"
+      ],
+      "title": "Macroeconomics II"
+    },
+    {
+      "id": "OT-2027-01-28-0915-1,126",
+      "date": "2027-01-28",
+      "slot": "09:15",
+      "startIso": "2027-01-28T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,126"
+      ],
+      "title": "Volkswirtschaftslehre A"
+    },
+    {
+      "id": "OT-2027-01-28-0915-1,128",
+      "date": "2027-01-28",
+      "slot": "09:15",
+      "startIso": "2027-01-28T09:15:00+01:00",
+      "durationMin": 180,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,128"
+      ],
+      "title": "Economics A"
+    },
+    {
+      "id": "OT-2027-01-28-1515-1,904",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 60,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,904"
+      ],
+      "title": "Computersysteme"
+    },
+    {
+      "id": "OT-2027-01-28-1515-3,422",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,422"
+      ],
+      "title": "Öffentliches Recht - Staatsorganisationsrecht"
+    },
+    {
+      "id": "OT-2027-01-28-1515-3,906",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,906"
+      ],
+      "title": "Statistik für Data Science"
+    },
+    {
+      "id": "OT-2027-01-28-1515-5,264",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "5,264"
+      ],
+      "title": "Health Economics (Major VWL)"
+    },
+    {
+      "id": "OT-2027-01-28-1515-7,350",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,350"
+      ],
+      "title": "International Politics and Market Economy"
+    },
+    {
+      "id": "OT-2027-01-28-1515-7,481",
+      "date": "2027-01-28",
+      "slot": "15:15",
+      "startIso": "2027-01-28T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,481"
+      ],
+      "title": "European and International Capital Markets Law"
+    },
+    {
+      "id": "OT-2027-01-29-0915-3,304",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,304"
+      ],
+      "title": "Vergleichende Politikwissenschaft"
+    },
+    {
+      "id": "OT-2027-01-29-0915-3,305",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,305"
+      ],
+      "title": "Comparative Politics"
+    },
+    {
+      "id": "OT-2027-01-29-0915-3,402",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,402"
+      ],
+      "title": "ZGB"
+    },
+    {
+      "id": "OT-2027-01-29-0915-3,500",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 150,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,500"
+      ],
+      "title": "ZGB (BLE)"
+    },
+    {
+      "id": "OT-2027-01-29-0915-7,119",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,119"
+      ],
+      "title": "Rechnungslegung nach Obligationenrecht"
+    },
+    {
+      "id": "OT-2027-01-29-0915-7,315",
+      "date": "2027-01-29",
+      "slot": "09:15",
+      "startIso": "2027-01-29T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,315"
+      ],
+      "title": "Theory of Finance"
+    },
+    {
+      "id": "AT-2027-01-29-1515-3,130|4,130",
+      "date": "2027-01-29",
+      "slot": "15:15",
+      "startIso": "2027-01-29T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,130",
+        "4,130"
+      ],
+      "title": "Corporate Finance (BBWL)"
+    },
+    {
+      "id": "OT-2027-01-29-1515-3,130|4,130",
+      "date": "2027-01-29",
+      "slot": "15:15",
+      "startIso": "2027-01-29T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,130",
+        "4,130"
+      ],
+      "title": "Corporate Finance (BBWL)"
+    },
+    {
+      "id": "AT-2027-01-29-1515-7,406|8,433",
+      "date": "2027-01-29",
+      "slot": "15:15",
+      "startIso": "2027-01-29T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,406",
+        "8,433"
+      ],
+      "title": "Schuldbetreibungs- und Konkursrecht"
+    },
+    {
+      "id": "OT-2027-01-29-1515-7,406|8,433",
+      "date": "2027-01-29",
+      "slot": "15:15",
+      "startIso": "2027-01-29T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,406",
+        "8,433"
+      ],
+      "title": "Schuldbetreibungs- und Konkursrecht"
+    },
+    {
+      "id": "OT-2027-02-01-0915-3,105",
+      "date": "2027-02-01",
+      "slot": "09:15",
+      "startIso": "2027-02-01T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,105"
+      ],
+      "title": "Methoden: Empirische Sozialforschung"
+    },
+    {
+      "id": "OT-2027-02-01-0915-3,701",
+      "date": "2027-02-01",
+      "slot": "09:15",
+      "startIso": "2027-02-01T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,701"
+      ],
+      "title": "Recht/Law: Law & Economics Methode I"
+    },
+    {
+      "id": "AT-2027-02-01-0915-4,105",
+      "date": "2027-02-01",
+      "slot": "09:15",
+      "startIso": "2027-02-01T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,105"
+      ],
+      "title": "Methods: Empirical Social Research"
+    },
+    {
+      "id": "OT-2027-02-01-0915-7,230",
+      "date": "2027-02-01",
+      "slot": "09:15",
+      "startIso": "2027-02-01T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,230"
+      ],
+      "title": "Introduction to Machine Learning and Deep Learning"
+    },
+    {
+      "id": "OT-2027-02-01-1515-1,906",
+      "date": "2027-02-01",
+      "slot": "15:15",
+      "startIso": "2027-02-01T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,906"
+      ],
+      "title": "Analysis"
+    },
+    {
+      "id": "OT-2027-02-01-1515-7,858",
+      "date": "2027-02-01",
+      "slot": "15:15",
+      "startIso": "2027-02-01T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,858"
+      ],
+      "title": "Advanced Databases"
+    },
+    {
+      "id": "OT-2027-02-02-0915-1,174",
+      "date": "2027-02-02",
+      "slot": "09:15",
+      "startIso": "2027-02-02T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,174"
+      ],
+      "title": "Rechtswissenschaft II A"
+    },
+    {
+      "id": "OT-2027-02-02-0915-1,200",
+      "date": "2027-02-02",
+      "slot": "09:15",
+      "startIso": "2027-02-02T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,200"
+      ],
+      "title": "Mathematik mit Statistik A"
+    },
+    {
+      "id": "OT-2027-02-02-0915-1,202",
+      "date": "2027-02-02",
+      "slot": "09:15",
+      "startIso": "2027-02-02T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,202"
+      ],
+      "title": "Mathematics with Statistics A"
+    },
+    {
+      "id": "OT-2027-02-02-1515-3,300",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,300"
+      ],
+      "title": "Public Management"
+    },
+    {
+      "id": "OT-2027-02-02-1515-5,422|6,434",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "5,422",
+        "6,434"
+      ],
+      "title": "Integrationsleistung Öffentliches Recht"
+    },
+    {
+      "id": "OT-2027-02-02-1515-7,105",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,105"
+      ],
+      "title": "Corporate Finance"
+    },
+    {
+      "id": "OT-2027-02-02-1515-7,107",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,107"
+      ],
+      "title": "Corporate Finance"
+    },
+    {
+      "id": "OT-2027-02-02-1515-7,371",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,371"
+      ],
+      "title": "Global Governance of Technological Risks"
+    },
+    {
+      "id": "OT-2027-02-02-1515-7,483",
+      "date": "2027-02-02",
+      "slot": "15:15",
+      "startIso": "2027-02-02T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,483"
+      ],
+      "title": "International Criminal Law"
+    },
+    {
+      "id": "OT-2027-02-03-0915-1,910",
+      "date": "2027-02-03",
+      "slot": "09:15",
+      "startIso": "2027-02-03T09:15:00+01:00",
+      "durationMin": 60,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,910"
+      ],
+      "title": "Einführung in die Betriebswirtschaftslehre"
+    },
+    {
+      "id": "OT-2027-02-03-0915-3,125",
+      "date": "2027-02-03",
+      "slot": "09:15",
+      "startIso": "2027-02-03T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,125"
+      ],
+      "title": "Fund. and Meth. of Computer Sci. for Business Stud."
+    },
+    {
+      "id": "AT-2027-02-03-0915-4,125",
+      "date": "2027-02-03",
+      "slot": "09:15",
+      "startIso": "2027-02-03T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,125"
+      ],
+      "title": "Grundl. und Meth. der Inform. für Wirtschaftswiss."
+    },
+    {
+      "id": "OT-2027-02-03-1515-3,700",
+      "date": "2027-02-03",
+      "slot": "15:15",
+      "startIso": "2027-02-03T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,700"
+      ],
+      "title": "Recht/Law: Allgemeine europäische Rechtsgeschichte"
+    },
+    {
+      "id": "OT-2027-02-03-1515-7,310",
+      "date": "2027-02-03",
+      "slot": "15:15",
+      "startIso": "2027-02-03T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,310"
+      ],
+      "title": "Data Analytics I: Predictive Econometrics"
+    },
+    {
+      "id": "OT-2027-02-04-0915-1,180",
+      "date": "2027-02-04",
+      "slot": "09:15",
+      "startIso": "2027-02-04T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "1,180"
+      ],
+      "title": "Politikwissenschaft A"
+    },
+    {
+      "id": "OT-2027-02-04-0915-1,182",
+      "date": "2027-02-04",
+      "slot": "09:15",
+      "startIso": "2027-02-04T09:15:00+01:00",
+      "durationMin": 120,
+      "level": "AJ",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "1,182"
+      ],
+      "title": "Political Science A"
+    },
+    {
+      "id": "OT-2027-02-04-1515-3,771",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,771"
+      ],
+      "title": "GK./Found. Crs.: Wie erkl. Kulturth. die Welt?"
+    },
+    {
+      "id": "OT-2027-02-04-1515-3,920",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,920"
+      ],
+      "title": "Fundamentals: Mathematics (BCS)"
+    },
+    {
+      "id": "OT-2027-02-04-1515-7,015",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,015"
+      ],
+      "title": "Introduction to Business Process Management"
+    },
+    {
+      "id": "OT-2027-02-04-1515-7,126",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,126"
+      ],
+      "title": "Applied Data Analysis for Business"
+    },
+    {
+      "id": "OT-2027-02-04-1515-7,130",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 120,
+      "level": "MA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "7,130"
+      ],
+      "title": "Internationales Unternehmenssteuerrecht"
+    },
+    {
+      "id": "OT-2027-02-04-1515-7,489",
+      "date": "2027-02-04",
+      "slot": "15:15",
+      "startIso": "2027-02-04T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "MA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "7,489"
+      ],
+      "title": "International Economic Law"
+    },
+    {
+      "id": "OT-2027-02-05-0915-3,140",
+      "date": "2027-02-05",
+      "slot": "09:15",
+      "startIso": "2027-02-05T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "EN",
+      "rootNumbers": [
+        "3,140"
+      ],
+      "title": "Introduction to Operations Management (BYOD)",
+      "byod": true
+    },
+    {
+      "id": "AT-2027-02-05-0915-4,140",
+      "date": "2027-02-05",
+      "slot": "09:15",
+      "startIso": "2027-02-05T09:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "DE",
+      "rootNumbers": [
+        "4,140"
+      ],
+      "title": "Einführung in das Operations-Management (BYOD)",
+      "byod": true
+    },
+    {
+      "id": "OT-2027-02-05-1515-3,110",
+      "date": "2027-02-05",
+      "slot": "15:15",
+      "startIso": "2027-02-05T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "OT",
+      "language": "DE",
+      "rootNumbers": [
+        "3,110"
+      ],
+      "title": "Strategisches Management"
+    },
+    {
+      "id": "AT-2027-02-05-1515-4,110",
+      "date": "2027-02-05",
+      "slot": "15:15",
+      "startIso": "2027-02-05T15:15:00+01:00",
+      "durationMin": 90,
+      "level": "BA",
+      "termType": "AT",
+      "language": "EN",
+      "rootNumbers": [
+        "4,110"
+      ],
+      "title": "Strategic Management"
+    }
+  ],
+  "oral": [
+    {
+      "id": "ORAL-2027-01-30-7,421",
+      "date": "2027-01-30",
+      "startIso": null,
+      "timesPublishedLater": true,
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "rootNumbers": [
+        "7,421"
+      ],
+      "title": "Datenschutzrecht"
+    },
+    {
+      "id": "ORAL-2027-01-30-7,436",
+      "date": "2027-01-30",
+      "startIso": null,
+      "timesPublishedLater": true,
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "rootNumbers": [
+        "7,436"
+      ],
+      "title": "Internationale Schiedsgerichtsbarkeit"
+    },
+    {
+      "id": "ORAL-2027-01-30-7,702",
+      "date": "2027-01-30",
+      "startIso": null,
+      "timesPublishedLater": true,
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "rootNumbers": [
+        "7,702"
+      ],
+      "title": "Recht/Law: Recht und Psychologie - die Tätigkeit von Richtern und Rechtsanwälten aus psychologischer Sicht"
+    }
+  ],
+  "oralNotes": [
+    {
+      "date": "2027-02-06",
+      "section": "Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
+      "text": "Die individuellen mündlichen Prüfungstermine (inkl. Raumzuteilung) sind am Ende der KW 50 in Compass abrufbar."
+    },
+    {
+      "date": "2027-02-06",
+      "section": "Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
+      "text": "The individual oral exam dates (incl. Room allocation) are available in Compass at the end of CW 50."
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "text": "AJ: KuSo B: Soziologie / Geschichte / Psychologie / Philosophie"
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "text": "AJ: CuSo B: Sociology / History / Psychology / Philosophy"
+    },
+    {
+      "date": "2027-02-13",
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "text": "Die individuellen mündlichen Prüfungstermine von KuSo B (inkl. Raumzuteilung) sind am Ende der KW 50 in StudyNet abrufbar."
+    },
+    {
+      "date": "2027-02-13",
+      "section": "Ordentliche Prüfungstermine / Regular examination dates",
+      "text": "The dates for individual oral examinations of CuSo B (incl. Room allocation) will be available in StudyNet at the end of CW 50."
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "AJ KuSo B: Die individuellen Prüfungstermine sind am Ende der KW 50 in StudyNet abrufbar."
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "AJ CuSo B: The individual exam dates will be available in StudyNet at the end of CW 50."
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "BA/MA: Mündliche ausserordentliche Prüfungstermine ohne Prüfungsformänderung werden Ende KW 50 in Compass publiziert."
+    },
+    {
+      "date": "2027-02-08",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "BA/MA: Oral alternative examination dates without change of examination form will be published in Compass at the end of CW 50."
+    },
+    {
+      "date": "2027-02-20",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "AJ/BA/MA: Ausserordentliche Prüfungstermine mit Prüfungsformänderung (schriftlich zu mündlich) werden durch die Dozierenden organisiert."
+    },
+    {
+      "date": "2027-02-20",
+      "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
+      "text": "AJ/BA/MA: Alternative examination dates with change of examination form (written to oral) are organised by the lecturers."
+    }
+  ]
+}
