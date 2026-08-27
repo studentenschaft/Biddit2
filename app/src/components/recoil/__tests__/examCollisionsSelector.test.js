@@ -45,6 +45,7 @@ const collisionsIn = ({
   filtered = [],
   plan = PLAN,
   semester = SEMESTER,
+  metadata = {},
 }) =>
   snapshot_UNSTABLE(({ set }) => {
     set(unifiedCourseDataState, {
@@ -57,6 +58,7 @@ const collisionsIn = ({
           studyPlan: [],
           ratings: {},
           cisId: "1",
+          ...metadata,
         },
       },
       selectedSemester: SEMESTER,
@@ -109,5 +111,22 @@ describe("examCollisionsSelector", () => {
   it("is empty for a missing semester", () => {
     expect(collisionsIn({ semester: null }).size).toBe(0);
     expect(collisionsIn({ semester: "FS26" }).size).toBe(0);
+  });
+
+  it("stays empty for a borrowed catalog even when the plan is already cached", () => {
+    // The exam fetch can win the race against the catalog fetch that sets
+    // usingReferenceData, so the atom may hold a plan for a borrowed semester.
+    // The gate must live here, not only in the hook.
+    for (const metadata of [
+      { usingReferenceData: true, referenceSemester: "HS25" },
+      { isFutureSemester: true, referenceSemester: "HS25" },
+    ]) {
+      const collisions = collisionsIn({
+        enrolledIds: [MICRO.courseNumber],
+        selectedIds: [CAUSAL.courseNumber],
+        metadata,
+      });
+      expect(collisions.size).toBe(0);
+    }
   });
 });

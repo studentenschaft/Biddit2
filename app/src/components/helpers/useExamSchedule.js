@@ -14,10 +14,12 @@ const SUPPORTED_SCHEMA_VERSION = 1;
  * shipped in `public/`, it carries no auth and it is not SHSG traffic, so the
  * interceptors have nothing to contribute. See ADR 0008.
  *
- * The borrowed-data gate lives here rather than in the callers: a semester
- * showing a reference term's catalog behaves exactly like `null`, so no surface
- * can forget the guard and attach someone else's exam dates to those courses.
- * See REFERENCE_SEMESTER.md.
+ * Borrowed-data gating happens twice, deliberately. Here it mostly avoids a
+ * pointless fetch — but the exam fetch can still win the race against the
+ * catalog fetch that sets `usingReferenceData`, caching a plan for a semester
+ * that only later turns out to be borrowed. The gate the surfaces rely on is
+ * therefore in `examScheduleSelectors.js` (`renderablePlanSelector`), which
+ * re-evaluates when the flag flips. See REFERENCE_SEMESTER.md.
  *
  * @param {string|null} semester - Semester shortName, or null to skip loading
  * @returns {{ plan: Object|null }|null} - `plan: null` means "no schedule for

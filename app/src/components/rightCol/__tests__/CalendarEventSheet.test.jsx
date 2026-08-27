@@ -120,6 +120,68 @@ describe("CalendarEventSheet", () => {
     ).toContain("z-[56]");
   });
 
+  /**
+   * Exams have no room in the plan and are our own PDF extraction, so the sheet
+   * swaps the room line for the exam facts and always says so (ADR 0009/0010).
+   */
+  describe("exam blocks", () => {
+    const examEvent = {
+      title: "Advanced Cybersecurity",
+      startTime: "15:15",
+      endTime: "17:15",
+      entryType: "exam",
+      durationMin: 120,
+      byod: true,
+      conflictsWith: [],
+    };
+
+    it("shows the duration and the BYOD badge instead of a room", () => {
+      render(<CalendarEventSheet event={examEvent} onClose={() => {}} />);
+
+      expect(
+        screen.getByText("Exam · 120 min · digital (BYOD)"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/^Room:/)).not.toBeInTheDocument();
+    });
+
+    it("stays silent about BYOD when the plan does not mark it", () => {
+      render(
+        <CalendarEventSheet
+          event={{ ...examEvent, byod: false }}
+          onClose={() => {}}
+        />,
+      );
+
+      expect(screen.getByText("Exam · 120 min")).toBeInTheDocument();
+    });
+
+    it("carries the indicative-only disclaimer", () => {
+      render(<CalendarEventSheet event={examEvent} onClose={() => {}} />);
+
+      expect(
+        screen.getByText("Indicative — verify officially."),
+      ).toBeInTheDocument();
+    });
+
+    it("does not disclaim a lecture", () => {
+      render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+
+      expect(screen.queryByText(/Indicative/)).not.toBeInTheDocument();
+    });
+
+    it("names the clashing courses", () => {
+      render(
+        <CalendarEventSheet
+          event={{ ...examEvent, conflictsWith: ["Causal Inference"] }}
+          onClose={() => {}}
+        />,
+      );
+
+      expect(screen.getByText(/conflicts with/i)).toBeInTheDocument();
+      expect(screen.getByText("Causal Inference")).toBeInTheDocument();
+    });
+  });
+
   it("keeps the bottom-sheet shape", () => {
     render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
 
