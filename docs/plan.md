@@ -1,66 +1,84 @@
-# Phase 1 — Show exam dates in Course Details
+# Phase 2 — "Does my course exam overlap?"
 
-Consumes the Phase-0 artifact (`app/public/exams/<SEMESTER>.json`, ADR 0007) in the app.
-Scope: display only. No overlap detection (Phase 2), no calendar events (Phase 3).
+Builds on Phase 0 (ingested `app/public/exams/<SEMESTER>.json`, ADR 0007) and
+Phase 1 (runtime consumption + CourseInfo display, ADR 0008).
+Scope: collision detection among MY courses' central exams + warnings in the
+existing per-course surfaces. No calendar exam blocks (Phase 3).
 
 ## Assumptions & constraints
 
-- Artifact exists only for semesters that were ingested (HS26 today). A missing
-  file means the feature is silently off for that semester — never an error.
-- The PDF prints two-segment course roots (`3,200`); app course numbers are
-  `3,200,1.00`. Join via root key; exercise groups share the parent's root and
-  therefore its exam.
-- Borrowed catalogs (reference-semester preview, `usingReferenceData` /
-  `isProjected`) must never show exam dates — the courses aren't really in that
-  term (guardrail precedent: `similarCoursesApi.js`).
-- `byod` is a lower bound (most shaded PDF rows are lost) → UI may say
-  "digital (BYOD)" when true but must say nothing when absent.
-- AT rows are provisional until the CW42 re-ingest → label as alternative date.
-- Static-asset fetch from `public/` deliberately bypasses `apiClient`
-  (documented exception, same as `app-status.json`); it carries no auth and
-  must not be subject to the SHSG kill switch.
+- Collision semantics: two exams collide iff same `date` **and** same `slot`.
+  All written exams start 09:15 or 15:15 and no morning exam reaches the
+  afternoon slot (max 180'), so interval math is unnecessary — group-by
+  (date, slot) is exact, simpler than reusing the lecture UnionFind, and the
+  ADR records why.
+- Only **OT** written exams produce warnings. AT rows are provisional until
+  the CW42 re-ingest and only apply to students granted the alternative date.
+  Oral exams have no times, so they never produce collision claims.
+- Course pool: `myCoursesSelector(semester)` (enrolled ∪ selected) — the same
+  pool the lecture-overlap feature uses; NEVER the `filtered` view state
+  (documented filter-leak bug).
+- Dedupe by root key: a lecture and its exercise groups share one exam and
+  must not collide with themselves. One warning per root, listing the OTHER
+  courses' `shortName`s.
+- Fail-open as in Phase 1: no plan / borrowed semester → no warnings at all.
+- Artifact schema unchanged → `schemaVersion` stays 1.
 
 ## Steps
 
-1. **Lift the root-key helper.** Move `getCourseRootKey` from
-   `app/src/components/helpers/smartExerciseGroupHandler.js` (module-private)
-   into `courseUtils.js` as an export; re-import it in
-   `smartExerciseGroupHandler.js`. Behavior unchanged; existing tests stay green.
-2. **Schedule state.** `recoil/examScheduleAtom.js`: `examSchedulesState`,
-   default `{}` — `{ [semester]: { status: "loaded"|"missing", plan } }`.
-3. **Loader hook.** `helpers/useExamSchedule.js`: per-semester fetch-once guard
-   (pattern: `examinationTypesFetchGuard`), plain `fetch("/exams/<sem>.json")`;
-   404 / parse error / `schemaVersion !== 1` → `missing` (fail-open). No retry
-   loop — it's a static asset.
-4. **Pure matcher.** `helpers/examScheduleUtils.js`:
-   `examsForCourse(plan, course)` → `{ written: [...], oral: [...] }` via root
-   key, OT sorted before AT. Unit-testable without React.
-5. **UI.** New `rightCol/ExamSchedule.jsx` rendered inside CourseInfo's
-   existing "Exam Information" section (above the `examinationParts` grid):
-   - written: weekday + date, slot time, duration, OT; AT rows as
-     "Alternative date"; BYOD badge only when `byod === true`
-   - oral: date (or oral period) + "individual time published in Compass"
-   - decentral-only course (`isDeCentral && !isCentral`): "Decentral exam —
-     scheduled by the lecturer", no lookup
-   - central course with loaded plan but no match: "Not in the central exam
-     schedule" (neutral wording)
-   - plan missing / borrowed semester: render nothing
-   - source footnote: term label + publishedAt from the artifact
-   - while touching CourseInfo: harden the existing unguarded
-     `selectedCourse.achievementFormStatus` access (known crash risk)
-6. **Tests.** Vitest + MSW: fetch-guard behavior (loads once, 404 → missing),
-   `examsForCourse` matching (root join, exercise group, cross-listed, OT/AT
-   order), ExamSchedule rendering for each state in step 5, and a
-   reference-semester gating test. MSW handler for `/exams/HS26.json` serving a
-   small fixture (not the full artifact).
-7. **Docs.** ADR 0008 (runtime consumption: static fetch, fail-open, root-key
-   join, borrowed-data gating), CHANGELOG entry.
+1. **Centralize the borrowed-data gate.** Move the
+   `isFutureSemester || usingReferenceData` check from `ExamSchedule.jsx`
+   into `useExamSchedule(semester)` itself (it reads
+   `semesterMetadataSelector` internally; passing a semester whose data is
+   borrowed behaves like `null`). Phase 2 adds more call sites; each must not
+   re-implement the guard. `ExamSchedule.jsx` drops its local check.
+2. **Pure collision finder** in `helpers/examScheduleUtils.js`:
+   `findExamCollisions(plan, courses)` → `Map<rootKey, { exam, conflictsWith: string[] }>`
+   — OT written exams of the deduped roots of `courses`, grouped by
+   `(date, slot)`; groups with ≥2 distinct roots become collisions;
+   `conflictsWith` carries the other roots' course `shortName`s (first course
+   per root wins for naming). Unit-testable without React.
+3. **Selector** `examCollisionsSelector` (selectorFamily keyed by semester) in
+   `recoil/examScheduleSelectors.js`: reads `examSchedulesState` +
+   `myCoursesSelector(semester)`, returns the Map (empty when no plan).
+   Note: selectors only READ the atom — fetching stays in `useExamSchedule`,
+   so every surface that shows warnings must also mount the hook once at
+   container level.
+4. **Surfaces** (all subscribe to the selector; follow the WORKING overlap
+   pattern — `LockOpen.jsx`-style subscription — not the dead
+   `course.overlapping` field):
+   - **Course list** (`leftCol/bottomRow/EventListContainer.jsx` row): a small
+     warning icon (existing `text-warning` color #FCA311, distinct from the
+     lock) shown only when the row's root has a collision, with a
+     react-tooltip listing "Exam overlaps with: X, Y". Mount
+     `useExamSchedule(selectedSemester)` once in the container.
+   - **SemesterSummary** (`rightCol/SemesterSummary.jsx`): extend the
+     existing conflict tooltip machinery with an "Exam overlap: …" line,
+     visually distinct from lecture overlaps. Mount the hook once here too.
+   - **CourseInfo** (`rightCol/ExamSchedule.jsx`): on the affected written-exam
+     row, a warning line "Overlaps with <shortNames>" in `text-warning`.
+5. **Tests.** Vitest: collision-finder unit tests (collision, no collision,
+   same-root exercise group NOT colliding, cross-listed exam colliding with a
+   third course, AT/oral excluded, empty inputs); selector test with seeded
+   atom state; one rendering test per surface (icon appears only for
+   colliding row; tooltip content; ExamSchedule warning line). Extend the MSW
+   exam fixture with two OT exams sharing a (date, slot) — bump fixture, not
+   schema.
+6. **Docs.** ADR 0009 (collision semantics: same-slot grouping over interval
+   math, OT-only, root-dedupe rationale); CHANGELOG entry.
 
 ## Verification
 
-- `npm test` and `npm run lint` green.
-- `npm run dev` → select an HS26 course with a central exam (e.g. 3,200
-  Mikroökonomik II) → Course Details shows "Mon 18.01.2027, 09:15, 90 min";
-  a decentral course shows the lecturer note; a language course with an oral
-  shows the Compass note.
-- Select a projected/future semester → no exam dates shown.
+- `npm test` + `npm run lint` green.
+- Live in the dev server (user session): wishlist a course that shares
+  19.01.2027 15:15 with enrolled Advanced Cybersecurity (e.g. 7,354 Data
+  Analytics and Causal Inference), confirm the warning icon + tooltip in the
+  course list, the SemesterSummary line, and the CourseInfo warning; then
+  remove the course from the wishlist again (leave the user's plan as found)
+  and confirm the warnings disappear.
+
+## Execution workflow
+
+Opus 5 subagent implements → ponytail review subagent → orchestrator's own
+correctness pass (tests, live check) with direct fixes → conventional commits
+on `feature/exam-schedule-ingestion`.

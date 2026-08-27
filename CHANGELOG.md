@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exam-overlap warnings. When two courses in the user's plan (enrolled or
+  wishlisted) sit central exams on the same date and slot, a warning shows in
+  the course list row, the semester summary conflict tooltip and the Course
+  Details exam block, naming the clashing courses. Only ordinary-date (OT)
+  written exams warn — alternative dates are provisional and oral exams have
+  no times. All exam-date surfaces now carry an "extracted automatically —
+  indicative only" disclaimer. Rationale in ADR 0009.
 - Exam dates in Course Details. The "Exam Information" section now shows the
   central exam date, time, duration and a BYOD badge for the selected course,
   read from the ingested `public/exams/<SEMESTER>.json`. Courses are joined to
