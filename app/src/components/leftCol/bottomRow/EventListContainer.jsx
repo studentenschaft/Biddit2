@@ -44,9 +44,12 @@ import {
   smartSearchActiveSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
+import { examCollisionsSelector } from "../../recoil/examScheduleSelectors";
+import { useExamSchedule } from "../../helpers/useExamSchedule";
+import { getCourseRootKey } from "../../helpers/courseUtils";
 
 // Icons
-import { PlusIcon } from "@heroicons/react/outline";
+import { ExclamationIcon, PlusIcon } from "@heroicons/react/outline";
 import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
@@ -105,6 +108,13 @@ export default function EventListContainer({
   // matches once a query has run for the selected semester; the rows themselves
   // are identical, so add, lock, drag-to-curriculum-map and click-to-details
   // keep working.
+  // Selectors only read the exam atom, so the list is the surface that has to
+  // fill it — mounted once here rather than per row.
+  useExamSchedule(selectedSemesterShortName);
+  const examCollisions = useRecoilValue(
+    examCollisionsSelector(selectedSemesterShortName)
+  );
+
   const smartSearch = useRecoilValue(smartSearchState);
   const smartResults = useRecoilValue(smartSearchResultsSelector);
   const smartActive = useRecoilValue(smartSearchActiveSelector);
@@ -250,6 +260,9 @@ export default function EventListContainer({
     const wasPreviouslyEnrolled =
       event.enrolled && data.selectedSemester?.isProjected;
 
+    const examConflicts =
+      data.examCollisions.get(getCourseRootKey(event))?.conflictsWith ?? [];
+
     return (
       <div
         ref={setNodeRef}
@@ -278,10 +291,23 @@ export default function EventListContainer({
               : "bg-white text-gray-800"
           } ${isDragging ? "cursor-grabbing" : ""}`}
         >
-          <div className="pb-2 font-semibold">
-            <p className="truncate">
+          <div className="flex items-center gap-1 pb-2 font-semibold">
+            <p className="min-w-0 truncate">
               {event.shortName ? event.shortName : "Loading..."}
             </p>
+            {/* Next to the name rather than in the metadata grid below, which
+                has no spare column. Distinct from the lock, which carries the
+                lecture-overlap signal. */}
+            {examConflicts.length > 0 && (
+              <ExclamationIcon
+                aria-label="Exam overlap"
+                className="flex-shrink-0 w-4 h-4 text-danger"
+                data-tooltip-id="course-list-tooltip"
+                data-tooltip-content={`Exam overlaps with: ${examConflicts.join(
+                  ", "
+                )}. Indicative — verify officially.`}
+              />
+            )}
           </div>
           <div
             className={`text-xs grid grid-cols-12 ${
@@ -311,7 +337,7 @@ export default function EventListContainer({
           id="select_course"
           onClick={() => data.addOrRemoveCourse(event)}
           disabled={isEnrolled}
-          data-tooltip-id={isEnrolled ? "enrolled-tooltip" : undefined}
+          data-tooltip-id={isEnrolled ? "course-list-tooltip" : undefined}
           data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
           className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
             wasPreviouslyEnrolled
@@ -384,6 +410,7 @@ export default function EventListContainer({
     openCourseDetails,
     setIsLeftViewVisibleState,
     addOrRemoveCourse,
+    examCollisions,
   };
 
   return (
@@ -412,10 +439,13 @@ export default function EventListContainer({
           </FixedSizeList>
         )}
       </AutoSizer>
+      {/* One instance serves every anchor in the list; anchors carry their
+          own data-tooltip-content. */}
       <ReactTooltip
-        id="enrolled-tooltip"
+        id="course-list-tooltip"
         place="top"
         effect="solid"
+        style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
         className="bg-gray-800 text-white text-xs rounded px-2 py-1"
       />
     </Suspense>

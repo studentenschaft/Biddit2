@@ -10,10 +10,15 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
+import { examCollisionsSelector } from "../recoil/examScheduleSelectors";
+
+import { ExclamationIcon } from "@heroicons/react/outline";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
+import { useExamSchedule } from "../helpers/useExamSchedule";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
+import { getCourseRootKey } from "../helpers/courseUtils";
 import { formatEcts } from "../helpers/formatEcts";
 
 import { Heatmap } from "./Heatmap";
@@ -51,6 +56,12 @@ export default function SemesterSummary() {
   // The user's courses (enrolled ∪ selected) — same source as the calendar,
   // so the table and the schedule cannot drift apart.
   const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
+
+  // Selectors only read the exam atom; this is the summary's own fill-up.
+  useExamSchedule(selectedSemesterState);
+  const examCollisions = useRecoilValue(
+    examCollisionsSelector(selectedSemesterState)
+  );
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
@@ -191,17 +202,40 @@ export default function SemesterSummary() {
           style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
           render={({ activeAnchor }) => {
             const conflicts = activeAnchor?.getAttribute("data-conflicts");
-            if (!conflicts) return null;
-            const conflictList = conflicts.split(", ");
+            const examConflicts = activeAnchor?.getAttribute(
+              "data-exam-conflicts"
+            );
+            if (!conflicts && !examConflicts) return null;
+            const namesOf = (value) =>
+              value.split(", ").map((course, idx) => (
+                <li key={idx} className="truncate">
+                  {course}
+                </li>
+              ));
             return (
-              <div className="text-amber-300">
-                <div className="font-medium">⚠ Conflicts with:</div>
-                <ul className="list-disc list-inside text-sm">
-                  {conflictList.map((course, idx) => (
-                    <li key={idx} className="truncate">{course}</li>
-                  ))}
-                </ul>
-              </div>
+              <>
+                {conflicts && (
+                  <div className="text-amber-300">
+                    <div className="font-medium">⚠ Conflicts with:</div>
+                    <ul className="list-disc list-inside text-sm">
+                      {namesOf(conflicts)}
+                    </ul>
+                  </div>
+                )}
+                {/* Lecture clashes cost a session; an exam clash you cannot
+                    sit at all, so it gets its own block and its own colour. */}
+                {examConflicts && (
+                  <div className="text-red-400">
+                    <div className="font-medium">Exam overlap:</div>
+                    <ul className="list-disc list-inside text-sm">
+                      {namesOf(examConflicts)}
+                    </ul>
+                    <div className="text-gray-300">
+                      Indicative — verify officially.
+                    </div>
+                  </div>
+                )}
+              </>
             );
           }}
         />
@@ -229,6 +263,12 @@ export default function SemesterSummary() {
               {currCourses.map((course, index) => {
                 const conflicts = getConflictsForCourse(course);
                 const hasConflicts = conflicts.length > 0;
+                // Central-exam clashes, kept separate from the lecture
+                // conflicts: different source, different remedy.
+                const examConflicts =
+                  examCollisions.get(getCourseRootKey(course))?.conflictsWith ??
+                  [];
+                const hasExamConflicts = examConflicts.length > 0;
                 return (
                   <div
                     key={index}
@@ -244,8 +284,15 @@ export default function SemesterSummary() {
                   >
                     <div
                       className="text-center"
-                      data-tooltip-id={hasConflicts ? "conflict-tooltip" : undefined}
+                      data-tooltip-id={
+                        hasConflicts || hasExamConflicts
+                          ? "conflict-tooltip"
+                          : undefined
+                      }
                       data-conflicts={hasConflicts ? conflicts.join(", ") : undefined}
+                      data-exam-conflicts={
+                        hasExamConflicts ? examConflicts.join(", ") : undefined
+                      }
                     >
                       <div
                         className={`flex justify-center items-center align-center h-full ${
@@ -266,6 +313,14 @@ export default function SemesterSummary() {
                           <LockClosed clg="w-4 h-4 " />
                         ) : (
                           <LockOpen clg="w-4 h-4 " event={course} />
+                        )}
+                        {/* The tooltip needs something to hover; the lock's
+                            colour already speaks for the lecture side only. */}
+                        {hasExamConflicts && (
+                          <ExclamationIcon
+                            aria-label="Exam overlap"
+                            className="flex-shrink-0 w-4 h-4 text-danger"
+                          />
                         )}
                       </div>
                     </div>
