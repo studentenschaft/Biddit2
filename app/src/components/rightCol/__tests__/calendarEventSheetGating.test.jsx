@@ -18,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const CALENDAR_ENTRIES = "calendar-entries-selector";
 const CURRENT_SEMESTER = "current-semester-selector";
+const SELECTED_SEMESTER = "selected-semester-selector";
+const EXAM_EVENTS = "exam-calendar-events-selector";
 const IS_FUTURE_SEMESTER = "is-future-semester-selector";
 
 const fullCalendar = vi.hoisted(() => ({ props: null }));
@@ -40,6 +42,13 @@ vi.mock("../../recoil/calendarEntriesSelector", () => ({
 }));
 vi.mock("../../recoil/unifiedCourseDataSelectors", () => ({
   currentSemesterSelector: CURRENT_SEMESTER,
+  selectedSemesterSelector: SELECTED_SEMESTER,
+}));
+vi.mock("../../recoil/examScheduleSelectors", () => ({
+  examCalendarEventsSelector: () => EXAM_EVENTS,
+}));
+vi.mock("../../helpers/useExamSchedule", () => ({
+  useExamSchedule: () => null,
 }));
 vi.mock("../../recoil/isFutureSemesterSelected", () => ({
   isFutureSemesterSelected: IS_FUTURE_SEMESTER,
@@ -82,6 +91,8 @@ beforeEach(() => {
     { title: "Corporate Finance", start: START, end: END },
   ]);
   recoil.values.set(CURRENT_SEMESTER, "FS26");
+  recoil.values.set(SELECTED_SEMESTER, "FS26");
+  recoil.values.set(EXAM_EVENTS, []);
   recoil.values.set(IS_FUTURE_SEMESTER, false);
 });
 
