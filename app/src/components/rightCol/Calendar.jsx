@@ -1,5 +1,6 @@
 // Dependencies
 import React from "react";
+import moment from "moment";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -23,7 +24,15 @@ import CalendarEventSheet from "./CalendarEventSheet";
 import { isMobileViewport } from "../helpers/isMobileViewport";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
-import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
+import {
+  currentSemesterSelector,
+  selectedSemesterSelector,
+} from "../recoil/unifiedCourseDataSelectors";
+
+// Central written exams as calendar blocks (ADR 0010). The hook is what fills
+// the atom the selector reads, and it refuses borrowed catalogs on its own.
+import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
+import { useExamSchedule } from "../helpers/useExamSchedule";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
@@ -39,6 +48,13 @@ const formatEventTime = (date) =>
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
   const currentSemester = useRecoilValue(currentSemesterSelector);
+  // Same semester `calendarEntriesSelector` builds its lecture events from, so
+  // the two event sets can never describe different terms.
+  const selectedSemester = useRecoilValue(selectedSemesterSelector);
+  useExamSchedule(selectedSemester);
+  const examEvents = useRecoilValue(
+    examCalendarEventsSelector(selectedSemester),
+  );
   const [isLoading, setIsLoading] = React.useState(true);
   const [displaySelectCoursesFirst, setDisplaySelectCoursesFirst] =
     React.useState(false);
@@ -57,6 +73,9 @@ export default function Calendar() {
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
+  // Where lecture navigation stood when the user jumped to the exam period, so
+  // the toggle can put them back where they left off.
+  const [lectureReturnDate, setLectureReturnDate] = React.useState(null);
 
   const shouldShowLoading = isLoading;
 
@@ -122,6 +141,27 @@ export default function Calendar() {
     }
   }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
+  // Exam blocks are appended only to what FullCalendar renders, never to the
+  // percentile boot logic above: they sit weeks after the last lecture, so
+  // letting them into that sample would drag the opening week off the semester.
+  const allEvents = React.useMemo(
+    () => [...finalEvents, ...examEvents],
+    [finalEvents, examEvents],
+  );
+
+  // Monday of the first exam week — the jump target. No exams, no button.
+  const examWeekStart = React.useMemo(() => {
+    if (!examEvents.length) return null;
+    const earliest = Math.min(
+      ...examEvents.map((event) => new Date(event.start).getTime()),
+    );
+    return Number.isFinite(earliest)
+      ? moment(earliest).startOf("isoWeek").toDate()
+      : null;
+  }, [examEvents]);
+
+  const showingExamPeriod = !!examWeekStart && initialDate >= examWeekStart;
+
   // Information on hovering
   const hoverEvent = (info) => {
     let title = info.event.title;
@@ -133,16 +173,22 @@ export default function Calendar() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    let room = info.event._def.extendedProps.room;
-    let conflictsWith = info.event._def.extendedProps.conflictsWith || [];
+    let extended = info.event._def.extendedProps;
+    let room = extended.room;
+    let conflictsWith = extended.conflictsWith || [];
 
     info.el.setAttribute("data-tip", `${title}`);
     info.el.setAttribute("data-tooltip-id", "event-tooltip");
     info.el.setAttribute("data-tooltip-content", `${title}`);
-    info.el.setAttribute("data-room", `${room}`);
+    info.el.setAttribute("data-room", `${room ?? ""}`);
     info.el.setAttribute("data-start-time", `${startTime}`);
     info.el.setAttribute("data-end-time", `${endTime}`);
     info.el.setAttribute("data-conflicts-with", conflictsWith.join(", "));
+    // The tooltip renders from these attributes alone, so the exam fields have
+    // to travel as strings too.
+    info.el.setAttribute("data-entry-type", `${extended.entryType ?? ""}`);
+    info.el.setAttribute("data-duration-min", `${extended.durationMin ?? ""}`);
+    info.el.setAttribute("data-byod", `${extended.byod === true}`);
   };
 
   // Details shown when tapping an event (the only detail affordance on touch
@@ -161,18 +207,26 @@ export default function Calendar() {
       endTime: formatEventTime(arg.event.end),
       room: arg.event.extendedProps.room,
       conflictsWith: arg.event.extendedProps.conflictsWith || [],
+      entryType: arg.event.extendedProps.entryType,
+      durationMin: arg.event.extendedProps.durationMin,
+      byod: arg.event.extendedProps.byod === true,
     });
   };
 
   // Text to be displayed when hovering
   function renderEventContent(eventInfo) {
+    const details = eventInfo.event._def.extendedProps;
     return (
       <>
         <p className="truncate">{eventInfo.timeText}</p>
         <p className="font-bold truncate">{eventInfo.event.title}</p>
-        <p className="truncate text-red">
-          {eventInfo.event._def.extendedProps.room}
-        </p>
+        {/* Exams carry no room; the badge takes its place so a block is never
+            mistaken for a lecture. */}
+        {details.entryType === "exam" ? (
+          <p className="truncate font-semibold uppercase tracking-wide">Exam</p>
+        ) : (
+          <p className="truncate text-red">{details.room}</p>
+        )}
       </>
     );
   }
@@ -228,6 +282,32 @@ export default function Calendar() {
   const goToPrevWeek = () => WeekChange("prev");
   const goToNextWeek = () => WeekChange("next");
 
+  // The exam period lies weeks past the last lecture, so it is only reachable
+  // through this jump; pressing it again returns to the week left behind.
+  const toggleExamPeriod = () => {
+    if (showingExamPeriod) {
+      NavigateToDate(lectureReturnDate || firstEventDate);
+      return;
+    }
+    setLectureReturnDate(initialDate);
+    NavigateToDate(examWeekStart);
+  };
+
+  // Rendered in both navigation clusters (mobile toolbar, desktop side column),
+  // which differ only in padding.
+  const renderExamJumpButton = (paddingClassName) =>
+    examWeekStart ? (
+      <button
+        className={`bg-hsg-900 hover:bg-hsg-800 active:bg-hsg-700 text-white ${paddingClassName} rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs`}
+        onClick={toggleExamPeriod}
+        aria-label={
+          showingExamPeriod ? "Back to lecture weeks" : "Go to exam period"
+        }
+      >
+        {showingExamPeriod ? "Lectures" : "Exams"}
+      </button>
+    ) : null;
+
   var cal = {
     firstDay: "1",
     dayHeaderFormat: {
@@ -244,26 +324,47 @@ export default function Calendar() {
         id="event-tooltip"
         style={{ zIndex: 9999, maxWidth: "min(350px, 90vw)" }}
         render={({ content, activeAnchor }) => {
-          const conflictsWith = activeAnchor?.getAttribute("data-conflicts-with");
+          const attr = (name) => activeAnchor?.getAttribute(name);
+          const conflictsWith = attr("data-conflicts-with");
           const conflictList = conflictsWith ? conflictsWith.split(", ") : [];
+          const isExam = attr("data-entry-type") === "exam";
+          const durationMin = attr("data-duration-min");
+          const examMeta = [
+            "Exam",
+            durationMin ? `${durationMin} min` : null,
+            attr("data-byod") === "true" ? "digital (BYOD)" : null,
+          ]
+            .filter(Boolean)
+            .join(" · ");
           return (
             <div>
               <div className="font-medium">{content}</div>
+              {/* Exams have no room; the same line carries the exam facts. */}
               <div className="text-gray-300">
-                Room: {activeAnchor?.getAttribute("data-room") || "N/A"}
+                {isExam ? examMeta : `Room: ${attr("data-room") || "N/A"}`}
               </div>
               <div className="text-gray-300">
-                {activeAnchor?.getAttribute("data-start-time") || "N/A"} -{" "}
-                {activeAnchor?.getAttribute("data-end-time") || "N/A"}
+                {attr("data-start-time") || "N/A"} -{" "}
+                {attr("data-end-time") || "N/A"}
               </div>
               {conflictList.length > 0 && (
-                <div className="text-amber-300 mt-1 pt-1 border-t border-gray-600">
+                <div
+                  className={`mt-1 pt-1 border-t border-gray-600 ${
+                    isExam ? "text-red-300" : "text-amber-300"
+                  }`}
+                >
                   <div className="font-medium">⚠ Conflicts with:</div>
                   <ul className="list-disc list-inside text-sm">
                     {conflictList.map((course, idx) => (
                       <li key={idx} className="truncate">{course}</li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {/* The dates come from our own PDF extraction (ADR 0009). */}
+              {isExam && (
+                <div className="mt-1 text-xs text-gray-400">
+                  Indicative — verify officially.
                 </div>
               )}
             </div>
@@ -355,6 +456,8 @@ export default function Calendar() {
                   aria-hidden="true"
                 />
               </button>
+
+              {renderExamJumpButton("px-2 py-1.5")}
             </div>
 
             <button
@@ -398,6 +501,8 @@ export default function Calendar() {
                   End
                   <ChevronDoubleRightIcon className="w-3 h-3" />
                 </button>
+
+                {renderExamJumpButton("px-3 py-1.5")}
               </div>
 
               <button
@@ -420,7 +525,7 @@ export default function Calendar() {
                 initialView="timeGridWeek"
                 initialDate={initialDate} // This ensures correct date on mount
                 height="100%"
-                events={finalEvents}
+                events={allEvents}
                 firstDay={cal.firstDay}
                 slotMinTime="08:00:00"
                 slotMaxTime="22:00:00"

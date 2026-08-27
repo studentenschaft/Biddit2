@@ -23,6 +23,16 @@ import { XIcon } from "@heroicons/react/solid";
 
 const CalendarEventSheet = ({ event, onClose }) => {
   const conflictList = event?.conflictsWith || [];
+  // Exams have no room in the plan (it is assigned per student later), so the
+  // room line is replaced rather than left saying "N/A".
+  const isExam = event?.entryType === "exam";
+  const examMeta = [
+    "Exam",
+    event?.durationMin ? `${event.durationMin} min` : null,
+    event?.byod ? "digital (BYOD)" : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <Dialog
@@ -75,11 +85,15 @@ const CalendarEventSheet = ({ event, onClose }) => {
           {event?.startTime || "N/A"} - {event?.endTime || "N/A"}
         </div>
         <div className="text-sm text-gray-600">
-          Room: {event?.room || "N/A"}
+          {isExam ? examMeta : `Room: ${event?.room || "N/A"}`}
         </div>
 
         {conflictList.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 text-amber-700">
+          <div
+            className={`mt-3 pt-3 border-t border-gray-200 ${
+              isExam ? "text-danger" : "text-amber-700"
+            }`}
+          >
             <div className="font-medium">⚠ Conflicts with:</div>
             <ul className="list-disc list-inside text-sm">
               {conflictList.map((course, idx) => (
@@ -87,6 +101,14 @@ const CalendarEventSheet = ({ event, onClose }) => {
               ))}
             </ul>
           </div>
+        )}
+
+        {/* The dates are extracted from a PDF by us, not published by the
+            university — every exam surface says so (ADR 0009). */}
+        {isExam && (
+          <p className="mt-3 text-xs text-gray-500">
+            Indicative — verify officially.
+          </p>
         )}
       </Dialog.Panel>
     </Dialog>
@@ -100,6 +122,9 @@ CalendarEventSheet.propTypes = {
     endTime: PropTypes.string,
     room: PropTypes.string,
     conflictsWith: PropTypes.arrayOf(PropTypes.string),
+    entryType: PropTypes.string,
+    durationMin: PropTypes.number,
+    byod: PropTypes.bool,
   }),
   onClose: PropTypes.func.isRequired,
 };
