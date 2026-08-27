@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exam blocks in the Calendar. The central written exams of the courses in the
+  user's plan now appear as dark blocks in the weekly schedule, marked "Exam"
+  instead of a room, with duration, a BYOD badge and the
+  "Indicative — verify officially." disclaimer in the hover tooltip and the
+  mobile event sheet; a colliding exam turns red and names the clashing
+  courses. Because the exam period sits weeks after the last lecture, an
+  "Exams" button beside the existing navigation jumps to the first exam week
+  and back again — it only appears when there is something to jump to. Oral
+  and alternative-date exams are never drawn (no published times), and one
+  exam is one block however many of the user's courses sit it. Rationale in
+  ADR 0010.
 - Exam-overlap warnings. When two courses in the user's plan (enrolled or
   wishlisted) sit central exams on the same date and slot, a warning shows in
   the course list row, the semester summary conflict tooltip and the Course

@@ -1,81 +1,79 @@
-# Phase 2 — "Does my course exam overlap?"
+# Phase 3 — Exam blocks in the Calendar
 
-Builds on Phase 0 (ingested `app/public/exams/<SEMESTER>.json`, ADR 0007) and
-Phase 1 (runtime consumption + CourseInfo display, ADR 0008).
-Scope: collision detection among MY courses' central exams + warnings in the
-existing per-course surfaces. No calendar exam blocks (Phase 3).
+Builds on Phases 0–2 (ADR 0007/0008/0009). Scope: show MY courses' central
+written exams as blocks in the weekly Calendar tab, plus a way to get to the
+exam period (which lies outside the lecture weeks the calendar boots into).
 
 ## Assumptions & constraints
 
-- Collision semantics: two exams collide iff same `date` **and** same `slot`.
-  All written exams start 09:15 or 15:15 and no morning exam reaches the
-  afternoon slot (max 180'), so interval math is unnecessary — group-by
-  (date, slot) is exact, simpler than reusing the lecture UnionFind, and the
-  ADR records why.
-- Only **OT** written exams produce warnings. AT rows are provisional until
-  the CW42 re-ingest and only apply to students granted the alternative date.
-  Oral exams have no times, so they never produce collision claims.
-- Course pool: `myCoursesSelector(semester)` (enrolled ∪ selected) — the same
-  pool the lecture-overlap feature uses; NEVER the `filtered` view state
-  (documented filter-leak bug).
-- Dedupe by root key: a lecture and its exercise groups share one exam and
-  must not collide with themselves. One warning per root, listing the OTHER
-  courses' `shortName`s.
-- Fail-open as in Phase 1: no plan / borrowed semester → no warnings at all.
-- Artifact schema unchanged → `schemaVersion` stays 1.
+- **Written OT exams only.** Orals have no times (never fabricate — ADR 0009);
+  AT rows are provisional until CW42 and bind only students granted the
+  alternative date. Both stay off the calendar; Course Details covers them.
+- **Do not touch `calendarEntriesSelector`.** Its output and tests pin the
+  filter-leak invariant and the lecture collision logic. Exams come from a new
+  selector and are concatenated in `Calendar.jsx`.
+- Exam blocks must be visually distinct from lectures: base style dark
+  (`hsg-800`-family, like enrolled) with an unmistakable "Exam" marker;
+  a colliding exam (from `examCollisionsSelector`) turns `danger` red with
+  `conflictsWith` in the tooltip — consistent with Phase 2's red = exam clash.
+- Exam period (18.01.–20.02.) lies outside the calendar's derived lecture
+  range: the boot-date percentile logic (`Calendar.jsx` ~96–116) must be left
+  alone; instead add an "Exam period" jump. Verify navigation is not
+  constrained by any `validRange` before relying on `gotoDate`.
+- Saturday orals are off-calendar anyway; `hiddenDays={[0]}` (Sunday) is fine.
+- Fail-open as everywhere: no plan / borrowed semester → no exam events, no
+  jump button.
+- The indicative-only disclaimer must appear on the exam hover tooltip and the
+  mobile event sheet (same short form as Phase 2: "Indicative — verify
+  officially.").
+- Heatmap stays untouched (its ISO-week range cannot show the exam period —
+  noted as out of scope in the ADR).
 
 ## Steps
 
-1. **Centralize the borrowed-data gate.** Move the
-   `isFutureSemester || usingReferenceData` check from `ExamSchedule.jsx`
-   into `useExamSchedule(semester)` itself (it reads
-   `semesterMetadataSelector` internally; passing a semester whose data is
-   borrowed behaves like `null`). Phase 2 adds more call sites; each must not
-   re-implement the guard. `ExamSchedule.jsx` drops its local check.
-2. **Pure collision finder** in `helpers/examScheduleUtils.js`:
-   `findExamCollisions(plan, courses)` → `Map<rootKey, { exam, conflictsWith: string[] }>`
-   — OT written exams of the deduped roots of `courses`, grouped by
-   `(date, slot)`; groups with ≥2 distinct roots become collisions;
-   `conflictsWith` carries the other roots' course `shortName`s (first course
-   per root wins for naming). Unit-testable without React.
-3. **Selector** `examCollisionsSelector` (selectorFamily keyed by semester) in
-   `recoil/examScheduleSelectors.js`: reads `examSchedulesState` +
-   `myCoursesSelector(semester)`, returns the Map (empty when no plan).
-   Note: selectors only READ the atom — fetching stays in `useExamSchedule`,
-   so every surface that shows warnings must also mount the hook once at
-   container level.
-4. **Surfaces** (all subscribe to the selector; follow the WORKING overlap
-   pattern — `LockOpen.jsx`-style subscription — not the dead
-   `course.overlapping` field):
-   - **Course list** (`leftCol/bottomRow/EventListContainer.jsx` row): a small
-     warning icon (existing `text-warning` color #FCA311, distinct from the
-     lock) shown only when the row's root has a collision, with a
-     react-tooltip listing "Exam overlaps with: X, Y". Mount
-     `useExamSchedule(selectedSemester)` once in the container.
-   - **SemesterSummary** (`rightCol/SemesterSummary.jsx`): extend the
-     existing conflict tooltip machinery with an "Exam overlap: …" line,
-     visually distinct from lecture overlaps. Mount the hook once here too.
-   - **CourseInfo** (`rightCol/ExamSchedule.jsx`): on the affected written-exam
-     row, a warning line "Overlaps with <shortNames>" in `text-warning`.
-5. **Tests.** Vitest: collision-finder unit tests (collision, no collision,
-   same-root exercise group NOT colliding, cross-listed exam colliding with a
-   third course, AT/oral excluded, empty inputs); selector test with seeded
-   atom state; one rendering test per surface (icon appears only for
-   colliding row; tooltip content; ExamSchedule warning line). Extend the MSW
-   exam fixture with two OT exams sharing a (date, slot) — bump fixture, not
-   schema.
-6. **Docs.** ADR 0009 (collision semantics: same-slot grouping over interval
-   math, OT-only, root-dedupe rationale); CHANGELOG entry.
+1. **Selector** `examCalendarEventsSelector` (selectorFamily by semester) in
+   `recoil/examScheduleSelectors.js`: for each root of
+   `myCoursesSelector(semester)` (deduped via `getCourseRootKey`), its OT
+   written exams from `examSchedulesState` become FullCalendar events:
+   `{ id, title: shortName, start: startIso, end: startIso + durationMin,
+   entryType: "exam", durationMin, byod, overlapping, conflictsWith, color }`.
+   `overlapping`/`conflictsWith` come from `examCollisionsSelector` (reuse,
+   don't recompute). Color: `#DC2626` (danger) when overlapping, else a dark
+   distinct base (e.g. `#00521E` hsg-900). One event per root, not per course
+   (exercise groups must not duplicate blocks).
+2. **Calendar.jsx wiring**: mount `useExamSchedule(semester)`; concat exam
+   events into the event set fed to FullCalendar (the `calendarKey` remount
+   already handles event-set changes). Branch `renderEventContent` for
+   `entryType === "exam"`: time range, title, and an "Exam" badge line instead
+   of room. Extend `hoverEvent` tooltip and `CalendarEventSheet` (mobile) with
+   exam fields: duration, BYOD (only when true), conflictsWith in red, and the
+   disclaimer line. Keep PropTypes in sync.
+3. **"Exam period" jump**: a small button beside the calendar's existing
+   custom navigation, rendered only when exam events exist; `gotoDate` to the
+   Monday of the first exam week (min event start). Label "Exams"; when the
+   visible range is inside the exam period the button jumps back to the
+   semester ("Lectures" state) — a simple toggle, no new state atoms beyond
+   local component state.
+4. **Tests**: selector unit tests (OT-only, no orals, per-root dedupe,
+   collision coloring + conflictsWith threading, empty for missing plan);
+   Calendar-side tests following the existing calendar test patterns
+   (`CalendarEventSheet.test.jsx`, `calendarEventSheetGating.test.jsx`):
+   exam badge rendering, sheet content incl. disclaimer, jump button presence
+   gated on exam events. MSW fixture already carries colliding exams.
+5. **Docs**: ADR 0010 (exams as calendar events: OT-only + no fabricated
+   times, separate selector vs. touching calendarEntriesSelector, jump
+   affordance vs. widening the boot range, heatmap out of scope). CHANGELOG.
 
 ## Verification
 
-- `npm test` + `npm run lint` green.
-- Live in the dev server (user session): wishlist a course that shares
-  19.01.2027 15:15 with enrolled Advanced Cybersecurity (e.g. 7,354 Data
-  Analytics and Causal Inference), confirm the warning icon + tooltip in the
-  course list, the SemesterSummary line, and the CourseInfo warning; then
-  remove the course from the wishlist again (leave the user's plan as found)
-  and confirm the warnings disappear.
+- `npm test` + `npm run lint` green; no changes to calendarEntriesSelector
+  or its tests.
+- Live (user session, HS26): Calendar tab → "Exams" button appears → jump →
+  week of 18.01.2027 shows Advanced Cybersecurity 19.01 15:15 block (dark),
+  week of 25.01 shows the two colliding 27.01 09:15 blocks in red with
+  mutual conflictsWith in tooltip/sheet; button toggles back to the lecture
+  weeks. The user's wishlist (incl. the two demo-collision courses) is left
+  exactly as-is.
 
 ## Execution workflow
 
