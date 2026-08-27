@@ -21,12 +21,22 @@ const courseNumbered = (courseNumber, achievementFormStatus = CENTRAL) => ({
   achievementFormStatus,
 });
 
-const renderSchedule = (course, { semester = "HS26", metadata = {} } = {}) =>
+const renderSchedule = (
+  course,
+  { semester = "HS26", metadata = {}, myCourses = [] } = {},
+) =>
   render(
     <RecoilRoot
       initializeState={({ set }) =>
         set(unifiedCourseDataState, {
-          semesters: { [semester]: { cisId: "1", ...metadata } },
+          semesters: {
+            [semester]: {
+              cisId: "1",
+              available: myCourses,
+              selectedIds: myCourses.map((c) => c.courseNumber),
+              ...metadata,
+            },
+          },
           selectedSemester: semester,
           latestValidTerm: semester,
           selectedCourseInfo: course,
@@ -48,12 +58,14 @@ describe("ExamSchedule", () => {
     expect(screen.getByText("90 min")).toBeInTheDocument();
   });
 
-  it("credits the artifact it read", async () => {
+  it("credits the artifact it read and calls the dates indicative", async () => {
     renderSchedule(courseNumbered("3,200,1.00"));
 
-    expect(
-      await screen.findByText(/Central exam schedule Winter 2027/),
-    ).toHaveTextContent("published 18.08.2026");
+    const footnote = await screen.findByText(/Central exam schedule Winter 2027/);
+    expect(footnote).toHaveTextContent("published 18.08.2026");
+    expect(footnote).toHaveTextContent(
+      "indicative only, always verify against the official exam schedule",
+    );
   });
 
   it("lists the ordinary date before the alternative one and labels it", async () => {
@@ -118,6 +130,30 @@ describe("ExamSchedule", () => {
     expect(
       await screen.findByText("Not in the central exam schedule."),
     ).toBeInTheDocument();
+  });
+
+  // The fixture puts 3,200 and 7,850 in the same 18.01.2027 09:15 slot.
+  const MICRO = { courseNumber: "3,200,1.00", shortName: "Microeconomics II" };
+  const CAUSAL = { courseNumber: "7,850,1.00", shortName: "Causal Inference" };
+
+  it("names the other exam on the row that clashes", async () => {
+    renderSchedule(courseNumbered("3,200,1.00"), {
+      myCourses: [MICRO, CAUSAL],
+    });
+
+    expect(
+      await screen.findByText("Overlaps with Causal Inference"),
+    ).toBeInTheDocument();
+  });
+
+  it("marks the clashing date only, not every date of the course", async () => {
+    // 3,802 sits 26.01 (OT) and 19.01 (AT); neither shares 3,200's slot.
+    renderSchedule(courseNumbered("3,802,1.00"), {
+      myCourses: [MICRO, CAUSAL, { courseNumber: "3,802,1.00", shortName: "German C1" }],
+    });
+
+    await screen.findByText("Tue 26.01.2027");
+    expect(screen.queryByText(/Overlaps with/)).not.toBeInTheDocument();
   });
 
   it("never shows exam dates for borrowed catalog data", () => {
