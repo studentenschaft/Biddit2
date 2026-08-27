@@ -146,6 +146,79 @@ const mockData = {
     distances: [[]],
     metadatas: [[]],
   },
+  // Stand-in for the shipped public/exams/HS26.json (178 written entries).
+  // Covers the shapes the UI branches on: OT, AT, BYOD, cross-listed roots, oral.
+  examSchedule: {
+    schemaVersion: 1,
+    semester: "HS26",
+    sourceTermLabel: "Winter 2027",
+    examPeriod: { start: "2027-01-18", end: "2027-02-20" },
+    oralExamPeriod: { start: "2027-01-30", end: "2027-02-20" },
+    source: { file: "docs/exams/test.pdf", publishedAt: "2026-08-18" },
+    written: [
+      {
+        id: "OT-2027-01-18-0915-3,200",
+        date: "2027-01-18",
+        slot: "09:15",
+        startIso: "2027-01-18T09:15:00+01:00",
+        durationMin: 90,
+        level: "BA",
+        termType: "OT",
+        language: "DE",
+        rootNumbers: ["3,200"],
+        title: "Mikroökonomik II",
+      },
+      {
+        id: "OT-2027-02-05-0915-3,140",
+        date: "2027-02-05",
+        slot: "09:15",
+        startIso: "2027-02-05T09:15:00+01:00",
+        durationMin: 90,
+        level: "BA",
+        termType: "OT",
+        language: "EN",
+        rootNumbers: ["3,140"],
+        title: "Introduction to Operations Management (BYOD)",
+        byod: true,
+      },
+      {
+        id: "AT-2027-01-19-0915-3,802|4,802",
+        date: "2027-01-19",
+        slot: "09:15",
+        startIso: "2027-01-19T09:15:00+01:00",
+        durationMin: 120,
+        level: "BA",
+        termType: "AT",
+        language: "DE",
+        rootNumbers: ["3,802", "4,802"],
+        title: "Deutsch C1",
+      },
+      {
+        id: "OT-2027-01-26-0915-3,802|4,802",
+        date: "2027-01-26",
+        slot: "09:15",
+        startIso: "2027-01-26T09:15:00+01:00",
+        durationMin: 120,
+        level: "BA",
+        termType: "OT",
+        language: "DE",
+        rootNumbers: ["3,802", "4,802"],
+        title: "Deutsch C1",
+      },
+    ],
+    oral: [
+      {
+        id: "ORAL-2027-01-30-7,421",
+        date: "2027-01-30",
+        startIso: null,
+        timesPublishedLater: true,
+        section: "Ordentliche Prüfungstermine / Regular examination dates",
+        rootNumbers: ["7,421"],
+        title: "Datenschutzrecht",
+      },
+    ],
+    oralNotes: [],
+  },
 };
 
 /**
@@ -318,9 +391,27 @@ const unisgHandlers = [
 ];
 
 /**
+ * Static assets served from public/ — not an API, so no error simulation.
+ * Only HS26 was ingested. A never-ingested semester does NOT 404 in
+ * production: the SPA fallback (Netlify `/* /index.html 200`, same in Vite
+ * dev) answers 200 with HTML, and "missing" is reached via the JSON parse
+ * failure — so that is what the mock serves.
+ */
+const staticAssetHandlers = [
+  http.get("*/exams/HS26.json", () => HttpResponse.json(mockData.examSchedule)),
+  http.get("*/exams/*", () =>
+    HttpResponse.html("<!DOCTYPE html><html><body>SPA fallback</body></html>"),
+  ),
+];
+
+/**
  * All handlers combined
  */
-export const handlers = [...shsgHandlers, ...unisgHandlers];
+export const handlers = [
+  ...shsgHandlers,
+  ...unisgHandlers,
+  ...staticAssetHandlers,
+];
 
 /**
  * Export mock data for test assertions
