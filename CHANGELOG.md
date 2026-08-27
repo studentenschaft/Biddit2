@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Offline exam-schedule ingestion (`npm run ingest:exams`): converts the HSG
+  central exam-plan PDF into a validated `app/public/exams/<SEMESTER>.json`.
+  Ships `public/exams/HS26.json` — 178 written exams over 15 dates plus the
+  oral-exam page. Validation gates the write, and a golden-file test pins the
+  artifact to a committed `pdftotext` extraction. Nothing in the app reads the
+  file yet; display and collision detection follow later. Runbook in
+  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0007.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
