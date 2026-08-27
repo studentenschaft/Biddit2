@@ -1,4 +1,5 @@
 import { exerciseGroupRegex } from "./regEx";
+import { getCourseRootKey } from "./courseUtils";
 
 export const extractBaseName = (courseName) => {
   if (!courseName || typeof courseName !== 'string') {
@@ -27,18 +28,6 @@ export const isExerciseGroup = (course) => {
   
   const courseName = course.name || course.shortName || course.description || '';
   return exerciseGroupRegex.test(courseName);
-};
-
-// Build a stable grouping key:
-// - Prefer a normalized root key from identifiers like courseNumber/courseId/id
-//   Example: "3,135,1.00" and "3,135,2.04" -> root key "3,135"
-// - Fall back to a cleaned base name when identifiers are missing
-const getCourseRootKey = (course) => {
-  const raw = course?.courseNumber || course?.courseId || course?.id || null;
-  if (!raw || typeof raw !== 'string') return null;
-  const m = raw.match(/^(\d+),(\d+),/);
-  if (m) return `${m[1]},${m[2]}`;
-  return null;
 };
 
 const getThirdSegment = (course) => {
