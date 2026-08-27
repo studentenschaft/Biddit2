@@ -1,0 +1,62 @@
+[
+  {
+    "courseNumber": "3,200,1.00",
+    "shortName": "Mikroökonomik II",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "3,200,2.00",
+    "shortName": "Mikroökonomik II - Übung",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "3,202,1.00",
+    "shortName": "Microeconomics II",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "1,908,1.00",
+    "shortName": "Linear Algebra",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "5,500,1.00",
+    "shortName": "Aktienrecht",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "7,116,1.00",
+    "shortName": "Digital Auditing",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "7,254,1.00",
+    "shortName": "Advanced Macroeconomics II: Asset Prices, Fluctuations and Unemployment",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "7,421,1.00",
+    "shortName": "Datenschutzrecht",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "3,900,1.00",
+    "shortName": "Entwurf von Softwaresystemen",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "5,267,1.00",
+    "shortName": "Ökonomie des Glücks",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "7,999,1.00",
+    "shortName": "Wirtschaftsethik",
+    "achievementFormStatus": { "isCentral": true, "isDeCentral": false }
+  },
+  {
+    "courseNumber": "8,110,1.00",
+    "shortName": "Seminar: Digitale Ethik",
+    "achievementFormStatus": { "isCentral": false, "isDeCentral": true }
+  }
+]

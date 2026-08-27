@@ -1,0 +1,232 @@
+                                        Prüfungsplan Winter 2027 / Examination Schedule Winter 2027 (18.01. - 20.02.2027)
+                                                               Der Prüfungsplan des Ausserordentlichen Termins (AT) vom 08. - 20.02.2027 wird in der KW42 publiziert.
+                                                          The examination schedule of the alternative examination date (AT) from 08. - 20.02.2027 will be published in CW42.
+Hinweis: Mit diesem Prüfungsplan werden bereits zum Biddingstart sämtliche zentralen Prüfungen vom Ordentlichen Termin (OT) veröffentlicht. Beachten Sie beim Bidding unbedingt, dass Sie nicht auf Kurse bidden, bei
+welchen sich die Prüfungen überschneiden. Für allfällige Prüfungskollisionen sind Sie selbst verantwortlich, es werden keine Ausnahmen gewährt.
+Note: With this examination schedule, all central examinations from the regular date will be published with the start of bidding. When bidding, please make sure that you do not bid any courses where the examinations
+overlap. You yourself are responsible for any examination collisions; no exceptions are granted.
+
+Legende/caption:   AJ = Assessmentjahr/Assessment level / BA = Bachelor-Stufe/Bachelor's level / MA = Master-Stufe/Master's level
+                   = digitale Prüfungen (BYOD)
+                                                                                                                            Schriftliche Prüfungen / Written examinations
+                                                                                                                       1. Prüfungswoche / 1st examination week: 18.01. - 23.01.27
+
+Datum              Prüfungsbeginn (schriftl.): 09.15 Uhr                                                                                               Prüfungsbeginn (schriftl.): 15.15 Uhr
+Date               Beginning of (written) examinations: 9.15 a.m.                                                                                      Beginning of (written) examinations: 3.15 p.m.
+18.01.2027         BA: OT DE          90'                3,200 Mikroökonomik II                                                                        AJ: OT EN 120'                        1,908 Linear Algebra
+Montag /           BA: OT EN          90'                3,202 Microeconomics II                                                                       BA: OT DE          90'                5,500 Aktienrecht
+Monday                                                                                                                                                 MA: OT EN          90'                7,116 Digital Auditing
+                                                                                                                                                       MA: OT EN          90'                7,254 Adv. Macro II: Asset Prices, Fluctuations + Unempl.
+                                                                                                                                                       MA: OT DE 120'                        7,400 Kolloquium Öffentliches Recht
+
+19.01.2027         BA: OT      DE     120'     3,802 | 4,802 Deutsch C1                                                                                BA: OT   DE   120'           3,900 Entwurf von Softwaresystemen
+Dienstag /         BA: OT      DE     120'     3,804 | 4,804 Deutsch B2                                                                                BA: OT   DE    60'           5,123 Stress und Resilienz in Hochleistungskontexten
+Tuesday            BA: OT      DE     120'     3,805 | 4,805 Deutsch B1                                                                                BA: OT   EN    90'           5,300 International Law
+                   BA: OT      EN     120'     3,814 | 4,814 Englisch C1                                                                               MA: OT   EN   120'           7,354 Data Analytics and Causal Inference
+                   BA: OT      EN     120'             3,815 Englisch C1 (English for Law)                                                             MA: OT   DE    90'           7,418 Arbeitsrecht I
+                   BA: OT      DE     120'     3,824 | 4,824 Französisch C1                                                                            MA: OT   EN   120'           7,850 Advanced Cybersecurity
+                   BA: OT      DE     120'     3,826 | 4,826 Französisch B2
+                   BA: OT      EN     120'     3,827 | 4,827 French B2
+                   BA: OT      DE     120'             3,834 Italienisch B2
+                   BA: OT      DE     120'     3,844 | 4,844 Spanisch B2
+                   BA: OT      DE     120'             3,854 Portugiesisch A2
+                   BA: OT      DE     120'     3,864 | 4,864 Chinesisch A1
+                   BA: OT      EN     120'     3,865 | 4,865 Chinese A1
+                   BA: OT      DE     120'     3,874 | 4,872 Japanisch A1
+                   BA: OT      DE     120'     3,884 | 4,884 Russisch A1
+                   AJ: AT      DE     120'             2,805 German A2
+                   AJ: AT      EN     120'             2,811 Englisch C1
+                   AJ: AT      EN     120'             2,814 Englisch C1 (English for Law)
+                   AJ: AT      DE     120'             2,834 Italienisch B1
+                   AJ: AT      DE     120'             2,842 Spanisch B2
+                   AJ: AT      DE     120'             2,846 Spanisch B1
+                   AJ: AT      EN     120'             2,847 Spanish B1
+                   AJ: AT      DE     120'             2,852 Portugiesisch A2
+                   AJ: AT      EN     120'             2,863 Chinese A1
+                   AJ: AT      DE     120'             2,872 Japanisch A1
+                   AJ: AT      EN     120'             2,873 Japanese A1
+                   AJ: AT      DE     120'             2,882 Russisch A1
+                   AJ: AT      EN     120'             2,883 Russian A1
+                   AJ: AT      DE     120'             2,892 Arabisch A1
+                   BA: AT      DE     120'     3,802 | 4,802 Deutsch C1
+                   BA: AT      DE     120'     3,804 | 4,804 Deutsch B2
+                   BA: AT      EN     120'     3,814 | 4,814 Englisch C1
+                   BA: AT      DE     120'     3,826 | 4,826 Französisch B2
+                   BA: AT      DE     120'     3,844 | 4,844 Spanisch B2
+                   BA: AT      DE     120'     3,864 | 4,864 Chinesisch A1
+                   BA: AT      EN     120'     3,865 | 4,865 Chinese A1
+                   BA: AT      DE     120'     3,874 | 4,872 Japanisch A1
+                   BA: AT      DE     120'     3,884 | 4,884 Russisch A1
+                   BA: AT      DE     120'             4,836 Italienisch B1
+                   BA: AT      DE     120'             4,846 Spanisch B1
+                   BA: AT      EN     120'             4,847 Spanish B1
+                   BA: AT      DE     120'             4,852 Portugiesisch B1
+                   BA: AT      EN     120'             4,885 Russian A1
+                   BA: AT      DE     120'             4,892 Arabisch A1
+
+20.01.2027         AJ: OT      DE     180'                  1,170 Rechtswissenschaft I A                                                               BA: OT   DE    90'           3,432 Unternehmensrecht
+Mittwoch /         AJ: OT      EN     180'                  1,172 Law I A                                                                              MA: OT   DE    90'           7,100 Management Accounting
+Wednesday                                                                                                                                              MA: OT   EN    90'           7,102 Management Accounting
+                                                                                                                                                       MA: OT   EN    90'           7,202 International Management (SIM)
+                                                                                                                                                       MA: OT   DE    90'           7,221 Finance and Management Accounting I
+                                                                                                                                                       MA: OT   EN   120'           7,474 The International Legal Order
+
+21.01.2027         BA: OT      DE      90'                  3,120 Methoden: Statistik                                                                  AJ: OT   DE   120'           1,900 Grundlagen der Informatik
+Donnerstag /       BA: AT      EN      90'                  4,120 Methods: Statistics                                                                  BA: OT   EN    90'           3,770 GK./Found. Crs.: How Media + Tech. Shape Our World
+Thursday           BA: OT      DE     120'                  3,220 Data Analytics I: Statistik (VWL)                                                    MA: OT   DE    60'           7,000 Grundlagen Business Innovation
+                   BA: OT      EN     120'                  3,222 Data Analytics I: Statistics (Economics)                                             MA: OT   DE   120'           7,404 Methodenlehre
+                   BA: OT      DE      90'                  3,426 Strafrecht BT                                                                        MA: OT   EN   120'           7,852 User-Centred Design
+                   BA: OT      DE     150'                  3,502 Strafrecht AT & BT
+
+22.01.2027         BA: OT      DE     120'             3,800 Deutsch C2                                                                                BA: OT   DE    90'           3,420 Öffentliches Recht - Grundrechte
+Freitag /          BA: OT      EN     120'     3,810 | 4,810 Englisch C2                                                                               BA: OT   EN    90'           3,902 Distributed Systems
+Friday             BA: OT      EN     120'     3,811 | 4,811 Englisch C2 (Lawyers)                                                                     BA: OT   EN    90'           5,124 Digital Transformation Strategy
+                   BA: OT      DE     120'     3,842 | 4,842 Spanisch C1                                                                               BA: OT   DE    90'           5,267 Ökonomie des Glücks
+                   BA: OT      EN     120'             3,851 Portuguese B2                                                                             MA: OT   EN    60'           7,204 Strategic Leadership (SIM)
+                   BA: OT      DE     120'             3,862 Chinesisch A2                                                                             MA: OT   EN    60'           7,223 Leadership
+                   BA: OT      DE     120'             3,872 Japanisch A2                                                                              MA: OT   EN    90'           7,256 Adv. Micro II: Game Theory and Information Econ.
+                   BA: OT      DE     120'             3,882 Russisch A2                                                                               MA: OT   DE    90'           7,700 Recht/Law: Rechtsmedizin
+                   BA: OT      DE      90'             3,892 Arabisch A2
+                   BA: AT      EN     120'     3,810 | 4,810 Englisch C2
+                   BA: AT      DE     120'             4,830 Italienisch C1
+                   BA: AT      EN     120'             4,863 Chinese A2
+                   BA: AT      EN     120'             4,866 Chinese B1
+                   BA: AT      DE     120'             4,874 Japanisch B1
+                   BA: AT      EN     120'             4,883 Russian A2
+                   BA: AT      DE     120'             4,886 Russisch B1
+
+
+
+
+Kompetenzcenter Planung und Prüfungen                                                                                                     18.08.2026                                                                                                     Seite 1 von 4
+                                                                                              Schriftliche Prüfungen / Written examinations
+                                                                                         2. Prüfungswoche / 2nd examination week: 25.01. - 30.01.27
+
+                 = digitale Prüfungen (BYOD)
+
+Datum            Prüfungsbeginn (schriftl.): 09.15 Uhr                                                                 Prüfungsbeginn (schriftl.): 15.15 Uhr
+Date             Beginning of (written) examinations: 9.15 a.m.                                                        Beginning of (written) examinations: 3.15 p.m.
+25.01.2027       BA: OT EN 150'                        3,145 Business and Tax Law                                      BA: OT EN 120'                        3,232 Mathematical Tools for Economists
+Montag /         BA: AT DE 150'                        4,145 Wirtschafts- und Steuerrecht                              MA: OT EN          90'                7,170 Impact Investing
+Monday           BA: OT DE          90' 5,402 | 6,402 Steuerrecht                                                      MA: OT DE          90'                7,220 Strategy I
+                 BA: AT DE          90' 5,402 | 6,402 Steuerrecht                                                      MA: OT EN 120'                        7,854 Machine Learning
+                 MA: OT DE          90' 7,408 | 8,417 Internationales Privat- und Zivilverfahrensrecht
+                 MA: AT DE          90' 7,408 | 8,417 Internationales Privat- und Zivilverfahrensrecht
+
+26.01.2027        AJ: OT    DE    180'         1,100 Betriebswirtschaftslehre A                                        AJ: OT   EN   120'           1,902 Introduction to Programming
+Dienstag /        AJ: OT    EN    180'         1,102 Business Administration A                                         BA: OT   DE    90'           3,306 Quantitative Methoden
+Tuesday                                                                                                                BA: OT   EN    90'           3,307 Quantitative Methods
+                                                                                                                       BA: OT   DE    90'           3,904 Datenbanken
+                                                                                                                       BA: OT   EN    90'   5,133 | 6,135 International Management
+                                                                                                                       BA: AT   EN    90'   5,133 | 6,135 International Management
+                                                                                                                       BA: OT   DE    90'   5,417 | 6,417 Verfahrensrecht: ZPO
+                                                                                                                       BA: AT   DE    90'   5,417 | 6,417 Verfahrensrecht: ZPO
+                                                                                                                       MA: OT   EN    90'           7,127 Taxes and Business Strategy
+                                                                                                                       MA: OT   DE   120'           7,402 Kolloquium Privatrecht
+
+27.01.2027        BA: OT    DE    150'         5,400 Verwaltungsrecht: Grundl.und öffentl. Wirtschaftsr.               BA: OT   DE    90'             3,210 Makroökonomik II
+Mittwoch /        MA: OT    EN     60'         7,002 Business Innovation II: Build. and Transf. Business               BA: OT   EN    90'             3,212 Macroeconomics II
+Wednesday         MA: OT    EN     60'         7,206 Financial Management (SIM)
+                  MA: OT    EN    120'         7,856 Advanced Software and Systems Engineering
+
+28.01.2027        AJ: OT    DE    180'         1,126 Volkswirtschaftslehre A                                           AJ: OT   DE    60'             1,904 Computersysteme
+Donnerstag /      AJ: OT    EN    180'         1,128 Economics A                                                       BA: OT   DE    90'             3,422 Öffentliches Recht - Staatsorganisationsrecht
+Thursday                                                                                                               BA: OT   DE   120'             3,906 Statistik für Data Science
+                                                                                                                       BA: OT   EN    90'             5,264 Health Economics (Major VWL)
+                                                                                                                       MA: OT   EN   120'             7,350 International Politics and Market Economy
+                                                                                                                       MA: OT   EN    90'             7,481 European and International Capital Markets Law
+
+29.01.2027        BA: OT    DE     90'         3,304 Vergleichende Politikwissenschaft                                 BA: OT   EN    90'   3,130 | 4,130 Corporate Finance (BBWL)
+Freitag /         BA: OT    EN     90'         3,305 Comparative Politics                                              BA: AT   EN    90'   3,130 | 4,130 Corporate Finance (BBWL)
+Friday            BA: OT    DE    150'         3,402 ZGB                                                               MA: OT   DE    90'   7,406 | 8,433 Schuldbetreibungs- und Konkursrecht
+                  BA: OT    DE    150'         3,500 ZGB (BLE)                                                         MA: AT   DE    90'   7,406 | 8,433 Schuldbetreibungs- und Konkursrecht
+                  MA: OT    DE     90'         7,119 Rechnungslegung nach Obligationenrecht
+                  MA: OT    EN     90'         7,315 Theory of Finance
+
+
+
+
+Kompetenzcenter Planung und Prüfungen                                                                     18.08.2026                                                                                         Seite 2 von 4
+                                                                                                 Schriftliche Prüfungen / Written examinations
+                                                                                              3. Prüfungswoche / 3rd examination week: 01.02. - 06.02.27
+
+                 = digitale Prüfungen (BYOD)
+
+Datum            Prüfungsbeginn (schriftl.): 09.15 Uhr                                                                     Prüfungsbeginn (schriftl.): 15.15 Uhr
+Date             Beginning of (written) examinations: 9.15 a.m.                                                            Beginning of (written) examinations: 3.15 p.m.
+01.02.2027       BA: OT DE          60'                3,105 Methoden: Empirische Sozialforschung                          AJ: OT DE 120'                        1,906 Analysis
+Montag /         BA: AT EN          60'                4,105 Methods: Empirical Social Research                            MA: OT EN          90'                7,858 Advanced Databases
+Monday           BA: OT DE 120'                        3,701 Recht/Law: Law & Economics Methode I
+                 MA: OT EN          60'                7,230 Introduction to Machine Learning and Deep Learning
+
+02.02.2027        AJ: OT    DE    120'         1,174 Rechtswissenschaft II A                                               BA: OT    DE    90'            3,300 Public Management
+Dienstag /        AJ: OT    DE    120'         1,200 Mathematik mit Statistik A                                            BA: OT    DE    90'    5,422 | 6,434 Integrationsleistung Öffentliches Recht
+Tuesday           AJ: OT    EN    120'         1,202 Mathematics with Statistics A                                         MA: OT    DE   120'            7,105 Corporate Finance
+                                                                                                                           MA: OT    EN   120'            7,107 Corporate Finance
+                                                                                                                           MA: OT    EN    90'            7,371 Global Governance of Technological Risks
+                                                                                                                           MA: OT    EN    90'            7,483 International Criminal Law
+
+03.02.2027        AJ: OT    DE     60'         1,910 Einführung in die Betriebswirtschaftslehre                            BA: OT    DE   120'             3,700 Recht/Law: Allgemeine europäische Rechtsgeschichte
+Mittwoch /        BA: OT    EN    120'         3,125 Fund. and Meth. of Computer Sci. for Business Stud.                   MA: OT    EN    90'             7,310 Data Analytics I: Predictive Econometrics
+Wednesday         BA: AT    DE    120'         4,125 Grundl. und Meth. der Inform. für Wirtschaftswiss.
+
+04.02.2027        AJ: OT    DE    120'         1,180 Politikwissenschaft A                                                 BA: OT    DE    90'             3,771 GK./Found. Crs.: Wie erkl. Kulturth. die Welt?
+Donnerstag /      AJ: OT    EN    120'         1,182 Political Science A                                                   BA: OT    EN    90'             3,920 Fundamentals: Mathematics (BCS)
+Thursday                                                                                                                   MA: OT    EN    90'             7,015 Introduction to Business Process Management
+                                                                                                                           MA: OT    EN   120'             7,126 Applied Data Analysis for Business
+                                                                                                                           MA: OT    DE   120'             7,130 Internationales Unternehmenssteuerrecht
+                                                                                                                           MA: OT    EN    90'             7,489 International Economic Law
+
+05.02.2027        BA: OT    EN     90'         3,140 Introduction to Operations Management (BYOD)                          BA: OT    DE    90'             3,110 Strategisches Management
+Freitag /         BA: AT    DE     90'         4,140 Einführung in das Operations-Management (BYOD)                        BA: AT    EN    90'             4,110 Strategic Management
+Friday
+
+
+
+
+Kompetenzcenter Planung und Prüfungen                                                                         18.08.2026                                                                                              Seite 3 von 4
+                                                             Mündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
+                            Ordentlicher und Ausserordentlicher Prüfungstermin (inkl. Sprachen) / Regular and alternative examination dates (incl. Languages)
+
+Datum                                                              Prüfungsbeginn (mündl.) Morgen ab 08.15 / Prüfungsende (mündl.) Abend bis 18.00
+Date                                                            Beginning of (oral) examinations, morning 08.15 / End of (oral) examinations, evening 18.00
+
+30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /
+Saturday         7,421 Datenschutzrecht
+                 7,436 Internationale Schiedsgerichtsbarkeit
+-                7,702 Recht/Law: Recht und Psychologie - die Tätigkeit von Richtern und Rechtsanwälten aus psychologischer Sicht
+
+06.02.2027       Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)
+Samstag /
+Saturday         Die individuellen mündlichen Prüfungstermine (inkl. Raumzuteilung) sind am Ende der KW 50 in Compass abrufbar.
+                 The individual oral exam dates (incl. Room allocation) are available in Compass at the end of CW 50.
+
+
+08.02.2027       Ordentliche Prüfungstermine / Regular examination dates
+Montag /
+Monday
+                 AJ: KuSo B: Soziologie / Geschichte / Psychologie / Philosophie
+-                AJ: CuSo B: Sociology / History / Psychology / Philosophy
+
+13.02.2027
+Samstag /        Die individuellen mündlichen Prüfungstermine von KuSo B (inkl. Raumzuteilung) sind am Ende der KW 50 in StudyNet abrufbar.
+Saturday         The dates for individual oral examinations of CuSo B (incl. Room allocation) will be available in StudyNet at the end of CW 50.
+
+
+08.02.2027       Ausserordentliche Prüfungstermine / Alternative examination dates
+Montag /
+Monday           AJ KuSo B: Die individuellen Prüfungstermine sind am Ende der KW 50 in StudyNet abrufbar.
+                 AJ CuSo B: The individual exam dates will be available in StudyNet at the end of CW 50.
+-
+                 BA/MA: Mündliche ausserordentliche Prüfungstermine ohne Prüfungsformänderung werden Ende KW 50 in Compass publiziert.
+                 BA/MA: Oral alternative examination dates without change of examination form will be published in Compass at the end of CW 50.
+20.02.2027
+Samstag /        AJ/BA/MA: Ausserordentliche Prüfungstermine mit Prüfungsformänderung (schriftlich zu mündlich) werden durch die Dozierenden organisiert.
+Saturday         AJ/BA/MA: Alternative examination dates with change of examination form (written to oral) are organised by the lecturers.
+
+
+
+
+Kompetenzcenter Planung und Prüfungen                                                          18.08.2026                                                       Seite 4 von 4
+
