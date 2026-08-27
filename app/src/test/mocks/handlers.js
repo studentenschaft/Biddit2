@@ -147,7 +147,8 @@ const mockData = {
     metadatas: [[]],
   },
   // Stand-in for the shipped public/exams/HS26.json (178 written entries).
-  // Covers the shapes the UI branches on: OT, AT, BYOD, cross-listed roots, oral.
+  // Covers the shapes the UI branches on: OT, AT, BYOD, cross-listed roots,
+  // oral, and two OT exams sharing a (date, slot) so collisions have real data.
   examSchedule: {
     schemaVersion: 1,
     semester: "HS26",
@@ -167,6 +168,19 @@ const mockData = {
         language: "DE",
         rootNumbers: ["3,200"],
         title: "Mikroökonomik II",
+      },
+      {
+        // Same date and slot as 3,200 above: the collision fixture.
+        id: "OT-2027-01-18-0915-7,850",
+        date: "2027-01-18",
+        slot: "09:15",
+        startIso: "2027-01-18T09:15:00+01:00",
+        durationMin: 120,
+        level: "MA",
+        termType: "OT",
+        language: "EN",
+        rootNumbers: ["7,850"],
+        title: "Data Analytics and Causal Inference",
       },
       {
         id: "OT-2027-02-05-0915-3,140",

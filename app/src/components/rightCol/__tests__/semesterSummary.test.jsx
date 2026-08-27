@@ -90,6 +90,11 @@ vi.mock("../../leftCol/bottomRow/LockClosed", () => {
 vi.mock("../../helpers/useOpenCourseDetails", () => ({
   useOpenCourseDetails: () => vi.fn(),
 }));
+// The exam plan is fetched here in production; the layout under test does not
+// depend on it, and the warnings have their own test.
+vi.mock("../../helpers/useExamSchedule", () => ({
+  useExamSchedule: () => null,
+}));
 
 import SemesterSummary from "../SemesterSummary";
 import { formatEcts } from "../../helpers/formatEcts";

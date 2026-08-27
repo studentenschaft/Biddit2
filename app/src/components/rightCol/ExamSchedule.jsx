@@ -1,8 +1,10 @@
 import PropTypes from "prop-types";
+import { InformationCircleIcon } from "@heroicons/react/outline";
 import { useRecoilValue } from "recoil";
-import { semesterMetadataSelector } from "../recoil/unifiedCourseDataSelectors";
+import { examCollisionsSelector } from "../recoil/examScheduleSelectors";
 import { useExamSchedule } from "../helpers/useExamSchedule";
 import { examsForCourse } from "../helpers/examScheduleUtils";
+import { getCourseRootKey } from "../helpers/courseUtils";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -23,13 +25,12 @@ const formatExamDate = (isoDay) => {
 };
 
 export default function ExamSchedule({ course, semester }) {
-  const semesterMetadata = useRecoilValue(semesterMetadataSelector(semester));
-  // Borrowed catalogs (projected term, or a current term previewing the
-  // previous year) show courses that are not actually running this term, so
-  // their exam dates would be someone else's. See REFERENCE_SEMESTER.md.
-  const isBorrowedData =
-    semesterMetadata.isFutureSemester || semesterMetadata.usingReferenceData;
-  const schedule = useExamSchedule(isBorrowedData ? null : semester);
+  // The hook itself refuses borrowed catalogs, so this is the whole gate.
+  const schedule = useExamSchedule(semester);
+  const collisions = useRecoilValue(examCollisionsSelector(semester));
+  // Only courses in the user's plan are in the map, so a merely browsed course
+  // gets no warning — it is not competing with anything yet.
+  const collision = collisions.get(getCourseRootKey(course));
 
   const achievementFormStatus = course?.achievementFormStatus;
   if (achievementFormStatus?.isDeCentral && !achievementFormStatus.isCentral) {
@@ -54,19 +55,26 @@ export default function ExamSchedule({ course, semester }) {
   return (
     <div className="pb-2 text-sm text-gray-700">
       {written.map((exam) => (
-        <div key={exam.id} className="flex flex-wrap items-baseline gap-x-2">
-          <span className="font-semibold">{formatExamDate(exam.date)}</span>
-          <span>{exam.slot}</span>
-          <span>{exam.durationMin} min</span>
-          {exam.termType === "AT" && (
-            <span className="text-gray-500">Alternative date</span>
-          )}
-          {/* The plan only marks BYOD when the title spells it out, so this
-              badge is present-or-silent — never "not BYOD". */}
-          {exam.byod === true && (
-            <span className="rounded bg-hsg-100 px-1 text-xs text-hsg-800">
-              digital (BYOD)
-            </span>
+        <div key={exam.id}>
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <span className="font-semibold">{formatExamDate(exam.date)}</span>
+            <span>{exam.slot}</span>
+            <span>{exam.durationMin} min</span>
+            {exam.termType === "AT" && (
+              <span className="text-gray-500">Alternative date</span>
+            )}
+            {/* The plan only marks BYOD when the title spells it out, so this
+                badge is present-or-silent — never "not BYOD". */}
+            {exam.byod === true && (
+              <span className="rounded bg-hsg-100 px-1 text-xs text-hsg-800">
+                digital (BYOD)
+              </span>
+            )}
+          </div>
+          {collision?.exam.id === exam.id && (
+            <p className="text-danger">
+              Overlaps with {collision.conflictsWith.join(", ")}
+            </p>
           )}
         </div>
       ))}
@@ -76,9 +84,17 @@ export default function ExamSchedule({ course, semester }) {
           <span>Oral exam — individual time published in Compass</span>
         </div>
       ))}
-      <p className="pt-1 text-xs text-gray-500">
-        Central exam schedule {schedule.plan.sourceTermLabel}, published{" "}
-        {formatDay(schedule.plan.source?.publishedAt)}
+      <p className="flex items-start gap-1 pt-1 text-xs text-gray-500">
+        <InformationCircleIcon
+          aria-hidden="true"
+          className="mt-0.5 h-4 w-4 flex-shrink-0"
+        />
+        <span>
+          Central exam schedule {schedule.plan.sourceTermLabel}, published{" "}
+          {formatDay(schedule.plan.source?.publishedAt)}. Extracted
+          automatically from the official PDF — indicative only, always verify
+          against the official exam schedule.
+        </span>
       </p>
     </div>
   );

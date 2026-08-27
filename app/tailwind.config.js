@@ -23,6 +23,7 @@ export default {
         light: "#007A2D",
         neutral: "#9CA3AF",
         warning: "#FCA311",
+        danger: "#DC2626",
         "hsg-50": "#EBFFF2",
         "hsg-100": "#CCFFDF",
         "hsg-200": "#99FFBE",
