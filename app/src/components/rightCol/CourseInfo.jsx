@@ -11,6 +11,7 @@ import SimilarCourses from "./SimilarCourses.jsx";
 import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
 import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
 import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
+import ExamSchedule from "./ExamSchedule.jsx";
 
 // Unified course data
 import {
@@ -182,6 +183,10 @@ export default function CourseInfo() {
     );
   }
 
+  // Not every catalog entry carries it (exercise groups, preview data), and a
+  // missing one used to take the whole panel down.
+  const achievementFormStatus = selectedCourse.achievementFormStatus ?? {};
+
   return (
     <>
       {/* // Course Name and Link to courses page and course info sheet // */}
@@ -224,13 +229,13 @@ export default function CourseInfo() {
             <div className="" label="credits and exam info">
               {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
               {selectedCourse.classification}{" "}
-              {selectedCourse.achievementFormStatus.isCentral &&
-              selectedCourse.achievementFormStatus.isDeCentral
-                ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
-                : selectedCourse.achievementFormStatus.isCentral
-                ? `| Central (${selectedCourse.achievementFormStatus.description})`
-                : selectedCourse.achievementFormStatus.isDeCentral
-                ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
+              {achievementFormStatus.isCentral &&
+              achievementFormStatus.isDeCentral
+                ? `| Central & Decentral (${achievementFormStatus.description})`
+                : achievementFormStatus.isCentral
+                ? `| Central (${achievementFormStatus.description})`
+                : achievementFormStatus.isDeCentral
+                ? `| Decentral (${achievementFormStatus.description})`
                 : ""}
             </div>
             <div className="mb-4">
@@ -358,6 +363,10 @@ export default function CourseInfo() {
             <h2 className="text-lg font-bold text-gray-700 ">
               Exam Information
             </h2>
+            <ExamSchedule
+              course={selectedCourse}
+              semester={semesterAbbreviation}
+            />
             <div className="pb-1">
               {examInformationState ? (
                 examInformationState.examinationParts.map((part, index) => {
