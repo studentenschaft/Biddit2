@@ -301,7 +301,7 @@ export default function EventListContainer({
             {examConflicts.length > 0 && (
               <ExclamationIcon
                 aria-label="Exam overlap"
-                className="flex-shrink-0 w-4 h-4 text-danger"
+                className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
                 data-tooltip-id="course-list-tooltip"
                 data-tooltip-content={`Exam overlaps with: ${examConflicts.join(
                   ", "
