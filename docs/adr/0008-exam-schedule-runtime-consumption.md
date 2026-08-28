@@ -42,7 +42,7 @@ is a file in `public/`, not an API response.
 
 `useExamSchedule(semester)` fetches `/exams/<semester>.json` with a plain
 `fetch`, once per semester per session, and caches the outcome in
-`examSchedulesState` as `{ status: "loaded" | "missing", plan }`. The atom is the
+`examSchedulesState` as `{ plan }` (`plan: null` = missing). The atom is the
 fetch guard: Course Details is unmounted by react-tabs on every tab switch, so a
 component-local guard would not survive.
 
