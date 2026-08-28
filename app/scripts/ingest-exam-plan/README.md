@@ -4,6 +4,19 @@ Converts the HSG central exam-plan PDF into `app/public/exams/<SEMESTER>.json`.
 Runs **once per semester, by hand** — nothing in the app calls it, and nothing
 in CI runs it.
 
+## Where the data lives
+
+- `docs/exams/<published-name>.pdf` is the committed source document from HSG.
+- `app/public/exams/<SEMESTER>.json` is the runtime artifact. The browser fetches
+  it as `/exams/<SEMESTER>.json`; exam schedules are not stored in a database.
+- `app/scripts/ingest-exam-plan/__tests__/fixtures/<exam-period>.txt` is the
+  exact `pdftotext -layout` extraction used by the golden regression test.
+- `docs/exams/catalog-<SEMESTER>.json` is an optional, local course-catalog
+  cross-check. It is gitignored because the snapshot comes from DevTools.
+
+Keep previous semesters' PDFs, JSON artifacts and golden fixtures. A new
+semester adds a new set of files; it does not replace the preceding semester.
+
 ## Prerequisites
 
 ```bash
@@ -13,7 +26,8 @@ brew install poppler   # provides pdftotext; only needed for --pdf
 ## Runbook
 
 1. **Drop the PDF** into `docs/exams/` under its published name, e.g.
-   `docs/exams/Prüfungsplan OT Winter 2027.pdf`.
+   `docs/exams/Prüfungsplan OT Winter 2027.pdf`. For a new semester, add the
+   PDF alongside the older plans rather than overwriting one of them.
 
 2. **Pick the semester key.** It is never inferred from the PDF, because the
    PDF names the *exam period*, not the semester it belongs to:
@@ -57,20 +71,31 @@ brew install poppler   # provides pdftotext; only needed for --pdf
 6. **Spot-check ~10 entries** against the PDF: one from each slot, a
    cross-listed pair (`3,802 | 4,802`), an `AT` row and an oral entry.
 
-7. **Refresh the golden fixture** if the source PDF changed:
+7. **Add or refresh the golden fixture.** Extract the exact layout text:
 
    ```bash
    pdftotext -layout -enc UTF-8 -eol unix "../docs/exams/Prüfungsplan OT Winter 2027.pdf" \
      scripts/ingest-exam-plan/__tests__/fixtures/winter-2027.txt
    ```
 
-   The golden test rebuilds the plan from this fixture and compares it
-   byte-for-byte against `public/exams/HS26.json`, so review the artifact's
-   diff line by line before blessing it. Do not reformat the fixture — losing
-   its form feeds degrades page splitting to the banner fallback.
+   For a revised PDF in the same semester, refresh that semester's existing
+   fixture. For a new semester, choose a new fixture name (for example,
+   `summer-2027.txt`) and add a corresponding case to
+   `__tests__/goldenFile.test.js`; do not repoint the HS26 case or delete its
+   files. Each case must rebuild its semester's plan and compare it
+   byte-for-byte against the matching `public/exams/<SEMESTER>.json`.
+
+   Review the artifact's diff line by line before blessing it. Do not reformat
+   the fixture — losing its form feeds degrades page splitting to the banner
+   fallback.
 
 8. **`npm test` and `npm run lint`**, then commit the PDF, the artifact and the
-   fixtures, and add a CHANGELOG entry.
+   fixture, the golden-test case, and a CHANGELOG entry.
+
+9. **Re-ingest later publications for the same semester.** If the report prints
+   `W_AT_INCOMPLETE`, repeat the dry run, write, spot-check, fixture and test
+   steps when HSG publishes the complete alternative-date plan. Review the
+   resulting JSON diff as carefully as the initial import.
 
 ## Options
 
