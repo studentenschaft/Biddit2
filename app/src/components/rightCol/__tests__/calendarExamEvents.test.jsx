@@ -1,5 +1,5 @@
 /**
- * Exam blocks in the Calendar (ADR 0010).
+ * Exam blocks in the Calendar.
  *
  * Three things are pinned here: exam events reach FullCalendar without going
  * through `calendarEntriesSelector`, an exam block reads as an exam rather than

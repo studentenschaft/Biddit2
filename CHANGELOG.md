@@ -18,8 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Exams" button beside the existing navigation jumps to the first exam week
   and back again — it only appears when there is something to jump to. Oral
   and alternative-date exams are never drawn (no published times), and one
-  exam is one block however many of the user's courses sit it. Rationale in
-  ADR 0010.
+  exam is one block however many of the user's courses sit it.
 - Exam-overlap warnings. When two courses in the user's plan (enrolled or
   wishlisted) sit central exams on the same date and slot, a warning shows in
   the course list row, the semester summary conflict tooltip and the Course

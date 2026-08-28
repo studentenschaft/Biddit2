@@ -29,7 +29,7 @@ import {
   selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
-// Central written exams as calendar blocks (ADR 0010). The hook is what fills
+// Central written exams as calendar blocks. The hook is what fills
 // the atom the selector reads, and it refuses borrowed catalogs on its own.
 import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
 import { useExamSchedule } from "../helpers/useExamSchedule";
