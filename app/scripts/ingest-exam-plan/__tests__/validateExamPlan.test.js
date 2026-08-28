@@ -127,6 +127,44 @@ describe("validateExamPlan — one broken plan per error code", () => {
     ).toContain("E_TITLE_BLEED");
   });
 
+  it("E_TITLE_BLEED when another entry is swallowed into a title", () => {
+    // A root the entry regex cannot see leaves its whole row — or its
+    // cross-listed tail — inside the previous title; the count and residue
+    // checks cannot see that, so this one must.
+    expect(
+      validateBroken((plan) => {
+        plan.written[0].title = "Mikroökonomik II       AJ: OT EN 120'";
+      }),
+    ).toContain("E_TITLE_BLEED");
+    expect(
+      validateBroken((plan) => {
+        plan.written[0].title = "| 114,802 Deutsch C1";
+      }),
+    ).toContain("E_TITLE_BLEED");
+  });
+
+  it("E_SEMESTER_MISMATCH when the key contradicts the plan's own title", () => {
+    // "Winter 2027" can only be HS26; a typo like FS30 must not ship a whole
+    // semester's dates under the wrong key.
+    expect(
+      validateBroken((plan) => {
+        plan.semester = "FS30";
+      }),
+    ).toContain("E_SEMESTER_MISMATCH");
+  });
+
+  it("allows a two-part exam on different dates, same root and term type", () => {
+    expect(
+      validateBroken((plan) => {
+        const second = structuredClone(plan.written[0]);
+        second.id = `${second.id}-part-2`;
+        second.date = "2027-01-19";
+        second.startIso = "2027-01-19T09:15:00+01:00";
+        plan.written.push(second);
+      }),
+    ).not.toContain("E_DUPLICATE_EXAM");
+  });
+
   it("E_SEMESTER_FORMAT for a semester key of the wrong shape", () => {
     expect(
       validateBroken((plan) => {

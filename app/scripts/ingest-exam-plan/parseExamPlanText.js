@@ -16,9 +16,14 @@ export const PAGE_KIND = {
 export const MORNING_SLOT = "09:15";
 export const AFTERNOON_SLOT = "15:15";
 
-/** One written exam: level, term type, language, duration, cross-listed roots. */
+/**
+ * One written exam: level, term type, language, duration, cross-listed roots.
+ * Root prefixes run past one digit (the catalog has "11,702,1.00"), so the
+ * pattern must not assume `d,ddd` — a root it cannot see is dropped silently,
+ * because the count check uses this same regex.
+ */
 export const ENTRY_RE =
-  /(AJ|BA|MA):\s*(OT|AT)\s+(DE|EN)\s+(\d{2,3})'\s+((?:\d,\d{3})(?:\s*\|\s*\d,\d{3})*)\s+/g;
+  /(AJ|BA|MA):\s*(OT|AT)\s+(DE|EN)\s+(\d{2,3})'\s+((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+/g;
 
 const PAGE_BREAK = "\f";
 const BANNER_RE =
@@ -37,7 +42,7 @@ export const TABLE_HEADER_PREFIX = "Datum";
 export const LEADING_DATE_RE = /^(\d{2})\.(\d{2})\.(\d{4})/;
 const SLOT_LABEL_RE = /Prüfungsbeginn/g;
 const AFTERNOON_TIME_LABEL = "15.15";
-const ORAL_EXAM_RE = /^((?:\d,\d{3})(?:\s*\|\s*\d,\d{3})*)\s+(\S.*)$/;
+const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
 export const ROOT_SEPARATOR = "|";
 export const WEEKDAYS_SOURCE =
@@ -152,18 +157,32 @@ function parseWrittenPage(page, warnings) {
     });
   }
 
-  const morningEnd = Math.max(
-    ...entryColumns.filter((column) => column < boundary),
-  );
-  const afternoonStart = Math.min(
-    ...entryColumns.filter((column) => column >= boundary),
-  );
-  if (afternoonStart - morningEnd < MIN_COLUMN_CLUSTER_GAP) {
+  const morningColumns = entryColumns.filter((column) => column < boundary);
+  const afternoonColumns = entryColumns.filter((column) => column >= boundary);
+  if (
+    entryColumns.length > 0 &&
+    (morningColumns.length === 0 || afternoonColumns.length === 0)
+  ) {
+    // A wrong boundary that sweeps every entry into one slot would otherwise
+    // be invisible: the cluster-gap check below has nothing to compare, and
+    // the count checks still balance. Every published page so far uses both
+    // slots, so an empty side is worth a human look.
+    warnings.push(
+      warning(
+        "W_COLUMN_ONE_SIDED",
+        "Every entry on this page landed in one slot — verify the 09:15/15:15 boundary by hand",
+        `page ${page.number}: boundary ${boundary}, morning ${morningColumns.length}, afternoon ${afternoonColumns.length}`,
+      ),
+    );
+  } else if (
+    Math.min(...afternoonColumns) - Math.max(...morningColumns) <
+    MIN_COLUMN_CLUSTER_GAP
+  ) {
     warnings.push(
       warning(
         "W_COLUMN_CLUSTER_TIGHT",
         "The two slot columns nearly touch — verify the 09:15/15:15 split by hand",
-        `page ${page.number}: boundary ${boundary}, morning ends at ${morningEnd}, afternoon starts at ${afternoonStart}`,
+        `page ${page.number}: boundary ${boundary}, morning ends at ${Math.max(...morningColumns)}, afternoon starts at ${Math.min(...afternoonColumns)}`,
       ),
     );
   }

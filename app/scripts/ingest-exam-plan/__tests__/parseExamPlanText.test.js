@@ -142,6 +142,27 @@ describe("parseExamPlanText — written rows", () => {
     ]);
   });
 
+  it("parses roots with two-digit prefixes wherever they sit", () => {
+    // The catalog has numbers like "11,702,1.00" — a root the entry regex
+    // cannot see is dropped silently, so the width must not be assumed.
+    const wide = parseExamPlanText(readSnippet("written-wide-roots.txt"));
+    expect(wide.written).toHaveLength(3);
+    expect(find(wide.written, "11,702").slot).toBe("15:15");
+    expect(find(wide.written, "3,802").rootNumbers).toEqual([
+      "3,802",
+      "14,802",
+    ]);
+    expect(find(wide.written, "3,200").title).toBe("Mikroökonomik II");
+  });
+
+  it("warns when every entry of a page lands in one slot", () => {
+    // The signature of a boundary derived from a re-laid-out header: nothing
+    // is dropped, the counts balance, and every exam is six hours wrong.
+    expect(
+      codes(parseExamPlanText(readSnippet("written-one-sided.txt")).warnings),
+    ).toEqual(["W_COLUMN_ONE_SIDED"]);
+  });
+
   it("reads alternative-date rows as their own exams", () => {
     const alternative = parsed.written.filter((exam) => exam.termType === "AT");
     expect(alternative).toHaveLength(48);
@@ -178,7 +199,12 @@ describe("parseExamPlanText — written rows", () => {
       readSnippet("written-entry-before-date.txt"),
     );
     expect(parsedSnippet.written).toHaveLength(1);
-    expect(codes(parsedSnippet.warnings)).toEqual(["W_ENTRY_WITHOUT_DATE"]);
+    // The snippet's surviving entries all sit in one slot, so the one-sided
+    // column warning legitimately rides along.
+    expect(codes(parsedSnippet.warnings)).toEqual([
+      "W_ENTRY_WITHOUT_DATE",
+      "W_COLUMN_ONE_SIDED",
+    ]);
   });
 
   it("warns when the two slot columns almost touch", () => {

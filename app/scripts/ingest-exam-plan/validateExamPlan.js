@@ -18,9 +18,15 @@ import { toZurichIso } from "./zurichTime.js";
 const SEMESTER_RE = /^(?:HS|FS)\d{2}$/;
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Words that only ever occur in the page furniture, never in an exam title. */
+/**
+ * Text that only ever occurs in page furniture or in another entry, never in
+ * an exam title. The entry-shaped alternatives are the net for a row the
+ * ENTRY_RE could not fully see (e.g. a root prefix wider than it expects):
+ * such a row is swallowed into the previous entry's title, invisible to the
+ * count and residue checks, and must fail loudly here instead.
+ */
 const TITLE_BLEED_RE =
-  /Prüfungsbeginn|Prüfungswoche|Kompetenzcenter|digitale Prüfungen|Seite \d+ von/;
+  /Prüfungsbeginn|Prüfungswoche|Kompetenzcenter|digitale Prüfungen|Seite \d+ von|(?:AJ|BA|MA):\s*(?:OT|AT)|\|\s*\d+,\d{3}/;
 
 /** Everything a written table row may leave behind once its exams are removed. */
 const RESIDUE_ALLOWED_RE = new RegExp(
@@ -113,7 +119,7 @@ function checkWrittenExam(exam, plan, fail, warn) {
     fail("E_ISO_MISMATCH", "startIso does not match date + slot in Europe/Zurich", where);
   }
 
-  const suffixes = new Set(exam.rootNumbers.map((root) => root.slice(2)));
+  const suffixes = new Set(exam.rootNumbers.map((root) => root.split(",")[1]));
   if (suffixes.size > 1) {
     warn(
       "W_ROOT_SHAPE",
@@ -129,14 +135,54 @@ function checkWrittenExam(exam, plan, fail, warn) {
 }
 
 function checkDuplicates(exams, fail) {
-  // A duplicate id is always also a duplicate exam key, so one check suffices.
+  // Date and slot are part of the key: a two-part exam legitimately puts the
+  // same root on two dates, but the same root twice in one slot is a parser
+  // artefact.
   const examKeys = new Set();
   for (const exam of exams) {
-    const examKey = `${exam.termType ?? "ORAL"} ${exam.rootNumbers.join(ROOT_SEPARATOR)}`;
+    const examKey = `${exam.termType ?? "ORAL"} ${exam.rootNumbers.join(ROOT_SEPARATOR)} ${exam.date} ${exam.slot ?? ""}`;
     if (examKeys.has(examKey)) {
-      fail("E_DUPLICATE_EXAM", "Two exams share a term type and root numbers", examKey);
+      fail(
+        "E_DUPLICATE_EXAM",
+        "Two exams share term type, root numbers, date and slot",
+        examKey,
+      );
     }
     examKeys.add(examKey);
+  }
+}
+
+const TERM_LABEL_SEASON_RE = /winter|sommer|summer/i;
+
+/**
+ * "Winter YYYY" belongs to HS(YYYY−1); "Sommer YYYY" to FS(YYYY). The key is a
+ * CLI input the parser cannot infer — but it CAN refuse a key that contradicts
+ * the PDF's own label, which would otherwise ship a whole semester's dates
+ * under the wrong key.
+ */
+function checkSemesterMatchesTermLabel(plan, fail, warn) {
+  const label = plan.sourceTermLabel ?? "";
+  const season = label.match(TERM_LABEL_SEASON_RE)?.[0]?.toLowerCase();
+  const year = Number(label.match(/\d{4}/)?.[0]);
+  const key = plan.semester ?? "";
+  if (!season || !year || !SEMESTER_RE.test(key)) {
+    warn(
+      "W_TERM_LABEL_UNRECOGNISED",
+      "Could not read a season and year from the plan's title to cross-check --semester",
+      label,
+    );
+    return;
+  }
+  const expected =
+    season === "winter"
+      ? `HS${String((year - 1) % 100).padStart(2, "0")}`
+      : `FS${String(year % 100).padStart(2, "0")}`;
+  if (key !== expected) {
+    fail(
+      "E_SEMESTER_MISMATCH",
+      `The plan's title "${label}" belongs to ${expected}, not ${key}`,
+      `--semester ${key}`,
+    );
   }
 }
 
@@ -149,6 +195,7 @@ export function validateExamPlan(plan, rawText) {
   if (!SEMESTER_RE.test(plan.semester ?? "")) {
     fail("E_SEMESTER_FORMAT", "Semester key must look like HS26 or FS27", plan.semester);
   }
+  checkSemesterMatchesTermLabel(plan, fail, warn);
   checkPeriod(plan.examPeriod, "examPeriod", fail);
   checkPeriod(plan.oralExamPeriod, "oralExamPeriod", fail);
 
