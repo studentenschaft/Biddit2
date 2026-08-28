@@ -97,6 +97,7 @@ const eventsIn = ({
   filtered = [],
   plan = PLAN,
   semester = SEMESTER,
+  metadata = {},
 }) =>
   snapshot_UNSTABLE(({ set }) => {
     set(unifiedCourseDataState, {
@@ -109,6 +110,7 @@ const eventsIn = ({
           studyPlan: [],
           ratings: {},
           cisId: "1",
+          ...metadata,
         },
       },
       selectedSemester: SEMESTER,
@@ -191,6 +193,19 @@ describe("examCalendarEventsSelector", () => {
     expect(eventsIn({ enrolledIds: [MICRO.courseNumber], plan: null })).toEqual(
       [],
     );
+  });
+
+  it("draws nothing for a borrowed catalog even when the plan is already cached", () => {
+    // Regression net for the fetch-vs-catalog race: a cached plan must not
+    // produce blocks once the semester turns out to be borrowed.
+    for (const metadata of [
+      { usingReferenceData: true, referenceSemester: "HS25" },
+      { isFutureSemester: true, referenceSemester: "HS25" },
+    ]) {
+      expect(
+        eventsIn({ enrolledIds: [MICRO.courseNumber], metadata }),
+      ).toEqual([]);
+    }
   });
 
   it("skips entries the plan left without a usable time", () => {

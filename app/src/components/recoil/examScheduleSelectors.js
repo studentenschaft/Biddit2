@@ -1,9 +1,31 @@
 import { selectorFamily } from "recoil";
 import moment from "moment";
 import { examSchedulesState } from "./examScheduleAtom";
-import { myCoursesSelector } from "./unifiedCourseDataSelectors";
+import {
+  myCoursesSelector,
+  semesterMetadataSelector,
+} from "./unifiedCourseDataSelectors";
 import { examsForCourse, findExamCollisions } from "../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../helpers/courseUtils";
+
+/**
+ * The plan to render for a semester, or null. This — not the hook — is the
+ * borrowed-data gate the surfaces actually rely on: the exam fetch can win the
+ * race against the catalog fetch that sets `usingReferenceData`, caching a plan
+ * for a semester that then turns out to be borrowed. Reading the metadata here
+ * makes every consumer re-evaluate the moment the flag flips, so borrowed
+ * catalogs never keep exam warnings or blocks (ADR 0008).
+ */
+const renderablePlanSelector = selectorFamily({
+  key: "examRenderablePlanSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const metadata = get(semesterMetadataSelector(semesterShortName ?? ""));
+      if (metadata.isFutureSemester || metadata.usingReferenceData) return null;
+      return get(examSchedulesState)[semesterShortName]?.plan ?? null;
+    },
+});
 
 /**
  * Central-exam collisions among the user's courses for a semester.
@@ -23,7 +45,7 @@ export const examCollisionsSelector = selectorFamily({
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const plan = get(examSchedulesState)[semesterShortName]?.plan;
+      const plan = get(renderablePlanSelector(semesterShortName));
       if (!plan) return new Map();
 
       return findExamCollisions(plan, get(myCoursesSelector(semesterShortName)));
@@ -55,7 +77,7 @@ export const examCalendarEventsSelector = selectorFamily({
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const plan = get(examSchedulesState)[semesterShortName]?.plan;
+      const plan = get(renderablePlanSelector(semesterShortName));
       if (!plan) return [];
 
       const courses = get(myCoursesSelector(semesterShortName));

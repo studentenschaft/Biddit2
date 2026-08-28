@@ -66,6 +66,10 @@ vi.mock("../../recoil/unifiedCourseDataSelectors", async () => {
       key: "test-myCourses",
       default: COURSES,
     }),
+    semesterMetadataSelector: atomFamily({
+      key: "test-semesterMetadata",
+      default: {},
+    }),
   };
 });
 
