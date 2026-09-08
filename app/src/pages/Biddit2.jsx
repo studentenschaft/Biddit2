@@ -74,6 +74,9 @@ DragPreviewCard.propTypes = {
   type: PropTypes.string,
 };
 
+/** Enrolled (bid) grid cards may change category, but never semester or plan membership. */
+const isEnrolledItem = (dragData) => dragData?.source === "enrolled";
+
 export default function Biddit2() {
   const [selectedTabState, setSelectedTabState] =
     useRecoilState(selectedTabAtom);
@@ -142,8 +145,9 @@ export default function Biddit2() {
 
       // No valid drop target - check if we should remove a grid course
       if (!over) {
-        // If dragging a grid course and dropped outside any target, remove it
-        if (dragData?.type === "grid-course") {
+        // If dragging a grid course and dropped outside any target, remove it.
+        // Enrolled (bid) courses are never removable — they are real enrollments.
+        if (dragData?.type === "grid-course" && !isEnrolledItem(dragData)) {
           const { item } = dragData;
           if (item.isPlaceholder) {
             await removePlaceholder(item.id);
@@ -162,6 +166,7 @@ export default function Biddit2() {
 
       // Handle grid course dropped on non-grid target (remove it)
       if (dragData?.type === "grid-course" && !isValidGridCell) {
+        if (isEnrolledItem(dragData)) return;
         const { item } = dragData;
         if (item.isPlaceholder) {
           await removePlaceholder(item.id);
@@ -234,6 +239,7 @@ export default function Biddit2() {
             sourceSemester,
             targetSemester,
             targetCategory,
+            { isEnrolled: isEnrolledItem(dragData) },
           );
         }
       }
