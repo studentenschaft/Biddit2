@@ -1,6 +1,27 @@
 import { deleteCourse, getStudyPlan } from "./api";
 
 /**
+ * The course IDs of a study plan, or none if the backend sent a shape we do not
+ * recognise.
+ *
+ * A non-array is never iterated: a string would be walked character by
+ * character, firing a delete per letter. It is a data surprise, not an empty
+ * plan, so it is reported rather than swallowed.
+ */
+const coursesOf = (plan) => {
+  if (Array.isArray(plan.courses)) return plan.courses;
+
+  if (plan.courses != null && import.meta.env.DEV) {
+    console.warn(
+      `[clearSavedCourses] Study plan "${plan.id}" has a non-array courses value; treating it as empty.`,
+      plan.courses
+    );
+  }
+
+  return [];
+};
+
+/**
  * Deletes every saved course across every semester the backend knows about.
  *
  * Reads the server rather than app state: this is the escape hatch for entries
@@ -11,9 +32,10 @@ import { deleteCourse, getStudyPlan } from "./api";
  * @returns {Promise<{total: number, deleted: number}>}
  */
 export const clearSavedCourses = async (authToken) => {
-  const plans = (await getStudyPlan(authToken)).filter(
-    (plan) => plan?.id && plan.courses?.length > 0
-  );
+  const plans = (await getStudyPlan(authToken))
+    .filter((plan) => plan?.id)
+    .map((plan) => ({ id: plan.id, courses: coursesOf(plan) }))
+    .filter((plan) => plan.courses.length > 0);
 
   const total = plans.reduce((sum, plan) => sum + plan.courses.length, 0);
   let deleted = 0;
