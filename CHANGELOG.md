@@ -69,6 +69,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   separate catalog entries carrying the same credits as their main event, so
   "Methoden: Empirische Sozialforschung" (BWL, HS26) read as 8 ECTS instead
   of 4. Catalog ingestion now zeroes them. See ADR 0009.
+- Curriculum Map: courses whose classification names a grouping category (e.g.
+  "Contextual Studies") or that carry their category in the course name (e.g.
+  "Skills: Julia — A Fresh Approach") are no longer dumped into *Compulsory
+  Subjects*. Resolution now tries the leaf name, the parent name resolved to a
+  leaf, the keyword table (which learned skills/competence categories) and the
+  course-name prefix; anything still unresolved lands in an elective bucket
+  instead of inflating compulsory progress.
+- Curriculum Map: enrolled (bid) courses can be dragged to another category row
+  and the correction is saved with the plan. They stay in the semester they were
+  bid in (a cross-semester drop is refused with a hint) and cannot be removed.
+
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to

@@ -6,14 +6,19 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { snapshot_UNSTABLE } from 'recoil';
 import {
   _testHelpers,
+  curriculumMapSelector,
   normalizeCourseCredits,
   findCreditsInAnySemester,
   formatCreditRange,
   getRequirementThreshold,
   getFillPercentage,
 } from '../curriculumMapSelector';
+import { unifiedAcademicDataState } from '../unifiedAcademicDataAtom';
+import { unifiedCourseDataState } from '../unifiedCourseDataAtom';
+import { curriculumPlanState, getDefaultPlanState } from '../curriculumPlanAtom';
 import MBI from '../../testing/mockData/Scorecard_MBI.json';
 import BBWL from '../../testing/mockData/Scorecard_BBWL.json';
 import BIA from '../../testing/mockData/Scorecard_BIA.json';
@@ -30,6 +35,9 @@ const {
   fallsShort,
   summarizeLeafCredits,
   matchClassificationToCategory,
+  resolveFallbackCategory,
+  inferClassificationFromCourseName,
+  resolveCategoryForCourse,
   estimateCompletion,
   computeSemesterCreditStats,
 } = _testHelpers;
@@ -363,10 +371,11 @@ describe('flattenCategoriesForGrid', () => {
 // ── matchClassificationToCategory ─────────────────────────────────────────
 
 describe('matchClassificationToCategory', () => {
+  // `ancestors` is what flattenCategoriesForGrid attaches to every grid leaf.
   const flatCategories = [
-    { name: 'Compulsory', path: 'Core/Compulsory', validClassifications: ['compulsory', 'pflicht'] },
-    { name: 'Elective', path: 'Core/Elective', validClassifications: ['elective', 'wahl'] },
-    { name: 'Contextual Studies', path: 'Context', validClassifications: ['context', 'kontext', 'Kontextstudium'] },
+    { name: 'Compulsory', path: 'Core/Compulsory', ancestors: [{ id: 'core', name: 'Core' }], validClassifications: ['compulsory', 'pflicht'] },
+    { name: 'Elective', path: 'Core/Elective', ancestors: [{ id: 'core', name: 'Core' }], validClassifications: ['elective', 'wahl'] },
+    { name: 'Contextual Studies', path: 'Context', ancestors: [], validClassifications: ['context', 'kontext', 'Kontextstudium'] },
   ];
 
   it('matches by exact category name (case-insensitive)', () => {
@@ -715,5 +724,395 @@ describe('roll-up against real scorecards', () => {
       expect(parent.countedTotal).toBe(parseFloat(apiSum));
       expect(parent.excessCredits).toBe(0);
     }
+  });
+});
+
+// ── skills / competence classifications ───────────────────────────────────
+
+describe('extractClassifications — skills categories', () => {
+  it('derives skill classifications for a "Skills" category', () => {
+    const result = extractClassifications({ description: 'Skills' });
+    expect(result.map((v) => v.toLowerCase())).toContain('skills');
+  });
+
+  it('derives skill classifications for German competence categories', () => {
+    const result = extractClassifications({ description: 'Handlungskompetenzen' });
+    expect(result.map((v) => v.toLowerCase())).toContain('kompetenz');
+  });
+
+  it('matches a "Skills" classification to the Skills leaf', () => {
+    const flatCategories = [
+      {
+        name: 'Compulsory Subjects',
+        path: 'Core Studies/Compulsory Subjects',
+        ancestors: [{ id: 'core', name: 'Core Studies' }],
+        validClassifications: extractClassifications({ description: 'Compulsory Subjects' }),
+      },
+      {
+        name: 'Skills',
+        path: 'Contextual Studies/Skills',
+        ancestors: [{ id: 'ctx', name: 'Contextual Studies' }],
+        validClassifications: extractClassifications({ description: 'Skills' }),
+      },
+    ];
+    expect(matchClassificationToCategory('Skills', flatCategories)?.path).toBe(
+      'Contextual Studies/Skills',
+    );
+  });
+});
+
+// ── matchClassificationToCategory — parent (non-leaf) names ───────────────
+
+describe('matchClassificationToCategory — ancestor resolution', () => {
+  const leaf = (name, path, ancestors, validClassifications = []) => ({
+    name,
+    path,
+    ancestors,
+    validClassifications,
+  });
+
+  it('resolves a parent-name classification to its only leaf', () => {
+    const flatCategories = [
+      leaf('Compulsory Subjects', 'Core Studies/Compulsory Subjects', [
+        { id: 'core', name: 'Core Studies' },
+      ]),
+      leaf('Skills', 'Contextual Studies/Skills', [
+        { id: 'ctx', name: 'Contextual Studies' },
+      ]),
+    ];
+
+    const result = matchClassificationToCategory('Contextual Studies', flatCategories);
+    expect(result?.path).toBe('Contextual Studies/Skills');
+  });
+
+  it('picks the best-matching leaf when the parent has several', () => {
+    const flatCategories = [
+      leaf('Compulsory Subjects', 'Core Studies/Compulsory Subjects', [
+        { id: 'core', name: 'Core Studies' },
+      ]),
+      leaf('Reflection Competences', 'Contextual Studies/Reflection Competences', [
+        { id: 'ctx', name: 'Contextual Studies' },
+      ]),
+      leaf('Skills', 'Contextual Studies/Skills', [{ id: 'ctx', name: 'Contextual Studies' }], [
+        'skills',
+      ]),
+    ];
+
+    const result = matchClassificationToCategory('Contextual Studies skills', flatCategories);
+    expect(result?.path).toBe('Contextual Studies/Skills');
+  });
+
+  it('falls back to the first leaf under the matched parent', () => {
+    const flatCategories = [
+      leaf('Compulsory Subjects', 'Core Studies/Compulsory Subjects', [
+        { id: 'core', name: 'Core Studies' },
+      ]),
+      leaf('Reflection Competences', 'Contextual Studies/Reflection Competences', [
+        { id: 'ctx', name: 'Contextual Studies' },
+      ]),
+      leaf('Languages', 'Contextual Studies/Languages', [
+        { id: 'ctx', name: 'Contextual Studies' },
+      ]),
+    ];
+
+    const result = matchClassificationToCategory('Contextual Studies', flatCategories);
+    expect(result?.path).toBe('Contextual Studies/Reflection Competences');
+  });
+
+  it('still prefers an exact leaf name over an ancestor name', () => {
+    const flatCategories = [
+      leaf('Contextual Studies', 'Contextual Studies', []),
+      leaf('Skills', 'Other/Skills', [{ id: 'other', name: 'Contextual Studies' }]),
+    ];
+
+    const result = matchClassificationToCategory('Contextual Studies', flatCategories);
+    expect(result?.path).toBe('Contextual Studies');
+  });
+});
+
+// ── resolveFallbackCategory ───────────────────────────────────────────────
+
+describe('resolveFallbackCategory', () => {
+  it('prefers a leaf that accepts electives', () => {
+    const flatCategories = [
+      { name: 'Compulsory', path: 'Core/Compulsory', ancestors: [], validClassifications: ['compulsory'] },
+      { name: 'Electives', path: 'Core/Electives', ancestors: [], validClassifications: ['elective', 'wahl'] },
+      { name: 'Thesis', path: 'Thesis', ancestors: [], validClassifications: ['thesis'] },
+    ];
+    expect(resolveFallbackCategory(flatCategories)?.path).toBe('Core/Electives');
+  });
+
+  it('falls back to the last leaf when no elective bucket exists', () => {
+    const flatCategories = [
+      { name: 'Compulsory', path: 'Core/Compulsory', ancestors: [], validClassifications: ['compulsory'] },
+      { name: 'Thesis', path: 'Thesis', ancestors: [], validClassifications: ['thesis'] },
+    ];
+    expect(resolveFallbackCategory(flatCategories)?.path).toBe('Thesis');
+  });
+
+  it('returns undefined for an empty category list', () => {
+    expect(resolveFallbackCategory([])).toBeUndefined();
+  });
+});
+
+// ── enrolled course placement overrides (selector integration) ────────────
+
+describe('curriculumMapSelector — enrolled course category override', () => {
+  const SEMESTER = 'HS25';
+  const COURSE_ID = '8,123';
+  const PROGRAM = 'Master in Quantitative Economics and Finance';
+
+  const scorecard = {
+    items: [
+      {
+        isTitle: true,
+        hierarchy: 'program',
+        description: PROGRAM,
+        maxCredits: '90',
+        items: [
+          {
+            isTitle: true,
+            hierarchy: 'core',
+            description: 'Core Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'core-comp',
+                description: 'Compulsory Subjects',
+                minCredits: '30',
+                items: [],
+              },
+            ],
+          },
+          {
+            isTitle: true,
+            hierarchy: 'ctx',
+            description: 'Contextual Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'ctx-skills',
+                description: 'Skills',
+                items: [],
+              },
+              {
+                isTitle: true,
+                hierarchy: 'ctx-refl',
+                description: 'Reflection Competences',
+                items: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  const readMap = ({ classification, plannedItems = {} }) => {
+    const snapshot = snapshot_UNSTABLE(({ set }) => {
+      set(unifiedAcademicDataState, {
+        programs: {
+          [PROGRAM]: {
+            transcript: { rawScorecard: scorecard },
+            metadata: { isMainStudy: true },
+          },
+        },
+        currentProgram: PROGRAM,
+        initialization: { isLoading: false, isInitialized: true, error: null },
+      });
+      set(unifiedCourseDataState, {
+        semesters: {
+          [SEMESTER]: {
+            enrolledIds: [COURSE_ID],
+            available: [
+              {
+                courseNumber: COURSE_ID,
+                shortName: 'Skills: Julia - A Fresh Approach',
+                credits: 300,
+                classification,
+              },
+            ],
+            selectedIds: [],
+            filtered: [],
+          },
+        },
+        selectedSemester: SEMESTER,
+        latestValidTerm: SEMESTER,
+        selectedCourseInfo: null,
+      });
+      set(curriculumPlanState, { ...getDefaultPlanState(), plannedItems });
+    });
+    return snapshot.getLoadable(curriculumMapSelector).getValue();
+  };
+
+  // extractCategoryHierarchy prefixes every path with the program wrapper.
+  const P = (path) => `${PROGRAM}/${path}`;
+
+  const cardsFor = (map, path) => map.coursesBySemesterAndCategory[SEMESTER][path] || [];
+  const allCards = (map) =>
+    Object.values(map.coursesBySemesterAndCategory[SEMESTER]).flat();
+
+  it('places an enrolled course by its parent-name classification', () => {
+    const map = readMap({ classification: 'Contextual Studies' });
+    expect(cardsFor(map, P('Core Studies/Compulsory Subjects'))).toHaveLength(0);
+    expect(cardsFor(map, P('Contextual Studies/Skills'))).toHaveLength(1);
+  });
+
+  it('falls back to the course-name prefix when the classification is unknown', () => {
+    const map = readMap({ classification: 'Something Unmapped' });
+    expect(cardsFor(map, P('Core Studies/Compulsory Subjects'))).toHaveLength(0);
+    expect(cardsFor(map, P('Contextual Studies/Skills'))).toHaveLength(1);
+  });
+
+  it('honours a plan placement as the category override, rendering exactly one card', () => {
+    const map = readMap({
+      classification: 'Skills',
+      plannedItems: {
+        [SEMESTER]: [
+          {
+            id: `course-${COURSE_ID}`,
+            type: 'course',
+            courseId: COURSE_ID,
+            categoryPath: P('Contextual Studies/Reflection Competences'),
+          },
+        ],
+      },
+    });
+
+    const cards = allCards(map);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].categoryPath).toBe(P('Contextual Studies/Reflection Competences'));
+    expect(cards[0].status).toBe('enrolled');
+    expect(cards[0].source).toBe('enrolled');
+  });
+});
+
+// ── course-name prefix inference ──────────────────────────────────────────
+
+describe('inferClassificationFromCourseName', () => {
+  it('extracts the category prefix before the first colon', () => {
+    expect(
+      inferClassificationFromCourseName('Skills: Julia - A Fresh Approach to Computing'),
+    ).toBe('Skills');
+  });
+
+  it('accepts a short multi-word prefix', () => {
+    expect(inferClassificationFromCourseName('Area of Concentration: Finance')).toBe(
+      'Area of Concentration',
+    );
+  });
+
+  it('ignores long prefixes that are really titles', () => {
+    expect(
+      inferClassificationFromCourseName(
+        'A very long sentence about economics that happens to contain: a colon',
+      ),
+    ).toBeNull();
+  });
+
+  it('returns null when there is no colon', () => {
+    expect(inferClassificationFromCourseName('Introduction to Testing')).toBeNull();
+  });
+
+  it('returns null for empty input', () => {
+    expect(inferClassificationFromCourseName('')).toBeNull();
+    expect(inferClassificationFromCourseName(undefined)).toBeNull();
+  });
+});
+
+describe('resolveCategoryForCourse', () => {
+  const skillsLeaf = {
+    name: 'Skills',
+    path: 'Contextual Studies/Skills',
+    ancestors: [{ id: 'ctx', name: 'Contextual Studies' }],
+    validClassifications: ['skills'],
+  };
+  const compulsoryLeaf = {
+    name: 'Compulsory Subjects',
+    path: 'Core Studies/Compulsory Subjects',
+    ancestors: [{ id: 'core', name: 'Core Studies' }],
+    validClassifications: ['compulsory'],
+  };
+  const focusLeaf = {
+    name: 'Area of Concentration',
+    path: 'Core Studies/Area of Concentration',
+    ancestors: [{ id: 'core', name: 'Core Studies' }],
+    validClassifications: ['focus', 'schwerpunkt', 'Concentration'],
+  };
+
+  it('prefers the classification match over the course name', () => {
+    const result = resolveCategoryForCourse({
+      classification: 'compulsory',
+      courseName: 'Skills: Julia',
+      flatCategories: [compulsoryLeaf, skillsLeaf],
+    });
+    expect(result?.path).toBe('Core Studies/Compulsory Subjects');
+  });
+
+  it('falls back to the course-name prefix when the classification does not match', () => {
+    const result = resolveCategoryForCourse({
+      classification: 'unknown classification',
+      courseName: 'Skills: Julia - A Fresh Approach',
+      flatCategories: [compulsoryLeaf, skillsLeaf],
+    });
+    expect(result?.path).toBe('Contextual Studies/Skills');
+  });
+
+  it('routes a Skills prefix to the focus area when no skills leaf exists', () => {
+    const result = resolveCategoryForCourse({
+      classification: 'unknown classification',
+      courseName: 'Skills: Julia - A Fresh Approach',
+      flatCategories: [compulsoryLeaf, focusLeaf],
+    });
+    expect(result?.path).toBe('Core Studies/Area of Concentration');
+  });
+
+  it('uses the course-name prefix to disambiguate an ambiguous ancestor', () => {
+    const focusUnderCtx = { ...focusLeaf, path: 'Contextual Studies/Area of Concentration',
+      ancestors: [{ id: 'ctx', name: 'Contextual Studies' }] };
+
+    const result = resolveCategoryForCourse({
+      classification: 'Contextual Studies',
+      courseName: 'Skills: Julia - A Fresh Approach to Computing',
+      flatCategories: [compulsoryLeaf, focusUnderCtx, skillsLeaf],
+    });
+    expect(result?.path).toBe('Contextual Studies/Skills');
+  });
+
+  it('stays under the classified ancestor when the name carries no prefix', () => {
+    const focusUnderCtx = { ...focusLeaf, path: 'Contextual Studies/Area of Concentration',
+      ancestors: [{ id: 'ctx', name: 'Contextual Studies' }] };
+
+    const result = resolveCategoryForCourse({
+      classification: 'Contextual Studies',
+      courseName: 'Julia for Economists',
+      flatCategories: [compulsoryLeaf, focusUnderCtx, skillsLeaf],
+    });
+    expect(result?.path).toBe('Contextual Studies/Area of Concentration');
+  });
+
+  it('never leaves the classified ancestor for a name-prefix match elsewhere', () => {
+    const coreElectives = {
+      name: 'Core Electives',
+      path: 'Core Studies/Core Electives',
+      ancestors: [{ id: 'core', name: 'Core Studies' }],
+      validClassifications: ['elective'],
+    };
+
+    const result = resolveCategoryForCourse({
+      classification: 'Core Studies',
+      courseName: 'Skills: Julia - A Fresh Approach',
+      flatCategories: [compulsoryLeaf, coreElectives, skillsLeaf],
+    });
+    expect(result?.path).toBe('Core Studies/Compulsory Subjects');
+  });
+
+  it('returns undefined when neither classification nor name resolves', () => {
+    const result = resolveCategoryForCourse({
+      classification: 'unknown classification',
+      courseName: 'Mystery Course',
+      flatCategories: [compulsoryLeaf],
+    });
+    expect(result).toBeUndefined();
   });
 });

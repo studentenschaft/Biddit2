@@ -191,7 +191,7 @@ describe('PlanItem', () => {
       expect(itemDiv).toHaveClass('cursor-pointer');
     });
 
-    it('shows pointer cursor for enrolled items (clickable for details)', () => {
+    it('shows grab cursor for enrolled items (draggable between categories)', () => {
       const enrolledItem = {
         ...defaultItem,
         status: 'enrolled',
@@ -204,7 +204,7 @@ describe('PlanItem', () => {
       );
 
       const itemDiv = container.firstChild;
-      expect(itemDiv).toHaveClass('cursor-pointer');
+      expect(itemDiv).toHaveClass('cursor-grab');
     });
 
     it('shows drag handle for draggable items', () => {
@@ -216,6 +216,38 @@ describe('PlanItem', () => {
 
       // Drag handle indicator (⠿) should be present
       expect(screen.getByText('⠿')).toBeInTheDocument();
+    });
+
+    it('shows drag handle for enrolled items so their category can be corrected', () => {
+      const enrolledItem = {
+        ...defaultItem,
+        status: 'enrolled',
+        source: 'enrolled',
+      };
+
+      render(
+        <TestWrapper>
+          <PlanItem item={enrolledItem} semesterKey="FS26" />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('⠿')).toBeInTheDocument();
+    });
+
+    it('does not offer removal for enrolled items', () => {
+      const enrolledItem = {
+        ...defaultItem,
+        status: 'enrolled',
+        source: 'enrolled',
+      };
+
+      render(
+        <TestWrapper>
+          <PlanItem item={enrolledItem} semesterKey="FS26" />
+        </TestWrapper>
+      );
+
+      expect(screen.queryByTitle('Remove from plan')).not.toBeInTheDocument();
     });
 
     it('does not show drag handle for non-draggable items', () => {
