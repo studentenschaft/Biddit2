@@ -48,6 +48,53 @@ const getThirdSegment = (course) => {
   return m ? parseInt(m[1], 10) : null;
 };
 
+// The root keys ("a,b") that own a main event ("a,b,1.xx") in a catalog.
+const buildMainEventRootKeys = (courses) => {
+  const rootKeys = new Set();
+
+  courses.forEach((course) => {
+    if (getThirdSegment(course) !== 1) return;
+    const rootKey = getCourseRootKey(course);
+    if (rootKey) rootKeys.add(rootKey);
+  });
+
+  return rootKeys;
+};
+
+// A dependent sub-event carries no ECTS of its own: its title names a companion
+// form (exerciseGroupRegex), or its number is "a,b,N.xx" with N >= 2 and the
+// catalog also lists an "a,b,1.xx" main event. An orphan is decided by its name
+// alone. See ADR 0009.
+const isDependentSubEvent = (course, mainEventRootKeys) => {
+  if (!course) return false;
+  if (isExerciseGroup(course)) return true;
+
+  const segment = getThirdSegment(course);
+  if (segment === null || segment < 2) return false;
+
+  const rootKey = getCourseRootKey(course);
+  return Boolean(rootKey && mainEventRootKeys.has(rootKey));
+};
+
+/**
+ * Zero the ECTS of every dependent sub-event in a flattened catalog, so a
+ * course counts once no matter how many events HSG publishes it as.
+ *
+ * Groups STRICTLY by course-number root key -- unlike processExerciseGroupECTS,
+ * which may fall back to names because it only ever sees a user's own courses.
+ */
+export const processCatalogSubEventECTS = (courses) => {
+  if (!Array.isArray(courses)) return [];
+
+  const mainEventRootKeys = buildMainEventRootKeys(courses);
+
+  return courses.map((course) =>
+    isDependentSubEvent(course, mainEventRootKeys)
+      ? { ...course, credits: 0 }
+      : course
+  );
+};
+
 // Prefer grouping by normalized identifier root; fallback to base-name grouping.
 export const groupCoursesByBaseName = (courses) => {
   if (!Array.isArray(courses)) {

@@ -12,6 +12,10 @@ export const exerciseGroupRegex = new RegExp(
     "\\bÜbungsgruppe\\b",
     "(?::\\s*(?:Exercises?|Übungen?)\\b)",
     "(?::\\s*(?:Case Stud(?:y|ies)|Fallstudien?)\\b)",
+    // Companion self-study events, suffix-anchored so a standalone course such
+    // as "Selbststudium und Prüfungsvorbereitung" is not matched.
+    "(?::\\s*Selbststudium\\b)",
+    "(?::\\s*(?:Self[-\\s]?|Independent\\s+)Stud(?:y|ies|ium)\\b)",
     // Coaching subgroup patterns (avoid matching proper courses like 'Mathe-Coaching')
     // 1) Title suffix like ': Coaching' or ': Coaching 1'
     "(?::\\s*Coaching(?:\\s*\\d+)?\\s*$)",
