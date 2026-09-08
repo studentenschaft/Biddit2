@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { isExerciseGroup, processExerciseGroupECTS, extractBaseName, isLikelySubgroupByNumber } from "../smartExerciseGroupHandler";
+import {
+  extractBaseName,
+  isExerciseGroup,
+  isLikelySubgroupByNumber,
+  processCatalogSubEventECTS,
+  processExerciseGroupECTS,
+} from "../smartExerciseGroupHandler";
 
 const EXERCISE_GROUP_NAMES = [
   "Marketing: Übungen und Selbststudium (Uhrenindustrie), Gruppe 3",
@@ -13,6 +19,12 @@ const EXERCISE_GROUP_NAMES = [
   "Corporate Finance (BBWL): Case Studies, Group 2",
   "Corporate Finance (BBWL): Case Studies",
   "Volkswirtschaftslehre: Fallstudien, Gruppe 3",
+  // Companion self-study events: one course, two catalog entries.
+  "Methoden: Empirische Sozialforschung: Selbststudium",
+  "Betriebswirtschaftslehre: Selbststudium, Gruppe 2",
+  "Corporate Finance (BBWL): Self-Study",
+  "Corporate Finance (BBWL): Self Study",
+  "Methods: Statistics: Independent Studies",
 ];
 
 const REGULAR_COURSE_NAMES = [
@@ -21,6 +33,10 @@ const REGULAR_COURSE_NAMES = [
   "7,556,1.00 …: Coachingsituationen gestalten",
   "Case Study Methods in Social Science",
   "Introduction to Case Studies",
+  // Genuine standalone courses whose title merely contains the word.
+  "Selbststudium und Prüfungsvorbereitung",
+  "Independent Studies in Development Economics",
+  "Self-Study Skills for Law Students",
 ];
 
 describe("smartExerciseGroupHandler", () => {
@@ -313,5 +329,81 @@ describe("smartExerciseGroupHandler", () => {
     const processed = processExerciseGroupECTS(courses);
     expect(processed[0].credits).toBe(400);
     expect(processed[1].credits).toBe(400);
+  });
+});
+
+// The catalog pass groups strictly by course-number root key; see ADR 0009.
+describe("catalog sub-event ECTS", () => {
+  // The reported bug: BWL, HS26. One 4-ECTS course listed as two 4-ECTS events.
+  const MAIN = {
+    name: "Methoden: Empirische Sozialforschung",
+    credits: 400,
+    courseNumber: "3,105,1.00",
+  };
+  const SELBSTSTUDIUM = {
+    name: "Methoden: Empirische Sozialforschung: Selbststudium",
+    credits: 400,
+    courseNumber: "3,105,3.00",
+  };
+
+  it("zeroes a Selbststudium companion that has its main event in the catalog", () => {
+    const processed = processCatalogSubEventECTS([MAIN, SELBSTSTUDIUM]);
+
+    expect(processed.find((c) => c.courseNumber === "3,105,1.00").credits).toBe(
+      400
+    );
+    expect(processed.find((c) => c.courseNumber === "3,105,3.00").credits).toBe(
+      0
+    );
+  });
+
+  it("still zeroes a companion whose main event is absent, on the name alone", () => {
+    // Documented behaviour: without a 1.xx sibling the number rule abstains,
+    // but the name is unambiguous, so the name regex decides.
+    const processed = processCatalogSubEventECTS([SELBSTSTUDIUM]);
+
+    expect(processed[0].credits).toBe(0);
+  });
+
+  it("leaves an orphan sub-event alone when neither rule fires", () => {
+    // No 1.xx sibling and a title that names no companion form: this is a
+    // standalone course that merely happens to carry a 2.xx number.
+    const orphan = {
+      name: "Advanced Topics in Public Finance",
+      credits: 400,
+      courseNumber: "9,999,2.00",
+    };
+
+    expect(processCatalogSubEventECTS([orphan])[0].credits).toBe(400);
+  });
+
+  it("never zeroes distinct courses that only share a name", () => {
+    // The same-name dedup of processExerciseGroupECTS would kill the second of
+    // these. Across a whole catalog that is a wrong answer, so the catalog pass
+    // must not use it.
+    const a = { name: "Kolloquium", credits: 200, courseNumber: "1,001,1.00" };
+    const b = { name: "Kolloquium", credits: 200, courseNumber: "2,002,1.00" };
+
+    const processed = processCatalogSubEventECTS([a, b]);
+    expect(processed.map((c) => c.credits)).toEqual([200, 200]);
+  });
+
+  it("keeps zeroing classic exercise groups", () => {
+    const courses = [
+      { name: "Linear Algebra", credits: 400, courseNumber: "4,135,1.00" },
+      {
+        name: "Linear Algebra: Exercises, Group 1",
+        credits: 400,
+        courseNumber: "4,135,2.01",
+      },
+    ];
+
+    const processed = processCatalogSubEventECTS(courses);
+    expect(processed.find((c) => c.courseNumber === "4,135,1.00").credits).toBe(
+      400
+    );
+    expect(processed.find((c) => c.courseNumber === "4,135,2.01").credits).toBe(
+      0
+    );
   });
 });

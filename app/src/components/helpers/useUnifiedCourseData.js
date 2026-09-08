@@ -3,7 +3,7 @@ import {
   unifiedCourseDataState,
   initializedSemestersState,
 } from "../recoil/unifiedCourseDataAtom";
-import { isExerciseGroup } from "./smartExerciseGroupHandler";
+import { processCatalogSubEventECTS } from "./smartExerciseGroupHandler";
 import {
   getCourseIdentifier,
   sortCoursesByStatus,
@@ -383,11 +383,6 @@ export function useUnifiedCourseData() {
             );
           }
           
-          // Apply exercise group ECTS logic: set credits to 0 for exercise groups
-          if (isExerciseGroup(flattenedCourse)) {
-            flattenedCourse.credits = 0;
-          }
-          
           flattenedCourses.push(flattenedCourse);
         });
       } else {
@@ -395,10 +390,15 @@ export function useUnifiedCourseData() {
       }
     });
 
+    // Needs the whole flattened catalog to see whether a sub-numbered event has
+    // a main event, so it runs after the loop rather than per course inside it.
+    const coursesWithResolvedCredits =
+      processCatalogSubEventECTS(flattenedCourses);
+
     patchSemester(
       semesterShortName,
       {
-        available: flattenedCourses,
+        available: coursesWithResolvedCredits,
         // True when these courses are a previous-year preview standing in for a
         // term that isn't published yet (or whose catalog errored). Drives the
         // existing "preview" disclaimer for the current term AND tells the

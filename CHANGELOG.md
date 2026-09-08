@@ -63,6 +63,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Companion events no longer double-count their ECTS in the semester summary,
+  course list and Course Info. HSG publishes exercise groups, coaching slots
+  and `: Selbststudium` / `: Self-Study` / `: Independent Studies` companions as
+  separate catalog entries carrying the same credits as their main event, so
+  "Methoden: Empirische Sozialforschung" (BWL, HS26) read as 8 ECTS instead
+  of 4. Catalog ingestion now zeroes them. See ADR 0009.
 - Curriculum Map: courses whose classification names a grouping category (e.g.
   "Contextual Studies") or that carry their category in the course name (e.g.
   "Skills: Julia — A Fresh Approach") are no longer dumped into *Compulsory
