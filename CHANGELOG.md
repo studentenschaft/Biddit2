@@ -63,6 +63,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Transcript: courses saved before the current programme no longer appear inside
+  its categories. Saved courses come back from the study-plan API keyed by
+  semester alone, with no programme attached, so HS22/FS23 Bachelor entries were
+  handed to the Master programme and enriched from *today's* catalogue —
+  surfacing under a Master category with today's name, 4 ECTS and an open lock.
+  Semesters are now scoped to the current programme's era; the entries remain on
+  the server and remain removable via "Clear All Saved Courses", which also no
+  longer walks a study plan whose `courses` value is not an array (a string
+  would have fired one delete per character). See ADR 0008.
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to

@@ -57,6 +57,41 @@ describe("clearSavedCourses", () => {
     expect(deleteCourse).toHaveBeenCalledTimes(3);
   });
 
+  it("treats an unexpected courses shape as empty instead of iterating it", async () => {
+    // A string would otherwise be walked character by character, firing a
+    // delete per letter; an object would silently look like a full wipe.
+    getStudyPlan.mockResolvedValue([
+      { id: "FS23", courses: "7,035,1.00" },
+      { id: "HS24", courses: { "0": "7,214,1.00" } },
+      { id: "HS25", courses: ["11,702,1.00"] },
+    ]);
+
+    await expect(clearSavedCourses("token")).resolves.toEqual({
+      total: 1,
+      deleted: 1,
+    });
+    expect(deleteCourse).toHaveBeenCalledTimes(1);
+    expect(deleteCourse).toHaveBeenCalledWith(
+      "HS25",
+      "11,702,1.00",
+      "token",
+      { reportErrors: false }
+    );
+  });
+
+  it("warns about an unexpected courses shape rather than passing it off as empty", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    getStudyPlan.mockResolvedValue([{ id: "FS23", courses: "7,035,1.00" }]);
+
+    await clearSavedCourses("token");
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("FS23"),
+      expect.anything()
+    );
+    warn.mockRestore();
+  });
+
   it("ignores plans that hold no courses", async () => {
     getStudyPlan.mockResolvedValue([
       { id: "FS23", courses: [] },
