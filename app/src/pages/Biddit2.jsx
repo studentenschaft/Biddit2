@@ -263,7 +263,10 @@ export default function Biddit2() {
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex flex-col md:flex-row w-full h-screen overflow-hidden ">
+      {/* mt-/h- offset reserves space below the fixed DegradedModeBanner
+          (see its HEIGHT_CSS_VAR); the var defaults to 0px so this is a
+          no-op when the banner is hidden. */}
+      <div className="flex flex-col md:flex-row w-full overflow-hidden mt-[var(--degraded-banner-height,0px)] h-[calc(100vh-var(--degraded-banner-height,0px))]">
         {/* Mobile Menu Button — z-[54] keeps it above the drawer's z-[52]
             backdrop and z-[53] panel, so it stays the visible close control
             while the drawer is open. The whole band sits above the in-page

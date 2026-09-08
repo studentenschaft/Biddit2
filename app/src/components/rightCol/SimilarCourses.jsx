@@ -23,10 +23,13 @@ import LoadingText from "../common/LoadingText";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
+import { useDegradedMode } from "../common/useDegradedMode";
+import DegradedPlaceholder from "../common/DegradedPlaceholder";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
   const scorecardFetching = useScorecardFetching();
+  const { isDegradedMode } = useDegradedMode();
 
   // Use unified course data selectors instead of old atoms
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
@@ -356,6 +359,12 @@ export default function SimilarCourses({ selectedCourse }) {
       return prevSimilarCourses;
     });
   }, [similarCourses.ids, similarCourses.distances, similarCourses.metadatas]);
+
+  // Vector-DB backed search is SHSG-hosted; show a compact note instead of
+  // a search button that can't return results.
+  if (isDegradedMode) {
+    return <DegradedPlaceholder compact feature="Similar courses" />;
+  }
 
   return (
     <>

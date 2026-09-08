@@ -11,6 +11,8 @@ import SimilarCourses from "./SimilarCourses.jsx";
 import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
 import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
 import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
+import { useDegradedMode } from "../common/useDegradedMode";
+import DegradedPlaceholder from "../common/DegradedPlaceholder";
 
 // Unified course data
 import {
@@ -31,6 +33,7 @@ export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
   const authToken = useRecoilValue(authTokenState);
+  const { isDegradedMode } = useDegradedMode();
   const [examinationIdState, setExaminationIdState] = useRecoilState(
     examinationTypesState
   );
@@ -153,12 +156,18 @@ export default function CourseInfo() {
   }
 
   useEffect(() => {
+    // Ratings are SHSG-backed; skip the fetch while degraded (isDegradedMode
+    // is a dep so recovery re-fetches automatically).
+    if (isDegradedMode) {
+      setCourseWithRatings(null);
+      return;
+    }
     if (selectedCourse && authToken) {
       // Reset courseWithRatings before fetching new ratings
       setCourseWithRatings(null);
       fetchCourseRatings(selectedCourse, authToken);
     }
-  }, [selectedCourse, authToken]);
+  }, [selectedCourse, authToken, isDegradedMode]);
 
   useEffect(() => {
     if (courseWithRatings && courseWithRatings.avgRating === "N/A") {
@@ -248,6 +257,10 @@ export default function CourseInfo() {
           </div>
 
           {/* // Course Description // */}
+
+          {isDegradedMode && selectedCourse && selectedCourse.shortName !== undefined && (
+            <DegradedPlaceholder compact feature="Ratings" className="mb-4" />
+          )}
 
           {courseWithRatings && containsCourseRatings && (
             <>

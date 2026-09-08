@@ -19,8 +19,9 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { apiClient } from "./axiosClient";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
@@ -39,6 +40,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
     updateSelectedCourses: updateUnifiedSelectedCourses,
     updateStudyPlan,
   } = useUnifiedCourseData();
+  const { isDegradedMode } = useDegradedMode();
 
   // Local loading state
   const [isStudyPlanLoading, setIsStudyPlanLoading] = useState(true);
@@ -59,14 +61,10 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔄 [SIMPLIFIED] Fetching study plan for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
-        const response = await axios.get("https://api.shsg.ch/study-plans", {
-          headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
-            "API-Version": "1",
-            Authorization: `Bearer ${authToken}`,
-          },
-        });
+        const response = await apiClient.get(
+          "https://api.shsg.ch/study-plans",
+          authToken
+        );
 
         const studyPlansData = response.data;
 
@@ -154,6 +152,17 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔍 [DEBUG] Current semester ${selectedSemester.shortName} has ${currentSemesterCourses.length} courses`
         );
       } catch (error) {
+        // If the kill switch flipped ON between render (captured isDegradedMode)
+        // and this request landing, the interceptor rejects with a
+        // DegradedModeError here instead of short-circuiting before the call.
+        // Bail out without touching study-plan/unified state - wiping it here
+        // would erase a wishlist loaded before the incident and stamp
+        // lastFetched fresh (touchLastFetched: true), suppressing the
+        // automatic recovery refetch once degraded mode clears.
+        if (error?.isDegradedModeError) {
+          return;
+        }
+
         console.error("❌ Error fetching study plan:", error);
         errorHandlingService.handleError(error);
 
@@ -165,6 +174,17 @@ export const useStudyPlanDataSimplified = (params = {}) => {
       }
     };
 
+    // Degraded mode: SHSG API is disabled, so skip the fetch entirely and
+    // leave study-plan/unified state untouched (do NOT call updateStudyPlan
+    // or updateUnifiedSelectedCourses here - that would stamp the cache
+    // "fresh" via touchLastFetched, blocking the recovery refetch below, and
+    // could wipe a wishlist loaded before the incident). Just resolve
+    // loading so the course list doesn't spin forever.
+    if (isDegradedMode) {
+      setIsStudyPlanLoading(false);
+      return;
+    }
+
     // Only fetch if we have the required parameters
     if (authToken && selectedSemester?.id) {
       fetchStudyPlan();
@@ -172,7 +192,12 @@ export const useStudyPlanDataSimplified = (params = {}) => {
       setIsStudyPlanLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemester?.id, selectedSemester?.shortName]);
+  }, [
+    authToken,
+    selectedSemester?.id,
+    selectedSemester?.shortName,
+    isDegradedMode,
+  ]);
 
   return {
     isStudyPlanLoading,

@@ -40,3 +40,16 @@ Object.defineProperty(navigator, "onLine", {
   writable: true,
   value: true,
 });
+
+// jsdom has no ResizeObserver. Provide a no-op global so components that use
+// one (e.g. useHorizontalScrollAffordance, DegradedModeBanner) don't crash
+// in tests that don't care about resize behavior; tests that do care stub
+// their own richer mock via vi.stubGlobal, which takes precedence and is
+// restored to this default by vi.unstubAllGlobals() in their afterEach.
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  };
+}

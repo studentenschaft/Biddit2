@@ -17,8 +17,9 @@ import {
   resetErrorMode,
   ErrorSimulation,
 } from "../../../test/mocks/server";
-import { apiClient, addNetworkEventListener } from "../axiosClient";
+import { apiClient, addNetworkEventListener, isShsgHost } from "../axiosClient";
 import * as tokenService from "../../auth/tokenService";
+import * as degradedModeService from "../degradedModeService";
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
 
 // Mock the toast library
@@ -405,6 +406,83 @@ describe("ApiClient Error Handling", () => {
       expect(apiClient.consecutiveAuthFailures).toBe(0);
       expect(apiClient.isRefreshing).toBe(false);
     });
+  });
+});
+
+describe("Degraded Mode", () => {
+  afterEach(() => {
+    degradedModeService._resetForTests();
+  });
+
+  it("rejects SHSG requests with code DEGRADED_MODE without touching the network", async () => {
+    let handlerCalled = false;
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () => {
+        handlerCalled = true;
+        return HttpResponse.json({ plans: [] });
+      }),
+    );
+
+    vi.spyOn(degradedModeService, "getDegradedMode").mockReturnValue({
+      isDegradedMode: true,
+      message: null,
+    });
+
+    await expect(
+      apiClient.get(`${SHSG_API}/study-plans`, TEST_TOKEN),
+    ).rejects.toMatchObject({ code: "DEGRADED_MODE", isDegradedModeError: true });
+
+    expect(handlerCalled).toBe(false);
+  });
+
+  it("leaves requests to integration.unisg.ch unaffected", async () => {
+    vi.spyOn(degradedModeService, "getDegradedMode").mockReturnValue({
+      isDegradedMode: true,
+      message: null,
+    });
+
+    const response = await apiClient.get(
+      "https://integration.unisg.ch/EventApi/Events/test",
+      TEST_TOKEN,
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("allows SHSG requests again after degraded mode flips off", async () => {
+    const spy = vi.spyOn(degradedModeService, "getDegradedMode");
+    spy.mockReturnValue({ isDegradedMode: true, message: null });
+
+    await expect(
+      apiClient.get(`${SHSG_API}/study-plans`, TEST_TOKEN),
+    ).rejects.toMatchObject({ code: "DEGRADED_MODE" });
+
+    spy.mockReturnValue({ isDegradedMode: false, message: null });
+
+    const response = await apiClient.get(`${SHSG_API}/study-plans`, TEST_TOKEN);
+    expect(response.status).toBe(200);
+  });
+});
+
+describe("isShsgHost", () => {
+  it("returns true for an absolute SHSG url", () => {
+    expect(isShsgHost("https://api.shsg.ch/study-plans")).toBe(true);
+  });
+
+  it("returns false for an absolute unisg url", () => {
+    expect(isShsgHost("https://integration.unisg.ch/EventApi/Events")).toBe(
+      false,
+    );
+  });
+
+  it("returns false for a relative url", () => {
+    expect(isShsgHost("/app-status.json")).toBe(false);
+  });
+
+  it("returns false for garbage input", () => {
+    expect(isShsgHost(undefined)).toBe(false);
+    expect(isShsgHost(null)).toBe(false);
+    expect(isShsgHost("::not a url::")).toBe(false);
   });
 });
 

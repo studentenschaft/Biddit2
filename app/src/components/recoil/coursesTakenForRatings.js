@@ -17,7 +17,11 @@ export const coursesRatedState = atom({
         );
         return res.data;
       } catch (err) {
-        console.error("Error fetching rated courses:", err);
+        // Kill switch flipped on mid-flight: expected, not a real failure -
+        // skip the console noise (see docs/adr/0001-degraded-mode-kill-switch.md).
+        if (!err?.isDegradedModeError) {
+          console.error("Error fetching rated courses:", err);
+        }
         return [];
       }
     },
@@ -134,7 +138,11 @@ export const coursesTakenForRatingState = atom({
 
         return filteredCourses;
       } catch (err) {
-        console.error("Error fetching courses for rating:", err);
+        // Kill switch flipped on mid-flight: expected, not a real failure -
+        // skip the console noise (see docs/adr/0001-degraded-mode-kill-switch.md).
+        if (!err?.isDegradedModeError) {
+          console.error("Error fetching courses for rating:", err);
+        }
         return [];
       }
     },
