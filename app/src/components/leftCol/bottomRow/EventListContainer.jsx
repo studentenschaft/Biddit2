@@ -44,7 +44,11 @@ import {
   smartSearchActiveSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
-import { examCollisionsSelector } from "../../recoil/examScheduleSelectors";
+import {
+  examPlanSelector,
+  plannedExamsSelector,
+} from "../../recoil/examScheduleSelectors";
+import { examClashes } from "../../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../../helpers/courseUtils";
 
 // Icons
@@ -103,8 +107,11 @@ export default function EventListContainer({
       })
     ) || [];
 
-  const examCollisions = useRecoilValue(
-    examCollisionsSelector(selectedSemesterShortName)
+  const { plan: examPlan } = useRecoilValue(
+    examPlanSelector(selectedSemesterShortName)
+  );
+  const plannedExams = useRecoilValue(
+    plannedExamsSelector(selectedSemesterShortName)
   );
 
   // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
@@ -256,8 +263,16 @@ export default function EventListContainer({
     const wasPreviouslyEnrolled =
       event.enrolled && data.selectedSemester?.isProjected;
 
-    const examConflicts =
-      data.examCollisions.get(getCourseRootKey(event))?.conflictsWith ?? [];
+    // Only a planned course warns; a browsed one is not competing yet. Empty
+    // `plannedExams` also means there is no ready plan to read.
+    const isPlanned = data.plannedExams.some(
+      (planned) => planned.rootKey === getCourseRootKey(event)
+    );
+    const examClashesById = isPlanned
+      ? examClashes(data.plannedExams, data.examPlan, event)
+      : new Map();
+    // The row names each clashing course once, however many exams clash.
+    const examConflicts = [...new Set([...examClashesById.values()].flat())];
 
     return (
       <div
@@ -406,7 +421,8 @@ export default function EventListContainer({
     openCourseDetails,
     setIsLeftViewVisibleState,
     addOrRemoveCourse,
-    examCollisions,
+    examPlan,
+    plannedExams,
   };
 
   return (

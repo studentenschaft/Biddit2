@@ -147,8 +147,9 @@ const mockData = {
     metadatas: [[]],
   },
   // Stand-in for the shipped public/exams/HS26.json (178 written entries).
-  // Covers the shapes the UI branches on: OT, AT, BYOD, cross-listed roots,
-  // oral, and two OT exams sharing a (date, slot) so collisions have real data.
+  // Covers the shapes the UI branches on: OT, an AT row it must ignore, BYOD,
+  // cross-listed roots, oral, and two overlapping OT exams so clashes have
+  // real data.
   examSchedule: {
     schemaVersion: 2,
     semester: "HS26",

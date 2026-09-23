@@ -2,10 +2,10 @@ import PropTypes from "prop-types";
 import { InformationCircleIcon } from "@heroicons/react/outline";
 import { useRecoilValue } from "recoil";
 import {
-  examCollisionsSelector,
   examPlanSelector,
+  plannedExamsSelector,
 } from "../recoil/examScheduleSelectors";
-import { examsForCourse } from "../helpers/examScheduleUtils";
+import { examClashes, examsForCourse } from "../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../helpers/courseUtils";
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -38,10 +38,7 @@ export default function ExamSchedule({ course, semester }) {
   // Null while loading, and for a semester without a usable plan or with a
   // borrowed catalog.
   const { plan } = useRecoilValue(examPlanSelector(semester));
-  const collisions = useRecoilValue(examCollisionsSelector(semester));
-  // Only courses in the user's plan are in the map, so a merely browsed course
-  // gets no warning — it is not competing with anything yet.
-  const collision = collisions.get(getCourseRootKey(course));
+  const plannedExams = useRecoilValue(plannedExamsSelector(semester));
 
   const achievementFormStatus = course?.achievementFormStatus;
   if (achievementFormStatus?.isDeCentral && !achievementFormStatus.isCentral) {
@@ -63,6 +60,12 @@ export default function ExamSchedule({ course, semester }) {
     );
   }
 
+  // Only a planned course warns; a browsed one is not competing yet.
+  const rootKey = getCourseRootKey(course);
+  const clashes = plannedExams.some((planned) => planned.rootKey === rootKey)
+    ? examClashes(plannedExams, plan, course)
+    : new Map();
+
   return (
     <div className="pb-2 text-sm text-gray-700">
       {written.map((exam) => (
@@ -71,9 +74,6 @@ export default function ExamSchedule({ course, semester }) {
             <span className="font-semibold">{formatExamDate(exam.date)}</span>
             <span>{exam.slot}</span>
             <span>{exam.durationMin} min</span>
-            {exam.termType === "AT" && (
-              <span className="text-gray-500">Alternative date</span>
-            )}
             {/* Present-or-silent: shows the plan's BYOD marking, never "not
                 BYOD". */}
             {exam.byod === true && (
@@ -82,9 +82,9 @@ export default function ExamSchedule({ course, semester }) {
               </span>
             )}
           </div>
-          {collision?.exam.id === exam.id && (
+          {clashes.has(exam.id) && (
             <p className="text-danger">
-              Overlaps with {collision.conflictsWith.join(", ")}
+              Overlaps with {clashes.get(exam.id).join(", ")}
             </p>
           )}
         </div>

@@ -1,7 +1,9 @@
 /**
  * Pure lookup into an ingested exam plan (`public/exams/<SEMESTER>.json`,
- * ADR 0010/0011). No React, no I/O — the plan is passed in, already checked
- * by `examPlanState` when it loaded, so nothing here re-checks its shape.
+ * ADR 0010/0011). No React, no I/O — callers pass a ready plan. Nothing here
+ * re-checks it: `examPlanState` checked the top-level shape when it loaded,
+ * and every entry passed the ingestion CLI's validation, which refuses to
+ * write a bad artifact.
  */
 
 import { getCourseRootKey } from "./courseUtils";
@@ -11,84 +13,91 @@ import { getCourseRootKey } from "./courseUtils";
 // inherit its parent lecture's exam.
 const matchesRoot = (entry, rootKey) => entry.rootNumbers.includes(rootKey);
 
+// Written exams are the OT (ordinary date) rows only: this PDF's AT rows are
+// the previous term's alternative dates, and this term's AT plan is published
+// separately.
+const isOrdinary = (entry) => entry.termType === "OT";
+
 /**
  * Finds the central exams for a course.
  *
- * @param {Object|null|undefined} plan - Parsed exam plan artifact
+ * @param {Object} plan - Parsed exam plan artifact
  * @param {Object|null|undefined} course - Course object
- * @returns {{ written: Array, oral: Array }} Always both keys, empty when unmatched
+ * @returns {{ written: Array, oral: Array }} Always both keys, in plan order,
+ *   empty when unmatched
  */
 export function examsForCourse(plan, course) {
   const rootKey = getCourseRootKey(course);
-  if (!plan || !rootKey) return { written: [], oral: [] };
-
   return {
-    // OT (regular date) before AT (alternative date); Array#sort is stable,
-    // so entries keep the plan's date order within each group.
-    written: plan.written
-      .filter((entry) => matchesRoot(entry, rootKey))
-      .sort((a, b) => (a.termType === "OT" ? 0 : 1) - (b.termType === "OT" ? 0 : 1)),
+    written: plan.written.filter(
+      (entry) => isOrdinary(entry) && matchesRoot(entry, rootKey),
+    ),
     oral: plan.oral.filter((entry) => matchesRoot(entry, rootKey)),
   };
 }
 
 /**
- * Finds the central-exam collisions inside a set of courses.
+ * The written exams a set of courses sits, one entry per exam, in plan order.
+ * A lecture and its exercise groups share a root, and a cross-listed exam
+ * matches several roots, but either way it is one sitting; the first course
+ * that sits it names it.
  *
- * Two exams collide iff they share a date *and* a slot. Every written exam
- * starts 09:15 or 15:15 and none runs longer than 180', so no morning exam can
- * reach the afternoon slot and interval math would buy nothing — see ADR 0012.
- * Only OT (ordinary date) written exams count: AT rows are provisional and only
- * bind students granted the alternative date, and oral exams publish no time.
- *
- * @param {Object|null|undefined} plan - Parsed exam plan artifact
- * @param {Array|null|undefined} courses - The user's courses for the semester
- * @returns {Map<string, {exam: Object, conflictsWith: string[]}>} Keyed by
- *   two-segment root; `conflictsWith` names the other colliding roots.
+ * @param {Object} plan - Parsed exam plan artifact
+ * @param {Array} courses - Typically the user's courses for the semester
+ * @returns {Array<{exam: Object, rootKey: string, name: string}>}
  */
-export function findExamCollisions(plan, courses) {
-  const collisions = new Map();
-  if (!Array.isArray(plan?.written) || !Array.isArray(courses)) {
-    return collisions;
-  }
-
-  // A lecture and its exercise groups share one root and therefore one exam —
-  // collapsing them here is what stops a course colliding with itself. The
-  // first course seen names its root in the other courses' warnings.
-  const nameByRoot = new Map();
-  for (const course of courses) {
-    const rootKey = getCourseRootKey(course);
-    if (rootKey && !nameByRoot.has(rootKey)) {
-      nameByRoot.set(rootKey, course?.shortName || rootKey);
-    }
-  }
-
-  // (date, slot) → the roots of my courses sitting an exam in it.
-  const bySlot = new Map();
+export function planExams(plan, courses) {
+  const planned = [];
   for (const exam of plan.written) {
-    if (exam.termType !== "OT") continue;
-    const slotKey = `${exam.date} ${exam.slot}`;
-    for (const rootKey of nameByRoot.keys()) {
-      if (!matchesRoot(exam, rootKey)) continue;
-      const group = bySlot.get(slotKey) ?? new Map();
-      if (!group.has(rootKey)) group.set(rootKey, exam);
-      bySlot.set(slotKey, group);
-    }
+    if (!isOrdinary(exam)) continue;
+    const course = courses.find((c) => matchesRoot(exam, getCourseRootKey(c)));
+    if (!course) continue;
+    const rootKey = getCourseRootKey(course);
+    planned.push({ exam, rootKey, name: course.shortName || rootKey });
   }
+  return planned;
+}
 
-  for (const group of bySlot.values()) {
-    if (group.size < 2) continue;
-    for (const [rootKey, exam] of group) {
-      // One warning per root: the first slot it clashes in wins.
-      if (collisions.has(rootKey)) continue;
-      collisions.set(rootKey, {
-        exam,
-        conflictsWith: [...group.keys()]
-          .filter((other) => other !== rootKey)
-          .map((other) => nameByRoot.get(other)),
-      });
-    }
+// [start, end) in epoch ms. `startIso` carries its Zurich offset, so the
+// reader's timezone never enters.
+const interval = (exam) => {
+  const start = Date.parse(exam.startIso);
+  return [start, start + exam.durationMin * 60000];
+};
+
+const overlaps = (a, b) => {
+  const [aStart, aEnd] = interval(a);
+  const [bStart, bEnd] = interval(b);
+  return aStart < bEnd && bStart < aEnd;
+};
+
+/**
+ * The planned exams each written exam of `course` clashes with (ADR 0012).
+ *
+ * A clash is a *different* exam, sat for a course of a *different* root, whose
+ * time overlaps; exams that merely touch do not clash. Interval maths rather
+ * than a (date, slot) match, so a plan with other start times stays correct.
+ * `course` may be planned or only browsed.
+ *
+ * @param {Array} plannedExams - `planExams` of the user's courses
+ * @param {Object} plan - Parsed exam plan artifact
+ * @param {Object} course - Course object
+ * @returns {Map<string, string[]>} Exam id → names of the planned exams it
+ *   clashes with, deduped, in plan order; only clashing exams are keys
+ */
+export function examClashes(plannedExams, plan, course) {
+  const rootKey = getCourseRootKey(course);
+  const clashes = new Map();
+  for (const exam of examsForCourse(plan, course).written) {
+    const names = plannedExams
+      .filter(
+        (other) =>
+          other.exam.id !== exam.id &&
+          other.rootKey !== rootKey &&
+          overlaps(exam, other.exam),
+      )
+      .map((other) => other.name);
+    if (names.length > 0) clashes.set(exam.id, [...new Set(names)]);
   }
-
-  return collisions;
+  return clashes;
 }

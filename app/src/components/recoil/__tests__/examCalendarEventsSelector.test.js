@@ -1,11 +1,11 @@
 /**
  * examCalendarEventsSelector turns the ingested plan into calendar blocks.
  *
- * What matters here and is not covered by the collision tests: only ordinary
- * written exams become blocks (orals have no time, alternative dates are
- * provisional — ADR 0012), one exam is one block however many of the user's
- * courses sit it, and the collision map's red plus `conflictsWith` is threaded
- * through rather than recomputed.
+ * What matters here and is not covered by the clash tests: only ordinary
+ * written exams become blocks (orals have no time, and this PDF's AT rows are
+ * another term's alternative dates), one exam is one block however many of the
+ * user's courses sit it, and each block takes its red and its names from its
+ * own exam's clashes.
  */
 
 import { describe, expect, it } from "vitest";
@@ -178,6 +178,33 @@ describe("examCalendarEventsSelector", () => {
     expect(events.find((e) => e.id === "ot-causal").conflictsWith).toEqual([
       "Microeconomics II",
     ]);
+  });
+
+  it("colours each exam of a course by its own clash", () => {
+    // Causal Inference gets a second exam, in Operations Management's slot.
+    const plan = {
+      ...PLAN,
+      written: [
+        ...PLAN.written,
+        { ...PLAN.written[2], id: "ot-causal-2", rootNumbers: ["7,850"] },
+      ],
+    };
+    const events = eventsIn({
+      plan,
+      enrolledIds: [MICRO.courseNumber, CAUSAL.courseNumber, OPS.courseNumber],
+    });
+
+    expect(
+      Object.fromEntries(events.map((event) => [event.id, event.conflictsWith])),
+    ).toEqual({
+      "ot-micro": ["Causal Inference"],
+      "ot-causal": ["Microeconomics II"],
+      "ot-causal-2": ["Operations Management"],
+      "ot-ops": ["Causal Inference"],
+    });
+    events.forEach((event) => {
+      expect(event.color).toBe(EXAM_COLLISION_COLOR);
+    });
   });
 
   it("ignores courses the user has not planned", () => {

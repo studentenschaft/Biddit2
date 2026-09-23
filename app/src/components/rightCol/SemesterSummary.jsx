@@ -10,14 +10,17 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
-import { examCollisionsSelector } from "../recoil/examScheduleSelectors";
+import {
+  examPlanSelector,
+  plannedExamsSelector,
+} from "../recoil/examScheduleSelectors";
 
 import { ExclamationIcon } from "@heroicons/react/outline";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
-import { getCourseRootKey } from "../helpers/courseUtils";
+import { examClashes } from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
 
 import { Heatmap } from "./Heatmap";
@@ -56,8 +59,11 @@ export default function SemesterSummary() {
   // so the table and the schedule cannot drift apart.
   const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
 
-  const examCollisions = useRecoilValue(
-    examCollisionsSelector(selectedSemesterState)
+  const { plan: examPlan } = useRecoilValue(
+    examPlanSelector(selectedSemesterState)
+  );
+  const plannedExams = useRecoilValue(
+    plannedExamsSelector(selectedSemesterState)
   );
 
   const totalCredits = currCourses.reduce((acc, curr) => {
@@ -261,10 +267,14 @@ export default function SemesterSummary() {
                 const conflicts = getConflictsForCourse(course);
                 const hasConflicts = conflicts.length > 0;
                 // Central-exam clashes, kept separate from the lecture
-                // conflicts: different source, different remedy.
-                const examConflicts =
-                  examCollisions.get(getCourseRootKey(course))?.conflictsWith ??
-                  [];
+                // conflicts: different source, different remedy. Each
+                // clashing course is named once, however many exams clash.
+                const examClashesById = examPlan
+                  ? examClashes(plannedExams, examPlan, course)
+                  : new Map();
+                const examConflicts = [
+                  ...new Set([...examClashesById.values()].flat()),
+                ];
                 const hasExamConflicts = examConflicts.length > 0;
                 return (
                   <div

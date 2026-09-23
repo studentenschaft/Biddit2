@@ -1,8 +1,8 @@
 /**
  * The course list is where a clash has to be visible while the user is still
  * choosing. The row warns only when the course is in the user's own plan and
- * its central exam shares a date and slot with another planned course — a row
- * that merely sits in the catalog says nothing.
+ * its central exam overlaps another planned course's — a row that merely sits
+ * in the catalog says nothing.
  *
  * Nothing is seeded for the exam plan: the list's own read loads it (MSW
  * serves the fixture), which is the path production takes.

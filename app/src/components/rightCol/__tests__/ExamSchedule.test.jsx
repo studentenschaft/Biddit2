@@ -71,16 +71,13 @@ describe("ExamSchedule", () => {
     );
   });
 
-  it("lists the ordinary date before the alternative one and labels it", async () => {
+  it("shows the ordinary date and never the plan's alternative one", async () => {
+    // The fixture's AT row for 3,802 (19.01) is another term's alternative
+    // date, as every AT row in this PDF is.
     renderSchedule(courseNumbered("3,802,1.00"));
 
-    await screen.findByText("Tue 26.01.2027");
-    const dates = screen.getAllByText(/^Tue \d{2}\.01\.2027$/);
-    expect(dates.map((node) => node.textContent)).toEqual([
-      "Tue 26.01.2027",
-      "Tue 19.01.2027",
-    ]);
-    expect(screen.getByText("Alternative date")).toBeInTheDocument();
+    expect(await screen.findByText("Tue 26.01.2027")).toBeInTheDocument();
+    expect(screen.queryByText("Tue 19.01.2027")).not.toBeInTheDocument();
   });
 
   it("badges a digital exam only when the plan says so", async () => {
@@ -167,12 +164,41 @@ describe("ExamSchedule", () => {
   });
 
   it("marks the clashing date only, not every date of the course", async () => {
-    // 3,802 sits 26.01 (OT) and 19.01 (AT); neither shares 3,200's slot.
-    renderSchedule(courseNumbered("3,802,1.00"), {
-      myCourses: [MICRO, CAUSAL, { courseNumber: "3,802,1.00", shortName: "German C1" }],
+    // Give 3,200 a second written exam that clashes with nothing.
+    const [micro] = mockData.examSchedule.written;
+    server.use(
+      http.get("*/exams/HS26.json", () =>
+        HttpResponse.json({
+          ...mockData.examSchedule,
+          written: [
+            ...mockData.examSchedule.written,
+            {
+              ...micro,
+              id: "OT-2027-02-01-1515-3,200",
+              date: "2027-02-01",
+              slot: "15:15",
+              startIso: "2027-02-01T15:15:00+01:00",
+            },
+          ],
+        }),
+      ),
+    );
+    renderSchedule(courseNumbered("3,200,1.00"), {
+      myCourses: [MICRO, CAUSAL],
     });
 
-    await screen.findByText("Tue 26.01.2027");
+    const warning = await screen.findByText("Overlaps with Causal Inference");
+    expect(warning.parentElement).toHaveTextContent("Mon 18.01.2027");
+    expect(screen.getByText("Mon 01.02.2027")).toBeInTheDocument();
+    expect(screen.getAllByText(/Overlaps with/)).toHaveLength(1);
+  });
+
+  it("says nothing about clashes for a course the user has not planned", async () => {
+    // Microeconomics is only browsed, so its clash with the planned Causal
+    // Inference is not reported here.
+    renderSchedule(courseNumbered("3,200,1.00"), { myCourses: [CAUSAL] });
+
+    await screen.findByText("Mon 18.01.2027");
     expect(screen.queryByText(/Overlaps with/)).not.toBeInTheDocument();
   });
 

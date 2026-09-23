@@ -5,8 +5,7 @@ import {
   myCoursesSelector,
   semesterMetadataSelector,
 } from "./unifiedCourseDataSelectors";
-import { examsForCourse, findExamCollisions } from "../helpers/examScheduleUtils";
-import { getCourseRootKey } from "../helpers/courseUtils";
+import { examClashes, planExams } from "../helpers/examScheduleUtils";
 
 const NO_PLAN = { status: "none", plan: null };
 
@@ -32,25 +31,24 @@ export const examPlanSelector = selectorFamily({
 });
 
 /**
- * Central-exam collisions among the user's courses for a semester. Empty
- * until the plan has loaded, and for a semester without one (fail open,
- * ADR 0011).
+ * The written exams of the user's courses for a semester (`planExams`), the
+ * set every clash is checked against. Empty until the plan is ready, and for
+ * a semester without one (fail open, ADR 0011).
  *
  * The pool is `myCoursesSelector` (enrolled ∪ selected), never the `filtered`
  * view state: a course must not stop warning because a search filter hides it.
  *
- * @returns {Map<string, {exam: Object, conflictsWith: string[]}>} Keyed by
- *   two-segment course root; empty when nothing collides.
+ * @returns {Array<{exam: Object, rootKey: string, name: string}>}
  */
-export const examCollisionsSelector = selectorFamily({
-  key: "examCollisionsSelector",
+export const plannedExamsSelector = selectorFamily({
+  key: "plannedExamsSelector",
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const { plan } = get(examPlanSelector(semesterShortName));
-      if (!plan) return new Map();
+      const { status, plan } = get(examPlanSelector(semesterShortName));
+      if (status !== "ready") return [];
 
-      return findExamCollisions(plan, get(myCoursesSelector(semesterShortName)));
+      return planExams(plan, get(myCoursesSelector(semesterShortName)));
     },
 });
 
@@ -66,10 +64,10 @@ export const EXAM_COLLISION_COLOR = "#DC2626";
  * pins the lecture collision logic and the filter-leak invariant, and exams
  * neither participate in its Union-Find nor come from `calendarEntry` rows.
  * `Calendar.jsx` concatenates the two event sets. Same fail-open contract as
- * `examCollisionsSelector`: no plan, no exam blocks (ADR 0011).
+ * `plannedExamsSelector`: no plan, no exam blocks (ADR 0011).
  *
- * OT written exams only — orals publish no time and AT dates are provisional
- * (ADR 0012); fabricating a block for either would be worse than showing none.
+ * OT written exams only, one block per planned exam — orals publish no time,
+ * and fabricating a block for one would be worse than showing none.
  *
  * @returns {Array<Object>} FullCalendar events carrying `entryType: "exam"`
  */
@@ -78,48 +76,41 @@ export const examCalendarEventsSelector = selectorFamily({
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const { plan } = get(examPlanSelector(semesterShortName));
-      if (!plan) return [];
+      const { status, plan } = get(examPlanSelector(semesterShortName));
+      if (status !== "ready") return [];
 
-      const courses = get(myCoursesSelector(semesterShortName));
-      const collisions = get(examCollisionsSelector(semesterShortName));
+      const plannedExams = get(plannedExamsSelector(semesterShortName));
 
-      // Keyed by exam id, so one exam is one block however many of my courses
-      // sit it: a lecture and its exercise groups share a root and therefore
-      // the same exam entry, and a cross-listed exam matches several roots.
-      const byExamId = new Map();
-
-      for (const course of courses) {
-        const rootKey = getCourseRootKey(course);
-        if (!rootKey) continue;
-        const collision = collisions.get(rootKey);
-
-        for (const exam of examsForCourse(plan, course).written) {
-          if (exam.termType !== "OT") continue;
-          if (byExamId.has(exam.id)) continue;
-
-          const overlapping = collision?.exam?.id === exam.id;
-          byExamId.set(exam.id, {
-            id: exam.id,
-            title: course.shortName || rootKey,
-            start: exam.startIso,
-            // parseZone keeps the artifact's Zurich offset, so start and end
-            // stay in one format.
-            end: moment
-              .parseZone(exam.startIso)
-              .add(exam.durationMin, "minutes")
-              .format(),
-            entryType: "exam",
-            durationMin: exam.durationMin,
-            // Present-or-silent: shows the plan's BYOD marking, never "not
-            // BYOD".
-            byod: exam.byod === true,
-            conflictsWith: overlapping ? collision.conflictsWith : [],
-            color: overlapping ? EXAM_COLLISION_COLOR : EXAM_COLOR,
-          });
+      // Each block is red with its own exam's clashes. Several of my courses
+      // can sit one exam (exercise groups, cross-listings); the first to
+      // report clashes for it names them.
+      const clashesById = new Map();
+      for (const course of get(myCoursesSelector(semesterShortName))) {
+        for (const [id, names] of examClashes(plannedExams, plan, course)) {
+          if (!clashesById.has(id)) clashesById.set(id, names);
         }
       }
 
-      return [...byExamId.values()];
+      return plannedExams.map(({ exam, name }) => {
+        const conflictsWith = clashesById.get(exam.id) ?? [];
+        return {
+          id: exam.id,
+          title: name,
+          start: exam.startIso,
+          // parseZone keeps the artifact's Zurich offset, so start and end
+          // stay in one format.
+          end: moment
+            .parseZone(exam.startIso)
+            .add(exam.durationMin, "minutes")
+            .format(),
+          entryType: "exam",
+          durationMin: exam.durationMin,
+          // Present-or-silent: shows the plan's BYOD marking, never "not
+          // BYOD".
+          byod: exam.byod === true,
+          conflictsWith,
+          color: conflictsWith.length > 0 ? EXAM_COLLISION_COLOR : EXAM_COLOR,
+        };
+      });
     },
 });
