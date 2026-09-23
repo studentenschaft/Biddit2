@@ -94,14 +94,21 @@ export default function Calendar() {
 
   const shouldShowLoading = isLoading;
 
-  // Keep empty-state message in sync with incoming events
+  // Exam blocks are appended only to what FullCalendar renders, never to the
+  // percentile boot logic below: they sit weeks after the last lecture, so
+  // letting them into that sample would drag the opening week off the semester.
+  const allEvents = React.useMemo(
+    () => [...finalEvents, ...examEvents],
+    [finalEvents, examEvents],
+  );
+
+  // Keep empty-state message in sync with incoming events. Exams count: a
+  // plan can list the user's exams before any lecture is scheduled.
   React.useEffect(() => {
-    const hasEvents = Array.isArray(finalEvents) && finalEvents.length > 0;
-    setDisplaySelectCoursesFirst(!hasEvents);
-    if (!hasEvents) {
-      setIsLoading(false);
-    }
-  }, [finalEvents]);
+    setDisplaySelectCoursesFirst(allEvents.length === 0);
+    // Without lectures the boot logic below has nothing to wait for.
+    if (finalEvents.length === 0) setIsLoading(false);
+  }, [allEvents, finalEvents]);
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
@@ -163,14 +170,6 @@ export default function Calendar() {
     setLectureReturnDate(null);
     if (!isFutureSemesterSelectedState) setInitialDate(new Date());
   }, [selectedSemester, isFutureSemesterSelectedState]);
-
-  // Exam blocks are appended only to what FullCalendar renders, never to the
-  // percentile boot logic above: they sit weeks after the last lecture, so
-  // letting them into that sample would drag the opening week off the semester.
-  const allEvents = React.useMemo(
-    () => [...finalEvents, ...examEvents],
-    [finalEvents, examEvents],
-  );
 
   // The exam weeks, Monday of the first to the end of the last: the jump lands
   // on the first, and while the calendar is inside them the button leads back

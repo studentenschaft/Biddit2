@@ -24,10 +24,12 @@ import {
   EXAM_DISCLAIMER_SHORT,
   describeExamClashes,
   examClashes,
+  examsForCourse,
   formatExamClashLead,
   formatPlanSource,
 } from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
+import { getCourseRootKey } from "../helpers/courseUtils";
 import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 import { Heatmap } from "./Heatmap";
@@ -51,17 +53,19 @@ const ROW_GRID_CLASSES =
 
 /**
  * The "Exam check" line, which makes no red marker read as "checked, no
- * clash" rather than "not checked". Nothing while the plan loads.
+ * clash" rather than "not checked", and says which courses it could not
+ * check. Nothing while the plan loads.
  *
  * @param {string} status - `examPlanSelector` status
  * @param {Object|null} plan - The plan, when ready
  * @param {number} clashingExams - Distinct planned exams with a clash
+ * @param {number} centralNotFound - Central courses the plan does not list
  * @returns {string|null}
  */
-function examCheck(status, plan, clashingExams) {
-  if (status === "none") {
-    return "Exam check unavailable: no central exam plan for this semester.";
-  }
+function examCheck(status, plan, clashingExams, centralNotFound) {
+  // "none" also stands for a borrowed semester, which may have a plan that
+  // must not be shown, so it gives no reason.
+  if (status === "none") return "Exam check unavailable for this semester.";
   if (status === "error") {
     return "Exam check unavailable: the exam plan could not be loaded — reload to retry.";
   }
@@ -72,7 +76,13 @@ function examCheck(status, plan, clashingExams) {
       : `${clashingExams} ${
           clashingExams === 1 ? "exam clashes" : "exams clash"
         } — see the red markers`;
-  return `Exam check: ${result}. ${formatPlanSource(plan)}. ${EXAM_DISCLAIMER_SHORT}`;
+  const notFound =
+    centralNotFound === 0
+      ? ""
+      : centralNotFound === 1
+      ? " 1 central course not found in the plan — check it officially."
+      : ` ${centralNotFound} central courses not found in the plan — check them officially.`;
+  return `Exam check: ${result}. ${formatPlanSource(plan)}. ${EXAM_DISCLAIMER_SHORT}${notFound}`;
 }
 
 export default function SemesterSummary() {
@@ -102,10 +112,24 @@ export default function SemesterSummary() {
   const examClashesByCourse = currCourses.map((course) =>
     examPlan ? examClashes(plannedExams, examPlan, course) : new Map()
   );
+  // Central courses the plan lists no exam for, once per root (an exercise
+  // group shares its lecture's): the check did not cover them.
+  const centralNotFound = examPlan
+    ? new Set(
+        currCourses
+          .filter((course) => {
+            if (!course.achievementFormStatus?.isCentral) return false;
+            const { written, oral } = examsForCourse(examPlan, course);
+            return written.length === 0 && oral.length === 0;
+          })
+          .map(getCourseRootKey)
+      ).size
+    : 0;
   const examCheckText = examCheck(
     examPlanStatus,
     examPlan,
-    new Set(examClashesByCourse.flatMap((clashes) => [...clashes.keys()])).size
+    new Set(examClashesByCourse.flatMap((clashes) => [...clashes.keys()])).size,
+    centralNotFound
   );
 
   const totalCredits = currCourses.reduce((acc, curr) => {

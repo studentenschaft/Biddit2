@@ -424,11 +424,62 @@ describe("semester summary exam check", () => {
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
   });
 
+  // A central course the plan does not list was not checked, so the line
+  // must not read as full coverage.
+  const central = (shortName, courseNumber, status = { isCentral: true }) => ({
+    id: shortName,
+    courseNumber,
+    shortName,
+    classification: "Core",
+    credits: 400,
+    achievementFormStatus: status,
+  });
+
+  it("names the central courses it could not find", () => {
+    renderExamSummary({
+      courses: [
+        MICRO,
+        OPS,
+        central("Strategy", "8,001,1.00"),
+        // Its exercise group shares the root: one course, counted once.
+        central("Strategy Exercises", "8,001,2.01"),
+        // Listed as an oral exam only: found.
+        central("Data Protection Law", "7,421,1.00"),
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        `Exam check: no clashes between your central written exams. ${SOURCE} 1 central course not found in the plan — check it officially.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("counts them on a line that found clashes too", () => {
+    renderExamSummary({
+      courses: [
+        MICRO,
+        MACRO,
+        central("Strategy", "8,001,1.00"),
+        central("Ethics", "8,002,1.00"),
+        // Decentral: the lecturer schedules it, the plan never lists it.
+        central("Seminar", "8,003,1.00", { isCentral: false, isDeCentral: true }),
+      ],
+    });
+
+    expect(
+      screen.getByText(
+        `Exam check: 2 exams clash — see the red markers. ${SOURCE} 2 central courses not found in the plan — check them officially.`,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it.each([
+    // Also a borrowed semester, which may well have a plan it must not show.
     [
       "no plan",
       { status: "none", plan: null },
-      "Exam check unavailable: no central exam plan for this semester.",
+      "Exam check unavailable for this semester.",
     ],
     [
       "a failed plan",

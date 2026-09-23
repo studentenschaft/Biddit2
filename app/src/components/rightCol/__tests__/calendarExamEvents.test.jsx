@@ -159,6 +159,16 @@ describe("Calendar exam blocks", () => {
     expect(screen.queryByText(/^Room:/)).not.toBeInTheDocument();
   });
 
+  // A plan can list the user's exams before any of their lectures is
+  // scheduled; the calendar must not call that empty.
+  it("shows the exams and the jump when there is no lecture", async () => {
+    recoil.values.set(CALENDAR_ENTRIES, []);
+    await renderCalendar();
+
+    expect(fullCalendar.props.events).toEqual([EXAM]);
+    expect(jumpButtons("Exams")).toHaveLength(2);
+  });
+
   it("hides the jump when the semester has no exam blocks", async () => {
     recoil.values.set(EXAM_EVENTS, []);
     await renderCalendar();
