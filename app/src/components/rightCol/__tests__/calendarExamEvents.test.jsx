@@ -1,11 +1,12 @@
 /**
  * Exam blocks in the Calendar.
  *
- * Three things are pinned here: exam events reach FullCalendar without going
- * through `calendarEntriesSelector`, a tapped exam reads as an exam rather than
- * a lecture (date and facts instead of a room, disclaimer), and the "Exams"
- * jump only exists when there is something to jump to. How a block is drawn
- * and what its tooltip says is pinned against the real FullCalendar in
+ * Pinned here: exam events reach FullCalendar without going through
+ * `calendarEntriesSelector`, a tapped exam reads as an exam rather than a
+ * lecture (date and facts instead of a room, disclaimer), and the
+ * Exams⇄Lectures jump — which exists only when there is something to jump to,
+ * says which way it goes, and starts over with each semester. How a block is
+ * drawn and what its tooltip says is pinned against the real FullCalendar in
  * calendarExamBlocks.test.jsx.
  *
  * Same stubbing shape as calendarEventSheetGating.test.jsx: FullCalendar is
@@ -79,12 +80,18 @@ const EXAM = {
   conflictsWith: [],
 };
 
+// "Today" for the calendar: a Monday in HS26's lecture weeks.
+const TODAY = new Date("2026-10-05T12:00:00");
+
 // The viewport-gate contract itself is owned by calendarEventSheetGating.test.jsx.
 vi.mock("../../helpers/isMobileViewport", () => ({
   isMobileViewport: () => true,
 }));
 
 beforeEach(() => {
+  // Only Date: React, Headless UI and the test helpers keep real timers.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(TODAY);
   fullCalendar.props = null;
   fullCalendar.api = {
     gotoDate: vi.fn(),
@@ -102,6 +109,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.resetModules();
 });
 
@@ -110,7 +118,12 @@ const renderCalendar = async () => {
   return render(<Calendar />);
 };
 
-const examJumpButtons = () => screen.queryAllByRole("button", { name: /exam period|lecture weeks/i });
+const examJumpButtons = () =>
+  screen.queryAllByRole("button", { name: /^(Exams|Lectures)$/ });
+/** One per navigation cluster: the mobile toolbar, then the desktop column. */
+const jumpButtons = (name) => screen.queryAllByRole("button", { name });
+const click = (name) =>
+  act(() => screen.getAllByRole("button", { name })[0].click());
 
 describe("Calendar exam blocks", () => {
   it("feeds exam events to FullCalendar alongside the lectures", async () => {
@@ -156,11 +169,9 @@ describe("Calendar exam blocks", () => {
   it("jumps to the Monday of the first exam week and back again", async () => {
     await renderCalendar();
 
-    // One button per navigation cluster (mobile toolbar, desktop column).
-    expect(examJumpButtons().length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Exams").length).toBeGreaterThan(0);
+    expect(jumpButtons("Exams")).toHaveLength(2);
 
-    act(() => examJumpButtons()[0].click());
+    click("Exams");
 
     const target = fullCalendar.api.gotoDate.mock.calls[0][0];
     expect(target.getDay()).toBe(1);
@@ -168,12 +179,108 @@ describe("Calendar exam blocks", () => {
     expect(target.getDate()).toBe(18);
 
     // The button now offers the way back to where the user was.
-    expect(screen.getAllByText("Lectures").length).toBeGreaterThan(0);
+    expect(jumpButtons("Lectures")).toHaveLength(2);
 
-    act(() => examJumpButtons()[0].click());
+    click("Lectures");
 
-    const back = fullCalendar.api.gotoDate.mock.calls[1][0];
-    expect(back.getFullYear()).toBe(2026);
-    expect(screen.getAllByText("Exams").length).toBeGreaterThan(0);
+    expect(fullCalendar.api.gotoDate).toHaveBeenLastCalledWith(TODAY);
+    expect(jumpButtons("Exams")).toHaveLength(2);
+  });
+
+  /**
+   * A 320px phone has no room for the word in its toolbar, so there the jump
+   * is an icon named by its label; on desktop the visible word is the whole
+   * name, so speech input can say what it sees (WCAG 2.5.3).
+   */
+  it("is named by what it shows: a word on desktop, a label on the mobile icon", async () => {
+    await renderCalendar();
+
+    const [mobile, desktop] = jumpButtons("Exams");
+    expect(mobile).toHaveAttribute("aria-label", "Exams");
+    expect(mobile.textContent).toBe("");
+    expect(desktop).not.toHaveAttribute("aria-label");
+    expect(desktop).toHaveTextContent("Exams");
+  });
+
+  it("offers the exams again once the calendar is past the exam weeks", async () => {
+    // A second exam makes the exam weeks Mon 18.01. to Sun 07.02.2027.
+    recoil.values.set(EXAM_EVENTS, [
+      EXAM,
+      {
+        ...EXAM,
+        id: "ot-late",
+        start: "2027-02-05T09:15:00+01:00",
+        end: "2027-02-05T10:45:00+01:00",
+      },
+    ]);
+    await renderCalendar();
+
+    fullCalendar.api.getDate = () => new Date("2027-02-01T00:00:00");
+    click("Next week");
+    expect(jumpButtons("Lectures")).toHaveLength(2);
+
+    fullCalendar.api.getDate = () => new Date("2027-02-08T00:00:00");
+    click("Next week");
+    expect(jumpButtons("Exams")).toHaveLength(2);
+  });
+
+  /**
+   * The jump remembered the old semester: switching after a jump left the
+   * calendar on the old term's exam week, labelled "Lectures", and the way
+   * back led to the old term's lectures.
+   */
+  it("starts over when the semester changes", async () => {
+    const { default: Calendar } = await import("../Calendar");
+    const { rerender } = render(<Calendar />);
+    click("Exams");
+
+    // FS26: lectures from March, exams in June 2026.
+    const fs26Lecture = {
+      ...LECTURE,
+      start: new Date("2026-03-02T10:15:00"),
+      end: new Date("2026-03-02T12:00:00"),
+    };
+    recoil.values.set(SELECTED_SEMESTER, "FS26");
+    recoil.values.set(CALENDAR_ENTRIES, [fs26Lecture]);
+    recoil.values.set(EXAM_EVENTS, [
+      {
+        ...EXAM,
+        id: "ot-fs26",
+        start: "2026-06-16T09:15:00+02:00",
+        end: "2026-06-16T11:15:00+02:00",
+      },
+    ]);
+    rerender(<Calendar />);
+
+    // Back on today, which is outside FS26's exam weeks.
+    expect(fullCalendar.props.initialDate).toEqual(TODAY);
+    expect(jumpButtons("Exams")).toHaveLength(2);
+
+    // Walking into FS26's exam weeks and taking the way back lands on FS26's
+    // lectures, not on the HS26 week the first jump left.
+    fullCalendar.api.getDate = () => new Date("2026-06-15T00:00:00");
+    click("Next week");
+    click("Lectures");
+    expect(fullCalendar.api.gotoDate).toHaveBeenLastCalledWith(
+      fs26Lecture.start,
+    );
+  });
+
+  it("still opens a future semester on its first lecture, not on today", async () => {
+    const { default: Calendar } = await import("../Calendar");
+    const { rerender } = render(<Calendar />);
+
+    const projectedLecture = {
+      ...LECTURE,
+      start: new Date("2027-02-22T10:15:00"),
+      end: new Date("2027-02-22T12:00:00"),
+    };
+    recoil.values.set(SELECTED_SEMESTER, "FS27");
+    recoil.values.set(IS_FUTURE_SEMESTER, true);
+    recoil.values.set(CALENDAR_ENTRIES, [projectedLecture]);
+    recoil.values.set(EXAM_EVENTS, []);
+    rerender(<Calendar />);
+
+    expect(fullCalendar.props.initialDate).toEqual(projectedLecture.start);
   });
 });

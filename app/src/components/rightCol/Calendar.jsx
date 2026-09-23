@@ -6,10 +6,12 @@ import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import {
+  BookOpenIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  ClipboardCheckIcon,
 } from "@heroicons/react/solid";
 
 // Other
@@ -138,6 +140,14 @@ export default function Calendar() {
     }
   }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
+  // A semester switch starts navigation over: the week the exam toggle would
+  // return to, and any date navigated to, belong to the old term. A future
+  // semester gets its opening date from the effect above.
+  React.useEffect(() => {
+    setLectureReturnDate(null);
+    if (!isFutureSemesterSelectedState) setInitialDate(new Date());
+  }, [selectedSemester, isFutureSemesterSelectedState]);
+
   // Exam blocks are appended only to what FullCalendar renders, never to the
   // percentile boot logic above: they sit weeks after the last lecture, so
   // letting them into that sample would drag the opening week off the semester.
@@ -146,18 +156,22 @@ export default function Calendar() {
     [finalEvents, examEvents],
   );
 
-  // Monday of the first exam week — the jump target. No exams, no button.
-  const examWeekStart = React.useMemo(() => {
+  // The exam weeks, Monday of the first to the end of the last: the jump lands
+  // on the first, and while the calendar is inside them the button leads back
+  // to the lectures. No exams, no button.
+  const examWeeks = React.useMemo(() => {
     if (!examEvents.length) return null;
-    const earliest = Math.min(
-      ...examEvents.map((event) => new Date(event.start).getTime()),
-    );
-    return Number.isFinite(earliest)
-      ? moment(earliest).startOf("isoWeek").toDate()
-      : null;
+    const starts = examEvents.map((event) => new Date(event.start).getTime());
+    return {
+      start: moment(Math.min(...starts)).startOf("isoWeek").toDate(),
+      end: moment(Math.max(...starts)).endOf("isoWeek").toDate(),
+    };
   }, [examEvents]);
 
-  const showingExamPeriod = !!examWeekStart && initialDate >= examWeekStart;
+  const showingExamPeriod =
+    !!examWeeks &&
+    initialDate >= examWeeks.start &&
+    initialDate <= examWeeks.end;
 
   // The tooltip renders from these attributes alone. They are set as soon as a
   // block is drawn, not on mouse enter, so the tooltip also opens when the
@@ -292,23 +306,28 @@ export default function Calendar() {
       return;
     }
     setLectureReturnDate(initialDate);
-    NavigateToDate(examWeekStart);
+    NavigateToDate(examWeeks.start);
   };
 
-  // Rendered in both navigation clusters (mobile toolbar, desktop side column),
-  // which differ only in padding.
-  const renderExamJumpButton = (paddingClassName) =>
-    examWeekStart ? (
+  // Rendered in both navigation clusters. A 320px phone's toolbar has no room
+  // for the word, so there the button is an icon named by its label; on
+  // desktop the visible word is its whole name (WCAG 2.5.3).
+  const renderExamJumpButton = ({ iconOnly }) => {
+    if (!examWeeks) return null;
+    const label = showingExamPeriod ? "Lectures" : "Exams";
+    const Icon = showingExamPeriod ? BookOpenIcon : ClipboardCheckIcon;
+    return (
       <button
-        className={`bg-hsg-900 hover:bg-hsg-800 active:bg-hsg-700 text-white ${paddingClassName} rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs`}
+        className={`bg-hsg-900 hover:bg-hsg-800 active:bg-hsg-700 text-white ${
+          iconOnly ? "p-1.5" : "px-3 py-1.5"
+        } rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs`}
         onClick={toggleExamPeriod}
-        aria-label={
-          showingExamPeriod ? "Back to lecture weeks" : "Go to exam period"
-        }
+        aria-label={iconOnly ? label : undefined}
       >
-        {showingExamPeriod ? "Lectures" : "Exams"}
+        {iconOnly ? <Icon className="w-4 h-4" aria-hidden="true" /> : label}
       </button>
-    ) : null;
+    );
+  };
 
   var cal = {
     firstDay: "1",
@@ -460,7 +479,7 @@ export default function Calendar() {
                 />
               </button>
 
-              {renderExamJumpButton("px-2 py-1.5")}
+              {renderExamJumpButton({ iconOnly: true })}
             </div>
 
             <button
@@ -505,7 +524,7 @@ export default function Calendar() {
                   <ChevronDoubleRightIcon className="w-3 h-3" />
                 </button>
 
-                {renderExamJumpButton("px-3 py-1.5")}
+                {renderExamJumpButton({ iconOnly: false })}
               </div>
 
               <button
