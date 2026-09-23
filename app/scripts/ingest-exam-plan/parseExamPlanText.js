@@ -41,7 +41,10 @@ const SLOT_LABEL_RE =
 const COURSE_ROOT_RE = /\b\d{1,2},\d{3}\b/;
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
-const RANGE_DASH_RE = /^\s*-(?=\s|$)/;
+// The gutter dash sits in column 0 like the dates, and the text column starts
+// at 17. Three columns of indent absorb the drift an indented date row shows;
+// a "- …" line in the text column is a note and must not open a range.
+const RANGE_DASH_RE = /^ {0,3}-(?=\s|$)/;
 export const ROOT_SEPARATOR = "|";
 export const WEEKDAYS_SOURCE =
   "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
@@ -224,10 +227,16 @@ function parseOralPage(page) {
     const dateMatch = line.match(LEADING_DATE_RE);
     if (dateMatch) {
       const date = calendarDate(...dateMatch.slice(1), where);
-      if (openedAt) block.dateEnd = date;
-      else block = { dateStart: date, dateEnd: date };
+      if (openedAt) Object.assign(block, { dateEnd: date, closed: true });
+      else block = { dateStart: date, dateEnd: date, closed: false };
       openedAt = null;
     } else if (block && RANGE_DASH_RE.test(line)) {
+      // Let through, the next block's date row would silently extend this one.
+      if (block.closed) {
+        throw new Error(
+          `Oral date range is opened again after its closing date — ${where}`,
+        );
+      }
       openedAt = where;
     }
     const text = dateMatch

@@ -415,17 +415,71 @@ describe("parseExamPlanText — oral page", () => {
     ]);
   });
 
-  it("throws when a range is never closed", () => {
-    const unclosed = `${HEADER}
+  it("reads a '-' in the text column as a note, not as a range", () => {
+    // Taken for the gutter dash, it would reopen the closed first block and
+    // stretch its exams to the 08.02. row below.
+    const lastNote =
+      "The individual oral exam dates (incl. Room allocation) are available in Compass at the end of CW 50.";
+    const dashNote = "- Details siehe Compass / see Compass for details";
+    const withDashNote = parseExamPlanText(
+      plan.replace(lastNote, `${lastNote}\n                 ${dashNote}`),
+    );
+    expect(new Set(withDashNote.oral.map(range))).toEqual(
+      new Set(["2027-01-30 … 2027-02-06"]),
+    );
+    const note = withDashNote.oralNotes.find((each) => each.text === dashNote);
+    expect(range(note)).toBe("2027-01-30 … 2027-02-06");
+    expect(withDashNote.oralNotes.map(range)).toEqual([
+      ...parsed.oralNotes.slice(0, 2).map(range),
+      range(note),
+      ...parsed.oralNotes.slice(2).map(range),
+    ]);
+  });
+
+  /** The plan's oral page, cut down to the given rows. */
+  const oralPlan = (rows) => `${HEADER}
 ${TABLE_HEADER}
 ${TWO_SLOT_ROW}
 \fMündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
-30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
-Samstag /        7,421 Datenschutzrecht
--                7,436 Internationale Schiedsgerichtsbarkeit
+${rows}
 `;
+
+  it("dates a block without a '-' with its one day", () => {
+    const { oral } = parseExamPlanText(
+      oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+Saturday         7,436 Internationale Schiedsgerichtsbarkeit
+
+08.02.2027       Ordentliche Prüfungstermine / Regular examination dates
+Montag /         7,702 Recht und Psychologie`),
+    );
+    expect(oral.map(range)).toEqual([
+      "2027-01-30 … 2027-01-30",
+      "2027-01-30 … 2027-01-30",
+      "2027-02-08 … 2027-02-08",
+    ]);
+  });
+
+  it("throws when a range is never closed", () => {
+    const unclosed = oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+-                7,436 Internationale Schiedsgerichtsbarkeit`);
     expect(() => parseExamPlanText(unclosed)).toThrow(
       "Oral date range is never closed — page 2 line 4",
+    );
+  });
+
+  it("throws when a closed range is opened again", () => {
+    // Allowed, the next block's date row would silently extend this one.
+    const reopened = oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+-                7,436 Internationale Schiedsgerichtsbarkeit
+06.02.2027
+-
+08.02.2027       Ordentliche Prüfungstermine / Regular examination dates
+Montag /         7,702 Recht und Psychologie`);
+    expect(() => parseExamPlanText(reopened)).toThrow(
+      "Oral date range is opened again after its closing date — page 2 line 6",
     );
   });
 
