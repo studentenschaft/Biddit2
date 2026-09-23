@@ -10,10 +10,13 @@ import {
   readFixture,
 } from "./readFixture.js";
 
-const build = (text) => buildExamPlan(parseExamPlanText(text));
+const build = (text) => buildExamPlan(parseExamPlanText(text), {});
 
 const raw = readFixture("winter-2027.txt");
-const published = build(raw);
+const published = buildExamPlan(
+  parseExamPlanText(raw),
+  JSON.parse(readFixture("winter-2027.byod.json")),
+);
 const codes = (findings) => findings.map((finding) => finding.code);
 
 /** Validates a clone of the real plan after `mutate` has broken it. */
@@ -36,7 +39,7 @@ describe("validateExamPlan — the plan as published", () => {
       oralCount: 3,
       oralNoteCount: 12,
       dateCount: 15,
-      byodCount: 2,
+      byodCount: 129,
       bySlot: { "09:15": 104, "15:15": 74 },
       byTermType: { OT: 130, AT: 48 },
       byDurationMin: { 60: 11, 90: 64, 120: 91, 150: 6, 180: 6 },

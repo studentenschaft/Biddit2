@@ -196,6 +196,7 @@ function parseWrittenPage(page) {
         position + 1 < matches.length ? matches[position + 1].index : line.length;
       const title = line.slice(match.index + full.length, titleEnd).trim();
       exams.push({
+        page: page.number,
         date: currentDate,
         slot: slotAt(match.index, labels, where),
         durationMin: Number(duration),

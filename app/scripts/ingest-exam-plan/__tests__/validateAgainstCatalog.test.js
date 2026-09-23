@@ -24,7 +24,10 @@ const catalog = [
   achievementFormStatus: { isCentral },
 }));
 
-const plan = buildExamPlan(parseExamPlanText(readFixture("winter-2027.txt")));
+const plan = buildExamPlan(
+  parseExamPlanText(readFixture("winter-2027.txt")),
+  {},
+);
 const diff = validateAgainstCatalog(plan, catalog);
 const roots = (entries) => entries.map((entry) => entry.root);
 

@@ -1,8 +1,9 @@
 /**
  * The centrepiece of the suite: it never needs poppler, because the committed
- * `winter-2027.txt` is exactly what `pdftotext -layout` produced. Rebuilding
- * the plan from it and comparing byte-for-byte pins all 178 exams and stops
- * `public/exams/HS26.json` from drifting away from the parser.
+ * `winter-2027.txt` is exactly what `pdftotext -layout` produced and
+ * `winter-2027.byod.json` is what the CLI read off the PDF's BYOD shading.
+ * Rebuilding the plan from them and comparing byte-for-byte pins all 178
+ * exams and stops `public/exams/HS26.json` from drifting away from the parser.
  */
 
 import { readFileSync } from "node:fs";
@@ -22,7 +23,10 @@ const JSON_INDENT = 2;
 
 describe("golden file", () => {
   it("rebuilds the artifact shipped in public/exams, byte for byte", () => {
-    const plan = buildExamPlan(parseExamPlanText(readFixture("winter-2027.txt")));
+    const plan = buildExamPlan(
+      parseExamPlanText(readFixture("winter-2027.txt")),
+      JSON.parse(readFixture("winter-2027.byod.json")),
+    );
     expect(readFileSync(SHIPPED_ARTIFACT, "utf8")).toBe(
       `${JSON.stringify(plan, null, JSON_INDENT)}\n`,
     );

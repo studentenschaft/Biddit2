@@ -26,7 +26,8 @@
       "rootNumbers": [
         "3,200"
       ],
-      "title": "Mikroökonomik II"
+      "title": "Mikroökonomik II",
+      "byod": true
     },
     {
       "id": "OT-2027-01-18-0915-3,202",
@@ -40,7 +41,8 @@
       "rootNumbers": [
         "3,202"
       ],
-      "title": "Microeconomics II"
+      "title": "Microeconomics II",
+      "byod": true
     },
     {
       "id": "OT-2027-01-18-1515-1,908",
@@ -110,7 +112,8 @@
       "rootNumbers": [
         "7,400"
       ],
-      "title": "Kolloquium Öffentliches Recht"
+      "title": "Kolloquium Öffentliches Recht",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,805",
@@ -124,7 +127,8 @@
       "rootNumbers": [
         "2,805"
       ],
-      "title": "German A2"
+      "title": "German A2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,811",
@@ -138,7 +142,8 @@
       "rootNumbers": [
         "2,811"
       ],
-      "title": "Englisch C1"
+      "title": "Englisch C1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,814",
@@ -152,7 +157,8 @@
       "rootNumbers": [
         "2,814"
       ],
-      "title": "Englisch C1 (English for Law)"
+      "title": "Englisch C1 (English for Law)",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,834",
@@ -180,7 +186,8 @@
       "rootNumbers": [
         "2,842"
       ],
-      "title": "Spanisch B2"
+      "title": "Spanisch B2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,846",
@@ -194,7 +201,8 @@
       "rootNumbers": [
         "2,846"
       ],
-      "title": "Spanisch B1"
+      "title": "Spanisch B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,847",
@@ -208,7 +216,8 @@
       "rootNumbers": [
         "2,847"
       ],
-      "title": "Spanish B1"
+      "title": "Spanish B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,852",
@@ -222,7 +231,8 @@
       "rootNumbers": [
         "2,852"
       ],
-      "title": "Portugiesisch A2"
+      "title": "Portugiesisch A2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,863",
@@ -236,7 +246,8 @@
       "rootNumbers": [
         "2,863"
       ],
-      "title": "Chinese A1"
+      "title": "Chinese A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,872",
@@ -250,7 +261,8 @@
       "rootNumbers": [
         "2,872"
       ],
-      "title": "Japanisch A1"
+      "title": "Japanisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,873",
@@ -264,7 +276,8 @@
       "rootNumbers": [
         "2,873"
       ],
-      "title": "Japanese A1"
+      "title": "Japanese A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,882",
@@ -278,7 +291,8 @@
       "rootNumbers": [
         "2,882"
       ],
-      "title": "Russisch A1"
+      "title": "Russisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,883",
@@ -292,7 +306,8 @@
       "rootNumbers": [
         "2,883"
       ],
-      "title": "Russian A1"
+      "title": "Russian A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-2,892",
@@ -306,7 +321,8 @@
       "rootNumbers": [
         "2,892"
       ],
-      "title": "Arabisch A1"
+      "title": "Arabisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,802|4,802",
@@ -381,7 +397,8 @@
         "3,805",
         "4,805"
       ],
-      "title": "Deutsch B1"
+      "title": "Deutsch B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,814|4,814",
@@ -396,7 +413,8 @@
         "3,814",
         "4,814"
       ],
-      "title": "Englisch C1"
+      "title": "Englisch C1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,814|4,814",
@@ -411,7 +429,8 @@
         "3,814",
         "4,814"
       ],
-      "title": "Englisch C1"
+      "title": "Englisch C1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,815",
@@ -425,7 +444,8 @@
       "rootNumbers": [
         "3,815"
       ],
-      "title": "Englisch C1 (English for Law)"
+      "title": "Englisch C1 (English for Law)",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,824|4,824",
@@ -440,7 +460,8 @@
         "3,824",
         "4,824"
       ],
-      "title": "Französisch C1"
+      "title": "Französisch C1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,826|4,826",
@@ -514,7 +535,8 @@
         "3,844",
         "4,844"
       ],
-      "title": "Spanisch B2"
+      "title": "Spanisch B2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,844|4,844",
@@ -529,7 +551,8 @@
         "3,844",
         "4,844"
       ],
-      "title": "Spanisch B2"
+      "title": "Spanisch B2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,854",
@@ -543,7 +566,8 @@
       "rootNumbers": [
         "3,854"
       ],
-      "title": "Portugiesisch A2"
+      "title": "Portugiesisch A2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,864|4,864",
@@ -558,7 +582,8 @@
         "3,864",
         "4,864"
       ],
-      "title": "Chinesisch A1"
+      "title": "Chinesisch A1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,864|4,864",
@@ -573,7 +598,8 @@
         "3,864",
         "4,864"
       ],
-      "title": "Chinesisch A1"
+      "title": "Chinesisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,865|4,865",
@@ -588,7 +614,8 @@
         "3,865",
         "4,865"
       ],
-      "title": "Chinese A1"
+      "title": "Chinese A1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,865|4,865",
@@ -603,7 +630,8 @@
         "3,865",
         "4,865"
       ],
-      "title": "Chinese A1"
+      "title": "Chinese A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,874|4,872",
@@ -618,7 +646,8 @@
         "3,874",
         "4,872"
       ],
-      "title": "Japanisch A1"
+      "title": "Japanisch A1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,874|4,872",
@@ -633,7 +662,8 @@
         "3,874",
         "4,872"
       ],
-      "title": "Japanisch A1"
+      "title": "Japanisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-3,884|4,884",
@@ -648,7 +678,8 @@
         "3,884",
         "4,884"
       ],
-      "title": "Russisch A1"
+      "title": "Russisch A1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-0915-3,884|4,884",
@@ -663,7 +694,8 @@
         "3,884",
         "4,884"
       ],
-      "title": "Russisch A1"
+      "title": "Russisch A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-4,836",
@@ -691,7 +723,8 @@
       "rootNumbers": [
         "4,846"
       ],
-      "title": "Spanisch B1"
+      "title": "Spanisch B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-4,847",
@@ -705,7 +738,8 @@
       "rootNumbers": [
         "4,847"
       ],
-      "title": "Spanish B1"
+      "title": "Spanish B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-4,852",
@@ -719,7 +753,8 @@
       "rootNumbers": [
         "4,852"
       ],
-      "title": "Portugiesisch B1"
+      "title": "Portugiesisch B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-4,885",
@@ -733,7 +768,8 @@
       "rootNumbers": [
         "4,885"
       ],
-      "title": "Russian A1"
+      "title": "Russian A1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-19-0915-4,892",
@@ -747,7 +783,8 @@
       "rootNumbers": [
         "4,892"
       ],
-      "title": "Arabisch A1"
+      "title": "Arabisch A1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-1515-3,900",
@@ -775,7 +812,8 @@
       "rootNumbers": [
         "5,123"
       ],
-      "title": "Stress und Resilienz in Hochleistungskontexten"
+      "title": "Stress und Resilienz in Hochleistungskontexten",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-1515-5,300",
@@ -789,7 +827,8 @@
       "rootNumbers": [
         "5,300"
       ],
-      "title": "International Law"
+      "title": "International Law",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-1515-7,354",
@@ -817,7 +856,8 @@
       "rootNumbers": [
         "7,418"
       ],
-      "title": "Arbeitsrecht I"
+      "title": "Arbeitsrecht I",
+      "byod": true
     },
     {
       "id": "OT-2027-01-19-1515-7,850",
@@ -887,7 +927,8 @@
       "rootNumbers": [
         "7,100"
       ],
-      "title": "Management Accounting"
+      "title": "Management Accounting",
+      "byod": true
     },
     {
       "id": "OT-2027-01-20-1515-7,102",
@@ -901,7 +942,8 @@
       "rootNumbers": [
         "7,102"
       ],
-      "title": "Management Accounting"
+      "title": "Management Accounting",
+      "byod": true
     },
     {
       "id": "OT-2027-01-20-1515-7,202",
@@ -929,7 +971,8 @@
       "rootNumbers": [
         "7,221"
       ],
-      "title": "Finance and Management Accounting I"
+      "title": "Finance and Management Accounting I",
+      "byod": true
     },
     {
       "id": "OT-2027-01-20-1515-7,474",
@@ -943,7 +986,8 @@
       "rootNumbers": [
         "7,474"
       ],
-      "title": "The International Legal Order"
+      "title": "The International Legal Order",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-0915-3,120",
@@ -957,7 +1001,8 @@
       "rootNumbers": [
         "3,120"
       ],
-      "title": "Methoden: Statistik"
+      "title": "Methoden: Statistik",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-0915-3,220",
@@ -1027,7 +1072,8 @@
       "rootNumbers": [
         "4,120"
       ],
-      "title": "Methods: Statistics"
+      "title": "Methods: Statistics",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-1515-1,900",
@@ -1055,7 +1101,8 @@
       "rootNumbers": [
         "3,770"
       ],
-      "title": "GK./Found. Crs.: How Media + Tech. Shape Our World"
+      "title": "GK./Found. Crs.: How Media + Tech. Shape Our World",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-1515-7,000",
@@ -1069,7 +1116,8 @@
       "rootNumbers": [
         "7,000"
       ],
-      "title": "Grundlagen Business Innovation"
+      "title": "Grundlagen Business Innovation",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-1515-7,404",
@@ -1083,7 +1131,8 @@
       "rootNumbers": [
         "7,404"
       ],
-      "title": "Methodenlehre"
+      "title": "Methodenlehre",
+      "byod": true
     },
     {
       "id": "OT-2027-01-21-1515-7,852",
@@ -1097,7 +1146,8 @@
       "rootNumbers": [
         "7,852"
       ],
-      "title": "User-Centred Design"
+      "title": "User-Centred Design",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,800",
@@ -1126,7 +1176,8 @@
         "3,810",
         "4,810"
       ],
-      "title": "Englisch C2"
+      "title": "Englisch C2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,810|4,810",
@@ -1141,7 +1192,8 @@
         "3,810",
         "4,810"
       ],
-      "title": "Englisch C2"
+      "title": "Englisch C2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,811|4,811",
@@ -1156,7 +1208,8 @@
         "3,811",
         "4,811"
       ],
-      "title": "Englisch C2 (Lawyers)"
+      "title": "Englisch C2 (Lawyers)",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,842|4,842",
@@ -1171,7 +1224,8 @@
         "3,842",
         "4,842"
       ],
-      "title": "Spanisch C1"
+      "title": "Spanisch C1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,851",
@@ -1185,7 +1239,8 @@
       "rootNumbers": [
         "3,851"
       ],
-      "title": "Portuguese B2"
+      "title": "Portuguese B2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,862",
@@ -1199,7 +1254,8 @@
       "rootNumbers": [
         "3,862"
       ],
-      "title": "Chinesisch A2"
+      "title": "Chinesisch A2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,872",
@@ -1227,7 +1283,8 @@
       "rootNumbers": [
         "3,882"
       ],
-      "title": "Russisch A2"
+      "title": "Russisch A2",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-0915-3,892",
@@ -1269,7 +1326,8 @@
       "rootNumbers": [
         "4,863"
       ],
-      "title": "Chinese A2"
+      "title": "Chinese A2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-22-0915-4,866",
@@ -1283,7 +1341,8 @@
       "rootNumbers": [
         "4,866"
       ],
-      "title": "Chinese B1"
+      "title": "Chinese B1",
+      "byod": true
     },
     {
       "id": "AT-2027-01-22-0915-4,874",
@@ -1311,7 +1370,8 @@
       "rootNumbers": [
         "4,883"
       ],
-      "title": "Russian A2"
+      "title": "Russian A2",
+      "byod": true
     },
     {
       "id": "AT-2027-01-22-0915-4,886",
@@ -1325,7 +1385,8 @@
       "rootNumbers": [
         "4,886"
       ],
-      "title": "Russisch B1"
+      "title": "Russisch B1",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-3,420",
@@ -1339,7 +1400,8 @@
       "rootNumbers": [
         "3,420"
       ],
-      "title": "Öffentliches Recht - Grundrechte"
+      "title": "Öffentliches Recht - Grundrechte",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-3,902",
@@ -1367,7 +1429,8 @@
       "rootNumbers": [
         "5,124"
       ],
-      "title": "Digital Transformation Strategy"
+      "title": "Digital Transformation Strategy",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-5,267",
@@ -1381,7 +1444,8 @@
       "rootNumbers": [
         "5,267"
       ],
-      "title": "Ökonomie des Glücks"
+      "title": "Ökonomie des Glücks",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-7,204",
@@ -1395,7 +1459,8 @@
       "rootNumbers": [
         "7,204"
       ],
-      "title": "Strategic Leadership (SIM)"
+      "title": "Strategic Leadership (SIM)",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-7,223",
@@ -1409,7 +1474,8 @@
       "rootNumbers": [
         "7,223"
       ],
-      "title": "Leadership"
+      "title": "Leadership",
+      "byod": true
     },
     {
       "id": "OT-2027-01-22-1515-7,256",
@@ -1451,7 +1517,8 @@
       "rootNumbers": [
         "3,145"
       ],
-      "title": "Business and Tax Law"
+      "title": "Business and Tax Law",
+      "byod": true
     },
     {
       "id": "AT-2027-01-25-0915-4,145",
@@ -1465,7 +1532,8 @@
       "rootNumbers": [
         "4,145"
       ],
-      "title": "Wirtschafts- und Steuerrecht"
+      "title": "Wirtschafts- und Steuerrecht",
+      "byod": true
     },
     {
       "id": "AT-2027-01-25-0915-5,402|6,402",
@@ -1480,7 +1548,8 @@
         "5,402",
         "6,402"
       ],
-      "title": "Steuerrecht"
+      "title": "Steuerrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-01-25-0915-5,402|6,402",
@@ -1495,7 +1564,8 @@
         "5,402",
         "6,402"
       ],
-      "title": "Steuerrecht"
+      "title": "Steuerrecht",
+      "byod": true
     },
     {
       "id": "AT-2027-01-25-0915-7,408|8,417",
@@ -1525,7 +1595,8 @@
         "7,408",
         "8,417"
       ],
-      "title": "Internationales Privat- und Zivilverfahrensrecht"
+      "title": "Internationales Privat- und Zivilverfahrensrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-01-25-1515-3,232",
@@ -1553,7 +1624,8 @@
       "rootNumbers": [
         "7,170"
       ],
-      "title": "Impact Investing"
+      "title": "Impact Investing",
+      "byod": true
     },
     {
       "id": "OT-2027-01-25-1515-7,220",
@@ -1567,7 +1639,8 @@
       "rootNumbers": [
         "7,220"
       ],
-      "title": "Strategy I"
+      "title": "Strategy I",
+      "byod": true
     },
     {
       "id": "OT-2027-01-25-1515-7,854",
@@ -1595,7 +1668,8 @@
       "rootNumbers": [
         "1,100"
       ],
-      "title": "Betriebswirtschaftslehre A"
+      "title": "Betriebswirtschaftslehre A",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-0915-1,102",
@@ -1609,7 +1683,8 @@
       "rootNumbers": [
         "1,102"
       ],
-      "title": "Business Administration A"
+      "title": "Business Administration A",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-1,902",
@@ -1637,7 +1712,8 @@
       "rootNumbers": [
         "3,306"
       ],
-      "title": "Quantitative Methoden"
+      "title": "Quantitative Methoden",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-3,307",
@@ -1651,7 +1727,8 @@
       "rootNumbers": [
         "3,307"
       ],
-      "title": "Quantitative Methods"
+      "title": "Quantitative Methods",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-3,904",
@@ -1665,7 +1742,8 @@
       "rootNumbers": [
         "3,904"
       ],
-      "title": "Datenbanken"
+      "title": "Datenbanken",
+      "byod": true
     },
     {
       "id": "AT-2027-01-26-1515-5,133|6,135",
@@ -1695,7 +1773,8 @@
         "5,133",
         "6,135"
       ],
-      "title": "International Management"
+      "title": "International Management",
+      "byod": true
     },
     {
       "id": "AT-2027-01-26-1515-5,417|6,417",
@@ -1710,7 +1789,8 @@
         "5,417",
         "6,417"
       ],
-      "title": "Verfahrensrecht: ZPO"
+      "title": "Verfahrensrecht: ZPO",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-5,417|6,417",
@@ -1725,7 +1805,8 @@
         "5,417",
         "6,417"
       ],
-      "title": "Verfahrensrecht: ZPO"
+      "title": "Verfahrensrecht: ZPO",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-7,127",
@@ -1739,7 +1820,8 @@
       "rootNumbers": [
         "7,127"
       ],
-      "title": "Taxes and Business Strategy"
+      "title": "Taxes and Business Strategy",
+      "byod": true
     },
     {
       "id": "OT-2027-01-26-1515-7,402",
@@ -1753,7 +1835,8 @@
       "rootNumbers": [
         "7,402"
       ],
-      "title": "Kolloquium Privatrecht"
+      "title": "Kolloquium Privatrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-01-27-0915-5,400",
@@ -1767,7 +1850,8 @@
       "rootNumbers": [
         "5,400"
       ],
-      "title": "Verwaltungsrecht: Grundl.und öffentl. Wirtschaftsr."
+      "title": "Verwaltungsrecht: Grundl.und öffentl. Wirtschaftsr.",
+      "byod": true
     },
     {
       "id": "OT-2027-01-27-0915-7,002",
@@ -1781,7 +1865,8 @@
       "rootNumbers": [
         "7,002"
       ],
-      "title": "Business Innovation II: Build. and Transf. Business"
+      "title": "Business Innovation II: Build. and Transf. Business",
+      "byod": true
     },
     {
       "id": "OT-2027-01-27-0915-7,206",
@@ -1823,7 +1908,8 @@
       "rootNumbers": [
         "3,210"
       ],
-      "title": "Makroökonomik II"
+      "title": "Makroökonomik II",
+      "byod": true
     },
     {
       "id": "OT-2027-01-27-1515-3,212",
@@ -1837,7 +1923,8 @@
       "rootNumbers": [
         "3,212"
       ],
-      "title": "Macroeconomics II"
+      "title": "Macroeconomics II",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-0915-1,126",
@@ -1851,7 +1938,8 @@
       "rootNumbers": [
         "1,126"
       ],
-      "title": "Volkswirtschaftslehre A"
+      "title": "Volkswirtschaftslehre A",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-0915-1,128",
@@ -1865,7 +1953,8 @@
       "rootNumbers": [
         "1,128"
       ],
-      "title": "Economics A"
+      "title": "Economics A",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-1515-1,904",
@@ -1893,7 +1982,8 @@
       "rootNumbers": [
         "3,422"
       ],
-      "title": "Öffentliches Recht - Staatsorganisationsrecht"
+      "title": "Öffentliches Recht - Staatsorganisationsrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-1515-3,906",
@@ -1907,7 +1997,8 @@
       "rootNumbers": [
         "3,906"
       ],
-      "title": "Statistik für Data Science"
+      "title": "Statistik für Data Science",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-1515-5,264",
@@ -1935,7 +2026,8 @@
       "rootNumbers": [
         "7,350"
       ],
-      "title": "International Politics and Market Economy"
+      "title": "International Politics and Market Economy",
+      "byod": true
     },
     {
       "id": "OT-2027-01-28-1515-7,481",
@@ -1949,7 +2041,8 @@
       "rootNumbers": [
         "7,481"
       ],
-      "title": "European and International Capital Markets Law"
+      "title": "European and International Capital Markets Law",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-3,304",
@@ -1963,7 +2056,8 @@
       "rootNumbers": [
         "3,304"
       ],
-      "title": "Vergleichende Politikwissenschaft"
+      "title": "Vergleichende Politikwissenschaft",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-3,305",
@@ -1977,7 +2071,8 @@
       "rootNumbers": [
         "3,305"
       ],
-      "title": "Comparative Politics"
+      "title": "Comparative Politics",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-3,402",
@@ -1991,7 +2086,8 @@
       "rootNumbers": [
         "3,402"
       ],
-      "title": "ZGB"
+      "title": "ZGB",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-3,500",
@@ -2005,7 +2101,8 @@
       "rootNumbers": [
         "3,500"
       ],
-      "title": "ZGB (BLE)"
+      "title": "ZGB (BLE)",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-7,119",
@@ -2019,7 +2116,8 @@
       "rootNumbers": [
         "7,119"
       ],
-      "title": "Rechnungslegung nach Obligationenrecht"
+      "title": "Rechnungslegung nach Obligationenrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-0915-7,315",
@@ -2033,7 +2131,8 @@
       "rootNumbers": [
         "7,315"
       ],
-      "title": "Theory of Finance"
+      "title": "Theory of Finance",
+      "byod": true
     },
     {
       "id": "AT-2027-01-29-1515-3,130|4,130",
@@ -2048,7 +2147,8 @@
         "3,130",
         "4,130"
       ],
-      "title": "Corporate Finance (BBWL)"
+      "title": "Corporate Finance (BBWL)",
+      "byod": true
     },
     {
       "id": "OT-2027-01-29-1515-3,130|4,130",
@@ -2063,7 +2163,8 @@
         "3,130",
         "4,130"
       ],
-      "title": "Corporate Finance (BBWL)"
+      "title": "Corporate Finance (BBWL)",
+      "byod": true
     },
     {
       "id": "AT-2027-01-29-1515-7,406|8,433",
@@ -2107,7 +2208,8 @@
       "rootNumbers": [
         "3,105"
       ],
-      "title": "Methoden: Empirische Sozialforschung"
+      "title": "Methoden: Empirische Sozialforschung",
+      "byod": true
     },
     {
       "id": "OT-2027-02-01-0915-3,701",
@@ -2121,7 +2223,8 @@
       "rootNumbers": [
         "3,701"
       ],
-      "title": "Recht/Law: Law & Economics Methode I"
+      "title": "Recht/Law: Law & Economics Methode I",
+      "byod": true
     },
     {
       "id": "AT-2027-02-01-0915-4,105",
@@ -2135,7 +2238,8 @@
       "rootNumbers": [
         "4,105"
       ],
-      "title": "Methods: Empirical Social Research"
+      "title": "Methods: Empirical Social Research",
+      "byod": true
     },
     {
       "id": "OT-2027-02-01-0915-7,230",
@@ -2163,7 +2267,8 @@
       "rootNumbers": [
         "1,906"
       ],
-      "title": "Analysis"
+      "title": "Analysis",
+      "byod": true
     },
     {
       "id": "OT-2027-02-01-1515-7,858",
@@ -2177,7 +2282,8 @@
       "rootNumbers": [
         "7,858"
       ],
-      "title": "Advanced Databases"
+      "title": "Advanced Databases",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-0915-1,174",
@@ -2205,7 +2311,8 @@
       "rootNumbers": [
         "1,200"
       ],
-      "title": "Mathematik mit Statistik A"
+      "title": "Mathematik mit Statistik A",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-0915-1,202",
@@ -2219,7 +2326,8 @@
       "rootNumbers": [
         "1,202"
       ],
-      "title": "Mathematics with Statistics A"
+      "title": "Mathematics with Statistics A",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-3,300",
@@ -2233,7 +2341,8 @@
       "rootNumbers": [
         "3,300"
       ],
-      "title": "Public Management"
+      "title": "Public Management",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-5,422|6,434",
@@ -2248,7 +2357,8 @@
         "5,422",
         "6,434"
       ],
-      "title": "Integrationsleistung Öffentliches Recht"
+      "title": "Integrationsleistung Öffentliches Recht",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-7,105",
@@ -2262,7 +2372,8 @@
       "rootNumbers": [
         "7,105"
       ],
-      "title": "Corporate Finance"
+      "title": "Corporate Finance",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-7,107",
@@ -2276,7 +2387,8 @@
       "rootNumbers": [
         "7,107"
       ],
-      "title": "Corporate Finance"
+      "title": "Corporate Finance",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-7,371",
@@ -2290,7 +2402,8 @@
       "rootNumbers": [
         "7,371"
       ],
-      "title": "Global Governance of Technological Risks"
+      "title": "Global Governance of Technological Risks",
+      "byod": true
     },
     {
       "id": "OT-2027-02-02-1515-7,483",
@@ -2304,7 +2417,8 @@
       "rootNumbers": [
         "7,483"
       ],
-      "title": "International Criminal Law"
+      "title": "International Criminal Law",
+      "byod": true
     },
     {
       "id": "OT-2027-02-03-0915-1,910",
@@ -2318,7 +2432,8 @@
       "rootNumbers": [
         "1,910"
       ],
-      "title": "Einführung in die Betriebswirtschaftslehre"
+      "title": "Einführung in die Betriebswirtschaftslehre",
+      "byod": true
     },
     {
       "id": "OT-2027-02-03-0915-3,125",
@@ -2332,7 +2447,8 @@
       "rootNumbers": [
         "3,125"
       ],
-      "title": "Fund. and Meth. of Computer Sci. for Business Stud."
+      "title": "Fund. and Meth. of Computer Sci. for Business Stud.",
+      "byod": true
     },
     {
       "id": "AT-2027-02-03-0915-4,125",
@@ -2346,7 +2462,8 @@
       "rootNumbers": [
         "4,125"
       ],
-      "title": "Grundl. und Meth. der Inform. für Wirtschaftswiss."
+      "title": "Grundl. und Meth. der Inform. für Wirtschaftswiss.",
+      "byod": true
     },
     {
       "id": "OT-2027-02-03-1515-3,700",
@@ -2360,7 +2477,8 @@
       "rootNumbers": [
         "3,700"
       ],
-      "title": "Recht/Law: Allgemeine europäische Rechtsgeschichte"
+      "title": "Recht/Law: Allgemeine europäische Rechtsgeschichte",
+      "byod": true
     },
     {
       "id": "OT-2027-02-03-1515-7,310",
@@ -2388,7 +2506,8 @@
       "rootNumbers": [
         "1,180"
       ],
-      "title": "Politikwissenschaft A"
+      "title": "Politikwissenschaft A",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-0915-1,182",
@@ -2402,7 +2521,8 @@
       "rootNumbers": [
         "1,182"
       ],
-      "title": "Political Science A"
+      "title": "Political Science A",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-1515-3,771",
@@ -2416,7 +2536,8 @@
       "rootNumbers": [
         "3,771"
       ],
-      "title": "GK./Found. Crs.: Wie erkl. Kulturth. die Welt?"
+      "title": "GK./Found. Crs.: Wie erkl. Kulturth. die Welt?",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-1515-3,920",
@@ -2444,7 +2565,8 @@
       "rootNumbers": [
         "7,015"
       ],
-      "title": "Introduction to Business Process Management"
+      "title": "Introduction to Business Process Management",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-1515-7,126",
@@ -2458,7 +2580,8 @@
       "rootNumbers": [
         "7,126"
       ],
-      "title": "Applied Data Analysis for Business"
+      "title": "Applied Data Analysis for Business",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-1515-7,130",
@@ -2472,7 +2595,8 @@
       "rootNumbers": [
         "7,130"
       ],
-      "title": "Internationales Unternehmenssteuerrecht"
+      "title": "Internationales Unternehmenssteuerrecht",
+      "byod": true
     },
     {
       "id": "OT-2027-02-04-1515-7,489",
@@ -2486,7 +2610,8 @@
       "rootNumbers": [
         "7,489"
       ],
-      "title": "International Economic Law"
+      "title": "International Economic Law",
+      "byod": true
     },
     {
       "id": "OT-2027-02-05-0915-3,140",
@@ -2530,7 +2655,8 @@
       "rootNumbers": [
         "3,110"
       ],
-      "title": "Strategisches Management"
+      "title": "Strategisches Management",
+      "byod": true
     },
     {
       "id": "AT-2027-02-05-1515-4,110",
@@ -2544,7 +2670,8 @@
       "rootNumbers": [
         "4,110"
       ],
-      "title": "Strategic Management"
+      "title": "Strategic Management",
+      "byod": true
     }
   ],
   "oral": [

@@ -71,8 +71,8 @@ export default function ExamSchedule({ course, semester }) {
             {exam.termType === "AT" && (
               <span className="text-gray-500">Alternative date</span>
             )}
-            {/* The plan only marks BYOD when the title spells it out, so this
-                badge is present-or-silent — never "not BYOD". */}
+            {/* Present-or-silent: shows the plan's BYOD marking, never "not
+                BYOD". */}
             {exam.byod === true && (
               <span className="rounded bg-hsg-100 px-1 text-xs text-hsg-800">
                 digital (BYOD)

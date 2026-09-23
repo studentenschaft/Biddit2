@@ -22,6 +22,7 @@ import { parseArgs } from "node:util";
 
 import { buildExamPlan } from "./buildExamPlan.js";
 import { formatReport } from "./formatReport.js";
+import { parseByodShading } from "./parseByodShading.js";
 import { parseExamPlanText } from "./parseExamPlanText.js";
 import { validateAgainstCatalog } from "./validateAgainstCatalog.js";
 import { validateExamPlan } from "./validateExamPlan.js";
@@ -31,29 +32,43 @@ const APP_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const USAGE = `Usage: npm run ingest:exams -- (--pdf <file> | --text <file>) [options]
 
-  --pdf <file>          exam-plan PDF; converted with pdftotext -layout
-  --text <file>         pre-extracted text, skips pdftotext
+  --pdf <file>          exam-plan PDF; read with pdftotext and pdftocairo
+  --text <file>         pre-extracted pdftotext -layout text, skips poppler;
+                        only titles that say "(BYOD)" are then marked BYOD
   --out <file>          write here instead of public/exams/<SEMESTER>.json
                         (the semester is read from the plan's title)
   --dry-run             validate and report only; write nothing
   --allow-removals      write even if the existing file has exams this plan lacks
-  --catalog <file>      course-catalog snapshot for the advisory cross-check`;
+  --catalog <file>      course-catalog snapshot for the advisory cross-check
+  --save-fixtures <prefix>
+                        with --pdf: also write <prefix>.txt and
+                        <prefix>.byod.json for the golden test`;
 
-function extractPdfText(pdfPath) {
+function poppler(tool, args) {
   try {
-    return execFileSync(
-      "pdftotext",
-      ["-layout", "-enc", "UTF-8", "-eol", "unix", pdfPath, "-"],
-      { encoding: "utf8" },
-    );
+    // The SVG of a four-page plan runs to megabytes, past the 1 MB default.
+    return execFileSync(tool, args, { encoding: "utf8", maxBuffer: Infinity });
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error(
-        "pdftotext was not found. Install poppler (`brew install poppler`) or pass --text.",
+        `${tool} was not found. Install poppler (\`brew install poppler\`) or pass --text.`,
       );
     }
     throw error;
   }
+}
+
+function readPdf(pdfPath) {
+  return {
+    rawText: poppler(
+      "pdftotext",
+      ["-layout", "-enc", "UTF-8", "-eol", "unix", pdfPath, "-"],
+    ),
+    shadedRoots: parseByodShading(
+      poppler("pdftocairo", ["-svg", pdfPath, "-"]),
+      poppler("pdftotext", ["-bbox-layout", "-enc", "UTF-8", pdfPath, "-"]),
+    ),
+  };
 }
 
 function parseCliArgs(argv) {
@@ -67,10 +82,14 @@ function parseCliArgs(argv) {
         "dry-run": { type: "boolean" },
         "allow-removals": { type: "boolean" },
         catalog: { type: "string" },
+        "save-fixtures": { type: "string" },
       },
     });
     if (Boolean(values.pdf) === Boolean(values.text)) {
       throw new Error("Pass exactly one of --pdf or --text.");
+    }
+    if (values["save-fixtures"] && !values.pdf) {
+      throw new Error("--save-fixtures needs --pdf.");
     }
     return values;
   } catch (error) {
@@ -102,12 +121,13 @@ function refuseRemovals(out, plan) {
 
 function run(argv) {
   const options = parseCliArgs(argv);
-  const rawText = options.pdf
-    ? extractPdfText(options.pdf)
-    : readFileSync(options.text, "utf8");
+  // The BYOD shading exists only in the PDF.
+  const { rawText, shadedRoots } = options.pdf
+    ? readPdf(options.pdf)
+    : { rawText: readFileSync(options.text, "utf8"), shadedRoots: {} };
 
   const parsed = parseExamPlanText(rawText);
-  const plan = buildExamPlan(parsed);
+  const plan = buildExamPlan(parsed, shadedRoots);
   const { errors, warnings, stats } = validateExamPlan(plan, rawText);
 
   const catalogDiff = options.catalog
@@ -149,6 +169,17 @@ function run(argv) {
     rmSync(temp, { force: true });
   }
   process.stdout.write(`Wrote ${out}\n`);
+
+  // Saved only with the artifact they must rebuild byte for byte.
+  const prefix = options["save-fixtures"];
+  if (prefix) {
+    writeFileSync(`${prefix}.txt`, rawText);
+    writeFileSync(
+      `${prefix}.byod.json`,
+      `${JSON.stringify(shadedRoots, null, JSON_INDENT)}\n`,
+    );
+    process.stdout.write(`Wrote ${prefix}.txt and ${prefix}.byod.json\n`);
+  }
 }
 
 try {

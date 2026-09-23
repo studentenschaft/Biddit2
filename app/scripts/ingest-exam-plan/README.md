@@ -10,7 +10,9 @@ in CI runs it.
 - `app/public/exams/<SEMESTER>.json` is the runtime artifact. The browser fetches
   it as `/exams/<SEMESTER>.json`; exam schedules are not stored in a database.
 - `app/scripts/ingest-exam-plan/__tests__/fixtures/<exam-period>.txt` is the
-  exact `pdftotext -layout` extraction used by the golden regression test.
+  exact `pdftotext -layout` extraction used by the golden regression test, and
+  `<exam-period>.byod.json` the BYOD shading the CLI read off the same PDF
+  (the shaded roots by page and term type). The CLI writes both.
 - `docs/exams/catalog-<SEMESTER>.json` is an optional, local course-catalog
   cross-check. It is gitignored because the snapshot comes from DevTools.
 
@@ -20,8 +22,14 @@ semester adds a new set of files; it does not replace the preceding semester.
 ## Prerequisites
 
 ```bash
-brew install poppler   # provides pdftotext; only needed for --pdf
+brew install poppler   # provides pdftotext and pdftocairo; only needed for --pdf
 ```
+
+The PDF marks BYOD exams by shading their cells in the colour of the legend
+swatch next to "= digitale Prüfungen (BYOD)". `pdftotext -layout` drops the
+shading, so the CLI also reads the page drawing (`pdftocairo -svg`) and the
+word positions (`pdftotext -bbox-layout`). `--text` has neither: it marks only
+the exams whose title says "(BYOD)".
 
 ## Runbook
 
@@ -41,8 +49,9 @@ brew install poppler   # provides pdftotext; only needed for --pdf
 
    Check the stats block against the PDF: number of exams, number of exam
    dates, the split by start time (the times come from each page's table
-   header) and the duration histogram. Errors mean nothing is written; read
-   every warning.
+   header), the duration histogram and the number of BYOD exams (shaded rows
+   plus titles that say "(BYOD)"). Errors mean nothing is written; read every
+   warning.
 
 3. **Optional: cross-check against the course catalog.** In the browser, open
    DevTools → Network, load the course list, find the
@@ -63,27 +72,31 @@ brew install poppler   # provides pdftotext; only needed for --pdf
    ```
 
 5. **Spot-check ~10 entries** against the PDF: one from each slot, a
-   cross-listed pair (`3,802 | 4,802`), an `AT` row and an oral entry.
+   cross-listed pair (`3,802 | 4,802`), an `AT` row, a shaded (BYOD) and an
+   unshaded row, and an oral entry.
 
-6. **Add or refresh the golden fixture.** Extract the exact layout text:
+6. **Add or refresh the golden fixture.** Run the write again with
+   `--save-fixtures`. It writes the same artifact, plus the exact layout text
+   (`winter-2027.txt`) and the BYOD shading (`winter-2027.byod.json`):
 
    ```bash
-   pdftotext -layout -enc UTF-8 -eol unix "../docs/exams/Prüfungsplan OT Winter 2027.pdf" \
-     scripts/ingest-exam-plan/__tests__/fixtures/winter-2027.txt
+   npm run ingest:exams -- --pdf "../docs/exams/Prüfungsplan OT Winter 2027.pdf" \
+     --save-fixtures scripts/ingest-exam-plan/__tests__/fixtures/winter-2027
    ```
 
    For a revised PDF in the same semester, refresh that semester's existing
    fixture. For a new semester, choose a new fixture name (for example,
-   `summer-2027.txt`) and add a corresponding case to
+   `summer-2027`) and add a corresponding case to
    `__tests__/goldenFile.test.js`; do not repoint the HS26 case or delete its
-   files. Each case must rebuild its semester's plan and compare it
-   byte-for-byte against the matching `public/exams/<SEMESTER>.json`.
+   files. Each case must rebuild its semester's plan from both fixture files
+   and compare it byte-for-byte against the matching
+   `public/exams/<SEMESTER>.json`.
 
    Review the artifact's diff line by line before blessing it. Do not reformat
-   the fixture — the parser splits pages on its form feeds.
+   the fixtures — the parser splits pages on the text's form feeds.
 
 7. **`npx vitest run` and `npm run lint`**, then commit the PDF, the artifact
-   and the fixture, the golden-test case, and a CHANGELOG entry.
+   and both fixture files, the golden-test case, and a CHANGELOG entry.
 
 8. **Re-ingest later publications for the same semester.** When HSG publishes
    a new OT plan for the semester, repeat the dry run, write, spot-check,
@@ -112,7 +125,8 @@ process. Everything else is pure and unit-tested:
 | File                       | Responsibility                                    |
 | -------------------------- | ------------------------------------------------- |
 | `parseExamPlanText.js`     | raw text → ParsedPlan                             |
-| `buildExamPlan.js`         | ParsedPlan → artifact, semester from the title    |
+| `parseByodShading.js`      | page drawing + word boxes → shaded BYOD roots     |
+| `buildExamPlan.js`         | ParsedPlan + BYOD roots → artifact, semester      |
 | `zurichTime.js`            | date + wall clock → ISO with the day's UTC offset |
 | `validateExamPlan.js`      | errors/warnings/stats; errors gate the write      |
 | `validateAgainstCatalog.js`| advisory two-way diff, never fails the build      |

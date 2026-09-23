@@ -310,6 +310,12 @@ ${TWO_SLOT_ROW.replace("  MA: OT", " MA: OT")}
     expect(find(shifted.written, "1,908").slot).toBe("15:15");
   });
 
+  it("records the page each exam is printed on", () => {
+    // BYOD comes from the page's shading, matched by page, term type and root.
+    expect(find(parsed.written, "3,200").page).toBe(1);
+    expect(find(parsed.written, "3,140").page).toBe(3);
+  });
+
   it("reads alternative-date rows as their own exams", () => {
     const alternative = parsed.written.filter((exam) => exam.termType === "AT");
     expect(alternative).toHaveLength(48);

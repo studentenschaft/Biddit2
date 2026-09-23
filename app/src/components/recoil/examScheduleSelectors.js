@@ -113,8 +113,8 @@ export const examCalendarEventsSelector = selectorFamily({
               .format(),
             entryType: "exam",
             durationMin: exam.durationMin,
-            // The plan only marks BYOD when the title spells it out, so this is
-            // present-or-silent, never "not BYOD".
+            // Present-or-silent: shows the plan's BYOD marking, never "not
+            // BYOD".
             byod: exam.byod === true,
             conflictsWith: overlapping ? collision.conflictsWith : [],
             color: overlapping ? EXAM_COLLISION_COLOR : EXAM_COLOR,

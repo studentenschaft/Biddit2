@@ -34,7 +34,7 @@ const writtenSortKey = (exam) =>
   `${exam.date} ${exam.slot} ${exam.rootNumbers[0]} ${exam.termType}`;
 const oralSortKey = (exam) => `${exam.dateStart} ${exam.rootNumbers[0]}`;
 
-function toWrittenExam(entry) {
+function toWrittenExam(entry, shadedRoots) {
   const exam = {
     id: `${entry.termType}-${entry.date}-${entry.slot.replace(":", "")}-${entry.rootNumbers.join(ROOT_SEPARATOR)}`,
     date: entry.date,
@@ -47,9 +47,11 @@ function toWrittenExam(entry) {
     rootNumbers: entry.rootNumbers,
     title: entry.title,
   };
-  // Absent means "not marked BYOD in the extraction", not "no laptop" — the
-  // shading glyph the PDF uses does not survive pdftotext.
-  if (entry.byod) exam.byod = true;
+  // The plan marks a BYOD exam by shading its cell, or a few in the title.
+  const shaded = entry.rootNumbers.some((root) =>
+    shadedRoots[entry.page]?.[entry.termType]?.includes(root),
+  );
+  if (entry.byod || shaded) exam.byod = true;
   return exam;
 }
 
@@ -62,7 +64,8 @@ const toOralExam = (entry) => ({
   title: entry.title,
 });
 
-export function buildExamPlan(parsed) {
+/** `shadedRoots` is what parseByodShading read off the same PDF. */
+export function buildExamPlan(parsed, shadedRoots) {
   return {
     schemaVersion: SCHEMA_VERSION,
     semester: semesterFromTermLabel(parsed.termLabel),
@@ -70,7 +73,9 @@ export function buildExamPlan(parsed) {
     examPeriod: parsed.examPeriod,
     oralExamPeriod: parsed.oralExamPeriod,
     source: { publishedAt: parsed.publishedAt },
-    written: [...parsed.written].sort(byKey(writtenSortKey)).map(toWrittenExam),
+    written: [...parsed.written]
+      .sort(byKey(writtenSortKey))
+      .map((entry) => toWrittenExam(entry, shadedRoots)),
     oral: [...parsed.oral].sort(byKey(oralSortKey)).map(toOralExam),
     oralNotes: parsed.oralNotes,
   };

@@ -81,6 +81,17 @@ describe("cli", () => {
     expect(readdirSync(dirname(out))).toEqual(["HS26.json"]);
   });
 
+  it("saves fixtures only from the PDF, which alone carries the BYOD shading", () => {
+    const { status, stderr } = ingest(
+      TWO_EXAMS,
+      "--save-fixtures",
+      join(dir, "fixture"),
+    );
+    expect(status).toBe(1);
+    expect(stderr).toMatch(/^--save-fixtures needs --pdf\.\n\nUsage: /);
+    expect(readdirSync(dir)).toEqual(["plan.txt"]);
+  });
+
   it("prints the usage after an argument error", () => {
     const { status, stderr } = ingest(TWO_EXAMS, "--semester", "HS26");
     expect(status).toBe(1);
