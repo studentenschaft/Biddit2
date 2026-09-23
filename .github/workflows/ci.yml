@@ -4,6 +4,10 @@ on:
   push:
   pull_request:
 
+# npm ci runs third-party install scripts; they get a read-only token.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
