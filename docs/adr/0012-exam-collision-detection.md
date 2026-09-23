@@ -1,64 +1,72 @@
-# ADR 0012: Exam collisions are same-slot groupings of ordinary-date exams
+# ADR 0012: An exam clash is a time overlap between two distinct exams of different courses
 
 - **Status:** Accepted
-- **Date:** 2026-08-27
+- **Date:** 2026-08-27, revised 2026-09-23
 
 ## Context
 
-Phases 0/1 (ADR 0010/0011) put the central exam schedule into the app and onto
-the Course Details panel. Phase 2 warns a student when two of *their* courses —
-enrolled or wishlisted — sit exams that cannot both be attended. The exam-plan
-PDF itself tells students they alone are responsible for avoiding such
-collisions; this feature automates that check, so its failure modes matter: a
-missed warning costs a student an exam.
-
-The app already has collision machinery for lectures: `calendarEntriesSelector`
-runs a Union-Find over pairwise interval intersections of `(eventDate,
-durationInMinutes)` entries. The obvious move was to reuse it.
-
-## Options considered
-
-1. **Reuse the calendar Union-Find with synthesized exam entries.** Rejected.
-   Every written exam in the plan starts at exactly 09:15 or 15:15, and the
-   longest exam (180') ends 12:15 — no morning exam can reach the afternoon
-   slot. Interval intersection therefore degenerates to "same date, same
-   slot", and pushing exams through the calendar pipeline would buy generality
-   nothing in the data can exercise, at the cost of coupling exam warnings to
-   a selector with a documented false-positive TODO.
-2. **Warn on alternative-date (AT) and oral exams too.** Rejected. The AT plan
-   is explicitly provisional until the CW42 revision and binds only students
-   granted the alternative date; oral exams publish no times at all
-   ("individual slots in Compass"). A warning built on either would be a
-   guess, and a wrong overlap warning teaches users to ignore the right ones.
-3. **Collide on full course numbers instead of roots.** Rejected. A lecture
-   (`3,200,1.00`) and its exercise group (`3,200,2.04`) share one exam; keyed
-   by full number they would "collide" with each other on every course that
-   has groups.
+The exam-plan PDF tells students that they alone must avoid exam clashes when
+bidding, and that no exceptions are granted. The app knows the student's
+courses and, through ADR 0011, their central written exams, so it can do the
+check — for the courses already in the plan and for the ones the student is
+still considering. A missed clash costs a student an exam; a false one teaches
+them to ignore the right ones.
 
 ## Decision
 
-A pure `findExamCollisions(plan, courses)` groups the OT written exams of the
-user's courses (enrolled ∪ selected via `myCoursesSelector`, deduped to
-two-segment roots) by `(date, slot)`. Any group with two or more distinct roots
-is a collision; each root gets one warning naming the other roots' courses.
-`examCollisionsSelector` exposes the map per semester, reading only the atom
-that `useExamSchedule` fills — the borrowed-data gate lives inside that hook,
-so no surface can show warnings for reference-semester catalogs. Warnings
-surface in the course list rows, the semester summary and the Course Details
-exam block, each carrying an "indicative — verify officially" disclaimer:
-the data is extracted from a PDF by us, not published by the university.
+**The planned exams** are the OT written exams of the user's courses in the
+selected semester: `myCoursesSelector`, enrolled ∪ wishlisted, never the
+filtered list view, so a search filter cannot silence a warning. Each exam
+counts once. A lecture and its exercise groups share a root, and a cross-listed
+exam matches several roots, but either way it is one sitting, named after the
+first of the user's courses that sits it.
+
+**A clash** between an exam of course C and a planned exam needs all three:
+
+- a *different* exam (`id`): the same exam reached through a second listing is
+  the same sitting;
+- sat for a course with a *different* root than C: an exam that C's own root
+  sits is not a clash between courses;
+- overlapping intervals `[start, start + duration)`: exams that only touch do
+  not clash.
+
+Interval arithmetic rather than grouping by date and slot, so a plan with other
+start times stays correct. On HS26, where every exam starts at 09:15 or 15:15
+and none runs into the afternoon, both rules find the same clashes, except that
+grouping by slot also flagged a cross-listed exam against itself.
+
+**OT written exams only.** The AT rows are another semester's alternative dates
+(ADR 0010), and oral exams have no published times. A warning built on either
+would be a guess.
+
+**"Would clash" for courses being browsed.** A course the student has not
+planned is checked against the planned exams as well: the PDF tells students
+not to bid on clashing courses, so the warning matters most before the bid. It
+has the same icon and red, and reads "Exam would clash with" instead of "Exam
+clash with". A course counts as planned when its root is among the roots of the
+user's courses — not among the planned exams' names, which name a cross-listed
+exam once — so a second listing the user also planned still reads as a clash.
+
+**Where it shows, and how.** Exam clashes appear in the course-list row, in the
+Semester Summary (next to the lock, in the conflict tooltip, and counted in the
+"Exam check" line), under the exam in Course Details, and on the Calendar block
+with its tooltip and mobile sheet. They are red — `danger` (#DC2626) on light
+surfaces, `text-red-300` on dark tooltips — and kept apart from lecture
+overlaps, which stay amber: a lecture clash costs a session, an exam clash an
+exam. A clashing Calendar block is also dashed, since a phone cuts its words
+off and red against green is the pair colour-blind users confuse most. Every
+surface that shows an exam date or clash says "Indicative — verify
+officially.": the data is our extraction, not the university's publication.
 
 ## Consequences
 
-- The collision rule is exact for every plan the university has published, but
-  it assumes the two-slot structure. If a future plan introduces a third slot
-  or free-form times, the ingest parser fails loudly first (column-boundary
-  detection and the `E_UNCONSUMED_LINE` residue check) — the app-side rule can
-  then be revisited.
-- AT-only collisions are invisible by design; students on alternative dates
-  must still check by hand. The CW42 re-ingest does not change this.
-- A student sees at most one warning per course, from its first colliding
-  slot. Multiple same-course collisions collapse into one `conflictsWith`
-  list per slot; nobody has to count warnings to count problems.
-- The warning icon in the course list only appears for courses already in the
-  user's plan — a merely browsed course is not yet competing for the slot.
+- AT and oral clashes are invisible; students sitting alternative dates must
+  still check by hand, and the CW42 re-ingest does not change that.
+- Two overlapping exams of the same root are not reported against each other.
+  HS26 has none.
+- A plan with a third start time or free-form times needs no change here; the
+  parser still requires every exam to sit under a labelled column (ADR 0010).
+- A browsed row can show red before the student has done anything. That is
+  the point: the warning is about the bid.
+- The course list and the Summary name each clashing course once, however many
+  of its exams clash; Course Details and the Calendar report per exam.

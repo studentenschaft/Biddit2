@@ -1,86 +1,89 @@
-# ADR 0011: The app reads the exam-schedule artifact as a static, fail-open asset
+# ADR 0011: The app loads the exam plan as a static asset, for the selected semester only
 
 - **Status:** Accepted
-- **Date:** 2026-08-27
+- **Date:** 2026-08-27, revised 2026-09-23
 
 ## Context
 
-ADR 0010 put the HSG central exam plan into the repository as
-`app/public/exams/<SEMESTER>.json`. Nothing read it. This ADR covers Phase 1:
-showing those dates in Course Details. Display only — no overlap detection, no
-calendar events.
-
-Three properties of the artifact shape the design. It exists for exactly the
-semesters someone ingested by hand (HS26 today). It prints two-segment course
-roots (`3,200`) where the app carries full course numbers (`3,200,1.00`). And it
-is a file in `public/`, not an API response.
-
-## Options considered
-
-1. **Fetch through `apiClient`.** Rejected. `apiClient` exists to attach
-   Entra tokens, classify 401s into session-renewal events, and enforce the
-   SHSG kill switch. A same-origin static file needs none of that, and routing
-   it through the kill switch would take the exam dates down during an incident
-   that has nothing to do with them. This is a deliberate, narrow exception to
-   the "always use `apiClient`" rule, and it holds only because the asset is
-   same-origin, unauthenticated and not `api.shsg.ch`.
-
-2. **Bundle the JSON with an `import`.** Rejected: it would ship every
-   ingested semester's plan to every user in the main chunk and force a redeploy
-   to be re-fetched, while buying nothing over a cached static request.
-
-3. **Match on the full course number.** Rejected — it cannot work. The PDF
-   prints roots, so the join has to happen at the root. The root join is also
-   what makes an exercise group inherit its parent lecture's exam for free,
-   which is correct: they sit the same exam.
-
-4. **Show a "could not load exam dates" state.** Rejected. For most
-   semesters the file legitimately does not exist. An error state would be
-   permanently wrong for them and would teach users to ignore it.
+ADR 0010 ships `app/public/exams/<SEMESTER>.json` for the semesters someone
+ingested (HS26 today). The app shows those dates in Course Details and the
+Calendar and checks them for clashes (ADR 0012). It must never attach a date to
+the wrong term, and a student must be able to tell "checked, no clash" from
+"not checked". Three facts shape the design: the file exists only for ingested
+semesters; it prints two-segment roots (`3,200`) where the app carries full
+course numbers (`3,200,1.00`); and a borrowed catalog — a reference-semester
+preview or a projected future term (`helpers/REFERENCE_SEMESTER.md`) — lists
+courses that are not running in the term on screen.
 
 ## Decision
 
-`useExamSchedule(semester)` fetches `/exams/<semester>.json` with a plain
-`fetch`, once per semester per session, and caches the outcome in
-`examSchedulesState` as `{ plan }` (`plan: null` = missing). The atom is the
-fetch guard: Course Details is unmounted by react-tabs on every tab switch, so a
-component-local guard would not survive.
+**A static, same-origin asset outside `apiClient`.** The plan is fetched with a
+plain `fetch("/exams/<SEMESTER>.json")`. `apiClient` exists to authenticate
+against the SHSG and UniSG APIs and to renew sessions; a public static file
+needs neither, and trouble with those APIs must not take the exam dates down
+with it. The plan is not bundled either, which would ship every ingested
+semester to every user. Any later call on this path must stay same-origin and
+unauthenticated, or it belongs in `apiClient`.
 
-**Every failure is `missing`.** A 404, unparseable JSON, a network error, or a
-`schemaVersion` the app does not recognise all end in the same terminal state,
-and `missing` renders nothing. There is no retry: a static asset that is absent
-will not turn up on a second try. `schemaVersion` is checked rather than
-trusted, so a future artifact shape degrades to silence instead of rendering
-half-understood fields.
+**One load per semester and store.** `examPlanState` is a Recoil `atomFamily`
+whose effect fetches on the first read, so a semester loads once per store and
+a remount (react-tabs unmounts Course Details on every tab switch) does not
+refetch. It is not an async selector: Recoil's selector cache is global across
+`RecoilRoot`s and cannot hold an explicit error. The value is
+`{ status, plan }`:
 
-**Borrowed catalogs never show exam dates.** When the displayed courses come
-from a reference semester — `isFutureSemester || usingReferenceData`, the
-predicate from REFERENCE_SEMESTER.md — `ExamSchedule` passes `null` to the
-loader and renders nothing. Those courses are not running in the selected term,
-so any date attached to them would belong to a different exam period. This is
-the same guardrail `similarCoursesApi.js` applies to the vector DB.
+- `loading` until the fetch settles;
+- `ready` with a plan this code understands;
+- `none` when there is no plan: a non-OK response, or one that is not JSON
+  (the Vite dev server answers a missing file with `index.html` and a 200);
+- `error` for a network failure, unparseable JSON, or an unsupported
+  `schemaVersion` or shape. There is no retry.
 
-**The matcher is a pure function.** `examsForCourse(plan, course)` in
-`helpers/examScheduleUtils.js` takes the plan as an argument and knows nothing
-about React, Recoil or fetching, so the join rules are unit-testable on their
-own. `getCourseRootKey` moved from `smartExerciseGroupHandler.js` into
-`courseUtils.js` for it — the deferred Phase-0 lift now has its runtime
-consumer.
+**Validated once, at load.** The loader accepts `schemaVersion` 2 with `written`
+and `oral` arrays. Entry-level integrity is the CLI's job, which refuses to
+write a bad artifact (ADR 0010), so nothing downstream re-checks the plan.
+`schemaVersion` stays because a tab left open across a deploy meets new
+artifacts with old code: that tab shows `error`, not a half-understood plan.
 
-**A decentral-only course short-circuits.** It is not in the central plan by
-definition, so it gets "scheduled by the lecturer" instead of a lookup and a
-misleading absence.
+**One gate, judged on the selected semester.** Every consumer reads
+`examPlanSelector(semester)`. It returns `none` without reading the atom — so
+without fetching — when `semesterMetadataSelector(semester)` reports
+`isFutureSemester || usingReferenceData`, and it re-evaluates when that flips.
+The semester passed is always the one on screen. The Calendar, the course list
+and the Summary pass the selected semester. Course Details passes it only when
+the course's own semester (its cisId lookup) and, when the Curriculum Map
+opened it, the card's semester both equal the selected one: a projected
+semester reuses its reference semester's cisId, so the course alone cannot
+tell HS26 from HS27. Any mismatch shows no dates.
+
+**Joined on the root; OT written exams only.** A course matches the exams that
+list its two-segment root (`getCourseRootKey`), so an exercise group inherits
+its lecture's exam and every listing of a cross-listed exam finds it. Written
+exams are the OT rows, because the AT rows of the current PDF belong to the
+previous semester (ADR 0010). An oral exam shows its date range and "individual
+time published in Compass" and is never drawn in the Calendar. The Calendar
+draws one block per written exam of the user's courses, and an "Exams" button
+jumps to the exam weeks and back.
+
+**Unavailable is said, not implied.**
+
+- Course Details lists each exam with date, time, duration and
+  "digital (BYOD)" when marked. A decentral-only course says the lecturer
+  schedules it, whatever the plan's status. On `error` it says the dates could
+  not be loaded. When a ready plan does not list a central course, or a course
+  without a usable number, it says the date was not found and points to the
+  official plan; any other unlisted course reads "Not in the central exam
+  schedule". Loading, `none` and borrowed semesters show nothing.
+- Once the plan has settled, the Semester Summary ends with an "Exam check"
+  line: the result, or "unavailable" with the reason for `none` and `error`.
+- Both name their source, the plan's term label and publication date, and
+  every surface that shows an exam date carries the "indicative — verify
+  officially" disclaimer (ADR 0012).
 
 ## Consequences
 
-- **BYOD is present-or-silent.** ADR 0010 established `byod` as a lower bound,
-  so the UI badges a digital exam when the flag is set and says nothing when it
-  is not. It must never render "not BYOD".
-- **AT rows are labelled, not hidden.** The alternative-date plan is incomplete
-  until the CW42 re-ingest, so AT entries sort after the ordinary date and carry
-  an "Alternative date" label.
-- **A stale artifact fails silently.** Nothing compares `publishedAt` against
-  the calendar. The source footnote (term label + publication date) is what lets
-  a user notice, which is why it is rendered rather than dropped as clutter.
-- **The exception has to be defended.** Any future call added to this path must
-  stay same-origin and unauthenticated, or it belongs in `apiClient`.
+- Clash warnings fail open: without a ready plan there are none, and the
+  Summary's exam-check line is what tells the student so.
+- A stale artifact is not detected. The source line lets a user notice.
+- BYOD is present-or-silent: the UI shows "digital (BYOD)" when marked and
+  never "not BYOD".

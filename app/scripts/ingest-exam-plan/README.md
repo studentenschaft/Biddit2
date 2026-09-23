@@ -1,136 +1,125 @@
 # Exam-plan ingestion
 
 Converts the HSG central exam-plan PDF into `app/public/exams/<SEMESTER>.json`.
-Runs **once per semester, by hand** — nothing in the app calls it, and nothing
-in CI runs it.
+Runs **by hand, once per published plan**. Nothing in the app calls it; CI only
+runs the tests, which read the committed fixtures. Why it works this way:
+`docs/adr/0010-offline-exam-schedule-ingestion.md`.
 
-## Where the data lives
+## Files per semester
 
-- `docs/exams/<published-name>.pdf` is the committed source document from HSG.
-- `app/public/exams/<SEMESTER>.json` is the runtime artifact. The browser fetches
-  it as `/exams/<SEMESTER>.json`; exam schedules are not stored in a database.
-- `app/scripts/ingest-exam-plan/__tests__/fixtures/<exam-period>.txt` is the
-  exact `pdftotext -layout` extraction used by the golden regression test, and
-  `<exam-period>.byod.json` the BYOD shading the CLI read off the same PDF
-  (the shaded roots by page and term type). The CLI writes both.
-- `docs/exams/catalog-<SEMESTER>.json` is an optional, local course-catalog
-  cross-check. It is gitignored because the snapshot comes from DevTools.
+| File | What it is |
+| ---- | ---------- |
+| `docs/exams/<published name>.pdf` | the source PDF from HSG |
+| `app/public/exams/<SEMESTER>.json` | the artifact the app fetches as `/exams/<SEMESTER>.json` |
+| `app/scripts/ingest-exam-plan/__tests__/fixtures/<name>.txt` | the exact `pdftotext -layout` text, for the golden test |
+| `app/scripts/ingest-exam-plan/__tests__/fixtures/<name>.byod.json` | the BYOD shading the CLI read, for the golden test |
+| `docs/exams/catalog-<SEMESTER>.json` | optional catalog snapshot; gitignored, never commit it |
 
-Keep previous semesters' PDFs, JSON artifacts and golden fixtures. A new
-semester adds a new set of files; it does not replace the preceding semester.
+`<name>` is the exam period in lower case, e.g. `winter-2027` for HS26. A new
+semester adds a new set of files. Keep the earlier semesters' files.
 
 ## Prerequisites
 
 ```bash
-brew install poppler   # provides pdftotext and pdftocairo; only needed for --pdf
+brew install poppler   # pdftotext and pdftocairo
 ```
 
-The PDF marks BYOD exams by shading their cells in the colour of the legend
+The PDF marks a BYOD exam by shading its cell in the colour of the legend
 swatch next to "= digitale Prüfungen (BYOD)". `pdftotext -layout` drops the
-shading, so the CLI also reads the page drawing (`pdftocairo -svg`) and the
-word positions (`pdftotext -bbox-layout`). `--text` has neither: it marks only
-the exams whose title says "(BYOD)".
+shading, so with `--pdf` the CLI also reads the page drawing
+(`pdftocairo -svg`) and the word positions (`pdftotext -bbox-layout`). Always
+ingest from the PDF. `--text` (pre-extracted text) sees no shading and marks
+only the exams whose title says "(BYOD)".
 
 ## Runbook
 
-1. **Drop the PDF** into `docs/exams/` under its published name, e.g.
-   `docs/exams/Prüfungsplan OT Winter 2027.pdf`. For a new semester, add the
-   PDF alongside the older plans rather than overwriting one of them.
+Run every command in `app/` (`cd app` from the repository root).
+
+1. **Add the PDF** to `docs/exams/` under its published name, e.g.
+   `docs/exams/Prüfungsplan OT Winter 2027.pdf`. Do not overwrite an earlier
+   semester's PDF.
 
 2. **Dry run and read the report.**
 
    ```bash
-   cd app
    npm run ingest:exams -- --pdf "../docs/exams/Prüfungsplan OT Winter 2027.pdf" --dry-run
    ```
 
-   The first line names the semester read from the PDF's title: the PDF names
-   the *exam period*, so "Winter 2027" is autumn semester 2026 → `HS26`.
-
-   Check the stats block against the PDF: number of exams, number of exam
-   dates, the split by start time (the times come from each page's table
-   header), the duration histogram and the number of BYOD exams (shaded rows
-   plus titles that say "(BYOD)"). Errors mean nothing is written; read every
-   warning.
+   The first line names the semester, read from the PDF's title: the title
+   names the exam period, so "Winter 2027" is `HS26`. Compare the stats with
+   the PDF: number of exams and exam dates, the split by start time, the
+   durations and the number of BYOD exams. If there are errors, nothing is
+   written. Read every warning.
 
 3. **Optional: cross-check against the course catalog.** In the browser, open
    DevTools → Network, load the course list, find the
    `myLatestPublishedPossiblebyTerm` request and copy the **response body
    only** — never the request as cURL, which carries your bearer token. Save it
-   to `docs/exams/catalog-HS26.json` (gitignored) and re-run with
-   `--catalog ../docs/exams/catalog-HS26.json`. `central courses without exam`
-   is the interesting list: it should be near-empty. `exams without a course`
-   is expected to be long: even-prefixed roots (`4,xxx`, `6,xxx`, `8,xxx`) are
-   spring-semester course numbers cross-listed on an autumn exam, and an
-   autumn catalog does not contain them. `AT` rows are left out of the check —
-   in this PDF they are the alternative dates of Summer 2026 courses.
-
-4. **Write the artifact** to `public/exams/<SEMESTER>.json`:
+   as `docs/exams/catalog-HS26.json` and repeat the dry run with it:
 
    ```bash
-   npm run ingest:exams -- --pdf "../docs/exams/Prüfungsplan OT Winter 2027.pdf"
+   npm run ingest:exams -- --pdf "../docs/exams/Prüfungsplan OT Winter 2027.pdf" --dry-run \
+     --catalog ../docs/exams/catalog-HS26.json
    ```
 
-5. **Spot-check ~10 entries** against the PDF: one from each slot, a
-   cross-listed pair (`3,802 | 4,802`), an `AT` row, a shaded (BYOD) and an
-   unshaded row, and an oral entry.
+   "central courses without exam" should be near-empty. "exams without a
+   course" is expected to be long: even-prefixed roots (`4,xxx`, `6,xxx`,
+   `8,xxx`) are spring courses cross-listed on an autumn exam. AT rows are left
+   out of the check.
 
-6. **Add or refresh the golden fixture.** Run the write again with
-   `--save-fixtures`. It writes the same artifact, plus the exact layout text
-   (`winter-2027.txt`) and the BYOD shading (`winter-2027.byod.json`):
+4. **Write the artifact and the fixtures.**
 
    ```bash
    npm run ingest:exams -- --pdf "../docs/exams/Prüfungsplan OT Winter 2027.pdf" \
      --save-fixtures scripts/ingest-exam-plan/__tests__/fixtures/winter-2027
    ```
 
-   For a revised PDF in the same semester, refresh that semester's existing
-   fixture. For a new semester, choose a new fixture name (for example,
-   `summer-2027`) and add a corresponding case to
-   `__tests__/goldenFile.test.js`; do not repoint the HS26 case or delete its
-   files. Each case must rebuild its semester's plan from both fixture files
-   and compare it byte-for-byte against the matching
-   `public/exams/<SEMESTER>.json`.
+   This writes `public/exams/HS26.json`, `winter-2027.txt` and
+   `winter-2027.byod.json`. Do not reformat the fixtures: the parser splits
+   pages on the form feeds in the text.
 
-   Review the artifact's diff line by line before blessing it. Do not reformat
-   the fixtures — the parser splits pages on the text's form feeds.
+5. **Spot-check about 10 entries** against the PDF: one per start time, a
+   cross-listed pair (`3,802 | 4,802`), an AT row, a shaded (BYOD) row and a
+   plain one, and an oral exam with its date range.
 
-7. **`npx vitest run` and `npm run lint`**, then commit the PDF, the artifact
-   and both fixture files, the golden-test case, and a CHANGELOG entry.
+6. **For a new semester, add a golden case.** `__tests__/goldenFile.test.js`
+   rebuilds HS26 from `winter-2027.txt` and `winter-2027.byod.json` and compares
+   the result byte for byte with `public/exams/HS26.json` (`SHIPPED_ARTIFACT`).
+   Copy its `it` block. In the copy, read the new fixtures (e.g.
+   `summer-2027.txt` and `summer-2027.byod.json`) and compare with the new
+   artifact (e.g. `public/exams/FS27.json`, in a second constant beside
+   `SHIPPED_ARTIFACT`). Do not change the HS26 case.
 
-8. **Re-ingest later publications for the same semester.** When HSG publishes
-   a new OT plan for the semester, repeat the dry run, write, spot-check,
-   fixture and test steps with the new PDF.
+7. **Run the tests and lint**, then review the artifact's diff line by line.
 
-   If the report prints `W_AT_INCOMPLETE`, HSG publishes the alternative-date
-   (AT) plan later. For HS26 this is the AT plan for 08.–20.02.2027, due in
-   CW42. If that PDF lists only AT rows, do not ingest it: keep the current
-   artifact. The app uses only the OT written exams, so nothing is lost.
+   ```bash
+   npx vitest run
+   npm run lint
+   ```
 
-   The write compares the new plan with the existing
-   `public/exams/<SEMESTER>.json`. If an exam id of that file is missing from
-   the new plan, nothing is written and every missing id is listed. The id
-   holds the date and start time, so an exam that moved is listed too. Check
-   each listed id against the new PDF. If HSG really dropped or moved these
-   exams, run the write again with `--allow-removals`. If the list holds exams
-   that are still valid, do not use `--allow-removals`.
+   Commit the PDF, the artifact, both fixtures, the golden case (new semester
+   only) and a CHANGELOG entry. CI runs the same two commands on every push.
 
-   Review the resulting JSON diff as carefully as the initial import.
+## Re-ingesting a revised plan
 
-## Layout
+When HSG publishes a revised plan for a semester that is already ingested,
+replace that semester's PDF in `docs/exams/` and repeat steps 2–5 and 7 with
+it, so the committed PDF, artifact and fixtures stay in step. The fixture name
+stays the same.
 
-`cli.js` is the only file that touches the filesystem, the process or a child
-process. Everything else is pure and unit-tested:
+The write refuses to drop exams. If an exam id of the existing
+`public/exams/<SEMESTER>.json` is missing from the new plan, nothing is
+written and every missing id is listed. An id holds the date and start time,
+so an exam that moved is listed too. Check each id against the new PDF. Only if
+HSG really dropped or moved those exams, add `--allow-removals` to the step 4
+command and run it again.
 
-| File                       | Responsibility                                    |
-| -------------------------- | ------------------------------------------------- |
-| `parseExamPlanText.js`     | raw text → ParsedPlan                             |
-| `parseByodShading.js`      | page drawing + word boxes → shaded BYOD roots     |
-| `buildExamPlan.js`         | ParsedPlan + BYOD roots → artifact, semester      |
-| `zurichTime.js`            | date + wall clock → ISO with the day's UTC offset |
-| `validateExamPlan.js`      | errors/warnings/stats; errors gate the write      |
-| `validateAgainstCatalog.js`| advisory two-way diff, never fails the build      |
-| `formatReport.js`          | the plain-text report                             |
+**HS26 in CW42.** The report prints `W_AT_INCOMPLETE` because the PDF
+announces the alternative-date (AT) plan for 08.–20.02.2027 for CW42. The app
+uses OT written exams only (the 48 AT rows in the current PDF are the
+alternative dates of Summer 2026 courses). So:
 
-See `docs/adr/0010-offline-exam-schedule-ingestion.md` for why it works this
-way.
+- If the CW42 publication is a revised full plan, re-ingest it as above.
+- If it lists only AT rows, do not ingest it. The app would gain nothing, and
+  the write would drop every OT exam: when the removal check lists them, do not
+  override it with `--allow-removals`.

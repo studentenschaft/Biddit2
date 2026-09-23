@@ -9,39 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Exam blocks in the Calendar. The central written exams of the courses in the
-  user's plan now appear as dark blocks in the weekly schedule, marked "Exam"
-  instead of a room, with duration, a BYOD badge and the
-  "Indicative — verify officially." disclaimer in the hover tooltip and the
-  mobile event sheet; a colliding exam turns red and names the clashing
-  courses. Because the exam period sits weeks after the last lecture, an
-  "Exams" button beside the existing navigation jumps to the first exam week
-  and back again — it only appears when there is something to jump to. Oral
-  and alternative-date exams are never drawn (no published times), and one
-  exam is one block however many of the user's courses sit it.
-- Exam-overlap warnings. When two courses in the user's plan (enrolled or
-  wishlisted) sit central exams on the same date and slot, a warning shows in
-  the course list row, the semester summary conflict tooltip and the Course
-  Details exam block, naming the clashing courses. Only ordinary-date (OT)
-  written exams warn — alternative dates are provisional and oral exams have
-  no times. All exam-date surfaces now carry an "extracted automatically —
-  indicative only" disclaimer. Rationale in ADR 0012.
-- Exam dates in Course Details. The "Exam Information" section now shows the
-  central exam date, time, duration and a BYOD badge for the selected course,
-  read from the ingested `public/exams/<SEMESTER>.json`. Courses are joined to
-  the plan on their two-segment root, so an exercise group inherits its parent
-  lecture's exam. Alternative dates are labelled and sorted after the ordinary
-  one; oral exams point at Compass for the individual slot; decentral-only
-  courses say the lecturer schedules them. A missing or unrecognised artifact
-  renders nothing rather than an error, and courses borrowed from a reference
-  semester never show dates at all. Rationale in ADR 0011.
-- Offline exam-schedule ingestion (`npm run ingest:exams`): converts the HSG
-  central exam-plan PDF into a validated `app/public/exams/<SEMESTER>.json`.
-  Ships `public/exams/HS26.json` — 178 written exams over 15 dates plus the
-  oral-exam page. Validation gates the write, and a golden-file test pins the
-  artifact to a committed `pdftotext` extraction. Nothing in the app reads the
-  file yet; display and collision detection follow later. Runbook in
-  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010.
+- Exam dates and exam-clash warnings for HS26, from the HSG central exam plan.
+  Course Details shows each course's central written exam — date, start time,
+  duration and "digital (BYOD)" when the plan marks it — and oral exams with
+  their date range; it also says when an exam is decentral, when a central
+  exam is missing from the plan and when the plan could not be loaded. When
+  two courses in the user's plan (enrolled or wishlisted) have written exams
+  that overlap in time, a red exam-clash warning shows in the course list, the
+  Semester Summary, Course Details and the Calendar; a course the user is only
+  browsing warns that its exam *would* clash. The Summary ends with an "Exam
+  check" line: clashes found, none, or unavailable. The Calendar draws the
+  user's exams as outlined blocks, red and dashed on a clash, and an "Exams"
+  button jumps to the exam weeks and back. Only ordinary-date (OT) written
+  exams count: the plan's AT rows are Summer 2026 courses' alternative dates,
+  and oral exams have no times. Courses match the plan on their two-segment
+  root, so exercise groups inherit their lecture's exam; borrowed
+  reference-semester catalogs never show exam data; every exam surface says
+  the dates are indicative. The data comes from the new
+  `npm run ingest:exams`, which turns the PDF into a validated
+  `app/public/exams/<SEMESTER>.json` — BYOD read from the cell shading, any
+  error blocks the write, and a re-ingest refuses to drop exams without
+  `--allow-removals`. It ships `HS26.json`: 178 written exams on 15 dates (130
+  OT) and 3 oral exams, pinned by a golden test. Runbook in
+  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010–0012.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
@@ -124,6 +114,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Course Details no longer crashes on a course without
   `achievementFormStatus`. The central/decentral line read three fields off it
   unguarded, so any catalog entry missing the object took the whole panel down.
+- Calendar and Semester Summary: conflict lists no longer split a course title
+  at its comma or cut long names off. The calendar tooltip also opens on
+  keyboard focus and closes with Escape, and blocks, tooltip and event sheet
+  share the 24-hour clock.
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to
