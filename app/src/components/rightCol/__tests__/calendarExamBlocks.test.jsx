@@ -19,15 +19,10 @@ import {
   within,
 } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { examPlanState } from "../../recoil/examScheduleAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import Calendar from "../Calendar";
-
-// The plan's times carry Zurich's offset and the calendar shows them in the
-// reader's zone, so read them as a student in St. Gallen does. (Far enough
-// west, a 09:15 exam would fall before the calendar's 08:00 start.)
-vi.stubEnv("TZ", "Europe/Zurich");
 
 // The tooltip positions itself with floating-ui, which watches the anchor's
 // size; jsdom has no ResizeObserver.
@@ -65,7 +60,8 @@ const LAW = {
   courseNumber: "5,500,1.00",
   shortName: "Business Law",
   calendarEntry: [
-    { eventDate: "2027-01-20T14:15:00", durationInMinutes: 105, room: "01-013" },
+    // 14:15 in Zurich, as a UTC instant like the course API's.
+    { eventDate: "2027-01-20T13:15:00Z", durationInMinutes: 105, room: "01-013" },
   ],
 };
 
@@ -170,6 +166,35 @@ describe("Calendar exam blocks", () => {
   });
 });
 
+/**
+ * HSG runs on Zurich time, so the calendar does too, wherever the student
+ * reads it. In the reader's own zone a 09:15 exam fell before the calendar's
+ * 08:00 start in New York, and a 14:15 lecture after its 22:00 end in Tokyo.
+ */
+describe.each(["America/New_York", "Asia/Tokyo"])(
+  "Calendar read in %s",
+  (zone) => {
+    beforeEach(() => vi.stubEnv("TZ", zone));
+    afterEach(() => vi.unstubAllEnvs());
+
+    it("shows lectures and exams at St. Gallen time", async () => {
+      await renderExamWeek();
+
+      expect(
+        within(block("Business Law")).getByText("14:15 - 16:00"),
+      ).toBeInTheDocument();
+      expect(block("Microeconomics II").textContent).toMatch(/^09:15 · Exam/);
+
+      // The time Course Details prints from the plan's slot.
+      act(() => block("Microeconomics II").focus());
+      const tooltip = await screen.findByRole("tooltip");
+      expect(
+        within(tooltip).getByText("Mon 18.01.2027, 09:15 - 10:45"),
+      ).toBeInTheDocument();
+    });
+  },
+);
+
 describe("Calendar event tooltip", () => {
   it("hands a block's details to the tooltip as soon as it is drawn", async () => {
     await renderExamWeek();
@@ -177,10 +202,10 @@ describe("Calendar event tooltip", () => {
 
     // No pointer has been near the block.
     expect(micro).toHaveAttribute("data-tooltip-id", "event-tooltip");
-    expect(micro).toHaveAttribute("data-exam-date", "Mon 18.01.2027");
-    expect(JSON.parse(micro.getAttribute("data-conflicts-with"))).toEqual([
-      "Data Analytics, Causal Inference",
-    ]);
+    expect(JSON.parse(micro.getAttribute("data-event"))).toMatchObject({
+      examDate: "Mon 18.01.2027",
+      conflictsWith: ["Data Analytics, Causal Inference"],
+    });
   });
 
   it("opens on keyboard focus with the exam's date, facts and clashes", async () => {
@@ -195,6 +220,7 @@ describe("Calendar event tooltip", () => {
     expect(
       within(tooltip).getByText("Exam · 90 min · digital (BYOD)"),
     ).toBeInTheDocument();
+    expect(within(tooltip).getByText("⚠ Exam clash with:")).toBeInTheDocument();
     expect(
       within(tooltip)
         .getAllByRole("listitem")

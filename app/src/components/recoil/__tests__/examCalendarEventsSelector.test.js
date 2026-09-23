@@ -134,12 +134,12 @@ describe("examCalendarEventsSelector", () => {
     expect(event).toMatchObject({
       id: "ot-ops",
       title: "Operations Management",
-      start: "2027-02-05T09:15:00+01:00",
+      // Zurich wall-clock time without an offset, like the lectures.
+      start: "2027-02-05T09:15:00",
+      end: "2027-02-05T10:45:00",
       entryType: "exam",
       conflictsWith: [],
     });
-    // 09:15 + 90' = 10:45 Zurich time, in the artifact's own offset format.
-    expect(event.end).toBe("2027-02-05T10:45:00+01:00");
   });
 
   it("carries the date and the exam facts as ready-made text", () => {

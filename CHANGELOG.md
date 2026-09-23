@@ -120,6 +120,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at its comma or cut long names off. The calendar tooltip also opens on
   keyboard focus and closes with Escape, and blocks, tooltip and event sheet
   share the 24-hour clock.
+- Calendar and Semester Summary: lectures and exams show St. Gallen (Zurich)
+  time for students abroad too. The calendar used the reader's own time zone,
+  so from London a 09:15 exam read 08:15, and in the Americas morning exams
+  fell before the 08:00 start and vanished.
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to

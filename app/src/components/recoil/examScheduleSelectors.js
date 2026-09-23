@@ -1,5 +1,4 @@
 import { selectorFamily } from "recoil";
-import moment from "moment/moment";
 import { examPlanState } from "./examScheduleAtom";
 import {
   myCoursesSelector,
@@ -11,6 +10,7 @@ import {
   formatExamMeta,
   planExams,
 } from "../helpers/examScheduleUtils";
+import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 const NO_PLAN = { status: "none", plan: null };
 
@@ -106,13 +106,11 @@ export const examCalendarEventsSelector = selectorFamily({
         return {
           id: exam.id,
           title: name,
-          start: exam.startIso,
-          // parseZone keeps the artifact's Zurich offset, so start and end
-          // stay in one format.
-          end: moment
-            .parseZone(exam.startIso)
-            .add(exam.durationMin, "minutes")
-            .format(),
+          // Zurich wall-clock time, like the lectures.
+          start: toZurichWallClock(exam.startIso),
+          end: toZurichWallClock(
+            Date.parse(exam.startIso) + exam.durationMin * 60000,
+          ),
           entryType: "exam",
           examDate: formatExamDate(exam.date),
           examMeta: formatExamMeta(exam),

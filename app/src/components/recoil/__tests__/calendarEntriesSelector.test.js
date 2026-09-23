@@ -93,8 +93,20 @@ describe("calendarEntriesSelector", () => {
     });
 
     expect(entries.map((e) => e.title)).toEqual(["Big Data"]);
-    expect(entries[0].start).toBe("2026-09-21T08:15:00.000Z");
-    expect(entries[0].end).toBe("2026-09-21T09:45:00.000Z");
+  });
+
+  it("hands the calendar St. Gallen time, whatever the reader's zone", () => {
+    const [entry] = readEntries({
+      available: [BIG],
+      enrolledIds: [BIG.courseNumber],
+      selectedIds: [],
+      filtered: [],
+    });
+
+    // 08:15 UTC is 10:15 in Zurich in September; no offset, so FullCalendar
+    // draws 10:15 in New York or Tokyo too.
+    expect(entry.start).toBe("2026-09-21T10:15:00");
+    expect(entry.end).toBe("2026-09-21T11:45:00");
   });
 
   it("detects a conflict between two enrolled courses while a filter hides one", () => {

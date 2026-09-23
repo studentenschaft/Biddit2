@@ -34,7 +34,10 @@ import {
 
 // Central written exams as calendar blocks.
 import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
-import { EXAM_DISCLAIMER_SHORT } from "../helpers/examScheduleUtils";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  formatExamClashLead,
+} from "../helpers/examScheduleUtils";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
@@ -44,6 +47,18 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 const TIME_FORMAT = { hour: "2-digit", minute: "2-digit", hour12: false };
 const formatEventTime = (date) =>
   date ? date.toLocaleTimeString([], TIME_FORMAT) : "";
+
+// What the tooltip and the event sheet show about a block, built once.
+const eventDetails = ({ title, start, end, extendedProps }) => ({
+  title,
+  startTime: formatEventTime(start),
+  endTime: formatEventTime(end),
+  room: extendedProps.room,
+  conflictsWith: extendedProps.conflictsWith || [],
+  entryType: extendedProps.entryType,
+  examDate: extendedProps.examDate,
+  examMeta: extendedProps.examMeta,
+});
 
 // Implementation of calendar widget
 export default function Calendar() {
@@ -174,28 +189,13 @@ export default function Calendar() {
     initialDate >= examWeeks.start &&
     initialDate <= examWeeks.end;
 
-  // The tooltip renders from these attributes alone. They are set as soon as a
+  // The tooltip renders from this attribute alone. It is set as soon as a
   // block is drawn, not on mouse enter, so the tooltip also opens when the
   // block gets keyboard focus (react-tooltip 5.28 opens on focus as well as
   // mouseover, and FullCalendar makes clickable blocks tabbable).
   const describeEventForTooltip = ({ el, event }) => {
-    const details = event.extendedProps;
     el.setAttribute("data-tooltip-id", "event-tooltip");
-    el.setAttribute("data-tooltip-content", event.title);
-    el.setAttribute("data-start-time", formatEventTime(event.start));
-    el.setAttribute("data-end-time", formatEventTime(event.end));
-    // JSON, not a comma-joined list: course titles contain commas.
-    el.setAttribute(
-      "data-conflicts-with",
-      JSON.stringify(details.conflictsWith || []),
-    );
-    if (details.entryType === "exam") {
-      el.setAttribute("data-entry-type", "exam");
-      el.setAttribute("data-exam-date", details.examDate);
-      el.setAttribute("data-exam-meta", details.examMeta);
-    } else {
-      el.setAttribute("data-room", details.room ?? "");
-    }
+    el.setAttribute("data-event", JSON.stringify(eventDetails(event)));
   };
 
   // Details shown when an event is tapped: the mobile detail view, and the only
@@ -208,16 +208,7 @@ export default function Calendar() {
   const clickEvent = (arg) => {
     if (!isMobileViewport()) return;
 
-    setSelectedEvent({
-      title: arg.event.title,
-      startTime: formatEventTime(arg.event.start),
-      endTime: formatEventTime(arg.event.end),
-      room: arg.event.extendedProps.room,
-      conflictsWith: arg.event.extendedProps.conflictsWith || [],
-      entryType: arg.event.extendedProps.entryType,
-      examDate: arg.event.extendedProps.examDate,
-      examMeta: arg.event.extendedProps.examMeta,
-    });
+    setSelectedEvent(eventDetails(arg.event));
   };
 
   // Text inside a block. An exam leads with its start time, the line a
@@ -352,40 +343,39 @@ export default function Calendar() {
         // Content that appears on focus must be dismissable without moving
         // focus (WCAG 1.4.13).
         globalCloseEvents={{ escape: true }}
-        render={({ content, activeAnchor }) => {
+        render={({ activeAnchor }) => {
           // A tap on a phone also fires mouseover and focus on the block, and
           // the sheet hands focus back to it on closing, so below md the
           // tooltip would open on top of the sheet. Asked as it is about to
           // show, like the sheet's own check at click time.
-          if (isMobileViewport()) return null;
-          const attr = (name) => activeAnchor?.getAttribute(name);
-          const conflictList = JSON.parse(attr("data-conflicts-with") || "[]");
-          const isExam = attr("data-entry-type") === "exam";
-          const timeRange = `${attr("data-start-time") || "N/A"} - ${
-            attr("data-end-time") || "N/A"
+          if (isMobileViewport() || !activeAnchor) return null;
+          const event = JSON.parse(activeAnchor.getAttribute("data-event"));
+          const isExam = event.entryType === "exam";
+          const timeRange = `${event.startTime || "N/A"} - ${
+            event.endTime || "N/A"
           }`;
           return (
             <div>
-              <div className="font-medium">{content}</div>
+              <div className="font-medium">{event.title}</div>
               {/* Exams have no room; the same line carries the exam facts. */}
               <div className="text-gray-300">
-                {isExam
-                  ? attr("data-exam-meta")
-                  : `Room: ${attr("data-room") || "N/A"}`}
+                {isExam ? event.examMeta : `Room: ${event.room || "N/A"}`}
               </div>
               {/* For an exam the date is the key fact, so it leads the time. */}
               <div className="text-gray-300">
-                {isExam ? `${attr("data-exam-date")}, ${timeRange}` : timeRange}
+                {isExam ? `${event.examDate}, ${timeRange}` : timeRange}
               </div>
-              {conflictList.length > 0 && (
+              {event.conflictsWith.length > 0 && (
                 <div
                   className={`mt-1 pt-1 border-t border-gray-600 ${
                     isExam ? "text-red-300" : "text-amber-300"
                   }`}
                 >
-                  <div className="font-medium">⚠ Conflicts with:</div>
+                  <div className="font-medium">
+                    ⚠ {isExam ? formatExamClashLead(true) : "Conflicts with:"}
+                  </div>
                   <ul className="list-disc list-inside text-sm">
-                    {conflictList.map((course, idx) => (
+                    {event.conflictsWith.map((course, idx) => (
                       <li key={idx} className="break-words">
                         {course}
                       </li>

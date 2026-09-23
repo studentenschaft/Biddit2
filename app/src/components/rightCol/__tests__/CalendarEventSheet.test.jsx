@@ -162,13 +162,16 @@ describe("CalendarEventSheet", () => {
       expect(screen.queryByText(/Indicative/)).not.toBeInTheDocument();
     });
 
-    it("names the clashing courses", async () => {
+    // An exam clash is not a lecture overlap and says so, in the words every
+    // exam surface uses.
+    it("heads the clashing courses as an exam clash", async () => {
       await renderSheet({
         ...examEvent,
         conflictsWith: ["Data Analytics, Causal Inference"],
       });
 
-      expect(screen.getByText(/conflicts with/i)).toBeInTheDocument();
+      expect(screen.getByText("⚠ Exam clash with:")).toBeInTheDocument();
+      expect(screen.queryByText(/conflicts with/i)).not.toBeInTheDocument();
       expect(
         screen.getByText("Data Analytics, Causal Inference"),
       ).toBeInTheDocument();

@@ -150,11 +150,16 @@ export const formatExamMeta = ({ durationMin, byod }) =>
   `Exam · ${durationMin} min${byod === true ? " · digital (BYOD)" : ""}`;
 
 /**
- * "Exam clash with: A, B" for a planned course, "Exam would clash with: A, B"
- * for one the user is only browsing.
+ * "Exam clash with:" for a planned course, "Exam would clash with:" for one
+ * the user is only browsing; the heading of every exam clash, so it never
+ * reads like a lecture overlap.
  */
+export const formatExamClashLead = (planned) =>
+  `Exam ${planned ? "clash" : "would clash"} with:`;
+
+/** "Exam clash with: A, B" — the lead and the names on one line. */
 export const formatExamClash = (names, planned) =>
-  `Exam ${planned ? "clash" : "would clash"} with: ${names.join(", ")}`;
+  `${formatExamClashLead(planned)} ${names.join(", ")}`;
 
 // The dates come from our own PDF extraction, so every surface that shows an
 // exam date or clash carries one of these.

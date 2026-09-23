@@ -24,9 +24,11 @@ import {
   EXAM_DISCLAIMER_SHORT,
   describeExamClashes,
   examClashes,
+  formatExamClashLead,
   formatPlanSource,
 } from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
+import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 import { Heatmap } from "./Heatmap";
 
@@ -185,8 +187,9 @@ export default function SemesterSummary() {
         continue; // Skip entries with empty eventDate
       }
 
-      // Shift event date to match the target year (for future semesters)
-      const originalEventDate = new Date(entry.eventDate);
+      // Shift event date to match the target year (for future semesters).
+      // Zurich wall-clock time, like the heatmap and the calendar.
+      const originalEventDate = new Date(toZurichWallClock(entry.eventDate));
       const shiftedEventDate = getShiftedEventDate(
         originalEventDate,
         targetYear
@@ -270,7 +273,9 @@ export default function SemesterSummary() {
                     sit at all, so it gets its own block and its own colour. */}
                 {examConflicts && (
                   <div className="text-red-300">
-                    <div className="font-medium">Exam clash with:</div>
+                    <div className="font-medium">
+                      {formatExamClashLead(true)}
+                    </div>
                     <ul className="list-disc list-inside text-sm">
                       {namesOf(examConflicts)}
                     </ul>

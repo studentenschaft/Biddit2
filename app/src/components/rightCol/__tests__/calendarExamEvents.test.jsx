@@ -72,8 +72,8 @@ const LECTURE = {
 const EXAM = {
   id: "ot-cyber",
   title: "Advanced Cybersecurity",
-  start: "2027-01-19T15:15:00+01:00",
-  end: "2027-01-19T17:15:00+01:00",
+  start: "2027-01-19T15:15:00",
+  end: "2027-01-19T17:15:00",
   entryType: "exam",
   examDate: "Tue 19.01.2027",
   examMeta: "Exam · 120 min · digital (BYOD)",
@@ -209,8 +209,8 @@ describe("Calendar exam blocks", () => {
       {
         ...EXAM,
         id: "ot-late",
-        start: "2027-02-05T09:15:00+01:00",
-        end: "2027-02-05T10:45:00+01:00",
+        start: "2027-02-05T09:15:00",
+        end: "2027-02-05T10:45:00",
       },
     ]);
     await renderCalendar();
@@ -246,8 +246,8 @@ describe("Calendar exam blocks", () => {
       {
         ...EXAM,
         id: "ot-fs26",
-        start: "2026-06-16T09:15:00+02:00",
-        end: "2026-06-16T11:15:00+02:00",
+        start: "2026-06-16T09:15:00",
+        end: "2026-06-16T11:15:00",
       },
     ]);
     rerender(<Calendar />);

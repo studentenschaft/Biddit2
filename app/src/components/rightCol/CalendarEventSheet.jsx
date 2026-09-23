@@ -20,7 +20,10 @@
 import PropTypes from "prop-types";
 import { Dialog } from "@headlessui/react";
 import { XIcon } from "@heroicons/react/solid";
-import { EXAM_DISCLAIMER_SHORT } from "../helpers/examScheduleUtils";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  formatExamClashLead,
+} from "../helpers/examScheduleUtils";
 
 const CalendarEventSheet = ({ event, onClose }) => {
   const conflictList = event?.conflictsWith || [];
@@ -90,7 +93,9 @@ const CalendarEventSheet = ({ event, onClose }) => {
               isExam ? "text-danger" : "text-amber-700"
             }`}
           >
-            <div className="font-medium">⚠ Conflicts with:</div>
+            <div className="font-medium">
+              ⚠ {isExam ? formatExamClashLead(true) : "Conflicts with:"}
+            </div>
             <ul className="list-disc list-inside text-sm">
               {conflictList.map((course, idx) => (
                 <li key={idx}>{course}</li>

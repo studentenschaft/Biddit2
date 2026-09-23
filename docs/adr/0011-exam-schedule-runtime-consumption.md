@@ -66,7 +66,9 @@ exams are the OT rows, because the AT rows of the current PDF belong to the
 previous semester (ADR 0010). An oral exam shows its date range and "individual
 time published in Compass" and is never drawn in the Calendar. The Calendar
 draws one block per written exam of the user's courses, and an "Exams" button
-jumps to the exam weeks and back.
+jumps to the exam weeks and back. It draws lectures and exams alike at Zurich
+wall-clock time, whatever the reader's time zone, so its times are the ones
+Course Details and the official plan print.
 
 **Unavailable is said, not implied.**
 
