@@ -33,7 +33,7 @@ const MICRO = {
   },
 };
 
-const renderCourseInfo = (course, selectedSemester = "HS26") =>
+const renderCourseInfo = (course, { selectedSemester = "HS26" } = {}) =>
   render(
     <RecoilRoot
       initializeState={({ set }) => {
@@ -66,19 +66,31 @@ const renderCourseInfo = (course, selectedSemester = "HS26") =>
 
 describe("CourseInfo exam information", () => {
   it("shows the exam dates of the semester on screen", async () => {
-    renderCourseInfo(MICRO, "HS26");
+    renderCourseInfo(MICRO);
 
     expect(await screen.findByText("Mon 18.01.2027")).toBeInTheDocument();
   });
 
   it("shows no exam dates for a projected semester that borrows the course", async () => {
-    renderCourseInfo(MICRO, "HS27");
+    renderCourseInfo(MICRO, { selectedSemester: "HS27" });
 
     await screen.findByText("Exam Information");
     expect(screen.queryByText("Mon 18.01.2027")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Winter 2027 plan/)).not.toBeInTheDocument();
+  });
+
+  it("still calls a borrowed decentral-only course decentral", async () => {
+    renderCourseInfo(
+      {
+        ...MICRO,
+        achievementFormStatus: { isCentral: false, isDeCentral: true },
+      },
+      { selectedSemester: "HS27" },
+    );
+
     expect(
-      screen.queryByText(/Central exam schedule/),
-    ).not.toBeInTheDocument();
+      await screen.findByText("Decentral exam — scheduled by the lecturer."),
+    ).toBeInTheDocument();
   });
 
   it("does not call a missing course sheet missing exam information", async () => {

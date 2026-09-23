@@ -50,7 +50,10 @@ export function examsForCourse(plan, course) {
  */
 export function isPlannedCourse(myCourses, course) {
   const rootKey = getCourseRootKey(course);
-  return myCourses.some((mine) => getCourseRootKey(mine) === rootKey);
+  return (
+    rootKey !== null &&
+    myCourses.some((mine) => getCourseRootKey(mine) === rootKey)
+  );
 }
 
 /**
@@ -135,6 +138,12 @@ export const formatExamDateRange = (start, end) =>
   start === end
     ? formatExamDate(start)
     : `${day(start).format("ddd DD.MM.")} – ${formatExamDate(end)}`;
+
+/** "Winter 2027 plan, published 18.08.2026" — where the dates come from. */
+export const formatPlanSource = (plan) => {
+  const published = day(plan.source.publishedAt).format("DD.MM.YYYY");
+  return `${plan.sourceTermLabel} plan, published ${published}`;
+};
 
 /** "Exam · 120 min · digital (BYOD)" — BYOD is present-or-silent. */
 export const formatExamMeta = ({ durationMin, byod }) =>

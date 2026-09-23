@@ -6,6 +6,7 @@ import {
   formatExamDate,
   formatExamDateRange,
   formatExamMeta,
+  formatPlanSource,
   isPlannedCourse,
   planExams,
 } from "../examScheduleUtils";
@@ -104,6 +105,12 @@ describe("isPlannedCourse", () => {
     expect(isPlannedCourse([ALPHA, GERMAN_BA], ALPHA)).toBe(true);
     expect(isPlannedCourse([ALPHA, GERMAN_BA], ALPHA_EXERCISE)).toBe(true);
     expect(isPlannedCourse([ALPHA, GERMAN_BA], BRAVO)).toBe(false);
+  });
+
+  it("never matches two courses on a missing root", () => {
+    expect(
+      isPlannedCourse([course("TBA", "Unnumbered")], course("n/a", "Other")),
+    ).toBe(false);
   });
 
   it("counts the second listing of a cross-listed exam I planned twice", () => {
@@ -328,5 +335,16 @@ describe("formatExamClash", () => {
     expect(formatExamClash(["Alpha", "Bravo"], false)).toBe(
       "Exam would clash with: Alpha, Bravo",
     );
+  });
+});
+
+describe("formatPlanSource", () => {
+  it("names the plan and the day it was published", () => {
+    expect(
+      formatPlanSource({
+        sourceTermLabel: "Winter 2027",
+        source: { publishedAt: "2026-08-18" },
+      }),
+    ).toBe("Winter 2027 plan, published 18.08.2026");
   });
 });

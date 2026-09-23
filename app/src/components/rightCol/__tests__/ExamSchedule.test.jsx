@@ -1,10 +1,12 @@
 /**
- * Every state of the exam block says what we actually know: dates when the
- * plan lists the course, a plain reason when it does not, and nothing while
- * there is no plan to judge by.
+ * Every state of the exam block says what we actually know: dates when a
+ * ready plan lists the course; "decentral" for a decentral-only course it
+ * does not list, whatever state the plan is in, as that is the course's own
+ * fact; otherwise a plain reason from a ready plan, a reload hint for a
+ * failed one, and nothing while there is no plan to judge by.
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,9 +24,12 @@ const DECENTRAL = {
 };
 
 const FOOTNOTE =
-  "Central exam schedule Winter 2027, published 18.08.2026. Extracted " +
-  "automatically from the official PDF — indicative only, always verify " +
-  "against the official exam schedule.";
+  "Winter 2027 plan, published 18.08.2026. Extracted automatically from " +
+  "the official PDF — indicative only, always verify against the official " +
+  "exam schedule.";
+
+const DECENTRAL_MESSAGE = "Decentral exam — scheduled by the lecturer.";
+const LOAD_FAILED = "Exam dates could not be loaded — reload to retry.";
 
 const NOT_FOUND =
   "Central exam date not found in the extracted schedule — check the " +
@@ -104,11 +109,13 @@ describe("ExamSchedule", () => {
       expect(screen.queryByText("Tue 19.01.2027")).not.toBeInTheDocument();
     });
 
-    it("marks a digital exam only when the plan says so", async () => {
+    it("badges a digital exam only when the plan says so", async () => {
       const { unmount } = renderSchedule(courseNumbered("3,140,1.00"));
-      expect(
-        await screen.findByText("Exam · 90 min · digital (BYOD)"),
-      ).toBeInTheDocument();
+      expect(await screen.findByText("digital (BYOD)")).toHaveClass(
+        "bg-hsg-100",
+      );
+      // Said once, by the badge, not again in the exam facts.
+      expect(screen.getByText("Exam · 90 min")).toBeInTheDocument();
       unmount();
 
       renderSchedule(courseNumbered("3,200,1.00"));
@@ -147,21 +154,26 @@ describe("ExamSchedule", () => {
       renderSchedule(courseNumbered("3,200,1.00", DECENTRAL));
 
       expect(await screen.findByText("Mon 18.01.2027")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Decentral exam — scheduled by the lecturer."),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText(DECENTRAL_MESSAGE)).not.toBeInTheDocument();
     });
   });
 
   describe("for a course the plan does not list", () => {
-    it("says a decentral-only course is the lecturer's to schedule", async () => {
-      renderSchedule(courseNumbered("9,999,1.00", DECENTRAL));
+    it.each([
+      ["a ready plan", undefined],
+      ["a loading plan", { status: "loading", plan: null }],
+      ["no plan", { status: "none", plan: null }],
+      ["a failed plan", { status: "error", plan: null }],
+    ])(
+      "says a decentral-only course is the lecturer's to schedule, with %s",
+      async (_, planState) => {
+        renderSchedule(courseNumbered("9,999,1.00", DECENTRAL), { planState });
 
-      expect(
-        await screen.findByText("Decentral exam — scheduled by the lecturer."),
-      ).toBeInTheDocument();
-      expect(screen.queryByText(FOOTNOTE)).not.toBeInTheDocument();
-    });
+        expect(await screen.findByText(DECENTRAL_MESSAGE)).toBeInTheDocument();
+        expect(screen.queryByText(LOAD_FAILED)).not.toBeInTheDocument();
+        expect(screen.queryByText(FOOTNOTE)).not.toBeInTheDocument();
+      },
+    );
 
     it.each([
       ["a central course", courseNumbered("9,999,1.00")],
@@ -199,27 +211,19 @@ describe("ExamSchedule", () => {
         planState: { status: "error", plan: null },
       });
 
-      expect(
-        screen.getByText("Exam dates could not be loaded — reload to retry."),
-      ).toBeInTheDocument();
+      expect(screen.getByText(LOAD_FAILED)).toBeInTheDocument();
       expect(screen.queryByText(FOOTNOTE)).not.toBeInTheDocument();
     });
 
-    it("renders nothing while the plan loads, even for a decentral course", () => {
-      const { container } = renderSchedule(
-        courseNumbered("9,999,1.00", DECENTRAL),
-        { planState: { status: "loading", plan: null } },
-      );
-
-      expect(container).toBeEmptyDOMElement();
-    });
-
-    it("renders nothing for a semester that was never ingested", async () => {
+    it.each([
+      ["while the plan loads", { status: "loading", plan: null }],
+      ["for a semester that was never ingested", { status: "none", plan: null }],
+    ])("renders nothing for a central course %s", (_, planState) => {
       const { container } = renderSchedule(courseNumbered("3,200,1.00"), {
-        semester: "FS26",
+        planState,
       });
 
-      await waitFor(() => expect(container).toBeEmptyDOMElement());
+      expect(container).toBeEmptyDOMElement();
     });
 
     it("never shows exam dates for borrowed catalog data", () => {
