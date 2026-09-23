@@ -166,10 +166,10 @@ per navigation, session starts with `page_view` then
 
 ### Security
 
-- Dependencies updated to close 77 of the 78 open Dependabot alerts: all
+- Dependencies updated to close all 78 open Dependabot alerts: all
   in-range updates (axios 1.20, vite 6.4.3, rollup, postcss and transitive
   packages), plus uuid 11, vitest 4 and react-router-dom 7 (v7 wraps
   navigation updates in `React.startTransition`; no code changes needed).
   React and React DOM are now declared explicitly (`^18.3.1`) instead of
-  arriving only as peers. The uuid alert stays open until the unused
-  `@azure/msal-node` (which bundles uuid 8) is removed or upgraded.
+  arriving only as peers. The unused `@azure/msal-node` (a Node.js library
+  that bundled uuid 8) was removed.
