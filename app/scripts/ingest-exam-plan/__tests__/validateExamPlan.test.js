@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import { buildExamPlan } from "../buildExamPlan.js";
 import { parseExamPlanText } from "../parseExamPlanText.js";
 import { validateExamPlan } from "../validateExamPlan.js";
-import { HEADER, readFixture } from "./readFixture.js";
+import {
+  HEADER,
+  TABLE_HEADER,
+  TWO_SLOT_ROW,
+  readFixture,
+} from "./readFixture.js";
 
 const build = (text) => buildExamPlan(parseExamPlanText(text));
 
@@ -52,8 +57,8 @@ describe("validateExamPlan — one broken plan per error code", () => {
 
   it("E_UNCONSUMED_LINE when a table row is not an exam and not a gutter", () => {
     const stray = `${HEADER}
-Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr            Prüfungsbeginn (schriftl.): 15.15 Uhr
-18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
            Fortsetzung der Liste auf der naechsten Seite
 `;
     expect(codes(validateExamPlan(build(stray), stray).errors)).toEqual([

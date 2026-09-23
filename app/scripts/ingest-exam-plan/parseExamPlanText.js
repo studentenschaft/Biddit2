@@ -2,9 +2,10 @@
  * Turns the `pdftotext -layout` rendering of an HSG exam plan into a structured
  * ParsedPlan. Pure: no fs, no clock, no process.
  *
- * The layout is a two-column table (09:15 left, 15:15 right) whose column
- * boundary moves from page to page, so the boundary is read off each page's own
- * header line instead of being assumed.
+ * The layout is a two-column table, one column per written start time. The
+ * columns move from page to page and a guessed time would be silently wrong, so
+ * both the times and the column boundary are read off each page's own header
+ * line.
  */
 
 export const PAGE_KIND = {
@@ -12,9 +13,6 @@ export const PAGE_KIND = {
   oral: "oral",
   unknown: "unknown",
 };
-
-export const MORNING_SLOT = "09:15";
-export const AFTERNOON_SLOT = "15:15";
 
 /**
  * One written exam: level, term type, language, duration, cross-listed roots.
@@ -38,7 +36,8 @@ const FOOTER_RE =
 
 export const TABLE_HEADER_PREFIX = "Datum";
 export const LEADING_DATE_RE = /^(\d{2})\.(\d{2})\.(\d{4})/;
-const SLOT_LABEL_RE = /Prüfungsbeginn/g;
+const SLOT_LABEL_RE =
+  /Prüfungsbeginn \(schriftl\.\):\s*(\d{1,2})\.(\d{2})\s*Uhr/g;
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
 export const ROOT_SEPARATOR = "|";
@@ -72,22 +71,29 @@ export function splitPages(rawText) {
 }
 
 /**
- * Column at which the 15:15 block starts. Guessing here would silently shift
- * exams by six hours, so a page without a derivable boundary is fatal.
+ * The two start times of a written page and the column that separates their
+ * entries. Guessing here would silently shift exams by hours, so anything but
+ * two ascending labels is fatal.
  */
-export function findAfternoonColumn(pageText) {
-  const headerLine = pageText
+export function readSlots(page) {
+  const headerLine = page.text
     .split("\n")
     .find((line) => line.startsWith(TABLE_HEADER_PREFIX));
-  const slotLabelColumns = [...(headerLine ?? "").matchAll(SLOT_LABEL_RE)].map(
-    (match) => match.index,
+  const labels = [...(headerLine ?? "").matchAll(SLOT_LABEL_RE)].map(
+    (match) => ({
+      time: `${match[1].padStart(2, "0")}:${match[2]}`,
+      column: match.index,
+    }),
   );
-  if (slotLabelColumns.length < 2) {
+  const times = labels.map((label) => label.time);
+  if (labels.length !== 2 || times[0] >= times[1]) {
     throw new Error(
-      `Cannot locate the ${AFTERNOON_SLOT} column: no table header with two "Prüfungsbeginn" labels`,
+      `Cannot read the start times — page ${page.number}: expected two ascending "Prüfungsbeginn (schriftl.): hh.mm Uhr" labels in the table header, found ${times.join(", ") || "none"}`,
     );
   }
-  return slotLabelColumns[1];
+  // Right-hand entries start at exactly their label's column, so the boundary
+  // sits halfway between the labels rather than on the second one.
+  return { times, boundary: (labels[0].column + labels[1].column) / 2 };
 }
 
 const toIsoDate = ([, day, month, year]) => `${year}-${month}-${day}`;
@@ -100,8 +106,8 @@ function stripGutter(line) {
   return withoutDash.replace(WEEKDAY_GUTTER_RE, "").trim();
 }
 
-function parseWrittenPage(page, warnings) {
-  const boundary = findAfternoonColumn(page.text);
+function parseWrittenPage(page) {
+  const { times, boundary } = readSlots(page);
   const lines = page.text.split("\n");
   const bodyStart = lines.findIndex((line) =>
     line.startsWith(TABLE_HEADER_PREFIX),
@@ -130,7 +136,7 @@ function parseWrittenPage(page, warnings) {
       const title = line.slice(match.index + full.length, titleEnd).trim();
       exams.push({
         date: currentDate,
-        slot: match.index >= boundary ? AFTERNOON_SLOT : MORNING_SLOT,
+        slot: match.index >= boundary ? times[1] : times[0],
         durationMin: Number(duration),
         level,
         termType,
@@ -142,33 +148,24 @@ function parseWrittenPage(page, warnings) {
     });
   }
 
-  const morningColumns = entryColumns.filter((column) => column < boundary);
-  const afternoonColumns = entryColumns.filter((column) => column >= boundary);
+  const leftColumns = entryColumns.filter((column) => column < boundary);
+  const rightColumns = entryColumns.filter((column) => column >= boundary);
+  const leftEnd = Math.max(...leftColumns);
+  const rightStart = Math.min(...rightColumns);
   if (
     entryColumns.length > 0 &&
-    (morningColumns.length === 0 || afternoonColumns.length === 0)
+    (leftColumns.length === 0 || rightColumns.length === 0)
   ) {
-    // A wrong boundary that sweeps every entry into one slot would otherwise
-    // be invisible: the cluster-gap check below has nothing to compare, and
-    // the count checks still balance. Every published page so far uses both
-    // slots, so an empty side is worth a human look.
-    warnings.push(
-      warning(
-        "W_COLUMN_ONE_SIDED",
-        "Every entry on this page landed in one slot — verify the 09:15/15:15 boundary by hand",
-        `page ${page.number}: boundary ${boundary}, morning ${morningColumns.length}, afternoon ${afternoonColumns.length}`,
-      ),
+    // A boundary that sweeps every entry into one column balances every count
+    // and shifts each exam by hours. Every published page so far uses both
+    // start times, so an empty column means the header no longer fits the rows.
+    throw new Error(
+      `Every exam landed in one start-time column — page ${page.number}: ${leftColumns.length} left and ${rightColumns.length} right of column ${boundary}`,
     );
-  } else if (
-    Math.min(...afternoonColumns) - Math.max(...morningColumns) <
-    MIN_COLUMN_CLUSTER_GAP
-  ) {
-    warnings.push(
-      warning(
-        "W_COLUMN_CLUSTER_TIGHT",
-        "The two slot columns nearly touch — verify the 09:15/15:15 split by hand",
-        `page ${page.number}: boundary ${boundary}, morning ends at ${Math.max(...morningColumns)}, afternoon starts at ${Math.min(...afternoonColumns)}`,
-      ),
+  }
+  if (rightStart - leftEnd < MIN_COLUMN_CLUSTER_GAP) {
+    throw new Error(
+      `The two start-time columns nearly touch — page ${page.number}: left entries end at column ${leftEnd}, right entries start at ${rightStart}`,
     );
   }
   return exams;
@@ -250,7 +247,7 @@ export function parseExamPlanText(rawText) {
   const pages = splitPages(rawText);
   const written = pages
     .filter((page) => page.kind === PAGE_KIND.written)
-    .flatMap((page) => parseWrittenPage(page, warnings));
+    .flatMap((page) => parseWrittenPage(page));
   const oralPages = pages
     .filter((page) => page.kind === PAGE_KIND.oral)
     .map((page) => parseOralPage(page));

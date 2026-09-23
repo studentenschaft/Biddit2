@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   PAGE_KIND,
-  findAfternoonColumn,
   parseExamPlanText,
+  readSlots,
   splitPages,
 } from "../parseExamPlanText.js";
-import { HEADER, readFixture } from "./readFixture.js";
+import {
+  HEADER,
+  TABLE_HEADER,
+  TWO_SLOT_ROW,
+  readFixture,
+} from "./readFixture.js";
 
 const plan = readFixture("winter-2027.txt");
-const TABLE_HEADER =
-  "Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr            Prüfungsbeginn (schriftl.): 15.15 Uhr";
 
 const codes = (warnings) => warnings.map((warning) => warning.code);
 const find = (exams, root) =>
@@ -32,22 +35,53 @@ describe("splitPages", () => {
   });
 });
 
-describe("findAfternoonColumn", () => {
-  it("derives a different boundary for every page of the real plan", () => {
-    const boundaries = splitPages(plan)
+describe("readSlots", () => {
+  it("reads both start times and a boundary for every page of the real plan", () => {
+    const slots = splitPages(plan)
       .filter((split) => split.kind === PAGE_KIND.written)
-      .map((split) => findAfternoonColumn(split.text));
-    expect(boundaries).toEqual([151, 119, 123]);
+      .map((split) => readSlots(split));
+    expect(slots).toEqual([
+      { times: ["09:15", "15:15"], boundary: 85 },
+      { times: ["09:15", "15:15"], boundary: 68 },
+      { times: ["09:15", "15:15"], boundary: 70 },
+    ]);
   });
 
-  it("throws rather than guess when no boundary can be derived", () => {
+  it("stamps the exams with the start times the header prints", () => {
+    const shifted = parseExamPlanText(`${HEADER}
+${TABLE_HEADER.replace("09.15", "08.15").replace("15.15", "14.15")}
+${TWO_SLOT_ROW}
+`);
+    expect(find(shifted.written, "3,200").slot).toBe("08:15");
+    expect(find(shifted.written, "1,908").slot).toBe("14:15");
+  });
+
+  it("throws rather than guess when the header has one start time", () => {
     const oneLabel = `${HEADER}
 Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr
 18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
 `;
     expect(() => parseExamPlanText(oneLabel)).toThrow(
-      /Cannot locate the 15:15 column/,
+      /page 1: expected two ascending .* found 09:15$/,
     );
+  });
+
+  it("throws on a third start-time column", () => {
+    const threeLabels = `${HEADER}
+${TABLE_HEADER}      Prüfungsbeginn (schriftl.): 18.15 Uhr
+${TWO_SLOT_ROW}
+`;
+    expect(() => parseExamPlanText(threeLabels)).toThrow(
+      /found 09:15, 15:15, 18:15$/,
+    );
+  });
+
+  it("throws when the later start time is printed on the left", () => {
+    const swapped = `${HEADER}
+Datum      Prüfungsbeginn (schriftl.): 15.15 Uhr            Prüfungsbeginn (schriftl.): 09.15 Uhr
+${TWO_SLOT_ROW}
+`;
+    expect(() => parseExamPlanText(swapped)).toThrow(/found 15:15, 09:15$/);
   });
 });
 
@@ -149,17 +183,27 @@ Montag /   MA: OT DE  90'  3,802 | 14,802 Deutsch C1
     expect(find(wide.written, "3,200").title).toBe("Mikroökonomik II");
   });
 
-  it("warns when every entry of a page lands in one slot", () => {
+  it("assigns an entry that starts left of its label to that label's column", () => {
+    // Right-column entries start at exactly their label's column, so a
+    // boundary on the label itself has no margin for a one-column shift.
+    const shifted = parseExamPlanText(`${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW.replace("  MA: OT", " MA: OT")}
+`);
+    expect(find(shifted.written, "1,908").slot).toBe("15:15");
+  });
+
+  it("throws when every entry of a page lands in one slot", () => {
     // The signature of a boundary derived from a re-laid-out header: nothing
-    // is dropped, the counts balance, and every exam is six hours wrong.
+    // is dropped, the counts balance, and every exam is hours wrong.
     const oneSided = `${HEADER}
 ${TABLE_HEADER}
 18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
 Montag /   BA: OT EN  90'  3,202 Microeconomics II
 `;
-    expect(codes(parseExamPlanText(oneSided).warnings)).toEqual([
-      "W_COLUMN_ONE_SIDED",
-    ]);
+    expect(() => parseExamPlanText(oneSided)).toThrow(
+      "Every exam landed in one start-time column — page 1",
+    );
   });
 
   it("reads alternative-date rows as their own exams", () => {
@@ -204,17 +248,17 @@ ${TABLE_HEADER}
     );
   });
 
-  it("warns when the two slot columns almost touch", () => {
+  it("throws when the two slot columns almost touch", () => {
     const tight = `${HEADER}
-Datum      Prüfungsbeginn 09.15         Prüfungsbeginn 15.15
-18.01.2027 BA: OT DE  90'  3,200 X      BA: OT EN  90'  1,908 Y
+Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr Prüfungsbeginn (schriftl.): 15.15 Uhr
+18.01.2027 BA: OT DE  90'  3,200 X               BA: OT EN  90'  1,908 Y
 `;
-    expect(codes(parseExamPlanText(tight).warnings)).toEqual([
-      "W_COLUMN_CLUSTER_TIGHT",
-    ]);
+    expect(() => parseExamPlanText(tight)).toThrow(
+      "The two start-time columns nearly touch — page 1",
+    );
   });
 
-  it("stays silent about the columns of the real plan", () => {
+  it("stays silent about the real plan", () => {
     expect(codes(parsed.warnings)).toEqual([]);
   });
 });
