@@ -160,7 +160,7 @@ describe("ExamSchedule", () => {
 
   describe("for a course the plan does not list", () => {
     it.each([
-      ["a ready plan", undefined],
+      ["a ready plan", { status: "ready", plan: mockData.examSchedule }],
       ["a loading plan", { status: "loading", plan: null }],
       ["no plan", { status: "none", plan: null }],
       ["a failed plan", { status: "error", plan: null }],
