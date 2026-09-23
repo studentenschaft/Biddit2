@@ -168,7 +168,7 @@ describe("examCalendarEventsSelector", () => {
       backgroundColor: "#FFFFFF",
       borderColor: EXAM_COLOR,
       textColor: EXAM_COLOR,
-      classNames: ["!border-2"],
+      classNames: ["exam-block", "!border-2"],
     });
   });
 
@@ -201,6 +201,9 @@ describe("examCalendarEventsSelector", () => {
         backgroundColor: "#FFFFFF",
         borderColor: EXAM_COLLISION_COLOR,
         textColor: EXAM_COLLISION_COLOR,
+        // Dashed as well as red: on a phone the words are cut off, and red
+        // against green is the pair colour-vision deficiencies confuse most.
+        classNames: ["exam-block", "!border-2", "!border-dashed"],
       });
     });
     expect(events.find((e) => e.id === "ot-micro").conflictsWith).toEqual([

@@ -101,8 +101,8 @@ export const examCalendarEventsSelector = selectorFamily({
 
       return plannedExams.map(({ exam, name }) => {
         const conflictsWith = clashesById.get(exam.id) ?? [];
-        const accent =
-          conflictsWith.length > 0 ? EXAM_COLLISION_COLOR : EXAM_COLOR;
+        const clashing = conflictsWith.length > 0;
+        const accent = clashing ? EXAM_COLLISION_COLOR : EXAM_COLOR;
         return {
           id: exam.id,
           title: name,
@@ -118,13 +118,20 @@ export const examCalendarEventsSelector = selectorFamily({
           examMeta: formatExamMeta(exam),
           conflictsWith,
           // Outlined rather than filled: a filled hsg-900 block sat 1.32:1 in
-          // lightness from the enrolled-lecture green. The border width is a
-          // class because FullCalendar only takes colours per event, and it is
-          // important because FullCalendar's own stylesheet loads after ours.
+          // lightness from the enrolled-lecture green. A clash is dashed as
+          // well as red — a phone cuts its words off, and red against green is
+          // the pair colour-vision deficiencies confuse most. Border width and
+          // style are classes because FullCalendar only takes colours per
+          // event, important because its own stylesheet loads after ours;
+          // `exam-block` carries the focus style in calendar.css.
           backgroundColor: "#FFFFFF",
           borderColor: accent,
           textColor: accent,
-          classNames: ["!border-2"],
+          classNames: [
+            "exam-block",
+            "!border-2",
+            ...(clashing ? ["!border-dashed"] : []),
+          ],
         };
       });
     },

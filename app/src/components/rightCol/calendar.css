@@ -33,3 +33,12 @@ td {
   color: #1f2937;
   font-size: 0.9rem;
 }
+
+/* FullCalendar greys a focused event with an overlay; on an exam block's white
+   fill that drops the text to about 2.6:1. The overlay goes, and a ring marks
+   focus instead. */
+.fc-event.exam-block:focus::after {
+  background: none;
+  outline: 2px solid #1f2937;
+  outline-offset: 2px;
+}

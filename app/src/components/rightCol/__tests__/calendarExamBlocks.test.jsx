@@ -2,7 +2,7 @@
  * Exam blocks as the student meets them: the real selectors, the real
  * FullCalendar and the real tooltip, with only the store seeded. What is
  * pinned is what a block looks like (an exam is an outline that leads with its
- * badge and start time and says so when it clashes; a lecture is unchanged)
+ * start time and says so when it clashes; a lecture is unchanged)
  * and what the tooltip tells a keyboard user as well as a mouse user.
  *
  * The calendar opens on today, so every test first takes the "Exams" jump to
@@ -128,24 +128,32 @@ const renderExamWeek = async () => {
 
 /** The FullCalendar event element that carries a course's block. */
 const block = (title) => screen.getByText(title).closest(".fc-event");
+/** FullCalendar applies an event's `textColor` to this inner element. */
+const textColor = (element) =>
+  element.querySelector(".fc-event-main").style.color;
 
 describe("Calendar exam blocks", () => {
-  it("draws an exam as an outline that leads with its badge and start time", async () => {
+  it("draws an exam as an outline that leads with its start time", async () => {
     await renderExamWeek();
     const ops = block("Operations Management");
 
     expect(ops.style.backgroundColor).toBe("rgb(255, 255, 255)");
     expect(ops.style.borderColor).toBe("rgb(0, 82, 30)");
-    expect(ops).toHaveClass("!border-2");
-    // First line, so it is still there when a 60-minute block cuts the rest.
-    expect(ops.textContent).toMatch(/^Exam · 15:15/);
+    expect(textColor(ops)).toBe("rgb(0, 82, 30)");
+    expect(ops).toHaveClass("exam-block", "!border-2");
+    expect(ops).not.toHaveClass("!border-dashed");
+    // The time first, so a narrow block cuts it the way it cuts a lecture's,
+    // and a 60-minute block still has it when the rest is cut off below.
+    expect(ops.textContent).toMatch(/^15:15 · Exam/);
   });
 
-  it("says a clashing exam clashes in words, not only in red", async () => {
+  it("marks a clashing exam by a dashed border and in words, not only in red", async () => {
     await renderExamWeek();
     const micro = block("Microeconomics II");
 
     expect(micro.style.borderColor).toBe("rgb(220, 38, 38)");
+    expect(textColor(micro)).toBe("rgb(220, 38, 38)");
+    expect(micro).toHaveClass("!border-dashed");
     expect(within(micro).getByText("Clash")).toBeInTheDocument();
     expect(within(block("Operations Management")).queryByText("Clash")).toBeNull();
   });

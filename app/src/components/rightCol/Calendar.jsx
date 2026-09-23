@@ -197,8 +197,8 @@ export default function Calendar() {
     }
   };
 
-  // Details shown when tapping an event (the only detail affordance on touch
-  // devices, where the hover tooltip never triggers).
+  // Details shown when tapping an event: the mobile detail view. The tooltip
+  // opens on hover and on keyboard focus, but a tap on a phone gives neither.
   //
   // Mobile only, and gated here rather than with `md:hidden` on the sheet: the
   // sheet is a Headless UI Dialog, so a merely invisible one would still be
@@ -219,23 +219,27 @@ export default function Calendar() {
     });
   };
 
-  // Text inside a block. An exam leads with its badge and start time, the
-  // line a 60-minute block still has room for; a clash says so in words too,
-  // since the red border alone is lost on anyone who cannot tell the colours
-  // apart. The block's colours come with the event (examCalendarEventsSelector).
+  // Text inside a block. An exam leads with its start time, the line a
+  // 60-minute block still has room for, cut on a narrow block the way a
+  // lecture's time is (the outline already says "exam"). Where it fits, a
+  // clash says so in words too; the dashed red border says it at any width.
+  // The block's look comes with the event (examCalendarEventsSelector).
   function renderEventContent(eventInfo) {
     const details = eventInfo.event.extendedProps;
     if (details.entryType === "exam") {
+      // Clipped here, not on the event: a clash's three lines outgrow a
+      // 60-minute block, and clipping the event would also cut off its focus
+      // ring (calendar.css).
       return (
-        <>
+        <div className="h-full overflow-hidden">
           <p className="truncate font-semibold uppercase">
-            Exam · {formatEventTime(eventInfo.event.start)}
+            {formatEventTime(eventInfo.event.start)} · Exam
           </p>
           {details.conflictsWith.length > 0 && (
             <p className="truncate font-bold uppercase">Clash</p>
           )}
           <p className="font-bold truncate">{eventInfo.event.title}</p>
-        </>
+        </div>
       );
     }
     return (
