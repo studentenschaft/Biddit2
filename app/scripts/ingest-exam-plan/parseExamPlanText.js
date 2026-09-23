@@ -35,16 +35,20 @@ const FOOTER_RE =
   /^Kompetenzcenter Planung und Prüfungen\s+(\d{2})\.(\d{2})\.(\d{4})\s+Seite\s+\d+\s+von\s+\d+/gm;
 
 export const TABLE_HEADER_PREFIX = "Datum";
+// A written row's text column opens with a level, never a date, so a date row
+// may be indented any amount.
 const LEADING_DATE_RE = /^\s*(\d{2})\.(\d{2})\.(\d{4})/;
 const SLOT_LABEL_RE =
   /Prüfungsbeginn \(schriftl\.\):\s*(\d{1,2})\.(\d{2})\s*Uhr/g;
 const COURSE_ROOT_RE = /\b\d{1,2},\d{3}\b/;
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
-// The gutter dash sits in column 0 like the dates, and the text column starts
-// at 17. Three columns of indent absorb the drift an indented date row shows;
-// a "- …" line in the text column is a note and must not open a range.
+// On the oral page the gutter's dash and dates sit in column 0, and the text
+// column starts at 17. Three columns of indent absorb the drift an indented
+// date row shows; a "- …" or "dd.mm.yyyy …" line in the text column is a note
+// and must neither open nor close a range.
 const RANGE_DASH_RE = /^ {0,3}-(?=\s|$)/;
+const GUTTER_DATE_RE = /^ {0,3}(\d{2})\.(\d{2})\.(\d{4})/;
 export const ROOT_SEPARATOR = "|";
 export const WEEKDAYS_SOURCE =
   "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
@@ -224,7 +228,7 @@ function parseOralPage(page) {
   for (const [index, line] of page.text.split("\n").entries()) {
     if (matchFooters(line).length > 0) continue;
     const where = `page ${page.number} line ${index + 1}`;
-    const dateMatch = line.match(LEADING_DATE_RE);
+    const dateMatch = line.match(GUTTER_DATE_RE);
     if (dateMatch) {
       const date = calendarDate(...dateMatch.slice(1), where);
       if (openedAt) Object.assign(block, { dateEnd: date, closed: true });
@@ -257,6 +261,13 @@ function parseOralPage(page) {
       // The section label rides on the date row and applies until the next one.
       currentSection = text;
     } else {
+      // A range dash that drifted out of the gutter leaves its range unopened,
+      // so the closing date row would open a block of its own.
+      if (text === "-") {
+        throw new Error(
+          `A lone "-" sits outside the date gutter — ${where}: a range dash must start in the first four columns`,
+        );
+      }
       oralNotes.push({ block, section: currentSection, text });
     }
   }

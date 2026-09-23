@@ -469,6 +469,42 @@ Samstag /        7,421 Datenschutzrecht
     );
   });
 
+  it("throws on a lone '-' that drifted out of the date gutter", () => {
+    // Read as a note, it would leave the range unopened, and its closing
+    // date row would open a block of its own.
+    const drifted = oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+    -
+06.02.2027
+Saturday         7,436 Internationale Schiedsgerichtsbarkeit`);
+    expect(() => parseExamPlanText(drifted)).toThrow(
+      'A lone "-" sits outside the date gutter — page 2 line 4',
+    );
+  });
+
+  it("reads a date in the text column as a note, not as a date row", () => {
+    // Taken for a date row, it would open a block and move the exams below
+    // it to that date.
+    const { oral, oralNotes } = parseExamPlanText(
+      oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+                 06.02.2027: Ersatztermin / make-up date
+Saturday         7,436 Internationale Schiedsgerichtsbarkeit`),
+    );
+    expect(oral.map(range)).toEqual([
+      "2027-01-30 … 2027-01-30",
+      "2027-01-30 … 2027-01-30",
+    ]);
+    expect(oralNotes).toEqual([
+      {
+        dateStart: "2027-01-30",
+        dateEnd: "2027-01-30",
+        section: "Ordentliche Prüfungstermine / Regular examination dates",
+        text: "06.02.2027: Ersatztermin / make-up date",
+      },
+    ]);
+  });
+
   it("throws when a closed range is opened again", () => {
     // Allowed, the next block's date row would silently extend this one.
     const reopened = oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
