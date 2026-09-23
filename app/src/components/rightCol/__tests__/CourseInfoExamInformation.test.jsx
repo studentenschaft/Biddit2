@@ -5,7 +5,8 @@
  *
  * A projected semester (HS27) reuses its reference semester's cisId, so the
  * course's semester found by reverse cisId lookup can be HS26 while the
- * student is looking at HS27 — whose catalog is borrowed from HS26.
+ * student is looking at HS27 — whose catalog is borrowed from HS26 — or while
+ * the curriculum map opened the course from an HS27 card.
  */
 
 import { render, screen } from "@testing-library/react";
@@ -13,6 +14,7 @@ import { Suspense } from "react";
 import { RecoilRoot } from "recoil";
 import { describe, expect, it } from "vitest";
 import { mockData } from "../../../test/mocks/handlers";
+import { courseDetailsSemesterAtom } from "../../recoil/courseDetailsSemesterAtom";
 import { examPlanState } from "../../recoil/examScheduleAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import CourseInfo from "../CourseInfo";
@@ -33,7 +35,10 @@ const MICRO = {
   },
 };
 
-const renderCourseInfo = (course, { selectedSemester = "HS26" } = {}) =>
+const renderCourseInfo = (
+  course,
+  { selectedSemester = "HS26", openedFor = null } = {},
+) =>
   render(
     <RecoilRoot
       initializeState={({ set }) => {
@@ -56,6 +61,7 @@ const renderCourseInfo = (course, { selectedSemester = "HS26" } = {}) =>
           status: "ready",
           plan: mockData.examSchedule,
         });
+        set(courseDetailsSemesterAtom, openedFor);
       }}
     >
       <Suspense fallback={null}>
@@ -91,6 +97,19 @@ describe("CourseInfo exam information", () => {
     expect(
       await screen.findByText("Decentral exam — scheduled by the lecturer."),
     ).toBeInTheDocument();
+  });
+
+  it("shows no exam dates for a course the map opened from an HS27 card", async () => {
+    renderCourseInfo(MICRO, { openedFor: "HS27" });
+
+    await screen.findByText("Exam Information");
+    expect(screen.queryByText("Mon 18.01.2027")).not.toBeInTheDocument();
+  });
+
+  it("shows the exam dates for a course the map opened from an HS26 card", async () => {
+    renderCourseInfo(MICRO, { openedFor: "HS26" });
+
+    expect(await screen.findByText("Mon 18.01.2027")).toBeInTheDocument();
   });
 
   it("does not call a missing course sheet missing exam information", async () => {

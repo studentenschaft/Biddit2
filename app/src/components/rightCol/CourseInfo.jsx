@@ -12,6 +12,7 @@ import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
 import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
 import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
 import ExamSchedule from "./ExamSchedule.jsx";
+import { courseDetailsSemesterAtom } from "../recoil/courseDetailsSemesterAtom";
 
 // Unified course data
 import {
@@ -33,6 +34,7 @@ export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
+  const openedForSemester = useRecoilValue(courseDetailsSemesterAtom);
   const authToken = useRecoilValue(authTokenState);
   const [examinationIdState, setExaminationIdState] = useRecoilState(
     examinationTypesState
@@ -366,13 +368,16 @@ export default function CourseInfo() {
               Exam Information
             </h2>
             {/* A projected semester reuses its reference's cisId, so the
-                lookup above can name HS26 while HS27 is on screen. Exam dates
-                are judged on the semester the student is looking at; any
+                lookup above can name HS26 while HS27 is on screen, or while
+                the map opened the course from an HS27 card. Exam dates are
+                judged on the semester the student is looking at; any
                 mismatch shows none. */}
             <ExamSchedule
               course={selectedCourse}
               semester={
-                semesterAbbreviation === selectedSemester
+                semesterAbbreviation === selectedSemester &&
+                (openedForSemester === null ||
+                  openedForSemester === selectedSemester)
                   ? semesterAbbreviation
                   : null
               }
