@@ -19,7 +19,7 @@ import {
   within,
 } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { examPlanState } from "../../recoil/examScheduleAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import Calendar from "../Calendar";
@@ -225,5 +225,64 @@ describe("Calendar event tooltip", () => {
     fireEvent.keyDown(window, { key: "Escape" });
 
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
+  });
+});
+
+/**
+ * One detail view per viewport. A tap on a phone fires mouseover and focus as
+ * well as click, and the blocks are focusable, so without a gate the tooltip
+ * would open on top of the event sheet (and reopen when the sheet hands focus
+ * back). Below md the sheet is the only detail view.
+ */
+describe("Calendar event details on a phone", () => {
+  const originalMatchMedia = window.matchMedia;
+  afterEach(() => {
+    window.matchMedia = originalMatchMedia;
+  });
+
+  /** A 390px viewport, answered the way a browser answers matchMedia. */
+  const onAPhone = () => {
+    window.matchMedia = (query) => ({
+      matches: query === "(max-width: 767px)",
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    });
+  };
+
+  /** Long enough for the tooltip to have opened: it shows 10ms after its trigger. */
+  const settle = () =>
+    act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+  // Also stands for the focus the sheet hands back to the block on closing.
+  it("does not open the tooltip on the mouseover and focus a tap fires", async () => {
+    onAPhone();
+    await renderExamWeek();
+    const micro = block("Microeconomics II");
+
+    fireEvent.mouseOver(micro);
+    act(() => micro.focus());
+    await settle();
+
+    expect(screen.queryByRole("tooltip")).toBeNull();
+  });
+
+  it("opens the sheet on a tap", async () => {
+    onAPhone();
+    await renderExamWeek();
+    const micro = block("Microeconomics II");
+
+    act(() => micro.focus());
+    fireEvent.click(micro);
+    // Only the Dialog's own tick: a longer wait lets FullCalendar 6.0.3 redraw
+    // through react-dom/test-utils' deprecated act(), which warns.
+    await act(async () => {});
+
+    const sheet = screen.getByTestId("calendar-event-sheet-panel");
+    expect(
+      within(sheet).getByText("Mon 18.01.2027, 09:15 - 10:45"),
+    ).toBeInTheDocument();
   });
 });

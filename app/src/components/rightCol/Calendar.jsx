@@ -21,8 +21,9 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 import CalendarEventSheet from "./CalendarEventSheet";
 
-// The event sheet is the touch-only stand-in for the hover tooltip, so it is
-// gated to the same breakpoint the mobile layout uses (Tailwind md = 768px).
+// One detail view per viewport, split at the breakpoint the mobile layout uses
+// (Tailwind md = 768px): below it a tapped event opens the event sheet, from it
+// up the tooltip shows on hover and keyboard focus.
 import { isMobileViewport } from "../helpers/isMobileViewport";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
@@ -197,8 +198,8 @@ export default function Calendar() {
     }
   };
 
-  // Details shown when tapping an event: the mobile detail view. The tooltip
-  // opens on hover and on keyboard focus, but a tap on a phone gives neither.
+  // Details shown when an event is tapped: the mobile detail view, and the only
+  // one below md (the tooltip stands down there, see its render).
   //
   // Mobile only, and gated here rather than with `md:hidden` on the sheet: the
   // sheet is a Headless UI Dialog, so a merely invisible one would still be
@@ -352,6 +353,11 @@ export default function Calendar() {
         // focus (WCAG 1.4.13).
         globalCloseEvents={{ escape: true }}
         render={({ content, activeAnchor }) => {
+          // A tap on a phone also fires mouseover and focus on the block, and
+          // the sheet hands focus back to it on closing, so below md the
+          // tooltip would open on top of the sheet. Asked as it is about to
+          // show, like the sheet's own check at click time.
+          if (isMobileViewport()) return null;
           const attr = (name) => activeAnchor?.getAttribute(name);
           const conflictList = JSON.parse(attr("data-conflicts-with") || "[]");
           const isExam = attr("data-entry-type") === "exam";
