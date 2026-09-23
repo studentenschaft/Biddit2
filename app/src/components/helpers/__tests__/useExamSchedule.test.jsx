@@ -62,10 +62,11 @@ describe("useExamSchedule", () => {
     );
   });
 
-  it("treats an unknown schemaVersion as missing", async () => {
+  it("treats a schemaVersion it does not read, like the old 1, as missing", async () => {
+    // Schema 1 dated oral exams with a single day that was really a range.
     server.use(
       http.get("*/exams/HS26.json", () =>
-        HttpResponse.json({ schemaVersion: 99, written: [], oral: [] }),
+        HttpResponse.json({ schemaVersion: 1, written: [], oral: [] }),
       ),
     );
 

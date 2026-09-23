@@ -5,7 +5,7 @@ import { semesterMetadataSelector } from "../recoil/unifiedCourseDataSelectors";
 
 // Bumped by the ingestion pipeline when the artifact shape changes; a plan we
 // do not understand is treated as absent rather than rendered half-blind.
-const SUPPORTED_SCHEMA_VERSION = 1;
+const SUPPORTED_SCHEMA_VERSION = 2;
 
 /**
  * Loads the ingested exam plan for a semester, once per session.

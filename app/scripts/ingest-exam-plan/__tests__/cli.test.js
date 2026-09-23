@@ -51,7 +51,7 @@ describe("cli", () => {
     const shrunk = ingest(TWO_EXAMS);
     expect(shrunk.status).toBe(1);
     expect(shrunk.stderr).toBe(
-      `Nothing written: exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.
+      `Nothing written: 1 exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.
   OT-2027-01-18-0915-3,202
 `,
     );

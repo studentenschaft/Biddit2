@@ -2,10 +2,10 @@
  * Turns the `pdftotext -layout` rendering of an HSG exam plan into a structured
  * ParsedPlan. Pure: no fs, no clock, no process.
  *
- * The layout is a table with one column per written start time: two, or one on
- * a page of morning exams only. The columns move from page to page and a
- * guessed time would be silently wrong, so the times and their columns are read
- * off the page's own table header.
+ * The layout is a table with one column per written start time: two, or one
+ * when a page prints a single start time. The columns move from page to page
+ * and a guessed time would be silently wrong, so the times and their columns
+ * are read off the page's own table header.
  */
 
 export const PAGE_KIND = {
@@ -41,6 +41,7 @@ const SLOT_LABEL_RE =
 const COURSE_ROOT_RE = /\b\d{1,2},\d{3}\b/;
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
+const RANGE_DASH_RE = /^\s*-(?=\s|$)/;
 export const ROOT_SEPARATOR = "|";
 export const WEEKDAYS_SOURCE =
   "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
@@ -140,7 +141,7 @@ const splitRoots = (roots) =>
   roots.split(ROOT_SEPARATOR).map((root) => root.trim());
 
 function stripGutter(line) {
-  const withoutDash = line.trimStart().replace(/^-\s*/, "");
+  const withoutDash = line.replace(RANGE_DASH_RE, "").trimStart();
   return withoutDash.replace(WEEKDAY_GUTTER_RE, "").trim();
 }
 
@@ -203,29 +204,42 @@ function parseWrittenPage(page) {
   return exams;
 }
 
+/**
+ * The oral page is a list of bordered blocks, each opened by a date row. A "-"
+ * in the date gutter means the block runs until the next date row, which then
+ * closes the range instead of opening a block; its text (a section label or a
+ * note) still belongs to the block. The page names no day within a range, so
+ * every exam and note of a block carries the block's whole range.
+ */
 function parseOralPage(page) {
   const oral = [];
   const oralNotes = [];
-  let currentDate = null;
+  let block = null;
+  let openedAt = null; // where the "-" of a range still waiting for its end sits
   let currentSection = null;
 
   for (const [index, line] of page.text.split("\n").entries()) {
     if (matchFooters(line).length > 0) continue;
+    const where = `page ${page.number} line ${index + 1}`;
     const dateMatch = line.match(LEADING_DATE_RE);
     if (dateMatch) {
-      const where = `page ${page.number} line ${index + 1}`;
-      currentDate = calendarDate(...dateMatch.slice(1), where);
+      const date = calendarDate(...dateMatch.slice(1), where);
+      if (openedAt) block.dateEnd = date;
+      else block = { dateStart: date, dateEnd: date };
+      openedAt = null;
+    } else if (block && RANGE_DASH_RE.test(line)) {
+      openedAt = where;
     }
     const text = dateMatch
       ? line.slice(dateMatch[0].length).trim()
       : stripGutter(line);
-    if (!currentDate || !text) continue;
+    if (!block || !text) continue;
 
     const examMatch = text.match(ORAL_EXAM_RE);
     if (examMatch) {
       const [, roots, title] = examMatch;
       oral.push({
-        date: currentDate,
+        block,
         section: currentSection,
         rootNumbers: splitRoots(roots),
         title,
@@ -234,10 +248,21 @@ function parseOralPage(page) {
       // The section label rides on the date row and applies until the next one.
       currentSection = text;
     } else {
-      oralNotes.push({ date: currentDate, section: currentSection, text });
+      oralNotes.push({ block, section: currentSection, text });
     }
   }
-  return { oral, oralNotes };
+  if (openedAt) {
+    throw new Error(
+      `Oral date range is never closed — ${openedAt}: a "-" in the date gutter needs a date row below it`,
+    );
+  }
+  // A block's end is only known once its closing row has been read.
+  const dated = ({ block: { dateStart, dateEnd }, ...row }) => ({
+    dateStart,
+    dateEnd,
+    ...row,
+  });
+  return { oral: oral.map(dated), oralNotes: oralNotes.map(dated) };
 }
 
 const toPeriod = ([startDay, startMonth, endDay, endMonth, year], where) => ({

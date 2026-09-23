@@ -24,6 +24,14 @@ const formatExamDate = (isoDay) => {
   return weekday ? `${weekday} ${formatted}` : formatted;
 };
 
+// Oral exams are published as a range, not a day ("Sat 30.01. – Sat
+// 06.02.2027"); the start leaves the year to the end, as an oral period never
+// spans New Year.
+const formatOralDates = ({ dateStart, dateEnd }) =>
+  dateStart === dateEnd
+    ? formatExamDate(dateStart)
+    : `${formatExamDate(dateStart).replace(/\d{4}$/, "")} – ${formatExamDate(dateEnd)}`;
+
 export default function ExamSchedule({ course, semester }) {
   // The hook itself refuses borrowed catalogs, so this is the whole gate.
   const schedule = useExamSchedule(semester);
@@ -80,7 +88,7 @@ export default function ExamSchedule({ course, semester }) {
       ))}
       {oral.map((exam) => (
         <div key={exam.id} className="flex flex-wrap items-baseline gap-x-2">
-          <span className="font-semibold">{formatExamDate(exam.date)}</span>
+          <span className="font-semibold">{formatOralDates(exam)}</span>
           <span>Oral exam — individual time published in Compass</span>
         </div>
       ))}

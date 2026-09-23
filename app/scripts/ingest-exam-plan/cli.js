@@ -93,7 +93,7 @@ function refuseRemovals(out, plan) {
   if (removed.length > 0) {
     throw Object.assign(
       new Error(
-        `Nothing written: exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.`,
+        `Nothing written: ${removed.length} exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.`,
       ),
       { missingIds: removed },
     );

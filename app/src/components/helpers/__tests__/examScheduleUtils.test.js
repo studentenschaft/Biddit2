@@ -98,7 +98,14 @@ const COLLIDING_PLAN = {
     slotted("ot-ops", ["3,140"], MORNING, AFTERNOON_SLOT),
     slotted("at-lang", ["3,802", "4,802"], MORNING, SLOT, "AT"),
   ],
-  oral: [{ id: "oral-privacy", rootNumbers: ["7,421"], date: MORNING }],
+  oral: [
+    {
+      id: "oral-privacy",
+      rootNumbers: ["7,421"],
+      dateStart: MORNING,
+      dateEnd: MORNING,
+    },
+  ],
 };
 
 const course = (courseNumber, shortName) => ({ courseNumber, shortName });

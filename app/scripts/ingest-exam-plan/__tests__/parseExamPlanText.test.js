@@ -372,15 +372,21 @@ ${TABLE_HEADER}
 
 describe("parseExamPlanText — oral page", () => {
   const parsed = parseExamPlanText(plan);
+  const range = (item) => `${item.dateStart} … ${item.dateEnd}`;
 
-  it("reads the dated oral exams", () => {
+  it("dates the oral exams with their block's whole range", () => {
+    // The page prints "30.01.2027 … - … 06.02.2027" and no day within it.
     expect(parsed.oral).toHaveLength(3);
     expect(parsed.oral[0]).toEqual({
-      date: "2027-01-30",
+      dateStart: "2027-01-30",
+      dateEnd: "2027-02-06",
       section: "Ordentliche Prüfungstermine / Regular examination dates",
       rootNumbers: ["7,421"],
       title: "Datenschutzrecht",
     });
+    expect(new Set(parsed.oral.map(range))).toEqual(
+      new Set(["2027-01-30 … 2027-02-06"]),
+    );
   });
 
   it("strips the dash and weekday gutter from the exam rows", () => {
@@ -396,22 +402,30 @@ describe("parseExamPlanText — oral page", () => {
     expect(parsed.oralNotes[0].text).toMatch(/^Die individuellen mündlichen/);
   });
 
-  it("tells the two 08.02. blocks apart by their section", () => {
-    const sections = new Set(
-      parsed.oralNotes
-        .filter((note) => note.date === "2027-02-08")
-        .map((note) => note.section),
+  it("files the rows at a range's closing date under the whole block", () => {
+    // One entry per block: the closing row's text (Sprachen) relabels the
+    // block's notes, and a bare closing row (13.02., 20.02.) keeps the label.
+    const blocks = new Set(
+      parsed.oralNotes.map((note) => `${range(note)} ${note.section}`),
     );
-    expect([...sections]).toEqual([
-      "Ordentliche Prüfungstermine / Regular examination dates",
-      "Ausserordentliche Prüfungstermine / Alternative examination dates",
+    expect([...blocks]).toEqual([
+      "2027-01-30 … 2027-02-06 Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
+      "2027-02-08 … 2027-02-13 Ordentliche Prüfungstermine / Regular examination dates",
+      "2027-02-08 … 2027-02-20 Ausserordentliche Prüfungstermine / Alternative examination dates",
     ]);
   });
 
-  it("carries the section forward to a date row that has none", () => {
-    const notes = parsed.oralNotes.filter((note) => note.date === "2027-02-20");
-    expect(notes[0].section).toBe(
-      "Ausserordentliche Prüfungstermine / Alternative examination dates",
+  it("throws when a range is never closed", () => {
+    const unclosed = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+\fMündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
+30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+-                7,436 Internationale Schiedsgerichtsbarkeit
+`;
+    expect(() => parseExamPlanText(unclosed)).toThrow(
+      "Oral date range is never closed — page 2 line 4",
     );
   });
 

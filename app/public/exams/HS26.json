@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "semester": "HS26",
   "sourceTermLabel": "Winter 2027",
   "examPeriod": {
@@ -2550,7 +2550,8 @@
   "oral": [
     {
       "id": "ORAL-2027-01-30-7,421",
-      "date": "2027-01-30",
+      "dateStart": "2027-01-30",
+      "dateEnd": "2027-02-06",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,421"
@@ -2559,7 +2560,8 @@
     },
     {
       "id": "ORAL-2027-01-30-7,436",
-      "date": "2027-01-30",
+      "dateStart": "2027-01-30",
+      "dateEnd": "2027-02-06",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,436"
@@ -2568,7 +2570,8 @@
     },
     {
       "id": "ORAL-2027-01-30-7,702",
-      "date": "2027-01-30",
+      "dateStart": "2027-01-30",
+      "dateEnd": "2027-02-06",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,702"
@@ -2578,62 +2581,74 @@
   ],
   "oralNotes": [
     {
-      "date": "2027-02-06",
+      "dateStart": "2027-01-30",
+      "dateEnd": "2027-02-06",
       "section": "Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
       "text": "Die individuellen mündlichen Prüfungstermine (inkl. Raumzuteilung) sind am Ende der KW 50 in Compass abrufbar."
     },
     {
-      "date": "2027-02-06",
+      "dateStart": "2027-01-30",
+      "dateEnd": "2027-02-06",
       "section": "Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
       "text": "The individual oral exam dates (incl. Room allocation) are available in Compass at the end of CW 50."
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-13",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "text": "AJ: KuSo B: Soziologie / Geschichte / Psychologie / Philosophie"
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-13",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "text": "AJ: CuSo B: Sociology / History / Psychology / Philosophy"
     },
     {
-      "date": "2027-02-13",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-13",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "text": "Die individuellen mündlichen Prüfungstermine von KuSo B (inkl. Raumzuteilung) sind am Ende der KW 50 in StudyNet abrufbar."
     },
     {
-      "date": "2027-02-13",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-13",
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "text": "The dates for individual oral examinations of CuSo B (incl. Room allocation) will be available in StudyNet at the end of CW 50."
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "AJ KuSo B: Die individuellen Prüfungstermine sind am Ende der KW 50 in StudyNet abrufbar."
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "AJ CuSo B: The individual exam dates will be available in StudyNet at the end of CW 50."
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "BA/MA: Mündliche ausserordentliche Prüfungstermine ohne Prüfungsformänderung werden Ende KW 50 in Compass publiziert."
     },
     {
-      "date": "2027-02-08",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "BA/MA: Oral alternative examination dates without change of examination form will be published in Compass at the end of CW 50."
     },
     {
-      "date": "2027-02-20",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "AJ/BA/MA: Ausserordentliche Prüfungstermine mit Prüfungsformänderung (schriftlich zu mündlich) werden durch die Dozierenden organisiert."
     },
     {
-      "date": "2027-02-20",
+      "dateStart": "2027-02-08",
+      "dateEnd": "2027-02-20",
       "section": "Ausserordentliche Prüfungstermine / Alternative examination dates",
       "text": "AJ/BA/MA: Alternative examination dates with change of examination form (written to oral) are organised by the lecturers."
     }

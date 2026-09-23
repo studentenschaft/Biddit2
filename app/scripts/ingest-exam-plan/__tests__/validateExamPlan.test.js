@@ -74,6 +74,27 @@ ${TWO_SLOT_ROW}
     ).toContain("E_DATE_OUT_OF_PERIOD");
   });
 
+  it("E_DATE_OUT_OF_PERIOD for an oral range outside the oral exam period", () => {
+    expect(
+      validateBroken((plan) => {
+        plan.oral[0].dateEnd = "2027-02-21";
+      }),
+    ).toEqual(["E_DATE_OUT_OF_PERIOD"]);
+    expect(
+      validateBroken((plan) => {
+        plan.oralNotes[0].dateStart = "2027-01-29";
+      }),
+    ).toEqual(["E_DATE_OUT_OF_PERIOD"]);
+  });
+
+  it("E_DATE_OUT_OF_PERIOD for an oral range that runs backwards", () => {
+    expect(
+      validateBroken((plan) => {
+        plan.oral[0].dateStart = "2027-02-10";
+      }),
+    ).toEqual(["E_DATE_OUT_OF_PERIOD"]);
+  });
+
   it("E_DUPLICATE_EXAM when the same exam appears twice", () => {
     expect(
       validateBroken((plan) => {

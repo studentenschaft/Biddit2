@@ -6,7 +6,7 @@
 import { ROOT_SEPARATOR } from "./parseExamPlanText.js";
 import { toZurichIso } from "./zurichTime.js";
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 const TERM_LABEL_RE = /\b(Winter|Sommer|Summer)\s+(\d{4})\b/;
 
@@ -32,7 +32,7 @@ const byKey = (key) => (a, b) =>
 
 const writtenSortKey = (exam) =>
   `${exam.date} ${exam.slot} ${exam.rootNumbers[0]} ${exam.termType}`;
-const oralSortKey = (exam) => `${exam.date} ${exam.rootNumbers[0]}`;
+const oralSortKey = (exam) => `${exam.dateStart} ${exam.rootNumbers[0]}`;
 
 function toWrittenExam(entry) {
   const exam = {
@@ -54,8 +54,9 @@ function toWrittenExam(entry) {
 }
 
 const toOralExam = (entry) => ({
-  id: `ORAL-${entry.date}-${entry.rootNumbers.join(ROOT_SEPARATOR)}`,
-  date: entry.date,
+  id: `ORAL-${entry.dateStart}-${entry.rootNumbers.join(ROOT_SEPARATOR)}`,
+  dateStart: entry.dateStart,
+  dateEnd: entry.dateEnd,
   section: entry.section,
   rootNumbers: entry.rootNumbers,
   title: entry.title,

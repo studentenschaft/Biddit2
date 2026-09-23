@@ -19,7 +19,7 @@ const SEMESTER = "HS26";
 const SLOT = { date: "2027-01-18", slot: "09:15", termType: "OT" };
 
 const PLAN = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   written: [
     { id: "ot-micro", rootNumbers: ["3,200"], ...SLOT },
     { id: "ot-causal", rootNumbers: ["7,850"], ...SLOT },

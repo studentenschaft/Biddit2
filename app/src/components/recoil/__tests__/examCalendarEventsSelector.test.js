@@ -22,7 +22,7 @@ import { unifiedCourseDataState } from "../unifiedCourseDataAtom";
 const SEMESTER = "HS26";
 
 const PLAN = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   written: [
     {
       id: "ot-micro",
@@ -70,7 +70,8 @@ const PLAN = {
   oral: [
     {
       id: "oral-privacy",
-      date: "2027-01-30",
+      dateStart: "2027-01-30",
+      dateEnd: "2027-02-06",
       rootNumbers: ["7,421"],
       title: "Datenschutzrecht",
     },

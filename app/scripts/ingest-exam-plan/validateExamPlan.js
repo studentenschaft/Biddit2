@@ -113,6 +113,17 @@ function checkWrittenExam(exam, plan, fail) {
   }
 }
 
+/** Oral exams and notes carry the date range of their block on the oral page. */
+function checkOralRange({ dateStart, dateEnd }, period, where, fail) {
+  if (!(period.start <= dateStart && dateStart <= dateEnd && dateEnd <= period.end)) {
+    fail(
+      "E_DATE_OUT_OF_PERIOD",
+      "Oral date range runs backwards or leaves the oral exam period",
+      `${where}: ${dateStart} … ${dateEnd}`,
+    );
+  }
+}
+
 function checkDuplicates(exams, fail) {
   // The id carries term type, date, slot and roots: a two-part exam
   // legitimately puts the same root on two dates, but the same id twice is a
@@ -145,24 +156,20 @@ export function validateExamPlan(plan, rawText) {
   for (const exam of plan.written) checkWrittenExam(exam, plan, fail);
   checkDuplicates([...plan.written, ...plan.oral], fail);
 
-  // An oral exam implies an oral page, whose period the parser insists on.
+  // An oral row implies an oral page, whose period the parser insists on.
   for (const exam of plan.oral) {
-    if (
-      exam.date < plan.oralExamPeriod.start ||
-      exam.date > plan.oralExamPeriod.end
-    ) {
-      fail("E_DATE_OUT_OF_PERIOD", "Oral exam lies outside the oral exam period", exam.id);
-    }
+    checkOralRange(exam, plan.oralExamPeriod, exam.id, fail);
     if (!exam.title) fail("E_TITLE_EMPTY", "Oral exam title is empty", exam.id);
   }
   // Nothing counts oral rows, so a row the parser did not recognise as an exam
   // would otherwise sit among the notes unnoticed.
   for (const note of plan.oralNotes) {
+    checkOralRange(note, plan.oralExamPeriod, note.text, fail);
     if (COURSE_NUMBER_RE.test(note.text)) {
       fail(
         "E_ORAL_EXAM_IN_NOTE",
         "An oral note names a course number — its exam row was not recognised",
-        `${note.date}: ${note.text}`,
+        `${note.dateStart}: ${note.text}`,
       );
     }
   }

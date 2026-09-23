@@ -150,7 +150,7 @@ const mockData = {
   // Covers the shapes the UI branches on: OT, AT, BYOD, cross-listed roots,
   // oral, and two OT exams sharing a (date, slot) so collisions have real data.
   examSchedule: {
-    schemaVersion: 1,
+    schemaVersion: 2,
     semester: "HS26",
     sourceTermLabel: "Winter 2027",
     examPeriod: { start: "2027-01-18", end: "2027-02-20" },
@@ -223,7 +223,8 @@ const mockData = {
     oral: [
       {
         id: "ORAL-2027-01-30-7,421",
-        date: "2027-01-30",
+        dateStart: "2027-01-30",
+        dateEnd: "2027-02-06",
         section: "Ordentliche Prüfungstermine / Regular examination dates",
         rootNumbers: ["7,421"],
         title: "Datenschutzrecht",

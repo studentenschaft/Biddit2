@@ -4,8 +4,11 @@
  */
 
 import { render, screen, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { mockData } from "../../../test/mocks/handlers";
+import { server } from "../../../test/mocks/server";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import ExamSchedule from "../ExamSchedule";
 
@@ -90,13 +93,30 @@ describe("ExamSchedule", () => {
     expect(screen.queryByText("digital (BYOD)")).not.toBeInTheDocument();
   });
 
-  it("points oral exams at Compass instead of inventing a time", async () => {
+  it("shows an oral exam's date range and points at Compass for the day", async () => {
     renderSchedule(courseNumbered("7,421,1.00"));
 
-    expect(await screen.findByText("Sat 30.01.2027")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Sat 30.01. – Sat 06.02.2027"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText("Oral exam — individual time published in Compass"),
     ).toBeInTheDocument();
+  });
+
+  it("shows a one-day oral block as a plain date", async () => {
+    const [oral] = mockData.examSchedule.oral;
+    server.use(
+      http.get("*/exams/HS26.json", () =>
+        HttpResponse.json({
+          ...mockData.examSchedule,
+          oral: [{ ...oral, dateEnd: oral.dateStart }],
+        }),
+      ),
+    );
+    renderSchedule(courseNumbered("7,421,1.00"));
+
+    expect(await screen.findByText("Sat 30.01.2027")).toBeInTheDocument();
   });
 
   it("says a decentral-only course is the lecturer's to schedule", () => {
