@@ -1,4 +1,4 @@
-# ADR 0007: Exam schedules are ingested offline into a per-semester JSON file
+# ADR 0010: Exam schedules are ingested offline into a per-semester JSON file
 
 - **Status:** Accepted
 - **Date:** 2026-08-27

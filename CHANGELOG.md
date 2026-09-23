@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Details exam block, naming the clashing courses. Only ordinary-date (OT)
   written exams warn — alternative dates are provisional and oral exams have
   no times. All exam-date surfaces now carry an "extracted automatically —
-  indicative only" disclaimer. Rationale in ADR 0009.
+  indicative only" disclaimer. Rationale in ADR 0012.
 - Exam dates in Course Details. The "Exam Information" section now shows the
   central exam date, time, duration and a BYOD badge for the selected course,
   read from the ingested `public/exams/<SEMESTER>.json`. Courses are joined to
@@ -34,14 +34,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one; oral exams point at Compass for the individual slot; decentral-only
   courses say the lecturer schedules them. A missing or unrecognised artifact
   renders nothing rather than an error, and courses borrowed from a reference
-  semester never show dates at all. Rationale in ADR 0008.
+  semester never show dates at all. Rationale in ADR 0011.
 - Offline exam-schedule ingestion (`npm run ingest:exams`): converts the HSG
   central exam-plan PDF into a validated `app/public/exams/<SEMESTER>.json`.
   Ships `public/exams/HS26.json` — 178 written exams over 15 dates plus the
   oral-exam page. Validation gates the write, and a golden-file test pins the
   artifact to a committed `pdftotext` extraction. Nothing in the app reads the
   file yet; display and collision detection follow later. Runbook in
-  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0007.
+  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·

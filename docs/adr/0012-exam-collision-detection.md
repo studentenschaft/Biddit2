@@ -1,11 +1,11 @@
-# ADR 0009: Exam collisions are same-slot groupings of ordinary-date exams
+# ADR 0012: Exam collisions are same-slot groupings of ordinary-date exams
 
 - **Status:** Accepted
 - **Date:** 2026-08-27
 
 ## Context
 
-Phases 0/1 (ADR 0007/0008) put the central exam schedule into the app and onto
+Phases 0/1 (ADR 0010/0011) put the central exam schedule into the app and onto
 the Course Details panel. Phase 2 warns a student when two of *their* courses —
 enrolled or wishlisted — sit exams that cannot both be attended. The exam-plan
 PDF itself tells students they alone are responsible for avoiding such

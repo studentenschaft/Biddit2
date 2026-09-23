@@ -116,7 +116,7 @@ The report prints them on every run as warnings — `W_BYOD_GLYPH_LOST` (BYOD is
 a lower bound), `W_AT_INCOMPLETE` (re-ingest once the full AT plan is
 published) and `W_ORAL_NO_TIMES` (oral slots appear in Compass later; never
 invent a time). The rationale lives in the "Consequences" section of
-`docs/adr/0007-offline-exam-schedule-ingestion.md`.
+`docs/adr/0010-offline-exam-schedule-ingestion.md`.
 
 ## Layout
 
@@ -132,5 +132,5 @@ process. Everything else is pure and unit-tested:
 | `validateAgainstCatalog.js`| advisory two-way diff, never fails the build      |
 | `formatReport.js`          | the plain-text report                             |
 
-See `docs/adr/0007-offline-exam-schedule-ingestion.md` for why it works this
+See `docs/adr/0010-offline-exam-schedule-ingestion.md` for why it works this
 way.

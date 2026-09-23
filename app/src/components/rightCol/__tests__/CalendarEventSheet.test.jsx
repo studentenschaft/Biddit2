@@ -122,7 +122,7 @@ describe("CalendarEventSheet", () => {
 
   /**
    * Exams have no room in the plan and are our own PDF extraction, so the sheet
-   * swaps the room line for the exam facts and always says so (ADR 0009/0010).
+   * swaps the room line for the exam facts and always says so (ADR 0012).
    */
   describe("exam blocks", () => {
     const examEvent = {

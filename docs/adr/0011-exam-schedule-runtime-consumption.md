@@ -1,11 +1,11 @@
-# ADR 0008: The app reads the exam-schedule artifact as a static, fail-open asset
+# ADR 0011: The app reads the exam-schedule artifact as a static, fail-open asset
 
 - **Status:** Accepted
 - **Date:** 2026-08-27
 
 ## Context
 
-ADR 0007 put the HSG central exam plan into the repository as
+ADR 0010 put the HSG central exam plan into the repository as
 `app/public/exams/<SEMESTER>.json`. Nothing read it. This ADR covers Phase 1:
 showing those dates in Course Details. Display only — no overlap detection, no
 calendar events.
@@ -73,7 +73,7 @@ misleading absence.
 
 ## Consequences
 
-- **BYOD is present-or-silent.** ADR 0007 established `byod` as a lower bound,
+- **BYOD is present-or-silent.** ADR 0010 established `byod` as a lower bound,
   so the UI badges a digital exam when the flag is set and says nothing when it
   is not. It must never render "not BYOD".
 - **AT rows are labelled, not hidden.** The alternative-date plan is incomplete

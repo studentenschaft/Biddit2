@@ -1,6 +1,6 @@
 /**
  * Pure lookup into an ingested exam plan (`public/exams/<SEMESTER>.json`,
- * ADR 0007/0008). No React, no I/O — the plan is passed in.
+ * ADR 0010/0011). No React, no I/O — the plan is passed in.
  */
 
 import { getCourseRootKey } from "./courseUtils";
@@ -38,7 +38,7 @@ export function examsForCourse(plan, course) {
  *
  * Two exams collide iff they share a date *and* a slot. Every written exam
  * starts 09:15 or 15:15 and none runs longer than 180', so no morning exam can
- * reach the afternoon slot and interval math would buy nothing — see ADR 0009.
+ * reach the afternoon slot and interval math would buy nothing — see ADR 0012.
  * Only OT (ordinary date) written exams count: AT rows are provisional and only
  * bind students granted the alternative date, and oral exams publish no time.
  *

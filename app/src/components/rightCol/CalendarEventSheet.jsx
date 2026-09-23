@@ -104,7 +104,7 @@ const CalendarEventSheet = ({ event, onClose }) => {
         )}
 
         {/* The dates are extracted from a PDF by us, not published by the
-            university — every exam surface says so (ADR 0009). */}
+            university — every exam surface says so (ADR 0012). */}
         {isExam && (
           <p className="mt-3 text-xs text-gray-500">
             Indicative — verify officially.

@@ -361,7 +361,7 @@ export default function Calendar() {
                   </ul>
                 </div>
               )}
-              {/* The dates come from our own PDF extraction (ADR 0009). */}
+              {/* The dates come from our own PDF extraction (ADR 0012). */}
               {isExam && (
                 <div className="mt-1 text-xs text-gray-400">
                   Indicative — verify officially.

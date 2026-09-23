@@ -14,7 +14,7 @@ import { getCourseRootKey } from "../helpers/courseUtils";
  * race against the catalog fetch that sets `usingReferenceData`, caching a plan
  * for a semester that then turns out to be borrowed. Reading the metadata here
  * makes every consumer re-evaluate the moment the flag flips, so borrowed
- * catalogs never keep exam warnings or blocks (ADR 0008).
+ * catalogs never keep exam warnings or blocks (ADR 0011).
  */
 const renderablePlanSelector = selectorFamily({
   key: "examRenderablePlanSelector",
@@ -32,7 +32,7 @@ const renderablePlanSelector = selectorFamily({
  *
  * Reads the atom only — `useExamSchedule` owns the fetching, so every surface
  * showing these warnings has to mount that hook once at container level, or the
- * atom stays empty and the map is silently empty with it (fail open, ADR 0008).
+ * atom stays empty and the map is silently empty with it (fail open, ADR 0011).
  *
  * The pool is `myCoursesSelector` (enrolled ∪ selected), never the `filtered`
  * view state: a course must not stop warning because a search filter hides it.
@@ -65,10 +65,10 @@ export const EXAM_COLLISION_COLOR = "#DC2626";
  * neither participate in its Union-Find nor come from `calendarEntry` rows.
  * `Calendar.jsx` concatenates the two event sets. Same fail-open contract as
  * `examCollisionsSelector`: this only reads the atom `useExamSchedule` fills,
- * so an unfetched or borrowed semester yields no exam blocks (ADR 0008).
+ * so an unfetched or borrowed semester yields no exam blocks (ADR 0011).
  *
  * OT written exams only — orals publish no time and AT dates are provisional
- * (ADR 0009); fabricating a block for either would be worse than showing none.
+ * (ADR 0012); fabricating a block for either would be worse than showing none.
  *
  * @returns {Array<Object>} FullCalendar events carrying `entryType: "exam"`
  */

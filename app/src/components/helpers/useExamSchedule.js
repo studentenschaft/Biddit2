@@ -12,7 +12,7 @@ const SUPPORTED_SCHEMA_VERSION = 1;
  *
  * Deliberately a plain `fetch` rather than `apiClient`: this is a static asset
  * shipped in `public/`, it carries no auth and it is not SHSG traffic, so the
- * interceptors have nothing to contribute. See ADR 0008.
+ * interceptors have nothing to contribute. See ADR 0011.
  *
  * Borrowed-data gating happens twice, deliberately. Here it mostly avoids a
  * pointless fetch — but the exam fetch can still win the race against the

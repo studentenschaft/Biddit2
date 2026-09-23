@@ -3,7 +3,7 @@
  *
  * What matters here and is not covered by the collision tests: only ordinary
  * written exams become blocks (orals have no time, alternative dates are
- * provisional — ADR 0009), one exam is one block however many of the user's
+ * provisional — ADR 0012), one exam is one block however many of the user's
  * courses sit it, and the collision map's red plus `conflictsWith` is threaded
  * through rather than recomputed.
  */
