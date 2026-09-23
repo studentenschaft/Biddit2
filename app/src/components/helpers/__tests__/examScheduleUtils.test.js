@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   examClashes,
   examsForCourse,
+  formatExamClash,
   formatExamDate,
   formatExamDateRange,
+  formatExamMeta,
+  isPlannedCourse,
   planExams,
 } from "../examScheduleUtils";
 
@@ -95,6 +98,19 @@ const BRAVO = course("3,200,1.00", "Bravo");
 const CHARLIE = course("3,300,1.00", "Charlie");
 const GERMAN_BA = course("3,802,1.00", "German C1");
 const GERMAN_MA = course("4,802,1.00", "German C1");
+
+describe("isPlannedCourse", () => {
+  it("counts a course whose root is among my courses", () => {
+    expect(isPlannedCourse([ALPHA, GERMAN_BA], ALPHA)).toBe(true);
+    expect(isPlannedCourse([ALPHA, GERMAN_BA], ALPHA_EXERCISE)).toBe(true);
+    expect(isPlannedCourse([ALPHA, GERMAN_BA], BRAVO)).toBe(false);
+  });
+
+  it("counts the second listing of a cross-listed exam I planned twice", () => {
+    // planExams names the shared exam after German C1 (BA) alone.
+    expect(isPlannedCourse([GERMAN_BA, GERMAN_MA], GERMAN_MA)).toBe(true);
+  });
+});
 
 describe("planExams", () => {
   const plan = {
@@ -282,6 +298,35 @@ describe("formatExamDateRange", () => {
   it("prints a one-day range as a plain date", () => {
     expect(formatExamDateRange("2027-01-30", "2027-01-30")).toBe(
       "Sat 30.01.2027",
+    );
+  });
+});
+
+describe("formatExamMeta", () => {
+  it("names the duration and a digital exam", () => {
+    expect(formatExamMeta({ durationMin: 120, byod: true })).toBe(
+      "Exam · 120 min · digital (BYOD)",
+    );
+  });
+
+  it("never says an exam is not digital", () => {
+    expect(formatExamMeta({ durationMin: 90 })).toBe("Exam · 90 min");
+    expect(formatExamMeta({ durationMin: 90, byod: false })).toBe(
+      "Exam · 90 min",
+    );
+  });
+});
+
+describe("formatExamClash", () => {
+  it("states a planned course's clash", () => {
+    expect(formatExamClash(["Alpha", "Bravo"], true)).toBe(
+      "Exam clash with: Alpha, Bravo",
+    );
+  });
+
+  it("puts a browsed course's clash in the conditional", () => {
+    expect(formatExamClash(["Alpha", "Bravo"], false)).toBe(
+      "Exam would clash with: Alpha, Bravo",
     );
   });
 });

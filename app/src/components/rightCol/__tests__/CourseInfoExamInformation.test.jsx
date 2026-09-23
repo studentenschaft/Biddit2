@@ -113,8 +113,9 @@ describe("CourseInfo exam information", () => {
   it("renders a course that carries no achievementFormStatus", async () => {
     renderCourseInfo({ ...MICRO, achievementFormStatus: undefined });
 
-    expect(await screen.findByText(/ECTS/)).toHaveTextContent("4.00 ECTS | Core");
-    expect(screen.getByText(/ECTS/)).not.toHaveTextContent(/Central|Decentral/);
+    const header = await screen.findByText(/ECTS/);
+    expect(header).toHaveTextContent("4.00 ECTS | Core");
+    expect(header).not.toHaveTextContent(/Central|Decentral/);
     expect(screen.getByText("Mon 18.01.2027")).toBeInTheDocument();
   });
 });

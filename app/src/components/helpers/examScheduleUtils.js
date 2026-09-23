@@ -39,6 +39,21 @@ export function examsForCourse(plan, course) {
 }
 
 /**
+ * Whether `course` counts as planned: its root is among the roots of the
+ * user's courses. By root rather than by `planExams`' names, so the second
+ * listing of a cross-listed exam the user planned twice is not taken for a
+ * browsed course.
+ *
+ * @param {Array} myCourses - The user's courses for the semester
+ * @param {Object} course - Course object
+ * @returns {boolean}
+ */
+export function isPlannedCourse(myCourses, course) {
+  const rootKey = getCourseRootKey(course);
+  return myCourses.some((mine) => getCourseRootKey(mine) === rootKey);
+}
+
+/**
  * The written exams a set of courses sits, one entry per exam, in plan order.
  * A lecture and its exercise groups share a root, and a cross-listed exam
  * matches several roots, but either way it is one sitting; the first course
@@ -120,3 +135,21 @@ export const formatExamDateRange = (start, end) =>
   start === end
     ? formatExamDate(start)
     : `${day(start).format("ddd DD.MM.")} – ${formatExamDate(end)}`;
+
+/** "Exam · 120 min · digital (BYOD)" — BYOD is present-or-silent. */
+export const formatExamMeta = ({ durationMin, byod }) =>
+  `Exam · ${durationMin} min${byod === true ? " · digital (BYOD)" : ""}`;
+
+/**
+ * "Exam clash with: A, B" for a planned course, "Exam would clash with: A, B"
+ * for one the user is only browsing.
+ */
+export const formatExamClash = (names, planned) =>
+  `Exam ${planned ? "clash" : "would clash"} with: ${names.join(", ")}`;
+
+// The dates come from our own PDF extraction, so every surface that shows an
+// exam date or clash carries one of these.
+export const EXAM_DISCLAIMER_SHORT = "Indicative — verify officially.";
+export const EXAM_DISCLAIMER_LONG =
+  "Extracted automatically from the official PDF — indicative only, " +
+  "always verify against the official exam schedule.";
