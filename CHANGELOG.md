@@ -163,3 +163,13 @@ DebugView). Smoke-check in DebugView on `biddit.app`: exactly one `page_view`
 per navigation, session starts with `page_view` then
 `tab_select { from: null, to: summary }`, `page_location` never contains
 `#code` or `?` on any event, and dev hosts emit nothing.
+
+### Security
+
+- Dependencies updated to close 77 of the 78 open Dependabot alerts: all
+  in-range updates (axios 1.20, vite 6.4.3, rollup, postcss and transitive
+  packages), plus uuid 11, vitest 4 and react-router-dom 7 (v7 wraps
+  navigation updates in `React.startTransition`; no code changes needed).
+  React and React DOM are now declared explicitly (`^18.3.1`) instead of
+  arriving only as peers. The uuid alert stays open until the unused
+  `@azure/msal-node` (which bundles uuid 8) is removed or upgraded.
