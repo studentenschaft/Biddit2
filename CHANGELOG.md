@@ -32,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--allow-removals`. It ships `HS26.json`: 178 written exams on 15 dates (130
   OT) and 3 oral exams, pinned by a golden test. Runbook in
   `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010–0012.
+- CI: a GitHub Actions workflow runs `npm ci`, `npm run lint` and
+  `npx vitest run` in `app/` on every push and pull request.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
