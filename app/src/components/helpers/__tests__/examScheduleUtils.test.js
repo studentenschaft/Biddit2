@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  describeExamClashes,
   examClashes,
   examsForCourse,
   formatExamClash,
@@ -335,6 +336,31 @@ describe("formatExamClash", () => {
     expect(formatExamClash(["Alpha", "Bravo"], false)).toBe(
       "Exam would clash with: Alpha, Bravo",
     );
+  });
+});
+
+describe("describeExamClashes", () => {
+  it("names each clashing course once, in order, however many exams clash", () => {
+    const clashes = new Map([
+      ["ot-a", ["Bravo", "Charlie"]],
+      ["ot-b", ["Charlie", "Delta"]],
+    ]);
+
+    expect(describeExamClashes(clashes, true)).toEqual({
+      names: ["Bravo", "Charlie", "Delta"],
+      label:
+        "Exam clash with: Bravo, Charlie, Delta. Indicative — verify officially.",
+    });
+  });
+
+  it("words a browsed course's label in the conditional", () => {
+    expect(
+      describeExamClashes(new Map([["ot-a", ["Bravo"]]]), false).label,
+    ).toBe("Exam would clash with: Bravo. Indicative — verify officially.");
+  });
+
+  it("says nothing when nothing clashes", () => {
+    expect(describeExamClashes(new Map(), true)).toBeNull();
   });
 });
 

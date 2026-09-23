@@ -22,8 +22,8 @@ import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import {
   EXAM_DISCLAIMER_SHORT,
+  describeExamClashes,
   examClashes,
-  formatExamClash,
   formatPlanSource,
 } from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
@@ -305,12 +305,12 @@ export default function SemesterSummary() {
               {currCourses.map((course, index) => {
                 const conflicts = getConflictsForCourse(course);
                 const hasConflicts = conflicts.length > 0;
-                // Each clashing course is named once, however many exams
-                // clash.
-                const examConflicts = [
-                  ...new Set([...examClashesByCourse[index].values()].flat()),
-                ];
-                const hasExamConflicts = examConflicts.length > 0;
+                // Every course here is the user's, so it clashes, never
+                // "would".
+                const examClash = describeExamClashes(
+                  examClashesByCourse[index],
+                  true
+                );
                 return (
                   <div
                     key={index}
@@ -327,7 +327,7 @@ export default function SemesterSummary() {
                     <div
                       className="text-center"
                       data-tooltip-id={
-                        hasConflicts || hasExamConflicts
+                        hasConflicts || examClash
                           ? "conflict-tooltip"
                           : undefined
                       }
@@ -335,9 +335,7 @@ export default function SemesterSummary() {
                         hasConflicts ? JSON.stringify(conflicts) : undefined
                       }
                       data-exam-conflicts={
-                        hasExamConflicts
-                          ? JSON.stringify(examConflicts)
-                          : undefined
+                        examClash ? JSON.stringify(examClash.names) : undefined
                       }
                     >
                       <div
@@ -363,16 +361,12 @@ export default function SemesterSummary() {
                         {/* The tooltip needs something to hover; the lock's
                             colour already speaks for the lecture side only.
                             heroicons hide their icons from assistive
-                            technology, so this one is exposed. Every course
-                            here is the user's, so it clashes, never "would". */}
-                        {hasExamConflicts && (
+                            technology, so this one is exposed. */}
+                        {examClash && (
                           <ExclamationIcon
                             role="img"
                             aria-hidden={false}
-                            aria-label={`${formatExamClash(
-                              examConflicts,
-                              true
-                            )}. ${EXAM_DISCLAIMER_SHORT}`}
+                            aria-label={examClash.label}
                             className="flex-shrink-0 w-4 h-4 text-danger"
                           />
                         )}

@@ -50,9 +50,8 @@ import {
   plannedExamsSelector,
 } from "../../recoil/examScheduleSelectors";
 import {
-  EXAM_DISCLAIMER_SHORT,
+  describeExamClashes,
   examClashes,
-  formatExamClash,
   isPlannedCourse,
 } from "../../helpers/examScheduleUtils";
 
@@ -273,17 +272,12 @@ export default function EventListContainer({
 
     // A browsed course warns too, in "would clash" wording: the exam plan
     // itself tells students not to bid on courses whose exams clash.
-    const examClashesById = data.examPlan
-      ? examClashes(data.plannedExams, data.examPlan, event)
-      : new Map();
-    // The row names each clashing course once, however many exams clash.
-    const examConflicts = [...new Set([...examClashesById.values()].flat())];
-    const examClashText =
-      examConflicts.length > 0 &&
-      `${formatExamClash(
-        examConflicts,
-        isPlannedCourse(data.myCourses, event)
-      )}. ${EXAM_DISCLAIMER_SHORT}`;
+    const examClash = describeExamClashes(
+      data.examPlan
+        ? examClashes(data.plannedExams, data.examPlan, event)
+        : new Map(),
+      isPlannedCourse(data.myCourses, event)
+    );
 
     return (
       <div
@@ -322,14 +316,14 @@ export default function EventListContainer({
                 has no spare column. Distinct from the lock, which carries the
                 lecture-overlap signal. heroicons hide their icons from
                 assistive technology; this one is the clash's only carrier. */}
-            {examClashText && (
+            {examClash && (
               <ExclamationIcon
                 role="img"
                 aria-hidden={false}
-                aria-label={examClashText}
+                aria-label={examClash.label}
                 className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
                 data-tooltip-id="course-list-tooltip"
-                data-tooltip-content={examClashText}
+                data-tooltip-content={examClash.label}
               />
             )}
           </div>

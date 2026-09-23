@@ -162,3 +162,21 @@ export const EXAM_DISCLAIMER_SHORT = "Indicative — verify officially.";
 export const EXAM_DISCLAIMER_LONG =
   "Extracted automatically from the official PDF — indicative only, " +
   "always verify against the official exam schedule.";
+
+/**
+ * What the course list and the Summary say about a course's exam clashes:
+ * each clashing course once, however many of its exams clash, and the
+ * one-line label ("Exam clash with: A, B. Indicative — verify officially.").
+ *
+ * @param {Map<string, string[]>} clashes - `examClashes` of the course
+ * @param {boolean} planned - `isPlannedCourse` of the course
+ * @returns {{names: string[], label: string}|null} `null` when nothing clashes
+ */
+export function describeExamClashes(clashes, planned) {
+  const names = [...new Set([...clashes.values()].flat())];
+  if (names.length === 0) return null;
+  return {
+    names,
+    label: `${formatExamClash(names, planned)}. ${EXAM_DISCLAIMER_SHORT}`,
+  };
+}
