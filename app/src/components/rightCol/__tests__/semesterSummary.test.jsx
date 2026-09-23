@@ -11,11 +11,15 @@
  * fix relies on — content-sized numeric tracks that never wrap, truncating
  * text cells, a smaller gap below md — plus the untouched md+ twelve-column
  * layout.
+ *
+ * Then the exam warnings: a clashing course's red marker and tooltip, and the
+ * "Exam check" line that says whether no red means "checked, no clash".
  */
 
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
 import { describe, expect, it, vi } from "vitest";
+import { mockData } from "../../../test/mocks/handlers";
 
 const { COURSES } = vi.hoisted(() => ({
   COURSES: [
@@ -97,6 +101,12 @@ vi.mock("../../helpers/useOpenCourseDetails", () => ({
 
 import SemesterSummary from "../SemesterSummary";
 import { formatEcts } from "../../helpers/formatEcts";
+import {
+  myCoursesSelector,
+  selectedSemesterSelector,
+} from "../../recoil/unifiedCourseDataSelectors";
+import { calendarEntriesSelector } from "../../recoil/calendarEntriesSelector";
+import { examPlanState } from "../../recoil/examScheduleAtom";
 
 const renderSummary = () =>
   render(
@@ -202,5 +212,237 @@ describe("semester summary column layout", () => {
       // A sixth cell in the total row used to wrap onto a phantom grid row.
       expect(row.childElementCount).toBe(header.childElementCount);
     });
+  });
+});
+
+// The MSW exam fixture puts 3,200 and 7,850 in the same 18.01.2027 09:15 slot;
+// 3,140 sits a different date entirely.
+const MICRO = {
+  id: "micro",
+  courseNumber: "3,200,1.00",
+  shortName: "Microeconomics II",
+  classification: "Core",
+  credits: 400,
+};
+// A real title with a comma in it: names must not be split at commas.
+const MACRO_TITLE =
+  "Advanced Macroeconomics II: Asset Prices, Fluctuations and Unemployment";
+const MACRO = {
+  id: "macro",
+  courseNumber: "7,850,1.00",
+  shortName: MACRO_TITLE,
+  classification: "Elective",
+  credits: 400,
+};
+const OPS = {
+  id: "ops",
+  courseNumber: "3,140,1.00",
+  shortName: "Operations Management",
+  classification: "Core",
+  credits: 400,
+};
+
+const READY = { status: "ready", plan: mockData.examSchedule };
+const SOURCE =
+  "Winter 2027 plan, published 18.08.2026. Indicative — verify officially.";
+
+const renderExamSummary = ({
+  courses = [MICRO, MACRO, OPS],
+  planState = READY,
+  calendarEntries = [],
+} = {}) =>
+  render(
+    <RecoilRoot
+      initializeState={({ set }) => {
+        set(selectedSemesterSelector, "HS26");
+        set(myCoursesSelector("HS26"), courses);
+        set(examPlanState("HS26"), planState);
+        set(calendarEntriesSelector, calendarEntries);
+      }}
+    >
+      <SemesterSummary />
+    </RecoilRoot>,
+  );
+
+/** Hovers the row's conflict marker and returns the tooltip it opens. */
+const openTooltipOf = async (shortName) => {
+  fireEvent.mouseEnter(
+    rowOf(screen.getByText(shortName)).querySelector("[data-tooltip-id]"),
+  );
+  return screen.findByRole("tooltip");
+};
+
+const CLASH_WITH_MACRO = `Exam clash with: ${MACRO_TITLE}. Indicative — verify officially.`;
+
+// The tooltip positions itself with floating-ui, which watches the anchor's
+// size; jsdom has no ResizeObserver. Stubbed for the whole file, as the
+// tooltip can still be settling when a test ends.
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
+
+describe("semester summary exam clashes", () => {
+  it("marks a clashing course with a red icon that names the other course", () => {
+    renderExamSummary();
+
+    const icon = within(rowOf(screen.getByText("Microeconomics II"))).getByRole(
+      "img",
+      { name: CLASH_WITH_MACRO },
+    );
+    expect(icon).toHaveClass("text-danger");
+    expect(
+      within(rowOf(screen.getByText(MACRO_TITLE))).getByRole("img", {
+        name: "Exam clash with: Microeconomics II. Indicative — verify officially.",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(rowOf(screen.getByText("Operations Management"))).queryByRole(
+        "img",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists a comma-containing title whole in the tooltip", async () => {
+    renderExamSummary();
+
+    const tooltip = await openTooltipOf("Microeconomics II");
+    const exam = within(tooltip).getByText("Exam clash with:").parentElement;
+    expect(exam).toHaveClass("text-red-300");
+    const names = within(exam).getAllByRole("listitem");
+    expect(names.map((name) => name.textContent)).toEqual([MACRO_TITLE]);
+    expect(names[0]).toHaveClass("break-words");
+    expect(names[0]).not.toHaveClass("truncate");
+    expect(
+      within(exam).getByText("Indicative — verify officially."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the lecture-overlap tooltip amber, with comma titles whole", async () => {
+    renderExamSummary({
+      courses: [MICRO, OPS],
+      planState: { status: "loading", plan: null },
+      calendarEntries: [
+        { courseNumber: MICRO.courseNumber, conflictsWith: [MACRO_TITLE] },
+      ],
+    });
+
+    const tooltip = await openTooltipOf("Microeconomics II");
+    const lecture =
+      within(tooltip).getByText("⚠ Conflicts with:").parentElement;
+    expect(lecture).toHaveClass("text-amber-300");
+    expect(
+      within(lecture)
+        .getAllByRole("listitem")
+        .map((name) => name.textContent),
+    ).toEqual([MACRO_TITLE]);
+    expect(within(tooltip).queryByText("Exam clash with:")).toBeNull();
+  });
+
+  it("names a course once however many of its exams clash with it", () => {
+    const secondSitting = (root) => ({
+      ...mockData.examSchedule.written[0],
+      id: `OT-2027-02-10-0915-${root}`,
+      date: "2027-02-10",
+      startIso: "2027-02-10T09:15:00+01:00",
+      rootNumbers: [root],
+    });
+    renderExamSummary({
+      planState: {
+        status: "ready",
+        plan: {
+          ...mockData.examSchedule,
+          written: [
+            ...mockData.examSchedule.written,
+            secondSitting("3,200"),
+            secondSitting("7,850"),
+          ],
+        },
+      },
+    });
+
+    expect(screen.getAllByRole("img", { name: CLASH_WITH_MACRO })).toHaveLength(
+      1,
+    );
+    // Two sittings each for two courses.
+    expect(
+      screen.getByText(
+        `Exam check: 4 exams clash — see the red markers. ${SOURCE}`,
+      ),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("semester summary exam check", () => {
+  it("counts the clashing exams and points at the red markers", () => {
+    renderExamSummary();
+
+    expect(
+      screen.getByText(
+        `Exam check: 2 exams clash — see the red markers. ${SOURCE}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says so when one exam clashes", () => {
+    // Exam B is cross-listed with 3,200 and 7,850 and overlaps 3,200's own
+    // exam A. Micro sits both, which is the plan's business, not a clash of
+    // two courses; Macro sits only B, which clashes with Micro's A.
+    const [a, b] = mockData.examSchedule.written;
+    renderExamSummary({
+      courses: [MICRO, MACRO],
+      planState: {
+        status: "ready",
+        plan: {
+          ...mockData.examSchedule,
+          written: [a, { ...b, rootNumbers: ["3,200", "7,850"] }],
+        },
+      },
+    });
+
+    expect(
+      screen.getByText(
+        `Exam check: 1 exam clashes — see the red markers. ${SOURCE}`,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("says a ready plan found no clash", () => {
+    renderExamSummary({ courses: [MICRO, OPS] });
+
+    expect(
+      screen.getByText(
+        `Exam check: no clashes between your central written exams. ${SOURCE}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it.each([
+    [
+      "no plan",
+      { status: "none", plan: null },
+      "Exam check unavailable: no central exam plan for this semester.",
+    ],
+    [
+      "a failed plan",
+      { status: "error", plan: null },
+      "Exam check unavailable: the exam plan could not be loaded — reload to retry.",
+    ],
+  ])("says the check is unavailable with %s", (_, planState, message) => {
+    renderExamSummary({ planState });
+
+    expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  it("says nothing while the plan loads", () => {
+    renderExamSummary({ planState: { status: "loading", plan: null } });
+
+    expect(screen.getByText("Microeconomics II")).toBeInTheDocument();
+    expect(screen.queryByText(/Exam check/)).not.toBeInTheDocument();
   });
 });

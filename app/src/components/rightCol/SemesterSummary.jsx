@@ -20,7 +20,12 @@ import { ExclamationIcon } from "@heroicons/react/outline";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
-import { examClashes } from "../helpers/examScheduleUtils";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  examClashes,
+  formatExamClash,
+  formatPlanSource,
+} from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
 
 import { Heatmap } from "./Heatmap";
@@ -42,6 +47,31 @@ import { Heatmap } from "./Heatmap";
 const ROW_GRID_CLASSES =
   "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 md:grid-cols-12 md:gap-4";
 
+/**
+ * The "Exam check" line, which makes no red marker read as "checked, no
+ * clash" rather than "not checked". Nothing while the plan loads.
+ *
+ * @param {string} status - `examPlanSelector` status
+ * @param {Object|null} plan - The plan, when ready
+ * @param {number} clashingExams - Distinct planned exams with a clash
+ * @returns {string|null}
+ */
+function examCheck(status, plan, clashingExams) {
+  if (status === "none") {
+    return "Exam check unavailable: no central exam plan for this semester.";
+  }
+  if (status === "error") {
+    return "Exam check unavailable: the exam plan could not be loaded — reload to retry.";
+  }
+  if (status !== "ready") return null;
+  const result =
+    clashingExams === 0
+      ? "no clashes between your central written exams"
+      : `${clashingExams} ${
+          clashingExams === 1 ? "exam clashes" : "exams clash"
+        } — see the red markers`;
+  return `Exam check: ${result}. ${formatPlanSource(plan)}. ${EXAM_DISCLAIMER_SHORT}`;
+}
 
 export default function SemesterSummary() {
   const openCourseDetails = useOpenCourseDetails();
@@ -59,11 +89,21 @@ export default function SemesterSummary() {
   // so the table and the schedule cannot drift apart.
   const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
 
-  const { plan: examPlan } = useRecoilValue(
+  const { status: examPlanStatus, plan: examPlan } = useRecoilValue(
     examPlanSelector(selectedSemesterState)
   );
   const plannedExams = useRecoilValue(
     plannedExamsSelector(selectedSemesterState)
+  );
+  // Central-exam clashes, kept separate from the lecture conflicts: different
+  // source, different remedy.
+  const examClashesByCourse = currCourses.map((course) =>
+    examPlan ? examClashes(plannedExams, examPlan, course) : new Map()
+  );
+  const examCheckText = examCheck(
+    examPlanStatus,
+    examPlan,
+    new Set(examClashesByCourse.flatMap((clashes) => [...clashes.keys()])).size
   );
 
   const totalCredits = currCourses.reduce((acc, curr) => {
@@ -209,9 +249,10 @@ export default function SemesterSummary() {
               "data-exam-conflicts"
             );
             if (!conflicts && !examConflicts) return null;
+            // JSON, not ", "-joined: real titles contain commas.
             const namesOf = (value) =>
-              value.split(", ").map((course, idx) => (
-                <li key={idx} className="truncate">
+              JSON.parse(value).map((course, idx) => (
+                <li key={idx} className="break-words">
                   {course}
                 </li>
               ));
@@ -228,14 +269,12 @@ export default function SemesterSummary() {
                 {/* Lecture clashes cost a session; an exam clash you cannot
                     sit at all, so it gets its own block and its own colour. */}
                 {examConflicts && (
-                  <div className="text-red-400">
-                    <div className="font-medium">Exam overlap:</div>
+                  <div className="text-red-300">
+                    <div className="font-medium">Exam clash with:</div>
                     <ul className="list-disc list-inside text-sm">
                       {namesOf(examConflicts)}
                     </ul>
-                    <div className="text-gray-300">
-                      Indicative — verify officially.
-                    </div>
+                    <div className="text-gray-300">{EXAM_DISCLAIMER_SHORT}</div>
                   </div>
                 )}
               </>
@@ -266,14 +305,10 @@ export default function SemesterSummary() {
               {currCourses.map((course, index) => {
                 const conflicts = getConflictsForCourse(course);
                 const hasConflicts = conflicts.length > 0;
-                // Central-exam clashes, kept separate from the lecture
-                // conflicts: different source, different remedy. Each
-                // clashing course is named once, however many exams clash.
-                const examClashesById = examPlan
-                  ? examClashes(plannedExams, examPlan, course)
-                  : new Map();
+                // Each clashing course is named once, however many exams
+                // clash.
                 const examConflicts = [
-                  ...new Set([...examClashesById.values()].flat()),
+                  ...new Set([...examClashesByCourse[index].values()].flat()),
                 ];
                 const hasExamConflicts = examConflicts.length > 0;
                 return (
@@ -296,9 +331,13 @@ export default function SemesterSummary() {
                           ? "conflict-tooltip"
                           : undefined
                       }
-                      data-conflicts={hasConflicts ? conflicts.join(", ") : undefined}
+                      data-conflicts={
+                        hasConflicts ? JSON.stringify(conflicts) : undefined
+                      }
                       data-exam-conflicts={
-                        hasExamConflicts ? examConflicts.join(", ") : undefined
+                        hasExamConflicts
+                          ? JSON.stringify(examConflicts)
+                          : undefined
                       }
                     >
                       <div
@@ -322,10 +361,18 @@ export default function SemesterSummary() {
                           <LockOpen clg="w-4 h-4 " event={course} />
                         )}
                         {/* The tooltip needs something to hover; the lock's
-                            colour already speaks for the lecture side only. */}
+                            colour already speaks for the lecture side only.
+                            heroicons hide their icons from assistive
+                            technology, so this one is exposed. Every course
+                            here is the user's, so it clashes, never "would". */}
                         {hasExamConflicts && (
                           <ExclamationIcon
-                            aria-label="Exam overlap"
+                            role="img"
+                            aria-hidden={false}
+                            aria-label={`${formatExamClash(
+                              examConflicts,
+                              true
+                            )}. ${EXAM_DISCLAIMER_SHORT}`}
                             className="flex-shrink-0 w-4 h-4 text-danger"
                           />
                         )}
@@ -388,6 +435,9 @@ export default function SemesterSummary() {
               )}
             </div>
           </div>
+          {examCheckText && (
+            <p className="px-2 text-xs text-gray-500">{examCheckText}</p>
+          )}
         </div>
       </div>
     );
