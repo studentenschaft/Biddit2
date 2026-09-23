@@ -42,14 +42,19 @@ import {
   selectedCoursesSelector,
   smartSearchResultsSelector,
   smartSearchActiveSelector,
+  myCoursesSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
 import {
   examPlanSelector,
   plannedExamsSelector,
 } from "../../recoil/examScheduleSelectors";
-import { examClashes } from "../../helpers/examScheduleUtils";
-import { getCourseRootKey } from "../../helpers/courseUtils";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  examClashes,
+  formatExamClash,
+  isPlannedCourse,
+} from "../../helpers/examScheduleUtils";
 
 // Icons
 import { ExclamationIcon, PlusIcon } from "@heroicons/react/outline";
@@ -112,6 +117,9 @@ export default function EventListContainer({
   );
   const plannedExams = useRecoilValue(
     plannedExamsSelector(selectedSemesterShortName)
+  );
+  const myCourses = useRecoilValue(
+    myCoursesSelector(selectedSemesterShortName)
   );
 
   // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
@@ -263,21 +271,25 @@ export default function EventListContainer({
     const wasPreviouslyEnrolled =
       event.enrolled && data.selectedSemester?.isProjected;
 
-    // Only a planned course warns; a browsed one is not competing yet. Empty
-    // `plannedExams` also means there is no ready plan to read.
-    const isPlanned = data.plannedExams.some(
-      (planned) => planned.rootKey === getCourseRootKey(event)
-    );
-    const examClashesById = isPlanned
+    // A browsed course warns too, in "would clash" wording: the exam plan
+    // itself tells students not to bid on courses whose exams clash.
+    const examClashesById = data.examPlan
       ? examClashes(data.plannedExams, data.examPlan, event)
       : new Map();
     // The row names each clashing course once, however many exams clash.
     const examConflicts = [...new Set([...examClashesById.values()].flat())];
+    const examClashText =
+      examConflicts.length > 0 &&
+      `${formatExamClash(
+        examConflicts,
+        isPlannedCourse(data.myCourses, event)
+      )}. ${EXAM_DISCLAIMER_SHORT}`;
 
     return (
       <div
         ref={setNodeRef}
         key={index}
+        data-testid="course-list-row"
         className={`flex w-full h-full overflow-visible pb-2.5 ${
           isDragging ? "opacity-50" : ""
         }`}
@@ -308,15 +320,16 @@ export default function EventListContainer({
             </p>
             {/* Next to the name rather than in the metadata grid below, which
                 has no spare column. Distinct from the lock, which carries the
-                lecture-overlap signal. */}
-            {examConflicts.length > 0 && (
+                lecture-overlap signal. heroicons hide their icons from
+                assistive technology; this one is the clash's only carrier. */}
+            {examClashText && (
               <ExclamationIcon
-                aria-label="Exam overlap"
+                role="img"
+                aria-hidden={false}
+                aria-label={examClashText}
                 className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
                 data-tooltip-id="course-list-tooltip"
-                data-tooltip-content={`Exam overlaps with: ${examConflicts.join(
-                  ", "
-                )}. Indicative — verify officially.`}
+                data-tooltip-content={examClashText}
               />
             )}
           </div>
@@ -423,6 +436,7 @@ export default function EventListContainer({
     addOrRemoveCourse,
     examPlan,
     plannedExams,
+    myCourses,
   };
 
   return (

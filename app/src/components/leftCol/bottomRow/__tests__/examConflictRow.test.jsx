@@ -1,16 +1,22 @@
 /**
  * The course list is where a clash has to be visible while the user is still
- * choosing. The row warns only when the course is in the user's own plan and
- * its central exam overlaps another planned course's — a row that merely sits
- * in the catalog says nothing.
+ * choosing. A planned course whose central exam overlaps another planned
+ * course's says it clashes; a course the user is only browsing says it would
+ * clash if added. A course whose exam overlaps nothing planned says nothing.
+ *
+ * The icons are found by role and name — the way assistive technology finds
+ * them — since the clash names are only in the icon's label and tooltip.
  *
  * Nothing is seeded for the exam plan: the list's own read loads it (MSW
  * serves the fixture), which is the path production takes.
  */
 
 import { render, screen, waitFor, within } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
 import { describe, expect, it, vi } from "vitest";
+import { mockData } from "../../../../test/mocks/handlers";
+import { server } from "../../../../test/mocks/server";
 import { authTokenState } from "../../../recoil/authAtom";
 import { unifiedCourseDataState } from "../../../recoil/unifiedCourseDataAtom";
 import EventListContainer from "../EventListContainer";
@@ -37,6 +43,14 @@ const MICRO = {
   classification: "Core",
   credits: 400,
 };
+// Shares the lecture's root, so it sits the lecture's exam.
+const MICRO_EXERCISE = {
+  id: "micro-exercise",
+  courseNumber: "3,200,2.04",
+  shortName: "Microeconomics II: Exercises",
+  classification: "Core",
+  credits: 0,
+};
 const CAUSAL = {
   id: "causal",
   courseNumber: "7,850,1.00",
@@ -62,9 +76,9 @@ const TERM_LIST = [
   },
 ];
 
-const CATALOG = [MICRO, CAUSAL, OPS];
+const CATALOG = [MICRO, MICRO_EXERCISE, CAUSAL, OPS];
 
-const renderList = ({ selectedIds = [], metadata = {} } = {}) =>
+const renderList = ({ selectedIds = [] } = {}) =>
   render(
     <RecoilRoot
       initializeState={({ set }) => {
@@ -81,7 +95,6 @@ const renderList = ({ selectedIds = [], metadata = {} } = {}) =>
               cisId: "cis-hs26",
               isCurrent: true,
               isProjected: false,
-              ...metadata,
             },
           },
           selectedSemester: SEMESTER,
@@ -98,41 +111,106 @@ const renderList = ({ selectedIds = [], metadata = {} } = {}) =>
   );
 
 const rowOf = (shortName) =>
-  screen.getByText(shortName).closest("div.flex.w-full");
+  screen.getByText(shortName).closest("[data-testid='course-list-row']");
+
+/**
+ * Waits for the plan to load and returns the row's clash icon. The row is
+ * looked up afresh on every try: the list remounts its rows on each render.
+ */
+const findClashIcon = (shortName, name) =>
+  waitFor(() => within(rowOf(shortName)).getByRole("img", { name }));
+
+const queryClashIcon = (shortName) =>
+  within(rowOf(shortName)).queryByRole("img", { name: /^Exam/ });
 
 const BOTH = [MICRO.courseNumber, CAUSAL.courseNumber];
 
 describe("exam conflicts in the course list", () => {
-  it("marks both rows of a clashing pair and names the other course", async () => {
+  it("marks both rows of a planned clashing pair and names the other course", async () => {
     renderList({ selectedIds: BOTH });
 
-    await waitFor(() =>
-      expect(screen.getAllByLabelText("Exam overlap")).toHaveLength(2),
+    const micro = await findClashIcon(
+      "Microeconomics II",
+      "Exam clash with: Causal Inference. Indicative — verify officially.",
     );
-
-    expect(
-      within(rowOf("Microeconomics II")).getByLabelText("Exam overlap"),
-    ).toHaveAttribute(
+    // The tooltip says what the label says.
+    expect(micro).toHaveAttribute(
       "data-tooltip-content",
-      "Exam overlaps with: Causal Inference. Indicative — verify officially.",
+      "Exam clash with: Causal Inference. Indicative — verify officially.",
     );
+    expect(micro).toHaveClass("text-danger");
     expect(
-      within(rowOf("Causal Inference")).getByLabelText("Exam overlap"),
-    ).toHaveAttribute(
-      "data-tooltip-content",
-      "Exam overlaps with: Microeconomics II. Indicative — verify officially.",
-    );
+      await findClashIcon(
+        "Causal Inference",
+        "Exam clash with: Microeconomics II. Indicative — verify officially.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("leaves a course whose exam is on another date alone", async () => {
     renderList({ selectedIds: [...BOTH, OPS.courseNumber] });
 
-    await waitFor(() =>
-      expect(screen.getAllByLabelText("Exam overlap")).toHaveLength(2),
-    );
-    expect(
-      within(rowOf("Operations Management")).queryByLabelText("Exam overlap"),
-    ).not.toBeInTheDocument();
+    await findClashIcon("Microeconomics II", /^Exam clash with/);
+    expect(queryClashIcon("Operations Management")).not.toBeInTheDocument();
   });
 
+  it("warns a browsed course that it would clash with a planned one", async () => {
+    renderList({ selectedIds: [MICRO.courseNumber] });
+
+    const causal = await findClashIcon(
+      "Causal Inference",
+      "Exam would clash with: Microeconomics II. Indicative — verify officially.",
+    );
+    // Same icon and red as a real clash; only the wording differs.
+    expect(causal).toHaveClass("text-danger");
+    expect(causal).toHaveAttribute(
+      "data-tooltip-content",
+      "Exam would clash with: Microeconomics II. Indicative — verify officially.",
+    );
+    // The planned course competes with nothing planned yet.
+    expect(queryClashIcon("Microeconomics II")).not.toBeInTheDocument();
+    expect(queryClashIcon("Operations Management")).not.toBeInTheDocument();
+  });
+
+  it("reads an exercise group of a planned lecture as planned", async () => {
+    renderList({ selectedIds: BOTH });
+
+    // Its exam is the lecture's, which the user already sits.
+    expect(
+      await findClashIcon(
+        "Microeconomics II: Exercises",
+        "Exam clash with: Causal Inference. Indicative — verify officially.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("names a course once however many of its exams clash with it", async () => {
+    const secondSitting = (root) => ({
+      ...mockData.examSchedule.written[0],
+      id: `OT-2027-02-10-0915-${root}`,
+      date: "2027-02-10",
+      startIso: "2027-02-10T09:15:00+01:00",
+      rootNumbers: [root],
+    });
+    server.use(
+      http.get("*/exams/HS26.json", () =>
+        HttpResponse.json({
+          ...mockData.examSchedule,
+          written: [
+            ...mockData.examSchedule.written,
+            secondSitting("3,200"),
+            secondSitting("7,850"),
+          ],
+        }),
+      ),
+    );
+    renderList({ selectedIds: BOTH });
+
+    expect(
+      await findClashIcon(
+        "Microeconomics II",
+        "Exam clash with: Causal Inference. Indicative — verify officially.",
+      ),
+    ).toBeInTheDocument();
+  });
 });
