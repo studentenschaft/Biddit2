@@ -9,7 +9,7 @@
 import { render, screen } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { mockData } from "../../../test/mocks/handlers";
 import { server } from "../../../test/mocks/server";
 import { examPlanState } from "../../recoil/examScheduleAtom";
@@ -46,7 +46,7 @@ const courseNumbered = (courseNumber, achievementFormStatus = CENTRAL) => ({
  */
 const renderSchedule = (
   course,
-  { semester = "HS26", metadata = {}, myCourses = [], planState } = {},
+  { semester = "HS26", myCourses = [], planState } = {},
 ) =>
   render(
     <RecoilRoot
@@ -57,7 +57,6 @@ const renderSchedule = (
               cisId: "1",
               available: myCourses,
               selectedIds: myCourses.map((c) => c.courseNumber),
-              ...metadata,
             },
           },
           selectedSemester: semester,
@@ -83,8 +82,6 @@ const servePlanWith = (...written) =>
   );
 
 describe("ExamSchedule", () => {
-  afterEach(() => vi.restoreAllMocks());
-
   describe("for a course the plan lists", () => {
     it("shows weekday, date, slot and exam facts for a written exam", async () => {
       renderSchedule(courseNumbered("3,200,1.00"));
@@ -225,23 +222,6 @@ describe("ExamSchedule", () => {
 
       expect(container).toBeEmptyDOMElement();
     });
-
-    it("never shows exam dates for borrowed catalog data", () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch");
-
-      for (const metadata of [
-        { isFutureSemester: true, referenceSemester: "HS25" },
-        { usingReferenceData: true, referenceSemester: "HS25" },
-      ]) {
-        const { container, unmount } = renderSchedule(
-          courseNumbered("3,200,1.00"),
-          { metadata },
-        );
-        expect(container).toBeEmptyDOMElement();
-        unmount();
-      }
-      expect(fetchSpy).not.toHaveBeenCalled();
-    });
   });
 
   describe("clashes", () => {
@@ -287,30 +267,6 @@ describe("ExamSchedule", () => {
 
       expect(
         await screen.findByText("Exam would clash with: Causal Inference"),
-      ).toBeInTheDocument();
-    });
-
-    it("calls the clash real for the second listing of a cross-listed exam", async () => {
-      // Both listings of Deutsch C1 (26.01.2027 09:15) are planned, and the
-      // plan's exam is named after the first. Give Microeconomics a second
-      // exam in the same slot.
-      const [micro] = mockData.examSchedule.written;
-      servePlanWith({
-        ...micro,
-        id: "OT-2027-01-26-0915-3,200",
-        date: "2027-01-26",
-        startIso: "2027-01-26T09:15:00+01:00",
-      });
-      renderSchedule(courseNumbered("4,802,1.00"), {
-        myCourses: [
-          { courseNumber: "3,802,1.00", shortName: "German C1 (BA)" },
-          { courseNumber: "4,802,1.00", shortName: "German C1 (MA)" },
-          MICRO,
-        ],
-      });
-
-      expect(
-        await screen.findByText("Exam clash with: Microeconomics II"),
       ).toBeInTheDocument();
     });
   });

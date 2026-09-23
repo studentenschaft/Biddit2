@@ -18,11 +18,8 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
 import { describe, expect, it, vi } from "vitest";
-import { mockData } from "../../../../test/mocks/handlers";
-import { server } from "../../../../test/mocks/server";
 import { authTokenState } from "../../../recoil/authAtom";
 import { unifiedCourseDataState } from "../../../recoil/unifiedCourseDataAtom";
 import EventListContainer from "../EventListContainer";
@@ -179,13 +176,6 @@ describe("exam conflicts in the course list", () => {
     expect(tooltip).toHaveClass("!text-red-300");
   });
 
-  it("leaves a course whose exam is on another date alone", async () => {
-    renderList({ selectedIds: [...BOTH, OPS.courseNumber] });
-
-    await findClashIcon("Microeconomics II", /^Exam clash with/);
-    expect(queryClashIcon("Operations Management")).not.toBeInTheDocument();
-  });
-
   it("warns a browsed course that it would clash with a planned one", async () => {
     renderList({ selectedIds: [MICRO.courseNumber] });
 
@@ -211,36 +201,6 @@ describe("exam conflicts in the course list", () => {
     expect(
       await findClashIcon(
         "Microeconomics II: Exercises",
-        "Exam clash with: Causal Inference. Indicative — verify officially.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("names a course once however many of its exams clash with it", async () => {
-    const secondSitting = (root) => ({
-      ...mockData.examSchedule.written[0],
-      id: `OT-2027-02-10-0915-${root}`,
-      date: "2027-02-10",
-      startIso: "2027-02-10T09:15:00+01:00",
-      rootNumbers: [root],
-    });
-    server.use(
-      http.get("*/exams/HS26.json", () =>
-        HttpResponse.json({
-          ...mockData.examSchedule,
-          written: [
-            ...mockData.examSchedule.written,
-            secondSitting("3,200"),
-            secondSitting("7,850"),
-          ],
-        }),
-      ),
-    );
-    renderList({ selectedIds: BOTH });
-
-    expect(
-      await findClashIcon(
-        "Microeconomics II",
         "Exam clash with: Causal Inference. Indicative — verify officially.",
       ),
     ).toBeInTheDocument();

@@ -38,7 +38,7 @@ const examRequests = () =>
     .length;
 
 /** Reads the plan for a semester the way the surfaces do. */
-const readPlan = (semester, semesterData) => {
+const readPlan = (semester, semesterData, seededPlan) => {
   const wrapper = ({ children }) => (
     <RecoilRoot
       initializeState={({ set }) => {
@@ -48,6 +48,7 @@ const readPlan = (semester, semesterData) => {
             semesters: { [semester]: semesterData },
           }));
         }
+        if (seededPlan) set(examPlanState(semester), seededPlan);
       }}
     >
       {children}
@@ -140,14 +141,19 @@ describe("examPlanState", () => {
     expect(warnSpy).toHaveBeenCalledOnce();
   });
 
-  it("never requests a plan for a borrowed catalog or no semester", () => {
-    for (const metadata of [
-      { isFutureSemester: true, referenceSemester: "HS25" },
-      { usingReferenceData: true, referenceSemester: "HS25" },
+  it("never requests or shows a plan for a borrowed catalog or no semester", () => {
+    for (const [metadata, seededPlan] of [
+      [{ isFutureSemester: true, referenceSemester: "HS25" }],
+      [{ usingReferenceData: true, referenceSemester: "HS25" }],
+      // The plan can finish loading before the catalog turns out borrowed.
+      [
+        { usingReferenceData: true, referenceSemester: "HS25" },
+        { status: "ready", plan: mockData.examSchedule },
+      ],
     ]) {
-      expect(readPlan("HS26", { cisId: "1", ...metadata }).current).toEqual(
-        NO_PLAN,
-      );
+      expect(
+        readPlan("HS26", { cisId: "1", ...metadata }, seededPlan).current,
+      ).toEqual(NO_PLAN);
     }
     expect(readPlan(null).current).toEqual(NO_PLAN);
 

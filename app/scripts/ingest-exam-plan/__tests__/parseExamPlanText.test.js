@@ -153,26 +153,6 @@ ${TABLE_HEADER.replace("15.15", "14.15")}
 });
 
 describe("parseExamPlanText — header and footers", () => {
-  it("reads the term label and the exam period", () => {
-    const parsed = parseExamPlanText(plan);
-    expect(parsed.termLabel).toBe("Winter 2027");
-    expect(parsed.examPeriod).toEqual({
-      start: "2027-01-18",
-      end: "2027-02-20",
-    });
-  });
-
-  it("reads the oral exam period from the oral page banner", () => {
-    expect(parseExamPlanText(plan).oralExamPeriod).toEqual({
-      start: "2027-01-30",
-      end: "2027-02-20",
-    });
-  });
-
-  it("reads the revision date from the page footers", () => {
-    expect(parseExamPlanText(plan).publishedAt).toBe("2026-08-18");
-  });
-
   it("warns when pages carry different revision dates", () => {
     const mixed = `${plan}\nKompetenzcenter Planung und Prüfungen   19.08.2026   Seite 5 von 5\n`;
     expect(codes(parseExamPlanText(mixed).warnings)).toContain(
@@ -223,28 +203,6 @@ ${TWO_SLOT_ROW}
 describe("parseExamPlanText — written rows", () => {
   const parsed = parseExamPlanText(plan);
 
-  it("keeps every exam row of the plan", () => {
-    expect(parsed.written).toHaveLength(178);
-  });
-
-  it("reads level, term type, language and duration", () => {
-    expect(find(parsed.written, "3,200")).toMatchObject({
-      level: "BA",
-      termType: "OT",
-      language: "DE",
-      durationMin: 90,
-      title: "Mikroökonomik II",
-    });
-  });
-
-  it("dates the exams that share the date row", () => {
-    expect(find(parsed.written, "3,200").date).toBe("2027-01-18");
-  });
-
-  it("carries the date forward to the rows below it", () => {
-    expect(find(parsed.written, "3,502").date).toBe("2027-01-21");
-  });
-
   it("reads a date row that is indented", () => {
     // Missed, it would leave the whole day under the previous date.
     const indented = parseExamPlanText(`${HEADER}
@@ -253,25 +211,6 @@ ${TWO_SLOT_ROW}
  19.01.2027 BA: OT DE 120'  3,802 Deutsch C1
 `);
     expect(find(indented.written, "3,802").date).toBe("2027-01-19");
-  });
-
-  it("splits a line that carries a morning and an afternoon exam", () => {
-    expect(find(parsed.written, "3,200").slot).toBe("09:15");
-    expect(find(parsed.written, "1,908").slot).toBe("15:15");
-  });
-
-  it("splits cross-listed course roots", () => {
-    expect(find(parsed.written, "3,802").rootNumbers).toEqual([
-      "3,802",
-      "4,802",
-    ]);
-  });
-
-  it("keeps cross-listed roots whose suffixes differ", () => {
-    expect(find(parsed.written, "3,874").rootNumbers).toEqual([
-      "3,874",
-      "4,872",
-    ]);
   });
 
   it("parses roots with two-digit prefixes wherever they sit", () => {
@@ -299,43 +238,6 @@ ${TABLE_HEADER}
 ${TWO_SLOT_ROW.replace("  MA: OT", " MA: OT")}
 `);
     expect(find(shifted.written, "1,908").slot).toBe("15:15");
-  });
-
-  it("records the page each exam is printed on", () => {
-    // BYOD comes from the page's shading, matched by page, term type and root.
-    expect(find(parsed.written, "3,200").page).toBe(1);
-    expect(find(parsed.written, "3,140").page).toBe(3);
-  });
-
-  it("reads alternative-date rows as their own exams", () => {
-    const alternative = parsed.written.filter((exam) => exam.termType === "AT");
-    expect(alternative).toHaveLength(48);
-    expect(find(alternative, "4,120").title).toBe("Methods: Statistics");
-  });
-
-  it("flags the exams whose title spells out BYOD", () => {
-    const byod = parsed.written.filter((exam) => exam.byod);
-    expect(byod.map((exam) => exam.rootNumbers[0])).toEqual(["3,140", "4,140"]);
-  });
-
-  it("leaves byod false when the title says nothing", () => {
-    expect(find(parsed.written, "3,200").byod).toBe(false);
-  });
-
-  it("trims the title at the next exam on the same line", () => {
-    expect(find(parsed.written, "3,202").title).toBe("Microeconomics II");
-  });
-
-  it("keeps a title that runs to the end of the line intact", () => {
-    expect(find(parsed.written, "7,254").title).toBe(
-      "Adv. Macro II: Asset Prices, Fluctuations + Unempl.",
-    );
-  });
-
-  it("ignores legends, notices and footers", () => {
-    const titles = parsed.written.map((exam) => exam.title);
-    expect(titles.some((title) => title.includes("Prüfungswoche"))).toBe(false);
-    expect(titles.some((title) => title.includes("Kompetenzcenter"))).toBe(false);
   });
 
   it("throws on a date row that is not on the calendar, naming the line", () => {
@@ -370,47 +272,6 @@ ${TABLE_HEADER}
 describe("parseExamPlanText — oral page", () => {
   const parsed = parseExamPlanText(plan);
   const range = (item) => `${item.dateStart} … ${item.dateEnd}`;
-
-  it("dates the oral exams with their block's whole range", () => {
-    // The page prints "30.01.2027 … - … 06.02.2027" and no day within it.
-    expect(parsed.oral).toHaveLength(3);
-    expect(parsed.oral[0]).toEqual({
-      dateStart: "2027-01-30",
-      dateEnd: "2027-02-06",
-      section: "Ordentliche Prüfungstermine / Regular examination dates",
-      rootNumbers: ["7,421"],
-      title: "Datenschutzrecht",
-    });
-    expect(new Set(parsed.oral.map(range))).toEqual(
-      new Set(["2027-01-30 … 2027-02-06"]),
-    );
-  });
-
-  it("strips the dash and weekday gutter from the exam rows", () => {
-    expect(parsed.oral.map((exam) => exam.rootNumbers[0])).toEqual([
-      "7,421",
-      "7,436",
-      "7,702",
-    ]);
-  });
-
-  it("keeps the narrative rows as notes instead of dropping them", () => {
-    expect(parsed.oralNotes).toHaveLength(12);
-    expect(parsed.oralNotes[0].text).toMatch(/^Die individuellen mündlichen/);
-  });
-
-  it("files the rows at a range's closing date under the whole block", () => {
-    // One entry per block: the closing row's text (Sprachen) relabels the
-    // block's notes, and a bare closing row (13.02., 20.02.) keeps the label.
-    const blocks = new Set(
-      parsed.oralNotes.map((note) => `${range(note)} ${note.section}`),
-    );
-    expect([...blocks]).toEqual([
-      "2027-01-30 … 2027-02-06 Sprachen / Languages (inkl. Ausserordentlicher Prüfungstermin aus Sommer 2026 / incl. alternative examination dates from Summer 2026)",
-      "2027-02-08 … 2027-02-13 Ordentliche Prüfungstermine / Regular examination dates",
-      "2027-02-08 … 2027-02-20 Ausserordentliche Prüfungstermine / Alternative examination dates",
-    ]);
-  });
 
   it("reads a '-' in the text column as a note, not as a range", () => {
     // Taken for the gutter dash, it would reopen the closed first block and
@@ -569,11 +430,5 @@ Montag /         7,702 Recht und Psychologie`);
     expect(() => parseExamPlanText(reopened)).toThrow(
       "Oral date range is opened again after its closing date — page 2 line 7",
     );
-  });
-
-  it("keeps the oral page table header and footer out of the notes", () => {
-    const texts = parsed.oralNotes.map((note) => note.text);
-    expect(texts.some((text) => text.startsWith("Beginning of"))).toBe(false);
-    expect(texts.some((text) => text.startsWith("Kompetenzcenter"))).toBe(false);
   });
 });

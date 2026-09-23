@@ -48,7 +48,6 @@ const plannedExamIds = ({
   selectedIds = [],
   filtered = [],
   planState = { status: "ready", plan: PLAN },
-  metadata = {},
 }) =>
   snapshot_UNSTABLE(({ set }) => {
     set(unifiedCourseDataState, {
@@ -61,7 +60,6 @@ const plannedExamIds = ({
           studyPlan: [],
           ratings: {},
           cisId: "1",
-          ...metadata,
         },
       },
       selectedSemester: SEMESTER,
@@ -96,17 +94,5 @@ describe("plannedExamsSelector", () => {
     ["unreadable", { status: "error", plan: null }],
   ])("is empty for a plan that is %s", (_, planState) => {
     expect(plannedExamIds({ planState })).toEqual([]);
-  });
-
-  it("is empty for a borrowed catalog even when the plan has loaded", () => {
-    // The plan can finish loading before the catalog fetch sets
-    // usingReferenceData, so the atom may hold a plan for a semester that
-    // turns out to be borrowed.
-    for (const metadata of [
-      { usingReferenceData: true, referenceSemester: "HS25" },
-      { isFutureSemester: true, referenceSemester: "HS25" },
-    ]) {
-      expect(plannedExamIds({ metadata })).toEqual([]);
-    }
   });
 });

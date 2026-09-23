@@ -146,16 +146,13 @@ const mockData = {
     distances: [[]],
     metadatas: [[]],
   },
-  // Stand-in for the shipped public/exams/HS26.json (178 written entries).
-  // Covers the shapes the UI branches on: OT, an AT row it must ignore, BYOD,
-  // cross-listed roots, oral, and two overlapping OT exams so clashes have
-  // real data.
+  // Stand-in for the shipped public/exams/HS26.json (178 written entries),
+  // cut to the fields the app reads. Covers the shapes the UI branches on:
+  // OT, an AT row it must ignore, BYOD, cross-listed roots, oral, and two
+  // overlapping OT exams so clashes have real data.
   examSchedule: {
     schemaVersion: 2,
-    semester: "HS26",
     sourceTermLabel: "Winter 2027",
-    examPeriod: { start: "2027-01-18", end: "2027-02-20" },
-    oralExamPeriod: { start: "2027-01-30", end: "2027-02-20" },
     source: { publishedAt: "2026-08-18" },
     written: [
       {
@@ -164,11 +161,8 @@ const mockData = {
         slot: "09:15",
         startIso: "2027-01-18T09:15:00+01:00",
         durationMin: 90,
-        level: "BA",
         termType: "OT",
-        language: "DE",
         rootNumbers: ["3,200"],
-        title: "Mikroökonomik II",
       },
       {
         // Same date and slot as 3,200 above: the collision fixture.
@@ -177,11 +171,8 @@ const mockData = {
         slot: "09:15",
         startIso: "2027-01-18T09:15:00+01:00",
         durationMin: 120,
-        level: "MA",
         termType: "OT",
-        language: "EN",
         rootNumbers: ["7,850"],
-        title: "Data Analytics and Causal Inference",
       },
       {
         id: "OT-2027-02-05-0915-3,140",
@@ -189,11 +180,8 @@ const mockData = {
         slot: "09:15",
         startIso: "2027-02-05T09:15:00+01:00",
         durationMin: 90,
-        level: "BA",
         termType: "OT",
-        language: "EN",
         rootNumbers: ["3,140"],
-        title: "Introduction to Operations Management (BYOD)",
         byod: true,
       },
       {
@@ -202,11 +190,8 @@ const mockData = {
         slot: "09:15",
         startIso: "2027-01-19T09:15:00+01:00",
         durationMin: 120,
-        level: "BA",
         termType: "AT",
-        language: "DE",
         rootNumbers: ["3,802", "4,802"],
-        title: "Deutsch C1",
       },
       {
         id: "OT-2027-01-26-0915-3,802|4,802",
@@ -214,11 +199,8 @@ const mockData = {
         slot: "09:15",
         startIso: "2027-01-26T09:15:00+01:00",
         durationMin: 120,
-        level: "BA",
         termType: "OT",
-        language: "DE",
         rootNumbers: ["3,802", "4,802"],
-        title: "Deutsch C1",
       },
     ],
     oral: [
@@ -226,12 +208,9 @@ const mockData = {
         id: "ORAL-2027-01-30-7,421",
         dateStart: "2027-01-30",
         dateEnd: "2027-02-06",
-        section: "Ordentliche Prüfungstermine / Regular examination dates",
         rootNumbers: ["7,421"],
-        title: "Datenschutzrecht",
       },
     ],
-    oralNotes: [],
   },
 };
 

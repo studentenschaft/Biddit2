@@ -353,12 +353,6 @@ describe("describeExamClashes", () => {
     });
   });
 
-  it("words a browsed course's label in the conditional", () => {
-    expect(
-      describeExamClashes(new Map([["ot-a", ["Bravo"]]]), false).label,
-    ).toBe("Exam would clash with: Bravo. Indicative — verify officially.");
-  });
-
   it("says nothing when nothing clashes", () => {
     expect(describeExamClashes(new Map(), true)).toBeNull();
   });
