@@ -1,6 +1,7 @@
 // Runs cli.js as a child process: the write guards live only there.
 import { spawnSync } from "node:child_process";
 import {
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
@@ -49,7 +50,11 @@ describe("cli", () => {
     expect(ingest(THREE_EXAMS).status).toBe(0);
     const shrunk = ingest(TWO_EXAMS);
     expect(shrunk.status).toBe(1);
-    expect(shrunk.stderr).toContain("  OT-2027-01-18-0915-3,202\n");
+    expect(shrunk.stderr).toBe(
+      `Nothing written: exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.
+  OT-2027-01-18-0915-3,202
+`,
+    );
     expect(writtenIds()).toHaveLength(3);
   });
 
@@ -67,5 +72,20 @@ describe("cli", () => {
     expect(ingest(THREE_EXAMS).status).toBe(0);
     expect(statSync(out).ino).not.toBe(before);
     expect(readdirSync(dirname(out))).toEqual(["HS26.json"]);
+  });
+
+  it("leaves no temp file behind when the write fails", () => {
+    // A directory in the artifact's place makes the rename fail.
+    mkdirSync(out, { recursive: true });
+    expect(ingest(TWO_EXAMS, "--allow-removals").status).toBe(1);
+    expect(readdirSync(dirname(out))).toEqual(["HS26.json"]);
+  });
+
+  it("prints the usage after an argument error", () => {
+    const { status, stderr } = ingest(TWO_EXAMS, "--semester", "HS26");
+    expect(status).toBe(1);
+    expect(stderr).toMatch(
+      /^Unknown option '--semester'\n\nUsage: npm run ingest:exams -- .*\n$/s,
+    );
   });
 });

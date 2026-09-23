@@ -13,6 +13,7 @@ import {
   mkdirSync,
   readFileSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -73,7 +74,7 @@ function parseCliArgs(argv) {
     }
     return values;
   } catch (error) {
-    throw new Error(`${error.message}\n\n${USAGE}`);
+    throw Object.assign(error, { showUsage: true });
   }
 }
 
@@ -90,12 +91,11 @@ function refuseRemovals(out, plan) {
     (id) => !kept.has(id),
   );
   if (removed.length > 0) {
-    throw new Error(
-      [
-        `Nothing written: ${removed.length} exams in ${out} are missing from this plan:`,
-        ...removed.map((id) => `  ${id}`),
-        "Check each against the PDF. If HSG really dropped them, re-run with --allow-removals.",
-      ].join("\n"),
+    throw Object.assign(
+      new Error(
+        `Nothing written: exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.`,
+      ),
+      { missingIds: removed },
     );
   }
 }
@@ -140,8 +140,14 @@ function run(argv) {
   // artifact or the new one, never a half-written file.
   const temp = `${out}.tmp`;
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(temp, `${JSON.stringify(plan, null, JSON_INDENT)}\n`);
-  renameSync(temp, out);
+  try {
+    writeFileSync(temp, `${JSON.stringify(plan, null, JSON_INDENT)}\n`);
+    renameSync(temp, out);
+  } finally {
+    // Only a failed write leaves it behind, where the dev server would serve
+    // it and git would offer to commit it.
+    rmSync(temp, { force: true });
+  }
   process.stdout.write(`Wrote ${out}\n`);
 }
 
@@ -149,5 +155,7 @@ try {
   run(process.argv.slice(2));
 } catch (error) {
   process.stderr.write(`${error.message}\n`);
+  for (const id of error.missingIds ?? []) process.stderr.write(`  ${id}\n`);
+  if (error.showUsage) process.stderr.write(`\n${USAGE}\n`);
   process.exitCode = 1;
 }

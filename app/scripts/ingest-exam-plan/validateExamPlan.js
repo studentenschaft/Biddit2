@@ -170,7 +170,7 @@ export function validateExamPlan(plan, rawText) {
   if (AT_PENDING_RE.test(rawText)) {
     warn(
       "W_AT_INCOMPLETE",
-      "The PDF announces the full alternative-date (AT) plan for a later calendar week — re-ingest then",
+      "The PDF announces the full alternative-date (AT) plan for a later calendar week — see the runbook's re-ingest step",
     );
   }
 
