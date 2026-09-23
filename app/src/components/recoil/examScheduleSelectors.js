@@ -5,7 +5,12 @@ import {
   myCoursesSelector,
   semesterMetadataSelector,
 } from "./unifiedCourseDataSelectors";
-import { examClashes, planExams } from "../helpers/examScheduleUtils";
+import {
+  examClashes,
+  formatExamDate,
+  formatExamMeta,
+  planExams,
+} from "../helpers/examScheduleUtils";
 
 const NO_PLAN = { status: "none", plan: null };
 
@@ -52,9 +57,9 @@ export const plannedExamsSelector = selectorFamily({
     },
 });
 
-/** Exam block base color: hsg-900, dark enough to read as "not a lecture". */
+/** Exam block border and text: hsg-900, 9.4:1 on the block's white fill. */
 export const EXAM_COLOR = "#00521E";
-/** danger — same red the Phase 2 surfaces use for an exam clash. */
+/** danger — same red the Phase 2 surfaces use for an exam clash; 4.8:1. */
 export const EXAM_COLLISION_COLOR = "#DC2626";
 
 /**
@@ -68,6 +73,9 @@ export const EXAM_COLLISION_COLOR = "#DC2626";
  *
  * OT written exams only, one block per planned exam — orals publish no time,
  * and fabricating a block for one would be worse than showing none.
+ *
+ * Each event also carries how its block looks and the text its tooltip and
+ * sheet show (`examDate`, `examMeta`), so neither surface rebuilds it.
  *
  * @returns {Array<Object>} FullCalendar events carrying `entryType: "exam"`
  */
@@ -93,6 +101,8 @@ export const examCalendarEventsSelector = selectorFamily({
 
       return plannedExams.map(({ exam, name }) => {
         const conflictsWith = clashesById.get(exam.id) ?? [];
+        const accent =
+          conflictsWith.length > 0 ? EXAM_COLLISION_COLOR : EXAM_COLOR;
         return {
           id: exam.id,
           title: name,
@@ -104,12 +114,17 @@ export const examCalendarEventsSelector = selectorFamily({
             .add(exam.durationMin, "minutes")
             .format(),
           entryType: "exam",
-          durationMin: exam.durationMin,
-          // Present-or-silent: shows the plan's BYOD marking, never "not
-          // BYOD".
-          byod: exam.byod === true,
+          examDate: formatExamDate(exam.date),
+          examMeta: formatExamMeta(exam),
           conflictsWith,
-          color: conflictsWith.length > 0 ? EXAM_COLLISION_COLOR : EXAM_COLOR,
+          // Outlined rather than filled: a filled hsg-900 block sat 1.32:1 in
+          // lightness from the enrolled-lecture green. The border width is a
+          // class because FullCalendar only takes colours per event, and it is
+          // important because FullCalendar's own stylesheet loads after ours.
+          backgroundColor: "#FFFFFF",
+          borderColor: accent,
+          textColor: accent,
+          classNames: ["!border-2"],
         };
       });
     },

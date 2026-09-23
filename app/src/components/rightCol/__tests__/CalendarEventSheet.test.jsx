@@ -4,14 +4,22 @@
  * searches the whole document) rather than the returned container.
  */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import CalendarEventSheet from "../CalendarEventSheet";
 
+/**
+ * Headless UI settles an opening Dialog's transition a tick after it mounts;
+ * letting that tick run inside act() keeps the update from landing unwrapped.
+ */
+const renderSheet = async (event, onClose = () => {}) => {
+  render(<CalendarEventSheet event={event} onClose={onClose} />);
+  await act(async () => {});
+};
+
 const baseEvent = {
   title: "Corporate Finance",
-  // 24-hour, matching the hover tooltip's toLocaleTimeString output — the two
-  // surfaces describe the same event and must agree on the clock.
+  // 24-hour, as the calendar formats it for the tooltip and the sheet alike.
   startTime: "08:15",
   endTime: "10:00",
   room: "01-013",
@@ -27,8 +35,8 @@ describe("CalendarEventSheet", () => {
     expect(screen.queryByTestId("calendar-event-sheet-panel")).toBeNull();
   });
 
-  it("shows the full title, time range and room", () => {
-    render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+  it("shows the full title, time range and room", async () => {
+    await renderSheet(baseEvent);
 
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByText("Corporate Finance")).toBeInTheDocument();
@@ -37,56 +45,46 @@ describe("CalendarEventSheet", () => {
     expect(screen.getByText(/01-013/)).toBeInTheDocument();
   });
 
-  it("names the dialog after the event it describes", () => {
-    render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+  it("names the dialog after the event it describes", async () => {
+    await renderSheet(baseEvent);
     // Dialog.Title wires aria-labelledby, so the accessible name is the course.
     expect(
       screen.getByRole("dialog", { name: "Corporate Finance" }),
     ).toBeInTheDocument();
   });
 
-  it("does not render a conflict warning when there are no conflicts", () => {
-    render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+  it("does not render a conflict warning when there are no conflicts", async () => {
+    await renderSheet(baseEvent);
     expect(screen.queryByText(/conflicts with/i)).not.toBeInTheDocument();
   });
 
-  it("lists every conflicting course when conflicts exist", () => {
-    render(
-      <CalendarEventSheet
-        event={{
-          ...baseEvent,
-          conflictsWith: ["Macroeconomics", "Business Law"],
-        }}
-        onClose={() => {}}
-      />,
-    );
+  it("lists every conflicting course when conflicts exist", async () => {
+    await renderSheet({
+      ...baseEvent,
+      conflictsWith: ["Macroeconomics", "Business Law"],
+    });
 
     expect(screen.getByText(/conflicts with/i)).toBeInTheDocument();
     expect(screen.getByText("Macroeconomics")).toBeInTheDocument();
     expect(screen.getByText("Business Law")).toBeInTheDocument();
   });
 
-  it("falls back to N/A for a missing room", () => {
-    render(
-      <CalendarEventSheet
-        event={{ ...baseEvent, room: undefined }}
-        onClose={() => {}}
-      />,
-    );
+  it("falls back to N/A for a missing room", async () => {
+    await renderSheet({ ...baseEvent, room: undefined });
     expect(screen.getByText(/N\/A/)).toBeInTheDocument();
   });
 
-  it("calls onClose when the close button is pressed", () => {
+  it("calls onClose when the close button is pressed", async () => {
     const onClose = vi.fn();
-    render(<CalendarEventSheet event={baseEvent} onClose={onClose} />);
+    await renderSheet(baseEvent, onClose);
 
     fireEvent.click(screen.getByRole("button", { name: /close/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onClose when the backdrop is tapped", () => {
+  it("calls onClose when the backdrop is tapped", async () => {
     const onClose = vi.fn();
-    render(<CalendarEventSheet event={baseEvent} onClose={onClose} />);
+    await renderSheet(baseEvent, onClose);
 
     // Headless UI closes on any click outside the panel, so the backdrop needs
     // no handler of its own — this pins that the wiring is actually in place.
@@ -95,9 +93,9 @@ describe("CalendarEventSheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it("closes on Escape", () => {
+  it("closes on Escape", async () => {
     const onClose = vi.fn();
-    render(<CalendarEventSheet event={baseEvent} onClose={onClose} />);
+    await renderSheet(baseEvent, onClose);
 
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalled();
@@ -109,8 +107,8 @@ describe("CalendarEventSheet", () => {
    * dialogs. It portals to the body, so these numbers compete in the root
    * stacking context — see the note in the component.
    */
-  it("declares a layer between the in-page overlays and the side-nav dialogs", () => {
-    render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+  it("declares a layer between the in-page overlays and the side-nav dialogs", async () => {
+    await renderSheet(baseEvent);
 
     expect(screen.getByTestId("calendar-event-sheet").className).toContain(
       "z-[55]",
@@ -122,7 +120,9 @@ describe("CalendarEventSheet", () => {
 
   /**
    * Exams have no room in the plan and are our own PDF extraction, so the sheet
-   * swaps the room line for the exam facts and always says so (ADR 0012).
+   * swaps the room line for the exam facts, puts the date first and always
+   * says the dates are indicative (ADR 0012). The facts arrive prebuilt from
+   * examCalendarEventsSelector, which also owns the BYOD wording.
    */
   describe("exam blocks", () => {
     const examEvent = {
@@ -130,60 +130,53 @@ describe("CalendarEventSheet", () => {
       startTime: "15:15",
       endTime: "17:15",
       entryType: "exam",
-      durationMin: 120,
-      byod: true,
+      examDate: "Tue 19.01.2027",
+      examMeta: "Exam · 120 min · digital (BYOD)",
       conflictsWith: [],
     };
 
-    it("shows the duration and the BYOD badge instead of a room", () => {
-      render(<CalendarEventSheet event={examEvent} onClose={() => {}} />);
+    it("leads with the exam's date and shows its facts instead of a room", async () => {
+      await renderSheet(examEvent);
 
+      expect(
+        screen.getByText("Tue 19.01.2027, 15:15 - 17:15"),
+      ).toBeInTheDocument();
       expect(
         screen.getByText("Exam · 120 min · digital (BYOD)"),
       ).toBeInTheDocument();
-      expect(screen.queryByText(/^Room:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Room:/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
     });
 
-    it("stays silent about BYOD when the plan does not mark it", () => {
-      render(
-        <CalendarEventSheet
-          event={{ ...examEvent, byod: false }}
-          onClose={() => {}}
-        />,
-      );
-
-      expect(screen.getByText("Exam · 120 min")).toBeInTheDocument();
-    });
-
-    it("carries the indicative-only disclaimer", () => {
-      render(<CalendarEventSheet event={examEvent} onClose={() => {}} />);
+    it("carries the indicative-only disclaimer", async () => {
+      await renderSheet(examEvent);
 
       expect(
         screen.getByText("Indicative — verify officially."),
       ).toBeInTheDocument();
     });
 
-    it("does not disclaim a lecture", () => {
-      render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+    it("does not disclaim a lecture", async () => {
+      await renderSheet(baseEvent);
 
       expect(screen.queryByText(/Indicative/)).not.toBeInTheDocument();
     });
 
-    it("names the clashing courses", () => {
-      render(
-        <CalendarEventSheet
-          event={{ ...examEvent, conflictsWith: ["Causal Inference"] }}
-          onClose={() => {}}
-        />,
-      );
+    it("names the clashing courses", async () => {
+      await renderSheet({
+        ...examEvent,
+        conflictsWith: ["Data Analytics, Causal Inference"],
+      });
 
       expect(screen.getByText(/conflicts with/i)).toBeInTheDocument();
-      expect(screen.getByText("Causal Inference")).toBeInTheDocument();
+      expect(
+        screen.getByText("Data Analytics, Causal Inference"),
+      ).toBeInTheDocument();
     });
   });
 
-  it("keeps the bottom-sheet shape", () => {
-    render(<CalendarEventSheet event={baseEvent} onClose={() => {}} />);
+  it("keeps the bottom-sheet shape", async () => {
+    await renderSheet(baseEvent);
 
     const className = screen.getByTestId(
       "calendar-event-sheet-panel",

@@ -136,13 +136,40 @@ describe("examCalendarEventsSelector", () => {
       title: "Operations Management",
       start: "2027-02-05T09:15:00+01:00",
       entryType: "exam",
-      durationMin: 90,
-      byod: true,
       conflictsWith: [],
-      color: EXAM_COLOR,
     });
     // 09:15 + 90' = 10:45 Zurich time, in the artifact's own offset format.
     expect(event.end).toBe("2027-02-05T10:45:00+01:00");
+  });
+
+  it("carries the date and the exam facts as ready-made text", () => {
+    const [event] = eventsIn({ enrolledIds: [OPS.courseNumber] });
+
+    // One wording for the tooltip and the sheet, built once here.
+    expect(event.examDate).toBe("Fri 05.02.2027");
+    expect(event.examMeta).toBe("Exam · 90 min · digital (BYOD)");
+  });
+
+  it("stays silent about BYOD when the plan does not mark it", () => {
+    const [event] = eventsIn({ enrolledIds: [MICRO.courseNumber] });
+
+    expect(event.examMeta).toBe("Exam · 90 min");
+  });
+
+  /**
+   * A filled block in hsg-900 sat 1.32:1 in lightness from the enrolled-lecture
+   * green, so exams are drawn as outlines instead: white fill, a 2px border and
+   * text in the accent colour — hsg-900 (9.4:1 on white) or danger (4.8:1).
+   */
+  it("outlines an exam block instead of filling it like a lecture", () => {
+    const [event] = eventsIn({ enrolledIds: [OPS.courseNumber] });
+
+    expect(event).toMatchObject({
+      backgroundColor: "#FFFFFF",
+      borderColor: EXAM_COLOR,
+      textColor: EXAM_COLOR,
+      classNames: ["!border-2"],
+    });
   });
 
   it("draws one block for a lecture and its exercise group", () => {
@@ -170,7 +197,11 @@ describe("examCalendarEventsSelector", () => {
 
     expect(events).toHaveLength(2);
     events.forEach((event) => {
-      expect(event.color).toBe(EXAM_COLLISION_COLOR);
+      expect(event).toMatchObject({
+        backgroundColor: "#FFFFFF",
+        borderColor: EXAM_COLLISION_COLOR,
+        textColor: EXAM_COLLISION_COLOR,
+      });
     });
     expect(events.find((e) => e.id === "ot-micro").conflictsWith).toEqual([
       "Causal Inference",
@@ -203,7 +234,7 @@ describe("examCalendarEventsSelector", () => {
       "ot-ops": ["Causal Inference"],
     });
     events.forEach((event) => {
-      expect(event.color).toBe(EXAM_COLLISION_COLOR);
+      expect(event.borderColor).toBe(EXAM_COLLISION_COLOR);
     });
   });
 

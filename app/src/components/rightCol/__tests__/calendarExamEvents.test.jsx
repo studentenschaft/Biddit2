@@ -2,9 +2,11 @@
  * Exam blocks in the Calendar.
  *
  * Three things are pinned here: exam events reach FullCalendar without going
- * through `calendarEntriesSelector`, an exam block reads as an exam rather than
- * a lecture (badge instead of room, disclaimer on the detail surfaces), and the
- * "Exams" jump only exists when there is something to jump to.
+ * through `calendarEntriesSelector`, a tapped exam reads as an exam rather than
+ * a lecture (date and facts instead of a room, disclaimer), and the "Exams"
+ * jump only exists when there is something to jump to. How a block is drawn
+ * and what its tooltip says is pinned against the real FullCalendar in
+ * calendarExamBlocks.test.jsx.
  *
  * Same stubbing shape as calendarEventSheetGating.test.jsx: FullCalendar is
  * reduced to the props under test and the Recoil selectors are plain values, so
@@ -72,10 +74,9 @@ const EXAM = {
   start: "2027-01-19T15:15:00+01:00",
   end: "2027-01-19T17:15:00+01:00",
   entryType: "exam",
-  durationMin: 120,
-  byod: true,
+  examDate: "Tue 19.01.2027",
+  examMeta: "Exam · 120 min · digital (BYOD)",
   conflictsWith: [],
-  color: "#00521E",
 };
 
 // The viewport-gate contract itself is owned by calendarEventSheetGating.test.jsx.
@@ -109,17 +110,6 @@ const renderCalendar = async () => {
   return render(<Calendar />);
 };
 
-/** Runs the eventContent renderer FullCalendar would call for an event. */
-const renderEventBody = (event) =>
-  render(
-    <>
-      {fullCalendar.props.eventContent({
-        timeText: "15:15 - 17:15",
-        event: { title: event.title, _def: { extendedProps: event } },
-      })}
-    </>,
-  );
-
 const examJumpButtons = () => screen.queryAllByRole("button", { name: /exam period|lecture weeks/i });
 
 describe("Calendar exam blocks", () => {
@@ -135,25 +125,10 @@ describe("Calendar exam blocks", () => {
     expect(examEvents.semester).toBe("HS26");
   });
 
-  it("marks an exam block with a badge instead of a room", async () => {
-    await renderCalendar();
-    renderEventBody(EXAM);
-
-    expect(screen.getByText("Exam")).toBeInTheDocument();
-  });
-
-  it("still shows the room on a lecture block", async () => {
-    await renderCalendar();
-    renderEventBody({ ...LECTURE, entryType: undefined });
-
-    expect(screen.getByText("01-013")).toBeInTheDocument();
-    expect(screen.queryByText("Exam")).not.toBeInTheDocument();
-  });
-
-  it("shows duration, BYOD and the disclaimer when an exam is tapped", async () => {
+  it("shows the date, the exam facts and the disclaimer when an exam is tapped", async () => {
     await renderCalendar();
 
-    act(() =>
+    await act(async () =>
       fullCalendar.props.eventClick({
         event: {
           title: EXAM.title,
@@ -164,7 +139,8 @@ describe("Calendar exam blocks", () => {
       }),
     );
 
-    expect(screen.getByText(/Exam · 120 min · digital \(BYOD\)/)).toBeInTheDocument();
+    expect(screen.getByText(/^Tue 19\.01\.2027, /)).toBeInTheDocument();
+    expect(screen.getByText("Exam · 120 min · digital (BYOD)")).toBeInTheDocument();
     expect(screen.getByText("Indicative — verify officially.")).toBeInTheDocument();
     // The plan publishes no room for exams, so the sheet must not claim one.
     expect(screen.queryByText(/^Room:/)).not.toBeInTheDocument();

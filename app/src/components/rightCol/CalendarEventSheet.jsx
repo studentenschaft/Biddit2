@@ -20,19 +20,14 @@
 import PropTypes from "prop-types";
 import { Dialog } from "@headlessui/react";
 import { XIcon } from "@heroicons/react/solid";
+import { EXAM_DISCLAIMER_SHORT } from "../helpers/examScheduleUtils";
 
 const CalendarEventSheet = ({ event, onClose }) => {
   const conflictList = event?.conflictsWith || [];
   // Exams have no room in the plan (it is assigned per student later), so the
   // room line is replaced rather than left saying "N/A".
   const isExam = event?.entryType === "exam";
-  const examMeta = [
-    "Exam",
-    event?.durationMin ? `${event.durationMin} min` : null,
-    event?.byod ? "digital (BYOD)" : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const timeRange = `${event?.startTime || "N/A"} - ${event?.endTime || "N/A"}`;
 
   return (
     <Dialog
@@ -81,11 +76,12 @@ const CalendarEventSheet = ({ event, onClose }) => {
           </button>
         </div>
 
+        {/* For an exam the date is the key fact, so it leads the time. */}
         <div className="mt-2 text-sm text-gray-600">
-          {event?.startTime || "N/A"} - {event?.endTime || "N/A"}
+          {isExam ? `${event.examDate}, ${timeRange}` : timeRange}
         </div>
         <div className="text-sm text-gray-600">
-          {isExam ? examMeta : `Room: ${event?.room || "N/A"}`}
+          {isExam ? event.examMeta : `Room: ${event?.room || "N/A"}`}
         </div>
 
         {conflictList.length > 0 && (
@@ -106,9 +102,7 @@ const CalendarEventSheet = ({ event, onClose }) => {
         {/* The dates are extracted from a PDF by us, not published by the
             university — every exam surface says so (ADR 0012). */}
         {isExam && (
-          <p className="mt-3 text-xs text-gray-500">
-            Indicative — verify officially.
-          </p>
+          <p className="mt-3 text-xs text-gray-500">{EXAM_DISCLAIMER_SHORT}</p>
         )}
       </Dialog.Panel>
     </Dialog>
@@ -123,8 +117,8 @@ CalendarEventSheet.propTypes = {
     room: PropTypes.string,
     conflictsWith: PropTypes.arrayOf(PropTypes.string),
     entryType: PropTypes.string,
-    durationMin: PropTypes.number,
-    byod: PropTypes.bool,
+    examDate: PropTypes.string,
+    examMeta: PropTypes.string,
   }),
   onClose: PropTypes.func.isRequired,
 };

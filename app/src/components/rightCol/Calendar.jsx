@@ -31,16 +31,16 @@ import {
 
 // Central written exams as calendar blocks.
 import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
+import { EXAM_DISCLAIMER_SHORT } from "../helpers/examScheduleUtils";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 
-// Same clock everywhere: the hover tooltip and the event sheet describe the
-// same event, so they must not disagree about whether it is 14:15 or 02:15 PM.
+// Same clock everywhere, and the 24-hour one: the blocks, the tooltip and the
+// event sheet describe the same event, so none may call 15:15 "3:15".
+const TIME_FORMAT = { hour: "2-digit", minute: "2-digit", hour12: false };
 const formatEventTime = (date) =>
-  date
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "";
+  date ? date.toLocaleTimeString([], TIME_FORMAT) : "";
 
 // Implementation of calendar widget
 export default function Calendar() {
@@ -159,33 +159,28 @@ export default function Calendar() {
 
   const showingExamPeriod = !!examWeekStart && initialDate >= examWeekStart;
 
-  // Information on hovering
-  const hoverEvent = (info) => {
-    let title = info.event.title;
-    let startTime = info.event.start.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    let endTime = info.event.end.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    let extended = info.event._def.extendedProps;
-    let room = extended.room;
-    let conflictsWith = extended.conflictsWith || [];
-
-    info.el.setAttribute("data-tip", `${title}`);
-    info.el.setAttribute("data-tooltip-id", "event-tooltip");
-    info.el.setAttribute("data-tooltip-content", `${title}`);
-    info.el.setAttribute("data-room", `${room ?? ""}`);
-    info.el.setAttribute("data-start-time", `${startTime}`);
-    info.el.setAttribute("data-end-time", `${endTime}`);
-    info.el.setAttribute("data-conflicts-with", conflictsWith.join(", "));
-    // The tooltip renders from these attributes alone, so the exam fields have
-    // to travel as strings too.
-    info.el.setAttribute("data-entry-type", `${extended.entryType ?? ""}`);
-    info.el.setAttribute("data-duration-min", `${extended.durationMin ?? ""}`);
-    info.el.setAttribute("data-byod", `${extended.byod === true}`);
+  // The tooltip renders from these attributes alone. They are set as soon as a
+  // block is drawn, not on mouse enter, so the tooltip also opens when the
+  // block gets keyboard focus (react-tooltip 5.28 opens on focus as well as
+  // mouseover, and FullCalendar makes clickable blocks tabbable).
+  const describeEventForTooltip = ({ el, event }) => {
+    const details = event.extendedProps;
+    el.setAttribute("data-tooltip-id", "event-tooltip");
+    el.setAttribute("data-tooltip-content", event.title);
+    el.setAttribute("data-start-time", formatEventTime(event.start));
+    el.setAttribute("data-end-time", formatEventTime(event.end));
+    // JSON, not a comma-joined list: course titles contain commas.
+    el.setAttribute(
+      "data-conflicts-with",
+      JSON.stringify(details.conflictsWith || []),
+    );
+    if (details.entryType === "exam") {
+      el.setAttribute("data-entry-type", "exam");
+      el.setAttribute("data-exam-date", details.examDate);
+      el.setAttribute("data-exam-meta", details.examMeta);
+    } else {
+      el.setAttribute("data-room", details.room ?? "");
+    }
   };
 
   // Details shown when tapping an event (the only detail affordance on touch
@@ -205,25 +200,35 @@ export default function Calendar() {
       room: arg.event.extendedProps.room,
       conflictsWith: arg.event.extendedProps.conflictsWith || [],
       entryType: arg.event.extendedProps.entryType,
-      durationMin: arg.event.extendedProps.durationMin,
-      byod: arg.event.extendedProps.byod === true,
+      examDate: arg.event.extendedProps.examDate,
+      examMeta: arg.event.extendedProps.examMeta,
     });
   };
 
-  // Text to be displayed when hovering
+  // Text inside a block. An exam leads with its badge and start time, the
+  // line a 60-minute block still has room for; a clash says so in words too,
+  // since the red border alone is lost on anyone who cannot tell the colours
+  // apart. The block's colours come with the event (examCalendarEventsSelector).
   function renderEventContent(eventInfo) {
-    const details = eventInfo.event._def.extendedProps;
+    const details = eventInfo.event.extendedProps;
+    if (details.entryType === "exam") {
+      return (
+        <>
+          <p className="truncate font-semibold uppercase">
+            Exam · {formatEventTime(eventInfo.event.start)}
+          </p>
+          {details.conflictsWith.length > 0 && (
+            <p className="truncate font-bold uppercase">Clash</p>
+          )}
+          <p className="font-bold truncate">{eventInfo.event.title}</p>
+        </>
+      );
+    }
     return (
       <>
         <p className="truncate">{eventInfo.timeText}</p>
         <p className="font-bold truncate">{eventInfo.event.title}</p>
-        {/* Exams carry no room; the badge takes its place so a block is never
-            mistaken for a lecture. */}
-        {details.entryType === "exam" ? (
-          <p className="truncate font-semibold uppercase tracking-wide">Exam</p>
-        ) : (
-          <p className="truncate text-red">{details.room}</p>
-        )}
+        <p className="truncate text-red">{details.room}</p>
       </>
     );
   }
@@ -320,29 +325,28 @@ export default function Calendar() {
       <ReactTooltip
         id="event-tooltip"
         style={{ zIndex: 9999, maxWidth: "min(350px, 90vw)" }}
+        // Content that appears on focus must be dismissable without moving
+        // focus (WCAG 1.4.13).
+        globalCloseEvents={{ escape: true }}
         render={({ content, activeAnchor }) => {
           const attr = (name) => activeAnchor?.getAttribute(name);
-          const conflictsWith = attr("data-conflicts-with");
-          const conflictList = conflictsWith ? conflictsWith.split(", ") : [];
+          const conflictList = JSON.parse(attr("data-conflicts-with") || "[]");
           const isExam = attr("data-entry-type") === "exam";
-          const durationMin = attr("data-duration-min");
-          const examMeta = [
-            "Exam",
-            durationMin ? `${durationMin} min` : null,
-            attr("data-byod") === "true" ? "digital (BYOD)" : null,
-          ]
-            .filter(Boolean)
-            .join(" · ");
+          const timeRange = `${attr("data-start-time") || "N/A"} - ${
+            attr("data-end-time") || "N/A"
+          }`;
           return (
             <div>
               <div className="font-medium">{content}</div>
               {/* Exams have no room; the same line carries the exam facts. */}
               <div className="text-gray-300">
-                {isExam ? examMeta : `Room: ${attr("data-room") || "N/A"}`}
+                {isExam
+                  ? attr("data-exam-meta")
+                  : `Room: ${attr("data-room") || "N/A"}`}
               </div>
+              {/* For an exam the date is the key fact, so it leads the time. */}
               <div className="text-gray-300">
-                {attr("data-start-time") || "N/A"} -{" "}
-                {attr("data-end-time") || "N/A"}
+                {isExam ? `${attr("data-exam-date")}, ${timeRange}` : timeRange}
               </div>
               {conflictList.length > 0 && (
                 <div
@@ -353,7 +357,9 @@ export default function Calendar() {
                   <div className="font-medium">⚠ Conflicts with:</div>
                   <ul className="list-disc list-inside text-sm">
                     {conflictList.map((course, idx) => (
-                      <li key={idx} className="truncate">{course}</li>
+                      <li key={idx} className="break-words">
+                        {course}
+                      </li>
                     ))}
                   </ul>
                 </div>
@@ -361,7 +367,7 @@ export default function Calendar() {
               {/* The dates come from our own PDF extraction (ADR 0012). */}
               {isExam && (
                 <div className="mt-1 text-xs text-gray-400">
-                  Indicative — verify officially.
+                  {EXAM_DISCLAIMER_SHORT}
                 </div>
               )}
             </div>
@@ -530,8 +536,9 @@ export default function Calendar() {
                 eventColor="#006625"
                 expandRows={true}
                 slotEventOverlap={false}
+                eventTimeFormat={TIME_FORMAT}
                 eventContent={renderEventContent}
-                eventMouseEnter={hoverEvent}
+                eventDidMount={describeEventForTooltip}
                 eventClick={clickEvent}
                 allDaySlot={false}
                 headerToolbar={false}
