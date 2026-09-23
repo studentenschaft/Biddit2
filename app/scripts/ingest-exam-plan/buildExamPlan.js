@@ -64,6 +64,9 @@ const toOralExam = (entry) => ({
   title: entry.title,
 });
 
+/** The artifact's bytes, as the CLI writes them and the golden test pins them. */
+export const toArtifactJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
+
 /** `shadedRoots` is what parseByodShading read off the same PDF. */
 export function buildExamPlan(parsed, shadedRoots) {
   return {

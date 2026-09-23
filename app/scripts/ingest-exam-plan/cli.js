@@ -8,26 +8,18 @@
  */
 
 import { execFileSync } from "node:child_process";
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  renameSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 
-import { buildExamPlan } from "./buildExamPlan.js";
+import { buildExamPlan, toArtifactJson } from "./buildExamPlan.js";
 import { formatReport } from "./formatReport.js";
 import { parseByodShading } from "./parseByodShading.js";
 import { parseExamPlanText } from "./parseExamPlanText.js";
 import { validateAgainstCatalog } from "./validateAgainstCatalog.js";
 import { validateExamPlan } from "./validateExamPlan.js";
 
-const JSON_INDENT = 2;
 const APP_DIR = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 const USAGE = `Usage: npm run ingest:exams -- (--pdf <file> | --text <file>) [options]
@@ -109,11 +101,11 @@ function refuseRemovals(out, plan) {
     (id) => !kept.has(id),
   );
   if (removed.length > 0) {
-    throw Object.assign(
-      new Error(
+    throw new Error(
+      [
         `Nothing written: ${removed.length} exams in ${out} are missing from this plan. Check each against the PDF; if HSG really dropped them, re-run with --allow-removals.`,
-      ),
-      { missingIds: removed },
+        ...removed.map((id) => `  ${id}`),
+      ].join("\n"),
     );
   }
 }
@@ -159,28 +151,15 @@ function run(argv) {
   const out =
     options.out ?? resolve(APP_DIR, "public/exams", `${plan.semester}.json`);
   if (!options["allow-removals"]) refuseRemovals(out, plan);
-  // Renaming into place means a reader (the dev server, a build) sees the old
-  // artifact or the new one, never a half-written file.
-  const temp = `${out}.tmp`;
   mkdirSync(dirname(out), { recursive: true });
-  try {
-    writeFileSync(temp, `${JSON.stringify(plan, null, JSON_INDENT)}\n`);
-    renameSync(temp, out);
-  } finally {
-    // Only a failed write leaves it behind, where the dev server would serve
-    // it and git would offer to commit it.
-    rmSync(temp, { force: true });
-  }
+  writeFileSync(out, toArtifactJson(plan));
   process.stdout.write(`Wrote ${out}\n`);
 
   // Saved only with the artifact they must rebuild byte for byte.
   const prefix = options["save-fixtures"];
   if (prefix) {
     writeFileSync(`${prefix}.txt`, rawText);
-    writeFileSync(
-      `${prefix}.byod.json`,
-      `${JSON.stringify(shadedRoots, null, JSON_INDENT)}\n`,
-    );
+    writeFileSync(`${prefix}.byod.json`, toArtifactJson(shadedRoots));
     process.stdout.write(`Wrote ${prefix}.txt and ${prefix}.byod.json\n`);
   }
 }
@@ -189,7 +168,6 @@ try {
   run(process.argv.slice(2));
 } catch (error) {
   process.stderr.write(`${error.message}\n`);
-  for (const id of error.missingIds ?? []) process.stderr.write(`  ${id}\n`);
   if (error.showUsage) process.stderr.write(`\n${USAGE}\n`);
   process.exitCode = 1;
 }

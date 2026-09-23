@@ -59,7 +59,7 @@ without writing.
 artifact is refused, listing each id, when an exam of that file is missing from
 the new plan. The id holds term type, date, start time and roots, so a moved
 exam is listed too. `--allow-removals` overrides once each listed exam has been
-checked against the PDF. The file is renamed into place, never half-written.
+checked against the PDF.
 
 **Schema version 2.** A written exam carries its date, start time
 (`startIso`), duration, term type, roots and title, and `byod: true` only when

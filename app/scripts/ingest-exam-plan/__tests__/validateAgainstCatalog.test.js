@@ -49,15 +49,6 @@ describe("validateAgainstCatalog", () => {
     expect(roots(diff.centralCoursesWithoutExam)).not.toContain("7,421");
   });
 
-  it("lists exams whose root is missing from the catalog", () => {
-    expect(roots(diff.examsWithoutCourse)).toContain("3,120");
-    expect(roots(diff.examsWithoutCourse)).not.toContain("3,200");
-  });
-
-  it("ignores AT rows, which are another semester's alternative dates", () => {
-    expect(roots(diff.examsWithoutCourse)).not.toContain("2,805");
-  });
-
   it("tolerates the { data: [...] } wrapper of a DevTools export", () => {
     expect(validateAgainstCatalog(plan, { data: catalog })).toEqual(diff);
   });

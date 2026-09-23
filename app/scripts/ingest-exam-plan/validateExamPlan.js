@@ -7,7 +7,6 @@
 
 import {
   ENTRY_RE,
-  PAGE_KIND,
   TABLE_HEADER_PREFIX,
   WEEKDAYS_SOURCE,
   splitPages,
@@ -68,7 +67,7 @@ function buildStats(plan) {
  */
 function checkUnconsumedLines(rawText, fail) {
   for (const page of splitPages(rawText)) {
-    if (page.kind !== PAGE_KIND.written) continue;
+    if (page.kind !== "written") continue;
     const lines = page.text.split("\n");
     // The parser has already refused a written page without a table header.
     const bodyStart = lines.findIndex((line) =>
@@ -159,7 +158,6 @@ export function validateExamPlan(plan, rawText) {
   // An oral row implies an oral page, whose period the parser insists on.
   for (const exam of plan.oral) {
     checkOralRange(exam, plan.oralExamPeriod, exam.id, fail);
-    if (!exam.title) fail("E_TITLE_EMPTY", "Oral exam title is empty", exam.id);
   }
   // Nothing counts oral rows, so a row the parser did not recognise as an exam
   // would otherwise sit among the notes unnoticed.

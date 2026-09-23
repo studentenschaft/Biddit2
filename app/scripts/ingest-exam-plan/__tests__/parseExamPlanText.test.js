@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  PAGE_KIND,
-  parseExamPlanText,
-  splitPages,
-} from "../parseExamPlanText.js";
+import { parseExamPlanText, splitPages } from "../parseExamPlanText.js";
 import {
   HEADER,
   TABLE_HEADER,
@@ -21,12 +17,7 @@ const find = (exams, root) =>
 describe("splitPages", () => {
   it("splits the real plan into three written pages and one oral page", () => {
     const kinds = splitPages(plan).map((split) => split.kind);
-    expect(kinds).toEqual([
-      PAGE_KIND.written,
-      PAGE_KIND.written,
-      PAGE_KIND.written,
-      PAGE_KIND.oral,
-    ]);
+    expect(kinds).toEqual(["written", "written", "written", "oral"]);
   });
 
   it("keeps the page numbers of the PDF, so findings can be looked up", () => {

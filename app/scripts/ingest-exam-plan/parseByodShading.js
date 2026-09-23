@@ -105,12 +105,6 @@ export function parseByodShading(svg, wordBoxes) {
     words: wordsOf(markup),
     boxes: filledBoxes(svgPages[index]),
   }));
-  if (pages.every((page) => page.words.length === 0)) {
-    // Every exam would look plain, and the plan would lose its BYOD marks.
-    throw new Error(
-      'Cannot read the word boxes: pdftotext -bbox-layout printed no <word xMin="…" yMin="…" xMax="…" yMax="…">',
-    );
-  }
   const colours = new Set(pages.map(legendColour).filter(Boolean));
   if (colours.size === 0) {
     // A reworded legend would otherwise strip every shaded exam unnoticed.

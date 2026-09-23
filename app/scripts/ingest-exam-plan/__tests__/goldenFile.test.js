@@ -11,7 +11,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import { buildExamPlan } from "../buildExamPlan.js";
+import { buildExamPlan, toArtifactJson } from "../buildExamPlan.js";
 import { parseExamPlanText } from "../parseExamPlanText.js";
 import { readFixture } from "./readFixture.js";
 
@@ -19,7 +19,6 @@ const SHIPPED_ARTIFACT = join(
   dirname(fileURLToPath(import.meta.url)),
   "../../../public/exams/HS26.json",
 );
-const JSON_INDENT = 2;
 
 describe("golden file", () => {
   it("rebuilds the artifact shipped in public/exams, byte for byte", () => {
@@ -27,8 +26,6 @@ describe("golden file", () => {
       parseExamPlanText(readFixture("winter-2027.txt")),
       JSON.parse(readFixture("winter-2027.byod.json")),
     );
-    expect(readFileSync(SHIPPED_ARTIFACT, "utf8")).toBe(
-      `${JSON.stringify(plan, null, JSON_INDENT)}\n`,
-    );
+    expect(readFileSync(SHIPPED_ARTIFACT, "utf8")).toBe(toArtifactJson(plan));
   });
 });

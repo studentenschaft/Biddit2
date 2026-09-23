@@ -8,12 +8,6 @@
  * are read off the page's own table header.
  */
 
-export const PAGE_KIND = {
-  written: "written",
-  oral: "oral",
-  unknown: "unknown",
-};
-
 /**
  * One written exam: level, term type, language, duration, cross-listed roots.
  * Root prefixes run past one digit (the catalog has "11,702,1.00"), so the
@@ -66,10 +60,11 @@ const MAX_LABEL_OFFSET = 20;
 const warning = (code, message, context) => ({ code, message, context });
 const matchFooters = (text) => [...text.matchAll(FOOTER_RE)];
 
+/** "written", "oral", or null for a page without either banner. */
 function pageKind(text) {
-  if (WRITTEN_BANNER_RE.test(text)) return PAGE_KIND.written;
-  if (ORAL_BANNER_RE.test(text)) return PAGE_KIND.oral;
-  return PAGE_KIND.unknown;
+  if (WRITTEN_BANNER_RE.test(text)) return "written";
+  if (ORAL_BANNER_RE.test(text)) return "oral";
+  return null;
 }
 
 /**
@@ -83,15 +78,14 @@ export function splitPages(rawText) {
     .split(PAGE_BREAK)
     .map((text, index) => ({ number: index + 1, text, kind: pageKind(text) }));
   for (const page of pages) {
-    const root =
-      page.kind === PAGE_KIND.unknown && page.text.match(COURSE_ROOT_RE);
+    const root = !page.kind && page.text.match(COURSE_ROOT_RE);
     if (root) {
       throw new Error(
         `Page has no written or oral banner but lists course ${root[0]} — page ${page.number}`,
       );
     }
   }
-  return pages.filter((page) => page.kind !== PAGE_KIND.unknown);
+  return pages.filter((page) => page.kind);
 }
 
 const labelTimes = (labels) => labels.map((label) => label.time).join(", ");
@@ -375,10 +369,10 @@ export function parseExamPlanText(rawText) {
   const publishedAt = parseFooters(rawText, warnings);
   const pages = splitPages(rawText);
   const written = pages
-    .filter((page) => page.kind === PAGE_KIND.written)
+    .filter((page) => page.kind === "written")
     .flatMap((page) => parseWrittenPage(page));
   const oralPages = pages
-    .filter((page) => page.kind === PAGE_KIND.oral)
+    .filter((page) => page.kind === "oral")
     .map((page) => parseOralPage(page));
 
   return {

@@ -29,25 +29,16 @@ export function validateAgainstCatalog(plan, catalog) {
 
   // Oral exams cover both the regular and the alternative date, so they count
   // as coverage regardless of term type.
-  const examRoots = new Map();
-  for (const exam of [...plan.written, ...plan.oral]) {
-    if (exam.termType === "AT") continue;
-    for (const root of exam.rootNumbers) {
-      if (!examRoots.has(root)) examRoots.set(root, exam);
-    }
-  }
-
-  const centralCoursesWithoutExam = [...centralRoots]
-    .filter((root) => !examRoots.has(root))
-    .map((root) => ({ root, shortName: catalogByRoot.get(root).shortName }));
-
-  const examsWithoutCourse = [...examRoots.entries()]
-    .filter(([root]) => !catalogByRoot.has(root))
-    .map(([root, exam]) => ({ root, title: exam.title }));
+  const examRoots = new Set(
+    [...plan.written, ...plan.oral]
+      .filter((exam) => exam.termType !== "AT")
+      .flatMap((exam) => exam.rootNumbers),
+  );
 
   return {
     centralCourseCount: centralRoots.size,
-    centralCoursesWithoutExam,
-    examsWithoutCourse,
+    centralCoursesWithoutExam: [...centralRoots]
+      .filter((root) => !examRoots.has(root))
+      .map((root) => ({ root, shortName: catalogByRoot.get(root).shortName })),
   };
 }

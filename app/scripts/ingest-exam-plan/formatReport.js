@@ -17,15 +17,6 @@ const counts = (byBucket) =>
     .map(([bucket, count]) => `${bucket}=${count}`)
     .join("  ");
 
-/** A sparse catalog snapshot can produce hundreds of advisory rows. */
-const MAX_LISTED_DIFF_ENTRIES = 20;
-
-const listed = (entries, describe) => {
-  const shown = entries.slice(0, MAX_LISTED_DIFF_ENTRIES).map(describe);
-  const hidden = entries.length - shown.length;
-  return hidden > 0 ? [...shown, `      … and ${hidden} more`] : shown;
-};
-
 export function formatReport({ plan, errors, warnings, stats, catalogDiff }) {
   const lines = [
     `Exam plan ${plan.semester} — ${plan.sourceTermLabel}`,
@@ -51,14 +42,8 @@ export function formatReport({ plan, errors, warnings, stats, catalogDiff }) {
       "",
       "Catalog cross-check (advisory):",
       `  central courses without exam ${catalogDiff.centralCoursesWithoutExam.length}/${catalogDiff.centralCourseCount}`,
-      ...listed(
-        catalogDiff.centralCoursesWithoutExam,
+      ...catalogDiff.centralCoursesWithoutExam.map(
         (course) => `      ${course.root} ${course.shortName}`,
-      ),
-      `  exams without a course       ${catalogDiff.examsWithoutCourse.length}`,
-      ...listed(
-        catalogDiff.examsWithoutCourse,
-        (exam) => `      ${exam.root} ${exam.title}`,
       ),
     );
   }

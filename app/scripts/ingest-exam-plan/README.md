@@ -64,10 +64,8 @@ Run every command in `app/` (`cd app` from the repository root).
      --catalog ../docs/exams/catalog-HS26.json
    ```
 
-   "central courses without exam" should be near-empty. "exams without a
-   course" is expected to be long: even-prefixed roots (`4,xxx`, `6,xxx`,
-   `8,xxx`) are spring courses cross-listed on an autumn exam. AT rows are left
-   out of the check.
+   "central courses without exam" should be near-empty. AT rows do not count
+   as an exam here.
 
 4. **Write the artifact and the fixtures.**
 

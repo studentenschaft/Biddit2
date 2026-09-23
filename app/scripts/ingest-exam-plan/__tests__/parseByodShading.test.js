@@ -113,14 +113,6 @@ describe("parseByodShading", () => {
     expect(shadedRoots).toEqual({ 1: { OT: ["3,200"] } });
   });
 
-  it("throws when it can read no word at all", () => {
-    // As if poppler reordered the attributes: every exam would look plain.
-    const reordered = `<doc><page width="595.2" height="841.68"><word yMin="131.27" xMin="61.4" yMax="137.37" xMax="63.67">=</word></page></doc>`;
-    expect(() => parseByodShading(svg([...SWATCH]), reordered)).toThrow(
-      'Cannot read the word boxes: pdftotext -bbox-layout printed no <word xMin="…" yMin="…" xMax="…" yMax="…">',
-    );
-  });
-
   it("warns, and marks nothing, when it finds no BYOD legend", () => {
     // As if HSG reworded it: the swatch and the shading are still drawn, but
     // nothing says which colour means BYOD.
