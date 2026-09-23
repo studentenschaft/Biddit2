@@ -71,6 +71,21 @@ describe("examPlanState", () => {
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
+  it.each(["application/json", "application/json; charset=utf-8"])(
+    "accepts a plan served as %s",
+    async (contentType) => {
+      serveHS26(
+        () =>
+          new HttpResponse(JSON.stringify(mockData.examSchedule), {
+            headers: { "Content-Type": contentType },
+          }),
+      );
+      const result = readPlan("HS26");
+
+      await waitFor(() => expect(result.current.status).toBe("ready"));
+    },
+  );
+
   it("reads the SPA fallback's index.html as no plan, quietly", async () => {
     // The default handler answers FS26 the way the Vite dev server does: 200
     // with index.html.

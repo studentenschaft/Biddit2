@@ -6,8 +6,10 @@ import { atomFamily } from "recoil";
 const SUPPORTED_SCHEMA_VERSION = 2;
 
 /**
- * Fetches and checks `public/exams/<semester>.json`. The shape is validated
- * here, once, so nothing downstream re-checks it (ADR 0011).
+ * Fetches and checks `public/exams/<semester>.json`. Only the top-level shape
+ * is checked here; entry-level integrity comes from the ingestion CLI, whose
+ * validation refuses to write a bad artifact. Between the two, nothing
+ * downstream re-checks the plan (ADR 0011).
  *
  * Deliberately a plain `fetch` rather than `apiClient`: this is a static asset
  * shipped in `public/`, it carries no auth and it is not SHSG traffic, so the
