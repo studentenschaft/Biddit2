@@ -1,5 +1,5 @@
 import { selectorFamily } from "recoil";
-import moment from "moment";
+import moment from "moment/moment";
 import { examPlanState } from "./examScheduleAtom";
 import {
   myCoursesSelector,
