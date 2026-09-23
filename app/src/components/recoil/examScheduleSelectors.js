@@ -59,7 +59,7 @@ export const plannedExamsSelector = selectorFamily({
 
 /** Exam block border and text: hsg-900, 9.4:1 on the block's white fill. */
 export const EXAM_COLOR = "#00521E";
-/** danger — same red the Phase 2 surfaces use for an exam clash; 4.8:1. */
+/** danger — the red every exam-clash surface uses (ADR 0012); 4.8:1. */
 export const EXAM_COLLISION_COLOR = "#DC2626";
 
 /**
