@@ -6,30 +6,25 @@
  * Pure: no fs, no clock, no process.
  */
 
-const PERCENT = 100;
 const ROOT_SEGMENTS = 2;
 
 /**
  * "3,200,1.00" (course) and "3,200,2.00" (its exercise group) share the root
- * "3,200" that the exam plan prints. Phase 1 lifts this into `courseUtils`.
+ * "3,200" that the exam plan prints — the rule `getCourseRootKey` applies at
+ * runtime.
  */
-export const courseNumberToRoot = (courseNumber) =>
-  String(courseNumber).split(",").slice(0, ROOT_SEGMENTS).join(",");
-
-/** DevTools exports arrive either bare or wrapped in `{ data: [...] }`. */
-const toCourseList = (catalog) => {
-  const courses = Array.isArray(catalog) ? catalog : catalog?.data;
-  return Array.isArray(courses) ? courses : [];
-};
+const courseNumberToRoot = (courseNumber) =>
+  courseNumber.split(",").slice(0, ROOT_SEGMENTS).join(",");
 
 export function validateAgainstCatalog(plan, catalog) {
-  const courses = toCourseList(catalog);
+  // DevTools exports arrive either bare or wrapped in `{ data: [...] }`.
+  const courses = catalog.data ?? catalog;
   const catalogByRoot = new Map();
   const centralRoots = new Set();
   for (const course of courses) {
-    const root = courseNumberToRoot(course?.courseNumber ?? "");
+    const root = courseNumberToRoot(course.courseNumber);
     if (!catalogByRoot.has(root)) catalogByRoot.set(root, course);
-    if (course?.achievementFormStatus?.isCentral) centralRoots.add(root);
+    if (course.achievementFormStatus?.isCentral) centralRoots.add(root);
   }
 
   // Oral exams cover both the regular and the alternative date, so they count
@@ -44,23 +39,14 @@ export function validateAgainstCatalog(plan, catalog) {
 
   const centralCoursesWithoutExam = [...centralRoots]
     .filter((root) => !examRoots.has(root))
-    .map((root) => ({
-      root,
-      courseNumber: catalogByRoot.get(root)?.courseNumber ?? null,
-      shortName: catalogByRoot.get(root)?.shortName ?? null,
-    }));
+    .map((root) => ({ root, shortName: catalogByRoot.get(root).shortName }));
 
   const examsWithoutCourse = [...examRoots.entries()]
     .filter(([root]) => !catalogByRoot.has(root))
     .map(([root, exam]) => ({ root, title: exam.title }));
 
-  const covered = centralRoots.size - centralCoursesWithoutExam.length;
   return {
     centralCourseCount: centralRoots.size,
-    coveragePercent:
-      centralRoots.size === 0
-        ? 0
-        : Math.round((covered / centralRoots.size) * PERCENT),
     centralCoursesWithoutExam,
     examsWithoutCourse,
   };

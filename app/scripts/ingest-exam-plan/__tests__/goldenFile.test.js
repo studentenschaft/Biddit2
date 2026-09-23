@@ -12,7 +12,7 @@ import { describe, expect, it } from "vitest";
 
 import { buildExamPlan } from "../buildExamPlan.js";
 import { parseExamPlanText } from "../parseExamPlanText.js";
-import { SOURCE_FILE, readFixture } from "./readFixture.js";
+import { readFixture } from "./readFixture.js";
 
 const SHIPPED_ARTIFACT = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -22,11 +22,7 @@ const JSON_INDENT = 2;
 
 describe("golden file", () => {
   it("rebuilds the artifact shipped in public/exams, byte for byte", () => {
-    const raw = readFixture("winter-2027.txt");
-    const plan = buildExamPlan(parseExamPlanText(raw), {
-      semester: "HS26",
-      sourceFile: SOURCE_FILE,
-    });
+    const plan = buildExamPlan(parseExamPlanText(readFixture("winter-2027.txt")));
     expect(readFileSync(SHIPPED_ARTIFACT, "utf8")).toBe(
       `${JSON.stringify(plan, null, JSON_INDENT)}\n`,
     );

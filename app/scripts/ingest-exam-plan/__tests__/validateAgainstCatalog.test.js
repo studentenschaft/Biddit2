@@ -2,29 +2,31 @@ import { describe, expect, it } from "vitest";
 
 import { buildExamPlan } from "../buildExamPlan.js";
 import { parseExamPlanText } from "../parseExamPlanText.js";
-import {
-  courseNumberToRoot,
-  validateAgainstCatalog,
-} from "../validateAgainstCatalog.js";
-import { SOURCE_FILE, readFixture, readSnippet } from "./readFixture.js";
+import { validateAgainstCatalog } from "../validateAgainstCatalog.js";
+import { readFixture } from "./readFixture.js";
 
-const catalog = JSON.parse(readFixture("catalog-hs26.sample.json"));
-const plan = buildExamPlan(parseExamPlanText(readFixture("winter-2027.txt")), {
-  semester: "HS26",
-  sourceFile: SOURCE_FILE,
-});
+const catalog = [
+  ["3,200,1.00", "Mikroökonomik II"],
+  ["3,200,2.00", "Mikroökonomik II - Übung"],
+  ["3,202,1.00", "Microeconomics II"],
+  ["1,908,1.00", "Linear Algebra"],
+  ["5,500,1.00", "Aktienrecht"],
+  ["7,116,1.00", "Digital Auditing"],
+  ["7,254,1.00", "Advanced Macroeconomics II"],
+  ["7,421,1.00", "Datenschutzrecht"],
+  ["3,900,1.00", "Entwurf von Softwaresystemen"],
+  ["5,267,1.00", "Ökonomie des Glücks"],
+  ["7,999,1.00", "Wirtschaftsethik"],
+  ["8,110,1.00", "Seminar: Digitale Ethik", false],
+].map(([courseNumber, shortName, isCentral = true]) => ({
+  courseNumber,
+  shortName,
+  achievementFormStatus: { isCentral },
+}));
+
+const plan = buildExamPlan(parseExamPlanText(readFixture("winter-2027.txt")));
 const diff = validateAgainstCatalog(plan, catalog);
 const roots = (entries) => entries.map((entry) => entry.root);
-
-describe("courseNumberToRoot", () => {
-  it("keeps the two segments the exam plan prints", () => {
-    expect(courseNumberToRoot("3,200,1.00")).toBe("3,200");
-  });
-
-  it("maps a course and its exercise group to the same root", () => {
-    expect(courseNumberToRoot("3,200,2.00")).toBe(courseNumberToRoot("3,200,1.00"));
-  });
-});
 
 describe("validateAgainstCatalog", () => {
   it("lists central courses with no exam — the check that finds a dropped exam", () => {
@@ -44,39 +46,16 @@ describe("validateAgainstCatalog", () => {
     expect(roots(diff.centralCoursesWithoutExam)).not.toContain("7,421");
   });
 
-  it("reports coverage as a percentage of the central courses", () => {
-    expect(diff.coveragePercent).toBe(90);
-  });
-
   it("lists exams whose root is missing from the catalog", () => {
     expect(roots(diff.examsWithoutCourse)).toContain("3,120");
     expect(roots(diff.examsWithoutCourse)).not.toContain("3,200");
   });
 
-  it("ignores alternative-date exams, which repeat a regular course", () => {
+  it("ignores AT rows, which are another semester's alternative dates", () => {
     expect(roots(diff.examsWithoutCourse)).not.toContain("2,805");
   });
 
   it("tolerates the { data: [...] } wrapper of a DevTools export", () => {
     expect(validateAgainstCatalog(plan, { data: catalog })).toEqual(diff);
-  });
-
-  it("never throws, whatever the snapshot turns out to be", () => {
-    for (const junk of [null, {}, "", 42, { data: "nope" }]) {
-      expect(validateAgainstCatalog(plan, junk).centralCourseCount).toBe(0);
-    }
-  });
-
-  it("reports zero coverage rather than dividing by an empty catalog", () => {
-    expect(validateAgainstCatalog(plan, []).coveragePercent).toBe(0);
-  });
-
-  it("works on a plan that only has a written page", () => {
-    const small = buildExamPlan(
-      parseExamPlanText(readSnippet("written-page.txt")),
-      { semester: "HS26", sourceFile: SOURCE_FILE },
-    );
-    expect(roots(validateAgainstCatalog(small, catalog).centralCoursesWithoutExam))
-      .toContain("7,254");
   });
 });

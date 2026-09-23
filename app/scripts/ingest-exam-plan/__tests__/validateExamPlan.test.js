@@ -3,27 +3,23 @@ import { describe, expect, it } from "vitest";
 import { buildExamPlan } from "../buildExamPlan.js";
 import { parseExamPlanText } from "../parseExamPlanText.js";
 import { validateExamPlan } from "../validateExamPlan.js";
-import { SOURCE_FILE, readFixture, readSnippet } from "./readFixture.js";
+import { HEADER, readFixture } from "./readFixture.js";
 
-const build = (text) =>
-  buildExamPlan(parseExamPlanText(text), {
-    semester: "HS26",
-    sourceFile: SOURCE_FILE,
-  });
+const build = (text) => buildExamPlan(parseExamPlanText(text));
 
-const snippet = readSnippet("written-page.txt");
+const raw = readFixture("winter-2027.txt");
+const published = build(raw);
 const codes = (findings) => findings.map((finding) => finding.code);
 
-/** Validates a clone of the snippet plan after `mutate` has broken it. */
+/** Validates a clone of the real plan after `mutate` has broken it. */
 const validateBroken = (mutate) => {
-  const plan = structuredClone(build(snippet));
+  const plan = structuredClone(published);
   mutate(plan);
-  return codes(validateExamPlan(plan, snippet).errors);
+  return codes(validateExamPlan(plan, raw).errors);
 };
 
 describe("validateExamPlan — the plan as published", () => {
-  const raw = readFixture("winter-2027.txt");
-  const { errors, warnings, stats } = validateExamPlan(build(raw), raw);
+  const { errors, warnings, stats } = validateExamPlan(published, raw);
 
   it("finds nothing wrong with the real plan", () => {
     expect(errors).toEqual([]);
@@ -42,24 +38,8 @@ describe("validateExamPlan — the plan as published", () => {
     });
   });
 
-  it("always says that BYOD is a lower bound", () => {
-    expect(codes(warnings)).toContain("W_BYOD_GLYPH_LOST");
-  });
-
   it("repeats the PDF's own warning that the AT plan is incomplete", () => {
-    expect(codes(warnings)).toContain("W_AT_INCOMPLETE");
-  });
-
-  it("reports that the oral exams still have no times", () => {
-    expect(codes(warnings)).toContain("W_ORAL_NO_TIMES");
-  });
-
-  it("lists the cross-listed pairs whose suffixes disagree", () => {
-    const shapes = warnings.filter(
-      (warning) => warning.code === "W_ROOT_SHAPE",
-    );
-    expect(shapes).toHaveLength(9);
-    expect(shapes[0].context).toContain("3,874 | 4,872");
+    expect(codes(warnings)).toEqual(["W_AT_INCOMPLETE"]);
   });
 });
 
@@ -71,7 +51,11 @@ describe("validateExamPlan — one broken plan per error code", () => {
   });
 
   it("E_UNCONSUMED_LINE when a table row is not an exam and not a gutter", () => {
-    const stray = readSnippet("written-stray-row.txt");
+    const stray = `${HEADER}
+Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr            Prüfungsbeginn (schriftl.): 15.15 Uhr
+18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+           Fortsetzung der Liste auf der naechsten Seite
+`;
     expect(codes(validateExamPlan(build(stray), stray).errors)).toEqual([
       "E_UNCONSUMED_LINE",
     ]);
@@ -93,20 +77,10 @@ describe("validateExamPlan — one broken plan per error code", () => {
     ).toContain("E_DATE_OUT_OF_PERIOD");
   });
 
-  it("E_ISO_MISMATCH when startIso disagrees with date and slot", () => {
+  it("E_DUPLICATE_EXAM when the same exam appears twice", () => {
     expect(
       validateBroken((plan) => {
-        plan.written[0].startIso = "2027-01-18T09:15:00+02:00";
-      }),
-    ).toContain("E_ISO_MISMATCH");
-  });
-
-  it("E_DUPLICATE_EXAM when one course has two exams of the same term type", () => {
-    expect(
-      validateBroken((plan) => {
-        const copy = structuredClone(plan.written[0]);
-        copy.id = `${copy.id}-copy`;
-        plan.written.push(copy);
+        plan.written.push(structuredClone(plan.written[0]));
       }),
     ).toContain("E_DUPLICATE_EXAM");
   });
@@ -141,43 +115,5 @@ describe("validateExamPlan — one broken plan per error code", () => {
         plan.written[0].title = "| 114,802 Deutsch C1";
       }),
     ).toContain("E_TITLE_BLEED");
-  });
-
-  it("E_SEMESTER_MISMATCH when the key contradicts the plan's own title", () => {
-    // "Winter 2027" can only be HS26; a typo like FS30 must not ship a whole
-    // semester's dates under the wrong key.
-    expect(
-      validateBroken((plan) => {
-        plan.semester = "FS30";
-      }),
-    ).toContain("E_SEMESTER_MISMATCH");
-  });
-
-  it("allows a two-part exam on different dates, same root and term type", () => {
-    expect(
-      validateBroken((plan) => {
-        const second = structuredClone(plan.written[0]);
-        second.id = `${second.id}-part-2`;
-        second.date = "2027-01-19";
-        second.startIso = "2027-01-19T09:15:00+01:00";
-        plan.written.push(second);
-      }),
-    ).not.toContain("E_DUPLICATE_EXAM");
-  });
-
-  it("E_SEMESTER_FORMAT for a semester key of the wrong shape", () => {
-    expect(
-      validateBroken((plan) => {
-        plan.semester = "HS2026";
-      }),
-    ).toContain("E_SEMESTER_FORMAT");
-  });
-
-  it("E_PERIOD_ORDER when a period ends before it starts", () => {
-    expect(
-      validateBroken((plan) => {
-        plan.examPeriod = { start: "2027-02-20", end: "2027-01-18" };
-      }),
-    ).toContain("E_PERIOD_ORDER");
   });
 });

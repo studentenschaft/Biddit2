@@ -8,12 +8,27 @@ import { toZurichIso } from "./zurichTime.js";
 
 export const SCHEMA_VERSION = 1;
 
-const byKey = (key) => (a, b) => {
-  const left = key(a);
-  const right = key(b);
-  if (left < right) return -1;
-  return left > right ? 1 : 0;
-};
+const TERM_LABEL_RE = /\b(Winter|Sommer|Summer)\s+(\d{4})\b/;
+
+/**
+ * The PDF names the exam period, not the semester it closes: "Winter YYYY" is
+ * sat at the end of HS(YYYY−1), "Sommer/Summer YYYY" at the end of FS(YYYY).
+ */
+function semesterFromTermLabel(termLabel) {
+  const match = termLabel.match(TERM_LABEL_RE);
+  if (!match) {
+    throw new Error(
+      `Cannot derive the semester from the plan's title "${termLabel}": expected "Winter YYYY" or "Sommer/Summer YYYY"`,
+    );
+  }
+  const [, season, year] = match;
+  return season === "Winter"
+    ? `HS${String(year - 1).slice(-2)}`
+    : `FS${year.slice(-2)}`;
+}
+
+const byKey = (key) => (a, b) =>
+  key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
 
 const writtenSortKey = (exam) =>
   `${exam.date} ${exam.slot} ${exam.rootNumbers[0]} ${exam.termType}`;
@@ -41,26 +56,19 @@ function toWrittenExam(entry) {
 const toOralExam = (entry) => ({
   id: `ORAL-${entry.date}-${entry.rootNumbers.join(ROOT_SEPARATOR)}`,
   date: entry.date,
-  startIso: null,
-  timesPublishedLater: true,
   section: entry.section,
   rootNumbers: entry.rootNumbers,
   title: entry.title,
 });
 
-export function buildExamPlan(parsed, { semester, sourceFile }) {
-  if (!semester) {
-    throw new Error(
-      "The semester key is never inferred from the PDF. Winter YYYY = HS(YYYY-1), Summer YYYY = FS(YYYY) — pass it explicitly with --semester",
-    );
-  }
+export function buildExamPlan(parsed) {
   return {
     schemaVersion: SCHEMA_VERSION,
-    semester,
+    semester: semesterFromTermLabel(parsed.termLabel),
     sourceTermLabel: parsed.termLabel,
     examPeriod: parsed.examPeriod,
     oralExamPeriod: parsed.oralExamPeriod,
-    source: { file: sourceFile, publishedAt: parsed.publishedAt },
+    source: { publishedAt: parsed.publishedAt },
     written: [...parsed.written].sort(byKey(writtenSortKey)).map(toWrittenExam),
     oral: [...parsed.oral].sort(byKey(oralSortKey)).map(toOralExam),
     oralNotes: parsed.oralNotes,

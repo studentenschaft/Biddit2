@@ -4,24 +4,13 @@
  * Pure: no fs, no clock, no process.
  */
 
-/** Findings are grouped by code so a repeated check reads as one entry. */
-function section(title, findings) {
-  if (findings.length === 0) return `${title}: none`;
-  const byCode = new Map();
-  for (const finding of findings) {
-    if (!byCode.has(finding.code)) byCode.set(finding.code, []);
-    byCode.get(finding.code).push(finding);
-  }
-  const groups = [...byCode.values()].map((group) => {
-    const [{ code, message }] = group;
-    const times = group.length > 1 ? ` ×${group.length}` : "";
-    const contexts = group
-      .filter((finding) => finding.context)
-      .map((finding) => `      ${finding.context}`);
-    return [`  [${code}]${times} ${message}`, ...contexts].join("\n");
-  });
-  return [`${title} (${findings.length}):`, ...groups].join("\n");
-}
+const finding = ({ code, message, context }) =>
+  `  [${code}] ${message}${context ? ` — ${context}` : ""}`;
+
+const section = (title, findings) =>
+  findings.length === 0
+    ? `${title}: none`
+    : [`${title} (${findings.length}):`, ...findings.map(finding)].join("\n");
 
 const counts = (byBucket) =>
   Object.entries(byBucket)
@@ -40,7 +29,7 @@ const listed = (entries, describe) => {
 export function formatReport({ plan, errors, warnings, stats, catalogDiff }) {
   const lines = [
     `Exam plan ${plan.semester} — ${plan.sourceTermLabel}`,
-    `  source        ${plan.source.file} (published ${plan.source.publishedAt})`,
+    `  published     ${plan.source.publishedAt}`,
     `  exam period   ${plan.examPeriod.start} … ${plan.examPeriod.end}`,
     `  oral period   ${plan.oralExamPeriod ? `${plan.oralExamPeriod.start} … ${plan.oralExamPeriod.end}` : "not stated"}`,
     "",
@@ -61,8 +50,7 @@ export function formatReport({ plan, errors, warnings, stats, catalogDiff }) {
     lines.push(
       "",
       "Catalog cross-check (advisory):",
-      `  coverage                    ${catalogDiff.coveragePercent}% of ${catalogDiff.centralCourseCount} central courses have an exam`,
-      `  central courses without exam ${catalogDiff.centralCoursesWithoutExam.length}`,
+      `  central courses without exam ${catalogDiff.centralCoursesWithoutExam.length}/${catalogDiff.centralCourseCount}`,
       ...listed(
         catalogDiff.centralCoursesWithoutExam,
         (course) => `      ${course.root} ${course.shortName}`,

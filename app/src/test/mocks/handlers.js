@@ -155,7 +155,7 @@ const mockData = {
     sourceTermLabel: "Winter 2027",
     examPeriod: { start: "2027-01-18", end: "2027-02-20" },
     oralExamPeriod: { start: "2027-01-30", end: "2027-02-20" },
-    source: { file: "docs/exams/test.pdf", publishedAt: "2026-08-18" },
+    source: { publishedAt: "2026-08-18" },
     written: [
       {
         id: "OT-2027-01-18-0915-3,200",
@@ -224,8 +224,6 @@ const mockData = {
       {
         id: "ORAL-2027-01-30-7,421",
         date: "2027-01-30",
-        startIso: null,
-        timesPublishedLater: true,
         section: "Ordentliche Prüfungstermine / Regular examination dates",
         rootNumbers: ["7,421"],
         title: "Datenschutzrecht",

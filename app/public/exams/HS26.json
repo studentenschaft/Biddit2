@@ -11,7 +11,6 @@
     "end": "2027-02-20"
   },
   "source": {
-    "file": "docs/exams/Prüfungsplan OT Winter 2027.pdf",
     "publishedAt": "2026-08-18"
   },
   "written": [
@@ -2552,8 +2551,6 @@
     {
       "id": "ORAL-2027-01-30-7,421",
       "date": "2027-01-30",
-      "startIso": null,
-      "timesPublishedLater": true,
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,421"
@@ -2563,8 +2560,6 @@
     {
       "id": "ORAL-2027-01-30-7,436",
       "date": "2027-01-30",
-      "startIso": null,
-      "timesPublishedLater": true,
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,436"
@@ -2574,8 +2569,6 @@
     {
       "id": "ORAL-2027-01-30-7,702",
       "date": "2027-01-30",
-      "startIso": null,
-      "timesPublishedLater": true,
       "section": "Ordentliche Prüfungstermine / Regular examination dates",
       "rootNumbers": [
         "7,702"

@@ -71,7 +71,6 @@ const PLAN = {
     {
       id: "oral-privacy",
       date: "2027-01-30",
-      startIso: null,
       rootNumbers: ["7,421"],
       title: "Datenschutzrecht",
     },
