@@ -389,9 +389,11 @@ describe("semester summary exam check", () => {
   });
 
   it("says so when one exam clashes", () => {
-    // Exam B is cross-listed with 3,200 and 7,850 and overlaps 3,200's own
-    // exam A. Micro sits both, which is the plan's business, not a clash of
-    // two courses; Macro sits only B, which clashes with Micro's A.
+    // Pins the singular wording on a synthetic plan. Exam B is cross-listed
+    // with 3,200 and 7,850 and overlaps 3,200's exam A. An exam also sat by
+    // one of a course's own roots is never a clash for that course, so B
+    // against A is a self-overlap for Micro, not a clash between two
+    // courses; for Macro, B clashes with Micro's A. One exam clashes: B.
     const [a, b] = mockData.examSchedule.written;
     renderExamSummary({
       courses: [MICRO, MACRO],
