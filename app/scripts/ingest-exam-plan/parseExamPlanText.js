@@ -2,10 +2,10 @@
  * Turns the `pdftotext -layout` rendering of an HSG exam plan into a structured
  * ParsedPlan. Pure: no fs, no clock, no process.
  *
- * The layout is a two-column table, one column per written start time. The
- * columns move from page to page and a guessed time would be silently wrong, so
- * both the times and the column boundary are read off each page's own header
- * line.
+ * The layout is a table with one column per written start time: two, or one on
+ * a page of morning exams only. The columns move from page to page and a
+ * guessed time would be silently wrong, so the times and their columns are read
+ * off the page's own table header.
  */
 
 export const PAGE_KIND = {
@@ -46,9 +46,11 @@ export const WEEKDAYS_SOURCE =
   "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
 const WEEKDAY_GUTTER_RE = new RegExp(`^(?:${WEEKDAYS_SOURCE})\\s*\\/?\\s*`);
 
-// An entry prefix ("BA: OT DE 120' 3,802 | 4,802 ") is roughly 40 columns wide,
-// so two genuinely separate slot columns can never come closer than that.
-const MIN_COLUMN_CLUSTER_GAP = 40;
+// Real entries start within one column of their label and at least 50 columns
+// from the midpoint between two labels. 20 leaves room for drift but refuses an
+// entry that has drifted towards the other column, and one in a column the
+// header gives no start time for (e.g. a second label the regex cannot read).
+const MAX_LABEL_OFFSET = 20;
 
 const warning = (code, message, context) => ({ code, message, context });
 const matchFooters = (text) => [...text.matchAll(FOOTER_RE)];
@@ -81,30 +83,44 @@ export function splitPages(rawText) {
   return pages.filter((page) => page.kind !== PAGE_KIND.unknown);
 }
 
+const labelTimes = (labels) => labels.map((label) => label.time).join(", ");
+
 /**
- * The two start times of a written page and the column that separates their
- * entries. Guessing here would silently shift exams by hours, so anything but
- * two ascending labels is fatal.
+ * The start-time labels of a table header. The alternative-date plans are
+ * mostly morning exams, so a header may print a single start time; anything
+ * but one or two ascending labels is fatal.
  */
-export function readSlots(page) {
-  const headerLine = page.text
-    .split("\n")
-    .find((line) => line.startsWith(TABLE_HEADER_PREFIX));
-  const labels = [...(headerLine ?? "").matchAll(SLOT_LABEL_RE)].map(
-    (match) => ({
-      time: `${match[1].padStart(2, "0")}:${match[2]}`,
-      column: match.index,
-    }),
-  );
-  const times = labels.map((label) => label.time);
-  if (labels.length !== 2 || times[0] >= times[1]) {
+function readLabels(headerLine, where) {
+  const labels = [...headerLine.matchAll(SLOT_LABEL_RE)].map((match) => ({
+    time: `${match[1].padStart(2, "0")}:${match[2]}`,
+    column: match.index,
+  }));
+  const [first, second] = labels;
+  const ascending = !second || first.time < second.time;
+  if (labels.length < 1 || labels.length > 2 || !ascending) {
     throw new Error(
-      `Cannot read the start times — page ${page.number}: expected two ascending "Prüfungsbeginn (schriftl.): hh.mm Uhr" labels in the table header, found ${times.join(", ") || "none"}`,
+      `Cannot read the start times — ${where}: expected one or two ascending "Prüfungsbeginn (schriftl.): hh.mm Uhr" labels in the table header, found ${labelTimes(labels) || "none"}`,
     );
   }
-  // Right-hand entries start at exactly their label's column, so the boundary
-  // sits halfway between the labels rather than on the second one.
-  return { times, boundary: (labels[0].column + labels[1].column) / 2 };
+  return labels;
+}
+
+/**
+ * The time of the label an entry starts under. Taking the nearer label puts
+ * the boundary halfway between two labels: right-hand entries start at exactly
+ * their label's column, so a boundary on the label would leave no margin.
+ */
+function slotAt(column, labels, where) {
+  const offset = (label) => Math.abs(column - label.column);
+  const label = labels.reduce((nearest, candidate) =>
+    offset(candidate) < offset(nearest) ? candidate : nearest,
+  );
+  if (offset(label) > MAX_LABEL_OFFSET) {
+    throw new Error(
+      `Exam does not start under a start-time label — ${where}: column ${column}, labels at ${labels.map((each) => each.column).join(", ")}`,
+    );
+  }
+  return label.time;
 }
 
 /**
@@ -129,20 +145,35 @@ function stripGutter(line) {
 }
 
 function parseWrittenPage(page) {
-  const { times, boundary } = readSlots(page);
   const lines = page.text.split("\n");
   const bodyStart = lines.findIndex((line) =>
     line.startsWith(TABLE_HEADER_PREFIX),
   );
+  if (bodyStart === -1) {
+    throw new Error(
+      `Cannot read the start times — page ${page.number}: no table header`,
+    );
+  }
   const exams = [];
-  const entryColumns = [];
+  let labels = null;
   let currentDate = null;
 
   for (let index = bodyStart; index < lines.length; index += 1) {
     const line = lines[index];
-    const dateMatch = line.match(LEADING_DATE_RE);
-    // A date row usually carries its first exams too, so it is never skipped.
     const where = `page ${page.number} line ${index + 1}`;
+    if (line.startsWith(TABLE_HEADER_PREFIX)) {
+      // Each header places the rows below it, but one page with two sets of
+      // start times is not a layout this parser has seen.
+      const header = readLabels(line, where);
+      if (labels && labelTimes(header) !== labelTimes(labels)) {
+        throw new Error(
+          `Table headers disagree on the start times — ${where}: ${labelTimes(header)} after ${labelTimes(labels)}`,
+        );
+      }
+      labels = header;
+    }
+    // A date row usually carries its first exams too, so it is never skipped.
+    const dateMatch = line.match(LEADING_DATE_RE);
     if (dateMatch) currentDate = calendarDate(...dateMatch.slice(1), where);
 
     const matches = [...line.matchAll(ENTRY_RE)];
@@ -152,14 +183,13 @@ function parseWrittenPage(page) {
           `Exam row appears before any date row — ${where}: ${line.trim()}`,
         );
       }
-      entryColumns.push(match.index);
       const [full, level, termType, language, duration, roots] = match;
       const titleEnd =
         position + 1 < matches.length ? matches[position + 1].index : line.length;
       const title = line.slice(match.index + full.length, titleEnd).trim();
       exams.push({
         date: currentDate,
-        slot: match.index >= boundary ? times[1] : times[0],
+        slot: slotAt(match.index, labels, where),
         durationMin: Number(duration),
         level,
         termType,
@@ -169,27 +199,6 @@ function parseWrittenPage(page) {
         byod: BYOD_MARKER_RE.test(title),
       });
     });
-  }
-
-  const leftColumns = entryColumns.filter((column) => column < boundary);
-  const rightColumns = entryColumns.filter((column) => column >= boundary);
-  const leftEnd = Math.max(...leftColumns);
-  const rightStart = Math.min(...rightColumns);
-  if (
-    entryColumns.length > 0 &&
-    (leftColumns.length === 0 || rightColumns.length === 0)
-  ) {
-    // A boundary that sweeps every entry into one column balances every count
-    // and shifts each exam by hours. Every published page so far uses both
-    // start times, so an empty column means the header no longer fits the rows.
-    throw new Error(
-      `Every exam landed in one start-time column — page ${page.number}: ${leftColumns.length} left and ${rightColumns.length} right of column ${boundary}`,
-    );
-  }
-  if (rightStart - leftEnd < MIN_COLUMN_CLUSTER_GAP) {
-    throw new Error(
-      `The two start-time columns nearly touch — page ${page.number}: left entries end at column ${leftEnd}, right entries start at ${rightStart}`,
-    );
   }
   return exams;
 }

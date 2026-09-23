@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   PAGE_KIND,
   parseExamPlanText,
-  readSlots,
   splitPages,
 } from "../parseExamPlanText.js";
 import {
@@ -49,17 +48,8 @@ ${TWO_SLOT_ROW}
   });
 });
 
-describe("readSlots", () => {
-  it("reads both start times and a boundary for every page of the real plan", () => {
-    const slots = splitPages(plan)
-      .filter((split) => split.kind === PAGE_KIND.written)
-      .map((split) => readSlots(split));
-    expect(slots).toEqual([
-      { times: ["09:15", "15:15"], boundary: 85 },
-      { times: ["09:15", "15:15"], boundary: 68 },
-      { times: ["09:15", "15:15"], boundary: 70 },
-    ]);
-  });
+describe("parseExamPlanText — start times", () => {
+  const LABEL = (time) => `Prüfungsbeginn (schriftl.): ${time} Uhr`;
 
   it("stamps the exams with the start times the header prints", () => {
     const shifted = parseExamPlanText(`${HEADER}
@@ -70,19 +60,45 @@ ${TWO_SLOT_ROW}
     expect(find(shifted.written, "1,908").slot).toBe("14:15");
   });
 
-  it("throws rather than guess when the header has one start time", () => {
-    const oneLabel = `${HEADER}
-Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr
+  it("gives every exam the one start time a header prints", () => {
+    // The alternative-date plans are mostly morning exams, so a page may
+    // well print a single start time.
+    const morningOnly = parseExamPlanText(`${HEADER}
+Datum      ${LABEL("09.15")}
 18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+Montag /   BA: OT EN  90'  3,202 Microeconomics II
+`);
+    expect(morningOnly.written.map((exam) => exam.slot)).toEqual([
+      "09:15",
+      "09:15",
+    ]);
+  });
+
+  it("keeps a two-time page whose exams all use one start time", () => {
+    const oneColumn = parseExamPlanText(`${HEADER}
+${TABLE_HEADER}
+18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+Montag /   BA: OT EN  90'  3,202 Microeconomics II
+`);
+    expect(oneColumn.written.map((exam) => exam.slot)).toEqual([
+      "09:15",
+      "09:15",
+    ]);
+  });
+
+  it("throws when the header prints no start time", () => {
+    const noLabel = `${HEADER}
+Datum      Beginn 09.15 Uhr
+${TWO_SLOT_ROW}
 `;
-    expect(() => parseExamPlanText(oneLabel)).toThrow(
-      /page 1: expected two ascending .* found 09:15$/,
+    expect(() => parseExamPlanText(noLabel)).toThrow(
+      "Cannot read the start times — page 1 line 4: expected one or two ascending",
     );
   });
 
   it("throws on a third start-time column", () => {
     const threeLabels = `${HEADER}
-${TABLE_HEADER}      Prüfungsbeginn (schriftl.): 18.15 Uhr
+${TABLE_HEADER}      ${LABEL("18.15")}
 ${TWO_SLOT_ROW}
 `;
     expect(() => parseExamPlanText(threeLabels)).toThrow(
@@ -92,10 +108,56 @@ ${TWO_SLOT_ROW}
 
   it("throws when the later start time is printed on the left", () => {
     const swapped = `${HEADER}
-Datum      Prüfungsbeginn (schriftl.): 15.15 Uhr            Prüfungsbeginn (schriftl.): 09.15 Uhr
+Datum      ${LABEL("15.15")}            ${LABEL("09.15")}
 ${TWO_SLOT_ROW}
 `;
     expect(() => parseExamPlanText(swapped)).toThrow(/found 15:15, 09:15$/);
+  });
+
+  it("throws on an exam that starts halfway between the two labels", () => {
+    // Real entries start within one column of their label; one this far from
+    // both could belong to either start time.
+    const ambiguous = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+${"Montag /".padEnd(36)}BA: OT EN  90'  3,202 Microeconomics II
+`;
+    expect(() => parseExamPlanText(ambiguous)).toThrow(
+      "Exam does not start under a start-time label — page 1 line 6: column 36, labels at 11, 60",
+    );
+  });
+
+  it("throws on an exam in a column the header gives no start time for", () => {
+    // A second label the regex cannot read must not put the afternoon
+    // exams under the morning time.
+    const unlabelled = `${HEADER}
+Datum      ${LABEL("09.15")}            Beginn (schriftl.): 15.15 Uhr
+${TWO_SLOT_ROW}
+`;
+    expect(() => parseExamPlanText(unlabelled)).toThrow(
+      "Exam does not start under a start-time label — page 1 line 5: column 60, labels at 11",
+    );
+  });
+
+  it("places the rows under a second table header by that header's labels", () => {
+    const secondTable = parseExamPlanText(`${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+${"Datum".padEnd(60)}${LABEL("09.15").padEnd(80)}${LABEL("15.15")}
+${"19.01.2027".padEnd(60)}BA: OT DE 120'  3,802 Deutsch C1
+`);
+    expect(find(secondTable.written, "3,802").slot).toBe("09:15");
+  });
+
+  it("throws when two table headers on a page print different start times", () => {
+    const disagreeing = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+${TABLE_HEADER.replace("15.15", "14.15")}
+`;
+    expect(() => parseExamPlanText(disagreeing)).toThrow(
+      "Table headers disagree on the start times — page 1 line 6: 09:15, 14:15 after 09:15, 15:15",
+    );
   });
 });
 
@@ -248,19 +310,6 @@ ${TWO_SLOT_ROW.replace("  MA: OT", " MA: OT")}
     expect(find(shifted.written, "1,908").slot).toBe("15:15");
   });
 
-  it("throws when every entry of a page lands in one slot", () => {
-    // The signature of a boundary derived from a re-laid-out header: nothing
-    // is dropped, the counts balance, and every exam is hours wrong.
-    const oneSided = `${HEADER}
-${TABLE_HEADER}
-18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
-Montag /   BA: OT EN  90'  3,202 Microeconomics II
-`;
-    expect(() => parseExamPlanText(oneSided)).toThrow(
-      "Every exam landed in one start-time column — page 1",
-    );
-  });
-
   it("reads alternative-date rows as their own exams", () => {
     const alternative = parsed.written.filter((exam) => exam.termType === "AT");
     expect(alternative).toHaveLength(48);
@@ -313,16 +362,6 @@ ${TABLE_HEADER}
 `;
     expect(() => parseExamPlanText(undated)).toThrow(
       "page 1 line 5: BA: OT DE  90'  3,200 Mikroökonomik II",
-    );
-  });
-
-  it("throws when the two slot columns almost touch", () => {
-    const tight = `${HEADER}
-Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr Prüfungsbeginn (schriftl.): 15.15 Uhr
-18.01.2027 BA: OT DE  90'  3,200 X               BA: OT EN  90'  1,908 Y
-`;
-    expect(() => parseExamPlanText(tight)).toThrow(
-      "The two start-time columns nearly touch — page 1",
     );
   });
 
