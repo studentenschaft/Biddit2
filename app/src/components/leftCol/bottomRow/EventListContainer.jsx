@@ -273,9 +273,7 @@ export default function EventListContainer({
     // A browsed course warns too, in "would clash" wording: the exam plan
     // itself tells students not to bid on courses whose exams clash.
     const examClash = describeExamClashes(
-      data.examPlan
-        ? examClashes(data.plannedExams, data.examPlan, event)
-        : new Map(),
+      examClashes(data.plannedExams, data.examPlan, event),
       isPlannedCourse(data.myCourses, event)
     );
 
@@ -322,8 +320,12 @@ export default function EventListContainer({
                 aria-hidden={false}
                 aria-label={examClash.label}
                 className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
-                data-tooltip-id="exam-clash-tooltip"
+                data-tooltip-id="course-list-tooltip"
                 data-tooltip-content={examClash.label}
+                // The red every dark exam tooltip uses. Important, because
+                // react-tooltip injects its dark variant's white after our
+                // stylesheet.
+                data-tooltip-class-name="!text-red-300"
               />
             )}
           </div>
@@ -459,22 +461,15 @@ export default function EventListContainer({
           </FixedSizeList>
         )}
       </AutoSizer>
-      {/* Each instance serves every anchor of its id in the list; anchors
-          carry their own data-tooltip-content. */}
+      {/* One instance serves every anchor of its id in the list; anchors
+          carry their own data-tooltip-content (and exam clashes their red).
+          The dark variant's text is already white. */}
       <ReactTooltip
         id="course-list-tooltip"
         place="top"
         effect="solid"
         style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
-        className="bg-gray-800 text-white text-xs rounded px-2 py-1"
-      />
-      {/* Exam clashes read in the red every dark exam tooltip uses. */}
-      <ReactTooltip
-        id="exam-clash-tooltip"
-        place="top"
-        effect="solid"
-        style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
-        className="bg-gray-800 text-red-300 text-xs rounded px-2 py-1"
+        className="bg-gray-800 text-xs rounded px-2 py-1"
       />
     </Suspense>
   );

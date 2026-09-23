@@ -110,7 +110,7 @@ export default function SemesterSummary() {
   // Central-exam clashes, kept separate from the lecture conflicts: different
   // source, different remedy.
   const examClashesByCourse = currCourses.map((course) =>
-    examPlan ? examClashes(plannedExams, examPlan, course) : new Map()
+    examClashes(plannedExams, examPlan, course)
   );
   // Central courses the plan lists no exam for, once per root (an exercise
   // group shares its lecture's): the check did not cover them.

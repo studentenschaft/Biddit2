@@ -97,10 +97,10 @@ const overlaps = (a, b) => {
  * A clash is a *different* exam, sat for a course of a *different* root, whose
  * time overlaps; exams that merely touch do not clash. Interval maths rather
  * than a (date, slot) match, so a plan with other start times stays correct.
- * `course` may be planned or only browsed.
+ * `course` may be planned or only browsed. No plan, no clashes.
  *
  * @param {Array} plannedExams - `planExams` of the user's courses
- * @param {Object} plan - Parsed exam plan artifact
+ * @param {Object|null} plan - Parsed exam plan artifact
  * @param {Object} course - Course object
  * @returns {Map<string, string[]>} Exam id → names of the planned exams it
  *   clashes with, deduped, in plan order; only clashing exams are keys
@@ -108,7 +108,7 @@ const overlaps = (a, b) => {
 export function examClashes(plannedExams, plan, course) {
   const rootKey = getCourseRootKey(course);
   const clashes = new Map();
-  for (const exam of examsForCourse(plan, course).written) {
+  for (const exam of plan ? examsForCourse(plan, course).written : []) {
     const names = plannedExams
       .filter(
         (other) =>

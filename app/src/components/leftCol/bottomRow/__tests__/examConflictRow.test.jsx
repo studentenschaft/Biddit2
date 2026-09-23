@@ -174,7 +174,9 @@ describe("exam conflicts in the course list", () => {
     expect(tooltip).toHaveTextContent(
       "Exam clash with: Causal Inference. Indicative — verify officially.",
     );
-    expect(tooltip).toHaveClass("text-red-300");
+    // Important: react-tooltip's own dark-variant white is injected after
+    // the app's stylesheet and would win over a plain text-red-300.
+    expect(tooltip).toHaveClass("!text-red-300");
   });
 
   it("leaves a course whose exam is on another date alone", async () => {
