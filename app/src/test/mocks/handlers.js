@@ -405,10 +405,10 @@ const unisgHandlers = [
 
 /**
  * Static assets served from public/ — not an API, so no error simulation.
- * Only HS26 was ingested. A never-ingested semester does NOT 404 in
- * production: the SPA fallback (Netlify `/* /index.html 200`, same in Vite
- * dev) answers 200 with HTML, and "missing" is reached via the JSON parse
- * failure — so that is what the mock serves.
+ * Only HS26 was ingested. Netlify answers a missing semester with a 404
+ * (`_redirects`), but the Vite dev server falls back to index.html with a 200
+ * — the case the content-type check exists for, so that is what the mock
+ * serves.
  */
 const staticAssetHandlers = [
   http.get("*/exams/HS26.json", () => HttpResponse.json(mockData.examSchedule)),

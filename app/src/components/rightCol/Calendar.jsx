@@ -29,10 +29,8 @@ import {
   selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
-// Central written exams as calendar blocks. The hook is what fills
-// the atom the selector reads, and it refuses borrowed catalogs on its own.
+// Central written exams as calendar blocks.
 import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
-import { useExamSchedule } from "../helpers/useExamSchedule";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
@@ -51,7 +49,6 @@ export default function Calendar() {
   // Same semester `calendarEntriesSelector` builds its lecture events from, so
   // the two event sets can never describe different terms.
   const selectedSemester = useRecoilValue(selectedSemesterSelector);
-  useExamSchedule(selectedSemester);
   const examEvents = useRecoilValue(
     examCalendarEventsSelector(selectedSemester),
   );

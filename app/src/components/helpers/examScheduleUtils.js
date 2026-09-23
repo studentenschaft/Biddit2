@@ -1,16 +1,15 @@
 /**
  * Pure lookup into an ingested exam plan (`public/exams/<SEMESTER>.json`,
- * ADR 0010/0011). No React, no I/O — the plan is passed in.
+ * ADR 0010/0011). No React, no I/O — the plan is passed in, already checked
+ * by `examPlanState` when it loaded, so nothing here re-checks its shape.
  */
 
 import { getCourseRootKey } from "./courseUtils";
 
 // The plan prints two-segment roots ("3,200"); app course numbers are
 // "3,200,1.00". Joining on the root is also what makes an exercise group
-// inherit its parent lecture's exam. The guard stays: the plan is
-// runtime-fetched JSON, and this module is its fail-open boundary.
-const matchesRoot = (entry, rootKey) =>
-  Array.isArray(entry?.rootNumbers) && entry.rootNumbers.includes(rootKey);
+// inherit its parent lecture's exam.
+const matchesRoot = (entry, rootKey) => entry.rootNumbers.includes(rootKey);
 
 /**
  * Finds the central exams for a course.
@@ -26,10 +25,10 @@ export function examsForCourse(plan, course) {
   return {
     // OT (regular date) before AT (alternative date); Array#sort is stable,
     // so entries keep the plan's date order within each group.
-    written: (plan.written ?? [])
+    written: plan.written
       .filter((entry) => matchesRoot(entry, rootKey))
       .sort((a, b) => (a.termType === "OT" ? 0 : 1) - (b.termType === "OT" ? 0 : 1)),
-    oral: (plan.oral ?? []).filter((entry) => matchesRoot(entry, rootKey)),
+    oral: plan.oral.filter((entry) => matchesRoot(entry, rootKey)),
   };
 }
 
@@ -67,7 +66,7 @@ export function findExamCollisions(plan, courses) {
   // (date, slot) → the roots of my courses sitting an exam in it.
   const bySlot = new Map();
   for (const exam of plan.written) {
-    if (exam?.termType !== "OT" || !exam.date || !exam.slot) continue;
+    if (exam.termType !== "OT") continue;
     const slotKey = `${exam.date} ${exam.slot}`;
     for (const rootKey of nameByRoot.keys()) {
       if (!matchesRoot(exam, rootKey)) continue;

@@ -4,9 +4,8 @@
  * its central exam shares a date and slot with another planned course — a row
  * that merely sits in the catalog says nothing.
  *
- * The list is also the surface that mounts `useExamSchedule`: the selector only
- * reads the atom, so a container that forgot the hook would render no warnings
- * at all and this test would catch it.
+ * Nothing is seeded for the exam plan: the list's own read loads it (MSW
+ * serves the fixture), which is the path production takes.
  */
 
 import { render, screen, waitFor, within } from "@testing-library/react";

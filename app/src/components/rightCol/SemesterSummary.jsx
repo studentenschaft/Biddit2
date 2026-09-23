@@ -16,7 +16,6 @@ import { ExclamationIcon } from "@heroicons/react/outline";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
-import { useExamSchedule } from "../helpers/useExamSchedule";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import { getCourseRootKey } from "../helpers/courseUtils";
 import { formatEcts } from "../helpers/formatEcts";
@@ -57,8 +56,6 @@ export default function SemesterSummary() {
   // so the table and the schedule cannot drift apart.
   const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
 
-  // Selectors only read the exam atom; this is the summary's own fill-up.
-  useExamSchedule(selectedSemesterState);
   const examCollisions = useRecoilValue(
     examCollisionsSelector(selectedSemesterState)
   );

@@ -45,7 +45,6 @@ import {
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
 import { examCollisionsSelector } from "../../recoil/examScheduleSelectors";
-import { useExamSchedule } from "../../helpers/useExamSchedule";
 import { getCourseRootKey } from "../../helpers/courseUtils";
 
 // Icons
@@ -104,17 +103,14 @@ export default function EventListContainer({
       })
     ) || [];
 
-  // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
-  // matches once a query has run for the selected semester; the rows themselves
-  // are identical, so add, lock, drag-to-curriculum-map and click-to-details
-  // keep working.
-  // Selectors only read the exam atom, so the list is the surface that has to
-  // fill it — mounted once here rather than per row.
-  useExamSchedule(selectedSemesterShortName);
   const examCollisions = useRecoilValue(
     examCollisionsSelector(selectedSemesterShortName)
   );
 
+  // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
+  // matches once a query has run for the selected semester; the rows themselves
+  // are identical, so add, lock, drag-to-curriculum-map and click-to-details
+  // keep working.
   const smartSearch = useRecoilValue(smartSearchState);
   const smartResults = useRecoilValue(smartSearchResultsSelector);
   const smartActive = useRecoilValue(smartSearchActiveSelector);

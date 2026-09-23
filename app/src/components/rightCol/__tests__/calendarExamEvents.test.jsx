@@ -22,7 +22,7 @@ const IS_FUTURE_SEMESTER = "is-future-semester-selector";
 
 const fullCalendar = vi.hoisted(() => ({ props: null, api: null }));
 const recoil = vi.hoisted(() => ({ values: new Map() }));
-const examSchedule = vi.hoisted(() => ({ semester: undefined }));
+const examEvents = vi.hoisted(() => ({ semester: undefined }));
 
 vi.mock("@fullcalendar/react", async () => {
   const { forwardRef, useImperativeHandle } = await import("react");
@@ -45,12 +45,9 @@ vi.mock("../../recoil/unifiedCourseDataSelectors", () => ({
   selectedSemesterSelector: SELECTED_SEMESTER,
 }));
 vi.mock("../../recoil/examScheduleSelectors", () => ({
-  examCalendarEventsSelector: () => EXAM_EVENTS,
-}));
-vi.mock("../../helpers/useExamSchedule", () => ({
-  useExamSchedule: (semester) => {
-    examSchedule.semester = semester;
-    return null;
+  examCalendarEventsSelector: (semester) => {
+    examEvents.semester = semester;
+    return EXAM_EVENTS;
   },
 }));
 vi.mock("../../recoil/isFutureSemesterSelected", () => ({
@@ -95,7 +92,7 @@ beforeEach(() => {
     prev: vi.fn(),
     today: vi.fn(),
   };
-  examSchedule.semester = undefined;
+  examEvents.semester = undefined;
   recoil.values.set(CALENDAR_ENTRIES, [LECTURE]);
   recoil.values.set(CURRENT_SEMESTER, "HS26");
   recoil.values.set(SELECTED_SEMESTER, "HS26");
@@ -132,10 +129,10 @@ describe("Calendar exam blocks", () => {
     expect(fullCalendar.props.events).toEqual([LECTURE, EXAM]);
   });
 
-  it("loads the exam plan for the semester the lectures come from", async () => {
+  it("reads the exams of the semester the lectures come from", async () => {
     await renderCalendar();
 
-    expect(examSchedule.semester).toBe("HS26");
+    expect(examEvents.semester).toBe("HS26");
   });
 
   it("marks an exam block with a badge instead of a room", async () => {

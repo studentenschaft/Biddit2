@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { snapshot_UNSTABLE } from "recoil";
 
-import { examSchedulesState } from "../examScheduleAtom";
+import { examPlanState } from "../examScheduleAtom";
 import {
   EXAM_COLLISION_COLOR,
   EXAM_COLOR,
@@ -117,7 +117,12 @@ const eventsIn = ({
       latestValidTerm: SEMESTER,
       selectedCourseInfo: null,
     });
-    if (plan) set(examSchedulesState, { [SEMESTER]: { plan } });
+    if (semester) {
+      set(
+        examPlanState(semester),
+        plan ? { status: "ready", plan } : { status: "loading", plan: null },
+      );
+    }
   })
     .getLoadable(examCalendarEventsSelector(semester))
     .getValue();
@@ -189,14 +194,14 @@ describe("examCalendarEventsSelector", () => {
     expect(events.map((event) => event.id)).toEqual(["ot-micro"]);
   });
 
-  it("is empty for a semester whose plan has not been fetched", () => {
+  it("is empty while the plan is still loading", () => {
     expect(eventsIn({ enrolledIds: [MICRO.courseNumber], plan: null })).toEqual(
       [],
     );
   });
 
-  it("draws nothing for a borrowed catalog even when the plan is already cached", () => {
-    // Regression net for the fetch-vs-catalog race: a cached plan must not
+  it("draws nothing for a borrowed catalog even when the plan has loaded", () => {
+    // Regression net for the fetch-vs-catalog race: a loaded plan must not
     // produce blocks once the semester turns out to be borrowed.
     for (const metadata of [
       { usingReferenceData: true, referenceSemester: "HS25" },
@@ -206,17 +211,5 @@ describe("examCalendarEventsSelector", () => {
         eventsIn({ enrolledIds: [MICRO.courseNumber], metadata }),
       ).toEqual([]);
     }
-  });
-
-  it("skips entries the plan left without a usable time", () => {
-    const events = eventsIn({
-      enrolledIds: [MICRO.courseNumber],
-      plan: {
-        ...PLAN,
-        written: [{ ...PLAN.written[0], startIso: null, durationMin: 0 }],
-      },
-    });
-
-    expect(events).toEqual([]);
   });
 });

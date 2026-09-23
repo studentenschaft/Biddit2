@@ -47,9 +47,6 @@ vi.mock("../../recoil/unifiedCourseDataSelectors", () => ({
 vi.mock("../../recoil/examScheduleSelectors", () => ({
   examCalendarEventsSelector: () => EXAM_EVENTS,
 }));
-vi.mock("../../helpers/useExamSchedule", () => ({
-  useExamSchedule: () => null,
-}));
 vi.mock("../../recoil/isFutureSemesterSelected", () => ({
   isFutureSemesterSelected: IS_FUTURE_SEMESTER,
 }));

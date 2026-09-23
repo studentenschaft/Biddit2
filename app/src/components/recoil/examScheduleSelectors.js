@@ -1,6 +1,6 @@
 import { selectorFamily } from "recoil";
 import moment from "moment";
-import { examSchedulesState } from "./examScheduleAtom";
+import { examPlanState } from "./examScheduleAtom";
 import {
   myCoursesSelector,
   semesterMetadataSelector,
@@ -8,31 +8,33 @@ import {
 import { examsForCourse, findExamCollisions } from "../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../helpers/courseUtils";
 
+const NO_PLAN = { status: "none", plan: null };
+
 /**
- * The plan to render for a semester, or null. This — not the hook — is the
- * borrowed-data gate the surfaces actually rely on: the exam fetch can win the
- * race against the catalog fetch that sets `usingReferenceData`, caching a plan
- * for a semester that then turns out to be borrowed. Reading the metadata here
- * makes every consumer re-evaluate the moment the flag flips, so borrowed
- * catalogs never keep exam warnings or blocks (ADR 0011).
+ * The exam plan to show for a semester, as `{ status, plan }`, and the one
+ * borrowed-data gate: a borrowed catalog lists courses that are not running
+ * this term, so their exam dates would be someone else's. Checked before the
+ * atom is read, so such a semester is never fetched, and re-checked whenever
+ * `usingReferenceData` flips (ADR 0011).
  */
-const renderablePlanSelector = selectorFamily({
-  key: "examRenderablePlanSelector",
+export const examPlanSelector = selectorFamily({
+  key: "examPlanSelector",
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const metadata = get(semesterMetadataSelector(semesterShortName ?? ""));
-      if (metadata.isFutureSemester || metadata.usingReferenceData) return null;
-      return get(examSchedulesState)[semesterShortName]?.plan ?? null;
+      if (!semesterShortName) return NO_PLAN;
+      const metadata = get(semesterMetadataSelector(semesterShortName));
+      if (metadata.isFutureSemester || metadata.usingReferenceData) {
+        return NO_PLAN;
+      }
+      return get(examPlanState(semesterShortName));
     },
 });
 
 /**
- * Central-exam collisions among the user's courses for a semester.
- *
- * Reads the atom only — `useExamSchedule` owns the fetching, so every surface
- * showing these warnings has to mount that hook once at container level, or the
- * atom stays empty and the map is silently empty with it (fail open, ADR 0011).
+ * Central-exam collisions among the user's courses for a semester. Empty
+ * until the plan has loaded, and for a semester without one (fail open,
+ * ADR 0011).
  *
  * The pool is `myCoursesSelector` (enrolled ∪ selected), never the `filtered`
  * view state: a course must not stop warning because a search filter hides it.
@@ -45,7 +47,7 @@ export const examCollisionsSelector = selectorFamily({
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const plan = get(renderablePlanSelector(semesterShortName));
+      const { plan } = get(examPlanSelector(semesterShortName));
       if (!plan) return new Map();
 
       return findExamCollisions(plan, get(myCoursesSelector(semesterShortName)));
@@ -64,8 +66,7 @@ export const EXAM_COLLISION_COLOR = "#DC2626";
  * pins the lecture collision logic and the filter-leak invariant, and exams
  * neither participate in its Union-Find nor come from `calendarEntry` rows.
  * `Calendar.jsx` concatenates the two event sets. Same fail-open contract as
- * `examCollisionsSelector`: this only reads the atom `useExamSchedule` fills,
- * so an unfetched or borrowed semester yields no exam blocks (ADR 0011).
+ * `examCollisionsSelector`: no plan, no exam blocks (ADR 0011).
  *
  * OT written exams only — orals publish no time and AT dates are provisional
  * (ADR 0012); fabricating a block for either would be worse than showing none.
@@ -77,7 +78,7 @@ export const examCalendarEventsSelector = selectorFamily({
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const plan = get(renderablePlanSelector(semesterShortName));
+      const { plan } = get(examPlanSelector(semesterShortName));
       if (!plan) return [];
 
       const courses = get(myCoursesSelector(semesterShortName));
@@ -95,9 +96,6 @@ export const examCalendarEventsSelector = selectorFamily({
 
         for (const exam of examsForCourse(plan, course).written) {
           if (exam.termType !== "OT") continue;
-          // Runtime-fetched JSON: an entry without a usable start or duration
-          // has no block to draw.
-          if (!exam.startIso || !(exam.durationMin > 0)) continue;
           if (byExamId.has(exam.id)) continue;
 
           const overlapping = collision?.exam?.id === exam.id;

@@ -70,13 +70,6 @@ describe("examsForCourse", () => {
       oral: [],
     });
   });
-
-  it("tolerates a plan without written or oral arrays", () => {
-    expect(examsForCourse({}, { courseNumber: "3,200,1.00" })).toEqual({
-      written: [],
-      oral: [],
-    });
-  });
 });
 
 const slotted = (id, rootNumbers, date, slot, termType = "OT") => ({
@@ -206,22 +199,6 @@ describe("findExamCollisions", () => {
       findExamCollisions(COLLIDING_PLAN, [
         course("9,999,1.00", "Unlisted"),
         course("9,998,1.00", "Also unlisted"),
-      ]).size
-    ).toBe(0);
-  });
-
-  it("ignores plan entries without a date or a slot", () => {
-    const plan = {
-      written: [
-        { id: "broken-a", rootNumbers: ["3,200"], termType: "OT" },
-        { id: "broken-b", rootNumbers: ["7,850"], termType: "OT" },
-      ],
-    };
-
-    expect(
-      findExamCollisions(plan, [
-        course("3,200,1.00", "Microeconomics II"),
-        course("7,850,1.00", "Causal Inference"),
       ]).size
     ).toBe(0);
   });

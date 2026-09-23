@@ -1,8 +1,10 @@
 import PropTypes from "prop-types";
 import { InformationCircleIcon } from "@heroicons/react/outline";
 import { useRecoilValue } from "recoil";
-import { examCollisionsSelector } from "../recoil/examScheduleSelectors";
-import { useExamSchedule } from "../helpers/useExamSchedule";
+import {
+  examCollisionsSelector,
+  examPlanSelector,
+} from "../recoil/examScheduleSelectors";
 import { examsForCourse } from "../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../helpers/courseUtils";
 
@@ -33,8 +35,9 @@ const formatOralDates = ({ dateStart, dateEnd }) =>
     : `${formatExamDate(dateStart).replace(/\d{4}$/, "")} – ${formatExamDate(dateEnd)}`;
 
 export default function ExamSchedule({ course, semester }) {
-  // The hook itself refuses borrowed catalogs, so this is the whole gate.
-  const schedule = useExamSchedule(semester);
+  // Null while loading, and for a semester without a usable plan or with a
+  // borrowed catalog.
+  const { plan } = useRecoilValue(examPlanSelector(semester));
   const collisions = useRecoilValue(examCollisionsSelector(semester));
   // Only courses in the user's plan are in the map, so a merely browsed course
   // gets no warning — it is not competing with anything yet.
@@ -49,9 +52,9 @@ export default function ExamSchedule({ course, semester }) {
     );
   }
 
-  if (!schedule?.plan) return null;
+  if (!plan) return null;
 
-  const { written, oral } = examsForCourse(schedule.plan, course);
+  const { written, oral } = examsForCourse(plan, course);
   if (written.length === 0 && oral.length === 0) {
     return (
       <p className="pb-1 text-sm text-gray-700">
@@ -98,8 +101,8 @@ export default function ExamSchedule({ course, semester }) {
           className="mt-0.5 h-4 w-4 flex-shrink-0"
         />
         <span>
-          Central exam schedule {schedule.plan.sourceTermLabel}, published{" "}
-          {formatDay(schedule.plan.source?.publishedAt)}. Extracted
+          Central exam schedule {plan.sourceTermLabel}, published{" "}
+          {formatDay(plan.source?.publishedAt)}. Extracted
           automatically from the official PDF — indicative only, always verify
           against the official exam schedule.
         </span>

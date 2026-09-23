@@ -3,15 +3,14 @@
  *
  * Two properties matter here and are not visible in the finder's own tests: the
  * pool is the user's courses (enrolled ∪ selected), never the search panel's
- * `filtered` view state (docs/BUG-calendar-entries-filter-leak.md), and the
- * selector only reads the exam atom — an unfetched semester is silently empty
- * rather than an error.
+ * `filtered` view state (docs/BUG-calendar-entries-filter-leak.md), and a
+ * semester whose plan has not loaded is silently empty rather than an error.
  */
 
 import { describe, expect, it } from "vitest";
 import { snapshot_UNSTABLE } from "recoil";
 
-import { examSchedulesState } from "../examScheduleAtom";
+import { examPlanState } from "../examScheduleAtom";
 import { examCollisionsSelector } from "../examScheduleSelectors";
 import { unifiedCourseDataState } from "../unifiedCourseDataAtom";
 
@@ -65,7 +64,12 @@ const collisionsIn = ({
       latestValidTerm: SEMESTER,
       selectedCourseInfo: null,
     });
-    if (plan) set(examSchedulesState, { [SEMESTER]: { plan } });
+    if (semester) {
+      set(
+        examPlanState(semester),
+        plan ? { status: "ready", plan } : { status: "loading", plan: null },
+      );
+    }
   }).getLoadable(examCollisionsSelector(semester)).getValue();
 
 describe("examCollisionsSelector", () => {
@@ -98,7 +102,7 @@ describe("examCollisionsSelector", () => {
     expect(collisions.size).toBe(2);
   });
 
-  it("is empty for a semester whose plan has not been fetched", () => {
+  it("is empty while the plan is still loading", () => {
     const collisions = collisionsIn({
       enrolledIds: [MICRO.courseNumber],
       selectedIds: [CAUSAL.courseNumber],
@@ -110,13 +114,13 @@ describe("examCollisionsSelector", () => {
 
   it("is empty for a missing semester", () => {
     expect(collisionsIn({ semester: null }).size).toBe(0);
-    expect(collisionsIn({ semester: "FS26" }).size).toBe(0);
+    expect(collisionsIn({ semester: "FS26", plan: null }).size).toBe(0);
   });
 
-  it("stays empty for a borrowed catalog even when the plan is already cached", () => {
-    // The exam fetch can win the race against the catalog fetch that sets
-    // usingReferenceData, so the atom may hold a plan for a borrowed semester.
-    // The gate must live here, not only in the hook.
+  it("stays empty for a borrowed catalog even when the plan has loaded", () => {
+    // The plan can finish loading before the catalog fetch sets
+    // usingReferenceData, so the atom may hold a plan for a semester that
+    // turns out to be borrowed.
     for (const metadata of [
       { usingReferenceData: true, referenceSemester: "HS25" },
       { isFutureSemester: true, referenceSemester: "HS25" },
