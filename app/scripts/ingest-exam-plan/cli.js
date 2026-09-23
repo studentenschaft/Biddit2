@@ -51,7 +51,7 @@ function poppler(tool, args) {
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error(
-        `${tool} was not found. Install poppler (\`brew install poppler\`) or pass --text.`,
+        `${tool} was not found. Install poppler (\`brew install poppler\`), or pass --text: it marks BYOD only where a title says "(BYOD)", so the exams the plan shades are lost.`,
       );
     }
     throw error;

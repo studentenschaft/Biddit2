@@ -8,7 +8,9 @@
 
 const LEGEND = ["=", "digitale", "Prüfungen", "(BYOD)"];
 const PAGE_RE = /<page\b[^>]*>(.*?)<\/page>/gs;
-const FILLED_PATH_RE = /<path\b[^>]*\bfill="([^"]+)"[^>]*\bd="([^"]+)"/g;
+// cairo writes a stroked outline as fill="none".
+const FILLED_PATH_RE =
+  /<path\b[^>]*\bfill="(?!none")([^"]+)"[^>]*\bd="([^"]+)"/g;
 const WORD_RE =
   /<word xMin="([\d.]+)" yMin="([\d.]+)" xMax="([\d.]+)" yMax="([\d.]+)">([^<]*)<\/word>/g;
 const ROOT_WORD_RE = /^\d{1,2},\d{3}$/;
@@ -51,11 +53,8 @@ const wordsOf = (page) =>
 const midX = (item) => (item.xMin + item.xMax) / 2;
 const midY = (item) => (item.yMin + item.yMax) / 2;
 
-/** What shows at a point is the fill drawn there last. */
-const fillAt = (boxes, x, y) =>
-  boxes.findLast(
-    (each) => each.xMin <= x && x <= each.xMax && each.yMin <= y && y <= each.yMax,
-  )?.fill;
+const contains = (each, x, y) =>
+  each.xMin <= x && x <= each.xMax && each.yMin <= y && y <= each.yMax;
 
 function legendColour(page) {
   const at = page.words.findIndex((_, index) =>
@@ -63,17 +62,15 @@ function legendColour(page) {
   );
   if (at === -1) return null;
   const equals = page.words[at];
-  const colour = fillAt(
-    page.boxes,
-    equals.xMin - SWATCH_SAMPLE_OFFSET,
-    midY(equals),
+  const swatch = page.boxes.find((each) =>
+    contains(each, equals.xMin - SWATCH_SAMPLE_OFFSET, midY(equals)),
   );
-  if (!colour) {
+  if (!swatch) {
     throw new Error(
       `The BYOD legend has no colour swatch — page ${page.number}: nothing is filled just left of "${LEGEND.join(" ")}"`,
     );
   }
-  return colour;
+  return swatch.fill;
 }
 
 /**
@@ -108,6 +105,12 @@ export function parseByodShading(svg, wordBoxes) {
     words: wordsOf(markup),
     boxes: filledBoxes(svgPages[index]),
   }));
+  if (pages.every((page) => page.words.length === 0)) {
+    // Every exam would look plain, and the plan would lose its BYOD marks.
+    throw new Error(
+      'Cannot read the word boxes: pdftotext -bbox-layout printed no <word xMin="…" yMin="…" xMax="…" yMax="…">',
+    );
+  }
   const colours = new Set(pages.map(legendColour).filter(Boolean));
 
   const shaded = {};
@@ -118,7 +121,10 @@ export function parseByodShading(svg, wordBoxes) {
         ROOT_WORD_RE.test(word.text) && termTypeOf(word, page.words);
       if (!termType) continue;
       const cell = `${termType} ${word.text}`;
-      const isShaded = colours.has(fillAt(page.boxes, midX(word), midY(word)));
+      const isShaded = page.boxes.some(
+        (each) =>
+          colours.has(each.fill) && contains(each, midX(word), midY(word)),
+      );
       if (cells.has(cell) && cells.get(cell) !== isShaded) {
         throw new Error(
           `BYOD shading is ambiguous — page ${page.number}: ${cell} is shaded in one row and plain in another`,

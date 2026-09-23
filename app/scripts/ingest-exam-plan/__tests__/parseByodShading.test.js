@@ -14,6 +14,10 @@ const box = (fill, [x0, y0, x1, y1]) =>
 const word = (text, [x0, y0, x1, y1]) =>
   `<word xMin="${x0}" yMin="${y0}" xMax="${x1}" yMax="${y1}">${text}</word>`;
 
+/** An outline as cairo strokes it: no fill of its own. */
+const outline = ([x0, y0, x1, y1]) =>
+  `<path fill="none" stroke-width="0.36" stroke-linecap="butt" stroke-linejoin="miter" stroke="${BLACK}" stroke-opacity="1" stroke-miterlimit="10" d="M ${x0} ${y1} L ${x1} ${y1} L ${x1} ${y0} L ${x0} ${y0} Z M ${x0} ${y1} "/>`;
+
 /** The swatch and the hairline border the plan draws around it. */
 const SWATCH = [
   box(SHADE, [23.57, 131.38, 60.36, 138.21]),
@@ -86,6 +90,35 @@ describe("parseByodShading", () => {
       ]),
     );
     expect(shaded).toEqual({ 1: { OT: ["3,900", "7,408", "8,417"] } });
+  });
+
+  it("ignores outlines, which cairo writes with fill=\"none\"", () => {
+    // Taken for fills, the swatch's outline would make "none" the BYOD
+    // colour, or a cell's outline would hide its shading.
+    const frame = (row) => outline([60.24, top(row), 310.46, top(row) + 6.23]);
+    const shaded = parseByodShading(
+      svg([
+        outline([23.57, 131.38, 60.36, 138.21]),
+        ...SWATCH,
+        cell(SHADE, 0),
+        frame(0),
+        frame(1),
+      ]),
+      wordBoxes([
+        ...LEGEND,
+        ...exam(0, "OT", ["3,200"]),
+        ...exam(1, "OT", ["3,202"]),
+      ]),
+    );
+    expect(shaded).toEqual({ 1: { OT: ["3,200"] } });
+  });
+
+  it("throws when it can read no word at all", () => {
+    // As if poppler reordered the attributes: every exam would look plain.
+    const reordered = `<doc><page width="595.2" height="841.68"><word yMin="131.27" xMin="61.4" yMax="137.37" xMax="63.67">=</word></page></doc>`;
+    expect(() => parseByodShading(svg([...SWATCH]), reordered)).toThrow(
+      'Cannot read the word boxes: pdftotext -bbox-layout printed no <word xMin="…" yMin="…" xMax="…" yMax="…">',
+    );
   });
 
   it("marks nothing in a plan without the BYOD legend", () => {

@@ -92,6 +92,18 @@ describe("cli", () => {
     expect(readdirSync(dir)).toEqual(["plan.txt"]);
   });
 
+  it("says what --text loses when poppler is missing", () => {
+    const { status, stderr } = spawnSync(
+      process.execPath,
+      [CLI, "--pdf", join(dir, "plan.pdf"), "--out", out],
+      { encoding: "utf8", env: { PATH: dir } },
+    );
+    expect(status).toBe(1);
+    expect(stderr).toBe(
+      'pdftotext was not found. Install poppler (`brew install poppler`), or pass --text: it marks BYOD only where a title says "(BYOD)", so the exams the plan shades are lost.\n',
+    );
+  });
+
   it("prints the usage after an argument error", () => {
     const { status, stderr } = ingest(TWO_EXAMS, "--semester", "HS26");
     expect(status).toBe(1);
