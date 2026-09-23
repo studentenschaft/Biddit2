@@ -33,6 +33,20 @@ describe("splitPages", () => {
   it("keeps the page numbers of the PDF, so findings can be looked up", () => {
     expect(splitPages(plan).map((split) => split.number)).toEqual([1, 2, 3, 4]);
   });
+
+  it("throws on a page without a banner that still lists courses", () => {
+    // An oral list continued on a page without the banner would otherwise be
+    // dropped, and nothing counts oral rows.
+    const continued = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+\fDatum
+30.01.2027       7,702 Recht und Psychologie
+`;
+    expect(() => splitPages(continued)).toThrow(
+      "no written or oral banner but lists course 7,702 — page 2",
+    );
+  });
 });
 
 describe("readSlots", () => {
@@ -120,6 +134,37 @@ describe("parseExamPlanText — header and footers", () => {
       ),
     ).toThrow(/Cannot read the plan header/);
   });
+
+  it("throws when the exam period in the header is not on the calendar", () => {
+    const impossible = `${HEADER.replace("20.02.2027", "30.02.2027")}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+`;
+    expect(() => parseExamPlanText(impossible)).toThrow(
+      "Not a calendar date — plan header: 30.02.2027",
+    );
+  });
+
+  it("throws when no page footer carries the revision date", () => {
+    const reworded = `${HEADER.replace("Seite 1 von 1", "Seite 1/1")}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+`;
+    expect(() => parseExamPlanText(reworded)).toThrow(
+      /Cannot read the revision date/,
+    );
+  });
+
+  it("throws when an oral page is present but its period cannot be read", () => {
+    const enDash = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+\fMündliche Prüfungen / Oral examinations: 30.01. – 20.02.2027
+`;
+    expect(() => parseExamPlanText(enDash)).toThrow(
+      /Cannot read the oral exam period/,
+    );
+  });
 });
 
 describe("parseExamPlanText — written rows", () => {
@@ -145,6 +190,16 @@ describe("parseExamPlanText — written rows", () => {
 
   it("carries the date forward to the rows below it", () => {
     expect(find(parsed.written, "3,502").date).toBe("2027-01-21");
+  });
+
+  it("reads a date row that is indented", () => {
+    // Missed, it would leave the whole day under the previous date.
+    const indented = parseExamPlanText(`${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+ 19.01.2027 BA: OT DE 120'  3,802 Deutsch C1
+`);
+    expect(find(indented.written, "3,802").date).toBe("2027-01-19");
   });
 
   it("splits a line that carries a morning and an afternoon exam", () => {
@@ -237,6 +292,19 @@ Montag /   BA: OT EN  90'  3,202 Microeconomics II
     expect(titles.some((title) => title.includes("Kompetenzcenter"))).toBe(false);
   });
 
+  it("throws on a date row that is not on the calendar, naming the line", () => {
+    const dated = (date) => `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW.replace("18.01.2027", date)}
+`;
+    expect(() => parseExamPlanText(dated("18.13.2027"))).toThrow(
+      "Not a calendar date — page 1 line 5: 18.13.2027",
+    );
+    expect(() => parseExamPlanText(dated("31.02.2027"))).toThrow(
+      "Not a calendar date — page 1 line 5: 31.02.2027",
+    );
+  });
+
   it("throws on an exam row that has no date, naming where it sits", () => {
     const undated = `${HEADER}
 ${TABLE_HEADER}
@@ -244,7 +312,7 @@ ${TABLE_HEADER}
 18.01.2027 BA: OT EN  90'  3,202 Microeconomics II
 `;
     expect(() => parseExamPlanText(undated)).toThrow(
-      "page 1 line 4: BA: OT DE  90'  3,200 Mikroökonomik II",
+      "page 1 line 5: BA: OT DE  90'  3,200 Mikroökonomik II",
     );
   });
 

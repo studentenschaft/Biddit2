@@ -66,14 +66,6 @@ ${TWO_SLOT_ROW}
     ]);
   });
 
-  it("E_DATE_INVALID for a date that is not on the calendar", () => {
-    expect(
-      validateBroken((plan) => {
-        plan.written[0].date = "2027-02-30";
-      }),
-    ).toContain("E_DATE_INVALID");
-  });
-
   it("E_DATE_OUT_OF_PERIOD for an exam outside the exam period", () => {
     expect(
       validateBroken((plan) => {
@@ -120,5 +112,49 @@ ${TWO_SLOT_ROW}
         plan.written[0].title = "| 114,802 Deutsch C1";
       }),
     ).toContain("E_TITLE_BLEED");
+  });
+
+  it("E_TITLE_BLEED when a right-hand title or unknown entry runs into a left title", () => {
+    // No real title holds even two spaces in a row; the column gap does.
+    const swallowed = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW} and
+Montag /   BA: OT EN  90'  3,202 Microeconomics II          Privacy Engineering
+           BA: OT DE 120'  3,802 Deutsch C1                 DS: OT DE  90' 5,500 Aktienrecht
+`;
+    expect(codes(validateExamPlan(build(swallowed), swallowed).errors)).toEqual([
+      "E_TITLE_BLEED",
+      "E_TITLE_BLEED",
+    ]);
+  });
+
+  it("E_DURATION_OUT_OF_RANGE for a duration outside 30–240 minutes", () => {
+    const misread = `${HEADER}
+${TABLE_HEADER}
+18.01.2027 BA: OT DE  20'  3,200 Mikroökonomik II           MA: OT EN 600' 1,908 Linear Algebra
+Montag /   BA: OT EN  30'  3,202 Microeconomics II          MA: OT EN 240' 1,909 Analysis
+`;
+    expect(codes(validateExamPlan(build(misread), misread).errors)).toEqual([
+      "E_DURATION_OUT_OF_RANGE",
+      "E_DURATION_OUT_OF_RANGE",
+    ]);
+  });
+
+  it("E_ORAL_EXAM_IN_NOTE when an oral row the parser missed lands in the notes", () => {
+    // Nothing counts oral rows, so a row shape the parser does not know (a
+    // level prefix, a dotted root) would otherwise vanish into the notes.
+    const oral = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+\fMündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
+30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        MA: 7,421 Datenschutzrecht
+Saturday         7.436 Internationale Schiedsgerichtsbarkeit
+                 7,702 Recht und Psychologie
+`;
+    expect(codes(validateExamPlan(build(oral), oral).errors)).toEqual([
+      "E_ORAL_EXAM_IN_NOTE",
+      "E_ORAL_EXAM_IN_NOTE",
+    ]);
   });
 });

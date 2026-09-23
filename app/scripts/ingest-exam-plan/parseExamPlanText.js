@@ -35,9 +35,10 @@ const FOOTER_RE =
   /^Kompetenzcenter Planung und Prüfungen\s+(\d{2})\.(\d{2})\.(\d{4})\s+Seite\s+\d+\s+von\s+\d+/gm;
 
 export const TABLE_HEADER_PREFIX = "Datum";
-export const LEADING_DATE_RE = /^(\d{2})\.(\d{2})\.(\d{4})/;
+const LEADING_DATE_RE = /^\s*(\d{2})\.(\d{2})\.(\d{4})/;
 const SLOT_LABEL_RE =
   /Prüfungsbeginn \(schriftl\.\):\s*(\d{1,2})\.(\d{2})\s*Uhr/g;
+const COURSE_ROOT_RE = /\b\d{1,2},\d{3}\b/;
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
 export const ROOT_SEPARATOR = "|";
@@ -60,14 +61,24 @@ function pageKind(text) {
 
 /**
  * Splits on the form feeds `pdftotext -layout` emits between pages. Pages
- * without a banner carry no exam rows and are dropped — the validator's entry
- * count catches it loudly if that ever stops being true.
+ * without a banner carry no exam rows and are dropped. One that lists a course
+ * would take its exams with it — the validator's entry count would notice
+ * written rows, but nothing counts oral ones — so it is fatal instead.
  */
 export function splitPages(rawText) {
-  return rawText
+  const pages = rawText
     .split(PAGE_BREAK)
-    .map((text, index) => ({ number: index + 1, text, kind: pageKind(text) }))
-    .filter((page) => page.kind !== PAGE_KIND.unknown);
+    .map((text, index) => ({ number: index + 1, text, kind: pageKind(text) }));
+  for (const page of pages) {
+    const root =
+      page.kind === PAGE_KIND.unknown && page.text.match(COURSE_ROOT_RE);
+    if (root) {
+      throw new Error(
+        `Page has no written or oral banner but lists course ${root[0]} — page ${page.number}`,
+      );
+    }
+  }
+  return pages.filter((page) => page.kind !== PAGE_KIND.unknown);
 }
 
 /**
@@ -96,7 +107,18 @@ export function readSlots(page) {
   return { times, boundary: (labels[0].column + labels[1].column) / 2 };
 }
 
-const toIsoDate = ([, day, month, year]) => `${year}-${month}-${day}`;
+/**
+ * Every date the plan prints goes through here. Date.UTC rolls 31.02. over
+ * into March, so the round trip exposes it; left alone, a month 13 would only
+ * surface later as a bare "Invalid time value" from the offset lookup.
+ */
+function calendarDate(day, month, year, where) {
+  const date = `${year}-${month}-${day}`;
+  if (!new Date(Date.UTC(year, month - 1, day)).toISOString().startsWith(date)) {
+    throw new Error(`Not a calendar date — ${where}: ${day}.${month}.${year}`);
+  }
+  return date;
+}
 
 const splitRoots = (roots) =>
   roots.split(ROOT_SEPARATOR).map((root) => root.trim());
@@ -120,13 +142,14 @@ function parseWrittenPage(page) {
     const line = lines[index];
     const dateMatch = line.match(LEADING_DATE_RE);
     // A date row usually carries its first exams too, so it is never skipped.
-    if (dateMatch) currentDate = toIsoDate(dateMatch);
+    const where = `page ${page.number} line ${index + 1}`;
+    if (dateMatch) currentDate = calendarDate(...dateMatch.slice(1), where);
 
     const matches = [...line.matchAll(ENTRY_RE)];
     matches.forEach((match, position) => {
       if (!currentDate) {
         throw new Error(
-          `Exam row appears before any date row — page ${page.number} line ${index + 1}: ${line.trim()}`,
+          `Exam row appears before any date row — ${where}: ${line.trim()}`,
         );
       }
       entryColumns.push(match.index);
@@ -177,10 +200,13 @@ function parseOralPage(page) {
   let currentDate = null;
   let currentSection = null;
 
-  for (const line of page.text.split("\n")) {
+  for (const [index, line] of page.text.split("\n").entries()) {
     if (matchFooters(line).length > 0) continue;
     const dateMatch = line.match(LEADING_DATE_RE);
-    if (dateMatch) currentDate = toIsoDate(dateMatch);
+    if (dateMatch) {
+      const where = `page ${page.number} line ${index + 1}`;
+      currentDate = calendarDate(...dateMatch.slice(1), where);
+    }
     const text = dateMatch
       ? line.slice(dateMatch[0].length).trim()
       : stripGutter(line);
@@ -205,9 +231,9 @@ function parseOralPage(page) {
   return { oral, oralNotes };
 }
 
-const toPeriod = ([startDay, startMonth, endDay, endMonth, year]) => ({
-  start: `${year}-${startMonth}-${startDay}`,
-  end: `${year}-${endMonth}-${endDay}`,
+const toPeriod = ([startDay, startMonth, endDay, endMonth, year], where) => ({
+  start: calendarDate(startDay, startMonth, year, where),
+  end: calendarDate(endDay, endMonth, year, where),
 });
 
 function parseHeader(rawText) {
@@ -218,18 +244,33 @@ function parseHeader(rawText) {
     );
   }
   const [, termLabel, ...period] = match;
-  return { termLabel, examPeriod: toPeriod(period) };
+  return { termLabel, examPeriod: toPeriod(period, "plan header") };
 }
 
 function parseOralPeriod(rawText) {
+  if (!ORAL_BANNER_RE.test(rawText)) return null;
   const match = rawText.match(ORAL_PERIOD_RE);
-  return match ? toPeriod(match.slice(1)) : null;
+  if (!match) {
+    throw new Error(
+      "Cannot read the oral exam period: the oral page banner has no \"dd.mm. - dd.mm.yyyy\" range",
+    );
+  }
+  return toPeriod(match.slice(1), "oral page banner");
 }
 
 function parseFooters(rawText, warnings) {
   const dates = [
-    ...new Set(matchFooters(rawText).map((match) => toIsoDate(match))),
+    ...new Set(
+      matchFooters(rawText).map((match) =>
+        calendarDate(...match.slice(1), "page footer"),
+      ),
+    ),
   ];
+  if (dates.length === 0) {
+    throw new Error(
+      "Cannot read the revision date: no \"Kompetenzcenter Planung und Prüfungen dd.mm.yyyy Seite n von m\" footer",
+    );
+  }
   if (dates.length > 1) {
     warnings.push(
       warning(
@@ -239,7 +280,7 @@ function parseFooters(rawText, warnings) {
       ),
     );
   }
-  return dates[0] ?? null;
+  return dates[0];
 }
 
 export function parseExamPlanText(rawText) {

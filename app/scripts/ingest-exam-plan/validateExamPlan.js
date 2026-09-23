@@ -13,17 +13,17 @@ import {
   splitPages,
 } from "./parseExamPlanText.js";
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * Text that only ever occurs in page furniture or in another entry, never in
  * an exam title. The entry-shaped alternatives are the net for a row the
  * ENTRY_RE could not fully see (e.g. a root prefix wider than it expects):
  * such a row is swallowed into the previous entry's title, invisible to the
- * count and residue checks, and must fail loudly here instead.
+ * count and residue checks, and must fail loudly here instead. A run of spaces
+ * is the gap between the two columns: no real title holds even two in a row,
+ * so it catches a right-hand title or an unknown level ("DS:") the same way.
  */
 const TITLE_BLEED_RE =
-  /Prüfungsbeginn|Prüfungswoche|Kompetenzcenter|digitale Prüfungen|Seite \d+ von|(?:AJ|BA|MA):\s*(?:OT|AT)|\|\s*\d+,\d{3}/;
+  /Prüfungsbeginn|Prüfungswoche|Kompetenzcenter|digitale Prüfungen|Seite \d+ von|(?:AJ|BA|MA):\s*(?:OT|AT)|\|\s*\d+,\d{3}| {3,}/;
 
 /** Everything a written table row may leave behind once its exams are removed. */
 const RESIDUE_ALLOWED_RE = new RegExp(
@@ -32,12 +32,20 @@ const RESIDUE_ALLOWED_RE = new RegExp(
 
 const AT_PENDING_RE = /wird in der KW\s*\d+ publiziert/;
 
-const isRealDate = (date) =>
-  ISO_DATE_RE.test(date) &&
-  new Date(`${date}T00:00:00Z`).toISOString().startsWith(date);
+// HS26 durations run from 60' to 180'; beyond this band a figure is a
+// misprint or a misread, not an exam.
+const MIN_DURATION_MIN = 30;
+const MAX_DURATION_MIN = 240;
+
+/** A course root, also misprinted with a dot ("7.436"). */
+const COURSE_NUMBER_RE = /\b\d{1,2}[.,]\d{3}\b/;
 
 const countBy = (items, key) =>
-  items.reduce((counts, item) => ({ ...counts, [key(item)]: (counts[key(item)] ?? 0) + 1 }), {});
+  items.reduce((counts, item) => {
+    const bucket = key(item);
+    counts[bucket] = (counts[bucket] ?? 0) + 1;
+    return counts;
+  }, {});
 
 function buildStats(plan) {
   return {
@@ -83,13 +91,20 @@ function checkUnconsumedLines(rawText, fail) {
 
 function checkWrittenExam(exam, plan, fail) {
   const where = exam.id;
-  if (!isRealDate(exam.date)) {
-    fail("E_DATE_INVALID", "Exam date is not a calendar date", where);
-  } else if (
-    exam.date < plan.examPeriod.start ||
-    exam.date > plan.examPeriod.end
-  ) {
+  // The parser has already refused any date that is not on the calendar.
+  if (exam.date < plan.examPeriod.start || exam.date > plan.examPeriod.end) {
     fail("E_DATE_OUT_OF_PERIOD", "Exam date lies outside the exam period", where);
+  }
+
+  if (
+    exam.durationMin < MIN_DURATION_MIN ||
+    exam.durationMin > MAX_DURATION_MIN
+  ) {
+    fail(
+      "E_DURATION_OUT_OF_RANGE",
+      `Exam duration lies outside ${MIN_DURATION_MIN}–${MAX_DURATION_MIN} minutes`,
+      `${where}: ${exam.durationMin}'`,
+    );
   }
 
   if (!exam.title) fail("E_TITLE_EMPTY", "Exam title is empty", where);
@@ -130,16 +145,26 @@ export function validateExamPlan(plan, rawText) {
   for (const exam of plan.written) checkWrittenExam(exam, plan, fail);
   checkDuplicates([...plan.written, ...plan.oral], fail);
 
+  // An oral exam implies an oral page, whose period the parser insists on.
   for (const exam of plan.oral) {
-    if (!isRealDate(exam.date)) {
-      fail("E_DATE_INVALID", "Oral exam date is not a calendar date", exam.id);
-    } else if (
-      plan.oralExamPeriod &&
-      (exam.date < plan.oralExamPeriod.start || exam.date > plan.oralExamPeriod.end)
+    if (
+      exam.date < plan.oralExamPeriod.start ||
+      exam.date > plan.oralExamPeriod.end
     ) {
       fail("E_DATE_OUT_OF_PERIOD", "Oral exam lies outside the oral exam period", exam.id);
     }
     if (!exam.title) fail("E_TITLE_EMPTY", "Oral exam title is empty", exam.id);
+  }
+  // Nothing counts oral rows, so a row the parser did not recognise as an exam
+  // would otherwise sit among the notes unnoticed.
+  for (const note of plan.oralNotes) {
+    if (COURSE_NUMBER_RE.test(note.text)) {
+      fail(
+        "E_ORAL_EXAM_IN_NOTE",
+        "An oral note names a course number — its exam row was not recognised",
+        `${note.date}: ${note.text}`,
+      );
+    }
   }
 
   if (AT_PENDING_RE.test(rawText)) {
