@@ -442,13 +442,68 @@ describe("parseExamPlanText — oral page", () => {
     ]);
   });
 
+  const ORAL_BANNER =
+    "Mündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027";
+
   /** The plan's oral page, cut down to the given rows. */
   const oralPlan = (rows) => `${HEADER}
 ${TABLE_HEADER}
 ${TWO_SLOT_ROW}
-\fMündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
+\f${ORAL_BANNER}
+Datum            Prüfungsbeginn (mündl.) Morgen ab 08.15
 ${rows}
 `;
+
+  it("throws when the oral page has no table header", () => {
+    const headless = `${HEADER}
+${TABLE_HEADER}
+${TWO_SLOT_ROW}
+\f${ORAL_BANNER}
+30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+`;
+    expect(() => parseExamPlanText(headless)).toThrow(
+      "Cannot read the oral page — page 2: no table header",
+    );
+  });
+
+  it("throws on a row above the first date row, which belongs to no block", () => {
+    // Nothing counts oral rows, so an exam, note or range dash here would
+    // otherwise vanish.
+    for (const row of [
+      "Samstag /        7,421 Datenschutzrecht",
+      "                 Die Termine sind in Compass abrufbar.",
+      "-",
+    ]) {
+      const above = oralPlan(`${row}
+30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,436 Internationale Schiedsgerichtsbarkeit`);
+      expect(() => parseExamPlanText(above)).toThrow(
+        `Oral row appears before any date row — page 2 line 3: ${row.trim()}`,
+      );
+    }
+  });
+
+  it("throws on a date between the date gutter and the text column", () => {
+    // Read as a note, it would leave 7,436 in the block above it.
+    const drifted = oralPlan(`30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
+Samstag /        7,421 Datenschutzrecht
+    06.02.2027   Sprachen / Languages
+Saturday         7,436 Internationale Schiedsgerichtsbarkeit`);
+    expect(() => parseExamPlanText(drifted)).toThrow(
+      "Oral date is neither in the date gutter nor in the text column — page 2 line 5: 06.02.2027   Sprachen / Languages",
+    );
+  });
+
+  it("throws when the whole oral page is indented past the date gutter", () => {
+    // Left alone, every date row would be missed and the page read as empty.
+    for (const indent of ["    ", "      "]) {
+      const pages = plan.split("\f");
+      pages[3] = pages[3].replace(/^(?=.)/gm, indent);
+      expect(() => parseExamPlanText(pages.join("\f"))).toThrow(
+        /^Oral date is neither in the date gutter nor in the text column — page 4 line 7: 30\.01\.2027 /,
+      );
+    }
+  });
 
   it("dates a block without a '-' with its one day", () => {
     const { oral } = parseExamPlanText(
@@ -471,7 +526,7 @@ Montag /         7,702 Recht und Psychologie`),
 Samstag /        7,421 Datenschutzrecht
 -                7,436 Internationale Schiedsgerichtsbarkeit`);
     expect(() => parseExamPlanText(unclosed)).toThrow(
-      "Oral date range is never closed — page 2 line 4",
+      "Oral date range is never closed — page 2 line 5",
     );
   });
 
@@ -484,7 +539,7 @@ Samstag /        7,421 Datenschutzrecht
 06.02.2027
 Saturday         7,436 Internationale Schiedsgerichtsbarkeit`);
     expect(() => parseExamPlanText(drifted)).toThrow(
-      'A lone "-" sits outside the date gutter — page 2 line 4',
+      'A lone "-" sits outside the date gutter — page 2 line 5',
     );
   });
 
@@ -521,7 +576,7 @@ Samstag /        7,421 Datenschutzrecht
 08.02.2027       Ordentliche Prüfungstermine / Regular examination dates
 Montag /         7,702 Recht und Psychologie`);
     expect(() => parseExamPlanText(reopened)).toThrow(
-      "Oral date range is opened again after its closing date — page 2 line 6",
+      "Oral date range is opened again after its closing date — page 2 line 7",
     );
   });
 

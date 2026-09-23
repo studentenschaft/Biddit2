@@ -171,6 +171,7 @@ Montag /   BA: OT EN  30'  3,202 Microeconomics II          MA: OT EN 240' 1,909
 ${TABLE_HEADER}
 ${TWO_SLOT_ROW}
 \fMündliche Prüfungen / Oral examinations: 30.01. - 20.02.2027
+Datum            Prüfungsbeginn (mündl.) Morgen ab 08.15
 30.01.2027       Ordentliche Prüfungstermine / Regular examination dates
 Samstag /        MA: 7,421 Datenschutzrecht
 Saturday         7.436 Internationale Schiedsgerichtsbarkeit

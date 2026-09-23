@@ -46,9 +46,12 @@ const BYOD_MARKER_RE = /\(BYOD\)/;
 // On the oral page the gutter's dash and dates sit in column 0, and the text
 // column starts at 17. Three columns of indent absorb the drift an indented
 // date row shows; a "- …" or "dd.mm.yyyy …" line in the text column is a note
-// and must neither open nor close a range.
+// and must neither open nor close a range. A date in between is neither.
 const RANGE_DASH_RE = /^ {0,3}-(?=\s|$)/;
 const GUTTER_DATE_RE = /^ {0,3}(\d{2})\.(\d{2})\.(\d{4})/;
+const STRAY_DATE_RE = /^ {4,16}\d{2}\.\d{2}\.\d{4}/;
+// The oral table header prints "Datum" over "Date"; above it is the title.
+const ORAL_TABLE_HEADER_RE = /^\s*(?:Datum|Date)\b/;
 export const ROOT_SEPARATOR = "|";
 export const WEEKDAYS_SOURCE =
   "Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday";
@@ -220,22 +223,47 @@ function parseWrittenPage(page) {
  * every exam and note of a block carries the block's whole range.
  */
 function parseOralPage(page) {
+  const lines = page.text.split("\n");
+  const bodyStart = lines.findIndex((line) =>
+    ORAL_TABLE_HEADER_RE.test(line),
+  );
+  if (bodyStart === -1) {
+    throw new Error(
+      `Cannot read the oral page — page ${page.number}: no table header`,
+    );
+  }
   const oral = [];
   const oralNotes = [];
   let block = null;
   let openedAt = null; // where the "-" of a range still waiting for its end sits
   let currentSection = null;
 
-  for (const [index, line] of page.text.split("\n").entries()) {
+  for (let index = bodyStart; index < lines.length; index += 1) {
+    const line = lines[index];
     if (matchFooters(line).length > 0) continue;
     const where = `page ${page.number} line ${index + 1}`;
+    if (STRAY_DATE_RE.test(line)) {
+      throw new Error(
+        `Oral date is neither in the date gutter nor in the text column — ${where}: ${line.trim()}`,
+      );
+    }
     const dateMatch = line.match(GUTTER_DATE_RE);
+    if (!block && !dateMatch) {
+      // Nothing counts oral rows: an exam, note or dash here would belong to
+      // no block and vanish.
+      if (line.trim() && !ORAL_TABLE_HEADER_RE.test(line)) {
+        throw new Error(
+          `Oral row appears before any date row — ${where}: ${line.trim()}`,
+        );
+      }
+      continue;
+    }
     if (dateMatch) {
       const date = calendarDate(...dateMatch.slice(1), where);
       if (openedAt) Object.assign(block, { dateEnd: date, closed: true });
       else block = { dateStart: date, dateEnd: date, closed: false };
       openedAt = null;
-    } else if (block && RANGE_DASH_RE.test(line)) {
+    } else if (RANGE_DASH_RE.test(line)) {
       // Let through, the next block's date row would silently extend this one.
       if (block.closed) {
         throw new Error(
@@ -247,7 +275,7 @@ function parseOralPage(page) {
     const text = dateMatch
       ? line.slice(dateMatch[0].length).trim()
       : stripGutter(line);
-    if (!block || !text) continue;
+    if (!text) continue;
 
     const examMatch = text.match(ORAL_EXAM_RE);
     if (examMatch) {
@@ -340,6 +368,11 @@ function parseFooters(rawText, warnings) {
 
 export function parseExamPlanText(rawText) {
   const warnings = [];
+  // The plan-wide header, oral period and footers are read first, so a plan
+  // without them fails on that and not on some page.
+  const header = parseHeader(rawText);
+  const oralExamPeriod = parseOralPeriod(rawText);
+  const publishedAt = parseFooters(rawText, warnings);
   const pages = splitPages(rawText);
   const written = pages
     .filter((page) => page.kind === PAGE_KIND.written)
@@ -349,9 +382,9 @@ export function parseExamPlanText(rawText) {
     .map((page) => parseOralPage(page));
 
   return {
-    ...parseHeader(rawText),
-    oralExamPeriod: parseOralPeriod(rawText),
-    publishedAt: parseFooters(rawText, warnings),
+    ...header,
+    oralExamPeriod,
+    publishedAt,
     written,
     oral: oralPages.flatMap((page) => page.oral),
     oralNotes: oralPages.flatMap((page) => page.oralNotes),
