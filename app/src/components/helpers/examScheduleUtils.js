@@ -1,11 +1,13 @@
 /**
  * Pure lookup into an ingested exam plan (`public/exams/<SEMESTER>.json`,
- * ADR 0010/0011). No React, no I/O — callers pass a ready plan. Nothing here
- * re-checks it: `examPlanState` checked the top-level shape when it loaded,
- * and every entry passed the ingestion CLI's validation, which refuses to
- * write a bad artifact.
+ * ADR 0010/0011), and the display helpers every exam surface shares. No
+ * React, no I/O — callers pass a ready plan. Nothing here re-checks it:
+ * `examPlanState` checked the top-level shape when it loaded, and every entry
+ * passed the ingestion CLI's validation, which refuses to write a bad
+ * artifact.
  */
 
+import moment from "moment/moment";
 import { getCourseRootKey } from "./courseUtils";
 
 // The plan prints two-segment roots ("3,200"); app course numbers are
@@ -101,3 +103,20 @@ export function examClashes(plannedExams, plan, course) {
   }
   return clashes;
 }
+
+// The artifact stores plain calendar days ("2027-01-18"). Parsed and printed
+// in the same local zone, a day never shifts to its neighbour.
+const day = (isoDay) => moment(isoDay, "YYYY-MM-DD");
+
+/** "Mon 18.01.2027" */
+export const formatExamDate = (isoDay) => day(isoDay).format("ddd DD.MM.YYYY");
+
+/**
+ * An oral block as the plan prints it, "Sat 30.01. – Sat 06.02.2027"; the
+ * year is left to the end, as an oral period never spans New Year. A one-day
+ * block is a plain date.
+ */
+export const formatExamDateRange = (start, end) =>
+  start === end
+    ? formatExamDate(start)
+    : `${day(start).format("ddd DD.MM.")} – ${formatExamDate(end)}`;

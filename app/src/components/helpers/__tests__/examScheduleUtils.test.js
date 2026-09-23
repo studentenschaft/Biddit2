@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { examClashes, examsForCourse, planExams } from "../examScheduleUtils";
+import {
+  examClashes,
+  examsForCourse,
+  formatExamDate,
+  formatExamDateRange,
+  planExams,
+} from "../examScheduleUtils";
 
 const written = (id, rootNumbers, termType = "OT") => ({
   id,
@@ -154,6 +160,16 @@ describe("examClashes", () => {
       clashes: [],
     },
     {
+      name: "an exam ending as the other starts does not clash",
+      written: [
+        exam("a", ["3,100"], "09:15", 90),
+        exam("b", ["3,200"], "10:45", 90),
+      ],
+      planned: [ALPHA, BRAVO],
+      course: BRAVO,
+      clashes: [],
+    },
+    {
       name: "a lecture and its exercise group share one exam",
       written: [
         exam("a", ["3,100"], "09:15", 90),
@@ -246,5 +262,26 @@ describe("examClashes", () => {
       examClashes(planExams(plan, [ALPHA]), plan, course("9,999,1.00", "X"))
         .size,
     ).toBe(0);
+  });
+});
+
+describe("formatExamDate", () => {
+  it("prints the weekday and the Swiss date", () => {
+    expect(formatExamDate("2027-01-18")).toBe("Mon 18.01.2027");
+    expect(formatExamDate("2027-02-06")).toBe("Sat 06.02.2027");
+  });
+});
+
+describe("formatExamDateRange", () => {
+  it("prints the year once, at the end", () => {
+    expect(formatExamDateRange("2027-01-30", "2027-02-06")).toBe(
+      "Sat 30.01. – Sat 06.02.2027",
+    );
+  });
+
+  it("prints a one-day range as a plain date", () => {
+    expect(formatExamDateRange("2027-01-30", "2027-01-30")).toBe(
+      "Sat 30.01.2027",
+    );
   });
 });

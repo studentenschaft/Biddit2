@@ -1,38 +1,18 @@
 import PropTypes from "prop-types";
+import moment from "moment/moment";
 import { InformationCircleIcon } from "@heroicons/react/outline";
 import { useRecoilValue } from "recoil";
 import {
   examPlanSelector,
   plannedExamsSelector,
 } from "../recoil/examScheduleSelectors";
-import { examClashes, examsForCourse } from "../helpers/examScheduleUtils";
+import {
+  examClashes,
+  examsForCourse,
+  formatExamDate,
+  formatExamDateRange,
+} from "../helpers/examScheduleUtils";
 import { getCourseRootKey } from "../helpers/courseUtils";
-
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-// The artifact stores plain calendar days ("2027-01-18"); parsing them in UTC
-// keeps the weekday independent of the reader's timezone.
-const formatDay = (isoDay) => {
-  const [year, month, day] = String(isoDay ?? "").split("-");
-  return year && month && day ? `${day}.${month}.${year}` : "";
-};
-
-const formatExamDate = (isoDay) => {
-  const formatted = formatDay(isoDay);
-  if (!formatted) return "";
-  const [year, month, day] = String(isoDay).split("-");
-  const weekday =
-    WEEKDAYS[new Date(Date.UTC(+year, +month - 1, +day)).getUTCDay()];
-  return weekday ? `${weekday} ${formatted}` : formatted;
-};
-
-// Oral exams are published as a range, not a day ("Sat 30.01. – Sat
-// 06.02.2027"); the start leaves the year to the end, as an oral period never
-// spans New Year.
-const formatOralDates = ({ dateStart, dateEnd }) =>
-  dateStart === dateEnd
-    ? formatExamDate(dateStart)
-    : `${formatExamDate(dateStart).replace(/\d{4}$/, "")} – ${formatExamDate(dateEnd)}`;
 
 export default function ExamSchedule({ course, semester }) {
   // Null while loading, and for a semester without a usable plan or with a
@@ -91,7 +71,9 @@ export default function ExamSchedule({ course, semester }) {
       ))}
       {oral.map((exam) => (
         <div key={exam.id} className="flex flex-wrap items-baseline gap-x-2">
-          <span className="font-semibold">{formatOralDates(exam)}</span>
+          <span className="font-semibold">
+            {formatExamDateRange(exam.dateStart, exam.dateEnd)}
+          </span>
           <span>Oral exam — individual time published in Compass</span>
         </div>
       ))}
@@ -102,7 +84,8 @@ export default function ExamSchedule({ course, semester }) {
         />
         <span>
           Central exam schedule {plan.sourceTermLabel}, published{" "}
-          {formatDay(plan.source?.publishedAt)}. Extracted
+          {moment(plan.source.publishedAt, "YYYY-MM-DD").format("DD.MM.YYYY")}.
+          Extracted
           automatically from the official PDF — indicative only, always verify
           against the official exam schedule.
         </span>
