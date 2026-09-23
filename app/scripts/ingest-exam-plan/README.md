@@ -86,8 +86,7 @@ brew install poppler   # provides pdftotext; only needed for --pdf
    byte-for-byte against the matching `public/exams/<SEMESTER>.json`.
 
    Review the artifact's diff line by line before blessing it. Do not reformat
-   the fixture — losing its form feeds degrades page splitting to the banner
-   fallback.
+   the fixture — the parser splits pages on its form feeds.
 
 8. **`npm test` and `npm run lint`**, then commit the PDF, the artifact and the
    fixture, the golden-test case, and a CHANGELOG entry.

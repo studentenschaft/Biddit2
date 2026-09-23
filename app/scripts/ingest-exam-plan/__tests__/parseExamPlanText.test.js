@@ -6,11 +6,11 @@ import {
   parseExamPlanText,
   splitPages,
 } from "../parseExamPlanText.js";
-import { readFixture, readSnippet } from "./readFixture.js";
+import { HEADER, readFixture } from "./readFixture.js";
 
 const plan = readFixture("winter-2027.txt");
-const page = readSnippet("written-page.txt");
-const oral = readSnippet("oral-page.txt");
+const TABLE_HEADER =
+  "Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr            Prüfungsbeginn (schriftl.): 15.15 Uhr";
 
 const codes = (warnings) => warnings.map((warning) => warning.code);
 const find = (exams, root) =>
@@ -30,13 +30,6 @@ describe("splitPages", () => {
   it("keeps the page numbers of the PDF, so findings can be looked up", () => {
     expect(splitPages(plan).map((split) => split.number)).toEqual([1, 2, 3, 4]);
   });
-
-  it("falls back to the page banners when the form feeds are lost", () => {
-    const kinds = splitPages(readSnippet("no-form-feed.txt")).map(
-      (split) => split.kind,
-    );
-    expect(kinds).toEqual([PAGE_KIND.written, PAGE_KIND.oral]);
-  });
 });
 
 describe("findAfternoonColumn", () => {
@@ -47,17 +40,14 @@ describe("findAfternoonColumn", () => {
     expect(boundaries).toEqual([151, 119, 123]);
   });
 
-  it("falls back to the 15.15 label when only one slot label is present", () => {
-    const exams = parseExamPlanText(
-      readSnippet("written-fallback-boundary.txt"),
-    ).written;
-    expect(find(exams, "1,908").slot).toBe("15:15");
-  });
-
   it("throws rather than guess when no boundary can be derived", () => {
-    expect(() =>
-      parseExamPlanText(readSnippet("written-no-boundary.txt")),
-    ).toThrow(/Cannot locate the 15:15 column/);
+    const oneLabel = `${HEADER}
+Datum      Prüfungsbeginn (schriftl.): 09.15 Uhr
+18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+`;
+    expect(() => parseExamPlanText(oneLabel)).toThrow(
+      /Cannot locate the 15:15 column/,
+    );
   });
 });
 
@@ -83,7 +73,7 @@ describe("parseExamPlanText — header and footers", () => {
   });
 
   it("warns when pages carry different revision dates", () => {
-    const mixed = `${page}Kompetenzcenter Planung und Prüfungen   19.08.2026   Seite 2 von 2\n`;
+    const mixed = `${plan}\nKompetenzcenter Planung und Prüfungen   19.08.2026   Seite 5 von 5\n`;
     expect(codes(parseExamPlanText(mixed).warnings)).toContain(
       "W_PUBLISHED_AT_MIXED",
     );
@@ -145,7 +135,11 @@ describe("parseExamPlanText — written rows", () => {
   it("parses roots with two-digit prefixes wherever they sit", () => {
     // The catalog has numbers like "11,702,1.00" — a root the entry regex
     // cannot see is dropped silently, so the width must not be assumed.
-    const wide = parseExamPlanText(readSnippet("written-wide-roots.txt"));
+    const wide = parseExamPlanText(`${HEADER}
+${TABLE_HEADER}
+18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II           MA: OT EN 120' 11,702 Digital Business
+Montag /   MA: OT DE  90'  3,802 | 14,802 Deutsch C1
+`);
     expect(wide.written).toHaveLength(3);
     expect(find(wide.written, "11,702").slot).toBe("15:15");
     expect(find(wide.written, "3,802").rootNumbers).toEqual([
@@ -158,9 +152,14 @@ describe("parseExamPlanText — written rows", () => {
   it("warns when every entry of a page lands in one slot", () => {
     // The signature of a boundary derived from a re-laid-out header: nothing
     // is dropped, the counts balance, and every exam is six hours wrong.
-    expect(
-      codes(parseExamPlanText(readSnippet("written-one-sided.txt")).warnings),
-    ).toEqual(["W_COLUMN_ONE_SIDED"]);
+    const oneSided = `${HEADER}
+${TABLE_HEADER}
+18.01.2027 BA: OT DE  90'  3,200 Mikroökonomik II
+Montag /   BA: OT EN  90'  3,202 Microeconomics II
+`;
+    expect(codes(parseExamPlanText(oneSided).warnings)).toEqual([
+      "W_COLUMN_ONE_SIDED",
+    ]);
   });
 
   it("reads alternative-date rows as their own exams", () => {
@@ -194,23 +193,25 @@ describe("parseExamPlanText — written rows", () => {
     expect(titles.some((title) => title.includes("Kompetenzcenter"))).toBe(false);
   });
 
-  it("drops an exam row that has no date and says so", () => {
-    const parsedSnippet = parseExamPlanText(
-      readSnippet("written-entry-before-date.txt"),
+  it("throws on an exam row that has no date, naming where it sits", () => {
+    const undated = `${HEADER}
+${TABLE_HEADER}
+           BA: OT DE  90'  3,200 Mikroökonomik II
+18.01.2027 BA: OT EN  90'  3,202 Microeconomics II
+`;
+    expect(() => parseExamPlanText(undated)).toThrow(
+      "page 1 line 4: BA: OT DE  90'  3,200 Mikroökonomik II",
     );
-    expect(parsedSnippet.written).toHaveLength(1);
-    // The snippet's surviving entries all sit in one slot, so the one-sided
-    // column warning legitimately rides along.
-    expect(codes(parsedSnippet.warnings)).toEqual([
-      "W_ENTRY_WITHOUT_DATE",
-      "W_COLUMN_ONE_SIDED",
-    ]);
   });
 
   it("warns when the two slot columns almost touch", () => {
-    expect(
-      codes(parseExamPlanText(readSnippet("written-tight-columns.txt")).warnings),
-    ).toEqual(["W_COLUMN_CLUSTER_TIGHT"]);
+    const tight = `${HEADER}
+Datum      Prüfungsbeginn 09.15         Prüfungsbeginn 15.15
+18.01.2027 BA: OT DE  90'  3,200 X      BA: OT EN  90'  1,908 Y
+`;
+    expect(codes(parseExamPlanText(tight).warnings)).toEqual([
+      "W_COLUMN_CLUSTER_TIGHT",
+    ]);
   });
 
   it("stays silent about the columns of the real plan", () => {
@@ -264,7 +265,7 @@ describe("parseExamPlanText — oral page", () => {
   });
 
   it("keeps the oral page table header and footer out of the notes", () => {
-    const texts = parseExamPlanText(oral).oralNotes.map((note) => note.text);
+    const texts = parsed.oralNotes.map((note) => note.text);
     expect(texts.some((text) => text.startsWith("Beginning of"))).toBe(false);
     expect(texts.some((text) => text.startsWith("Kompetenzcenter"))).toBe(false);
   });

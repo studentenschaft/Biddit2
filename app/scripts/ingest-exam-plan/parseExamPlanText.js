@@ -26,8 +26,6 @@ export const ENTRY_RE =
   /(AJ|BA|MA):\s*(OT|AT)\s+(DE|EN)\s+(\d{2,3})'\s+((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+/g;
 
 const PAGE_BREAK = "\f";
-const BANNER_RE =
-  /(?:Schriftliche|Mündliche) Prüfungen \/ (?:Written|Oral) examinations/;
 const WRITTEN_BANNER_RE = /Schriftliche Prüfungen \/ Written examinations/;
 const ORAL_BANNER_RE = /Mündliche Prüfungen \/ Oral examinations/;
 
@@ -41,7 +39,6 @@ const FOOTER_RE =
 export const TABLE_HEADER_PREFIX = "Datum";
 export const LEADING_DATE_RE = /^(\d{2})\.(\d{2})\.(\d{4})/;
 const SLOT_LABEL_RE = /Prüfungsbeginn/g;
-const AFTERNOON_TIME_LABEL = "15.15";
 const ORAL_EXAM_RE = /^((?:\d{1,2},\d{3})(?:\s*\|\s*\d{1,2},\d{3})*)\s+(\S.*)$/;
 const BYOD_MARKER_RE = /\(BYOD\)/;
 export const ROOT_SEPARATOR = "|";
@@ -63,16 +60,13 @@ function pageKind(text) {
 }
 
 /**
- * Splits into classified pages. Form feeds are the normal case; the banner
- * fallback keeps the parser working if a future extraction loses them. Pages
+ * Splits on the form feeds `pdftotext -layout` emits between pages. Pages
  * without a banner carry no exam rows and are dropped — the validator's entry
  * count catches it loudly if that ever stops being true.
  */
 export function splitPages(rawText) {
-  const chunks = rawText.includes(PAGE_BREAK)
-    ? rawText.split(PAGE_BREAK)
-    : rawText.split(new RegExp(`(?=${BANNER_RE.source})`));
-  return chunks
+  return rawText
+    .split(PAGE_BREAK)
     .map((text, index) => ({ number: index + 1, text, kind: pageKind(text) }))
     .filter((page) => page.kind !== PAGE_KIND.unknown);
 }
@@ -85,19 +79,15 @@ export function findAfternoonColumn(pageText) {
   const headerLine = pageText
     .split("\n")
     .find((line) => line.startsWith(TABLE_HEADER_PREFIX));
-  const slotLabelColumns = headerLine
-    ? [...headerLine.matchAll(SLOT_LABEL_RE)].map((match) => match.index)
-    : [];
-  if (slotLabelColumns.length >= 2) return slotLabelColumns[1];
-
-  const timeLabelColumn = headerLine
-    ? headerLine.indexOf(AFTERNOON_TIME_LABEL)
-    : -1;
-  if (timeLabelColumn >= 0) return timeLabelColumn;
-
-  throw new Error(
-    `Cannot locate the ${AFTERNOON_SLOT} column: no table header with two "Prüfungsbeginn" labels`,
+  const slotLabelColumns = [...(headerLine ?? "").matchAll(SLOT_LABEL_RE)].map(
+    (match) => match.index,
   );
+  if (slotLabelColumns.length < 2) {
+    throw new Error(
+      `Cannot locate the ${AFTERNOON_SLOT} column: no table header with two "Prüfungsbeginn" labels`,
+    );
+  }
+  return slotLabelColumns[1];
 }
 
 const toIsoDate = ([, day, month, year]) => `${year}-${month}-${day}`;
@@ -128,17 +118,12 @@ function parseWrittenPage(page, warnings) {
 
     const matches = [...line.matchAll(ENTRY_RE)];
     matches.forEach((match, position) => {
-      entryColumns.push(match.index);
       if (!currentDate) {
-        warnings.push(
-          warning(
-            "W_ENTRY_WITHOUT_DATE",
-            "Exam row appears before any date row and was dropped",
-            `page ${page.number} line ${index + 1}: ${line.trim()}`,
-          ),
+        throw new Error(
+          `Exam row appears before any date row — page ${page.number} line ${index + 1}: ${line.trim()}`,
         );
-        return;
       }
+      entryColumns.push(match.index);
       const [full, level, termType, language, duration, roots] = match;
       const titleEnd =
         position + 1 < matches.length ? matches[position + 1].index : line.length;
@@ -223,6 +208,11 @@ function parseOralPage(page) {
   return { oral, oralNotes };
 }
 
+const toPeriod = ([startDay, startMonth, endDay, endMonth, year]) => ({
+  start: `${year}-${startMonth}-${startDay}`,
+  end: `${year}-${endMonth}-${endDay}`,
+});
+
 function parseHeader(rawText) {
   const match = rawText.match(HEADER_RE);
   if (!match) {
@@ -230,24 +220,13 @@ function parseHeader(rawText) {
       "Cannot read the plan header: no \"Prüfungsplan … / Examination Schedule … (dd.mm. - dd.mm.yyyy)\" line",
     );
   }
-  const [, termLabel, startDay, startMonth, endDay, endMonth, year] = match;
-  return {
-    termLabel,
-    examPeriod: {
-      start: `${year}-${startMonth}-${startDay}`,
-      end: `${year}-${endMonth}-${endDay}`,
-    },
-  };
+  const [, termLabel, ...period] = match;
+  return { termLabel, examPeriod: toPeriod(period) };
 }
 
 function parseOralPeriod(rawText) {
   const match = rawText.match(ORAL_PERIOD_RE);
-  if (!match) return null;
-  const [, startDay, startMonth, endDay, endMonth, year] = match;
-  return {
-    start: `${year}-${startMonth}-${startDay}`,
-    end: `${year}-${endMonth}-${endDay}`,
-  };
+  return match ? toPeriod(match.slice(1)) : null;
 }
 
 function parseFooters(rawText, warnings) {

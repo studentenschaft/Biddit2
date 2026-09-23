@@ -13,3 +13,7 @@ export const readFixture = (name) =>
   readFileSync(join(FIXTURE_DIR, name), "utf8");
 
 export const readSnippet = (name) => readFixture(join("snippets", name));
+
+/** Title and banner that make a hand-written snippet a written-exam page. */
+export const HEADER = `Prüfungsplan Winter 2027 / Examination Schedule Winter 2027 (18.01. - 20.02.2027)
+Schriftliche Prüfungen / Written examinations`;
