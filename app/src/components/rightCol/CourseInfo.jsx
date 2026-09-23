@@ -17,6 +17,7 @@ import ExamSchedule from "./ExamSchedule.jsx";
 import {
   selectedCourseInfoSelector,
   selectedCourseSemesterSelector,
+  selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
 // error handling
@@ -31,6 +32,7 @@ const UNKNOWN_EXAM_TYPE = "—";
 export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
+  const selectedSemester = useRecoilValue(selectedSemesterSelector);
   const authToken = useRecoilValue(authTokenState);
   const [examinationIdState, setExaminationIdState] = useRecoilState(
     examinationTypesState
@@ -363,9 +365,17 @@ export default function CourseInfo() {
             <h2 className="text-lg font-bold text-gray-700 ">
               Exam Information
             </h2>
+            {/* A projected semester reuses its reference's cisId, so the
+                lookup above can name HS26 while HS27 is on screen. Exam dates
+                are judged on the semester the student is looking at; any
+                mismatch shows none. */}
             <ExamSchedule
               course={selectedCourse}
-              semester={semesterAbbreviation}
+              semester={
+                semesterAbbreviation === selectedSemester
+                  ? semesterAbbreviation
+                  : null
+              }
             />
             <div className="pb-1">
               {examInformationState ? (
@@ -385,7 +395,7 @@ export default function CourseInfo() {
                 })
               ) : (
                 <div className="text-base text-gray-700">
-                  No Exam Information
+                  No exam breakdown available
                 </div>
               )}
             </div>
