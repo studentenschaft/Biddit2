@@ -8,7 +8,13 @@
  */
 
 import { execFileSync } from "node:child_process";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
@@ -29,6 +35,7 @@ const USAGE = `Usage: npm run ingest:exams -- (--pdf <file> | --text <file>) [op
   --out <file>          write here instead of public/exams/<SEMESTER>.json
                         (the semester is read from the plan's title)
   --dry-run             validate and report only; write nothing
+  --allow-removals      write even if the existing file has exams this plan lacks
   --catalog <file>      course-catalog snapshot for the advisory cross-check`;
 
 function extractPdfText(pdfPath) {
@@ -57,6 +64,7 @@ function parseCliArgs(argv) {
         text: { type: "string" },
         out: { type: "string" },
         "dry-run": { type: "boolean" },
+        "allow-removals": { type: "boolean" },
         catalog: { type: "string" },
       },
     });
@@ -66,6 +74,29 @@ function parseCliArgs(argv) {
     return values;
   } catch (error) {
     throw new Error(`${error.message}\n\n${USAGE}`);
+  }
+}
+
+const examIds = (plan) => [...plan.written, ...plan.oral].map((exam) => exam.id);
+
+/**
+ * A re-ingest must not lose an exam unnoticed: a partial or re-laid-out PDF
+ * can validate cleanly and still list fewer exams than the published file.
+ */
+function refuseRemovals(out, plan) {
+  if (!existsSync(out)) return;
+  const kept = new Set(examIds(plan));
+  const removed = examIds(JSON.parse(readFileSync(out, "utf8"))).filter(
+    (id) => !kept.has(id),
+  );
+  if (removed.length > 0) {
+    throw new Error(
+      [
+        `Nothing written: ${removed.length} exams in ${out} are missing from this plan:`,
+        ...removed.map((id) => `  ${id}`),
+        "Check each against the PDF. If HSG really dropped them, re-run with --allow-removals.",
+      ].join("\n"),
+    );
   }
 }
 
@@ -93,20 +124,25 @@ function run(argv) {
       warnings: [...parsed.warnings, ...warnings],
       stats,
       catalogDiff,
-    })}\n`,
+    })}\n\n`,
   );
 
-  if (errors.length > 0) throw new Error("\nNothing written: validation failed.");
+  if (errors.length > 0) throw new Error("Nothing written: validation failed.");
   if (options["dry-run"]) {
-    process.stdout.write("\nDry run: nothing written.\n");
+    process.stdout.write("Dry run: nothing written.\n");
     return;
   }
 
   const out =
     options.out ?? resolve(APP_DIR, "public/exams", `${plan.semester}.json`);
+  if (!options["allow-removals"]) refuseRemovals(out, plan);
+  // Renaming into place means a reader (the dev server, a build) sees the old
+  // artifact or the new one, never a half-written file.
+  const temp = `${out}.tmp`;
   mkdirSync(dirname(out), { recursive: true });
-  writeFileSync(out, `${JSON.stringify(plan, null, JSON_INDENT)}\n`);
-  process.stdout.write(`\nWrote ${out}\n`);
+  writeFileSync(temp, `${JSON.stringify(plan, null, JSON_INDENT)}\n`);
+  renameSync(temp, out);
+  process.stdout.write(`Wrote ${out}\n`);
 }
 
 try {

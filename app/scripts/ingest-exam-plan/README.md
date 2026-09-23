@@ -40,8 +40,9 @@ brew install poppler   # provides pdftotext; only needed for --pdf
    the *exam period*, so "Winter 2027" is autumn semester 2026 → `HS26`.
 
    Check the stats block against the PDF: number of exams, number of exam
-   dates, the 09:15/15:15 split and the duration histogram. Errors mean nothing
-   is written; read every warning.
+   dates, the split by start time (the times come from each page's table
+   header) and the duration histogram. Errors mean nothing is written; read
+   every warning.
 
 3. **Optional: cross-check against the course catalog.** In the browser, open
    DevTools → Network, load the course list, find the
@@ -85,9 +86,24 @@ brew install poppler   # provides pdftotext; only needed for --pdf
    and the fixture, the golden-test case, and a CHANGELOG entry.
 
 8. **Re-ingest later publications for the same semester.** If the report prints
-   `W_AT_INCOMPLETE`, repeat the dry run, write, spot-check, fixture and test
-   steps when HSG publishes the complete alternative-date plan. Review the
-   resulting JSON diff as carefully as the initial import.
+   `W_AT_INCOMPLETE`, HSG publishes the complete alternative-date plan later.
+   For HS26 this is the AT plan for 08.–20.02.2027, due in CW42. When the new
+   PDF is out, repeat the dry run, write, spot-check, fixture and test steps.
+
+   The write compares the new plan with the existing
+   `public/exams/<SEMESTER>.json`. If an exam id of that file is missing from
+   the new plan, nothing is written and every missing id is listed. The id
+   holds the date and start time, so an exam that moved is listed too. Check
+   each listed id against the new PDF:
+
+   - If HSG really dropped or moved these exams, run the write again with
+     `--allow-removals`.
+   - If the list holds exams that are still valid, do not use
+     `--allow-removals`. For example, a CW42 PDF with only the AT rows would
+     drop every OT exam: that PDF adds to the plan but cannot replace it, and
+     the pipeline does not merge two PDFs.
+
+   Review the resulting JSON diff as carefully as the initial import.
 
 ## Layout
 
