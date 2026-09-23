@@ -49,7 +49,9 @@ Run every command in `app/` (`cd app` from the repository root).
    names the exam period, so "Winter 2027" is `HS26`. Compare the stats with
    the PDF: number of exams and exam dates, the split by start time, the
    durations and the number of BYOD exams. If there are errors, nothing is
-   written. Read every warning.
+   written. Read every warning: `W_BYOD_LEGEND_MISSING` means the legend's
+   wording changed and no shaded exam is marked, so do not write the artifact
+   until the parser reads the new legend.
 
 3. **Optional: cross-check against the course catalog.** In the browser, open
    DevTools → Network, load the course list, find the

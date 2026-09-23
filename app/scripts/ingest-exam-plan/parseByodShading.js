@@ -90,12 +90,12 @@ function termTypeOf(root, words) {
 }
 
 /**
- * Returns the shaded roots by page and term type, e.g.
- * `{ 2: { OT: ["7,408"] } }`: the same roots can be shaded in their OT row
+ * Returns `{ shadedRoots, warnings }`, `shadedRoots` by page and term type,
+ * e.g. `{ 2: { OT: ["7,408"] } }`: the same roots can be shaded in their OT row
  * and plain in their AT row on the same page. A (page, term type, root) that
  * is both is fatal, since an exam is matched by exactly that. The legend may
  * be printed on one page only, so its colour holds for the whole plan; a plan
- * without it marks nothing.
+ * without it marks nothing and says so in `warnings`.
  */
 export function parseByodShading(svg, wordBoxes) {
   // cairo wraps each page of a longer document in <page>; one page is bare.
@@ -112,6 +112,14 @@ export function parseByodShading(svg, wordBoxes) {
     );
   }
   const colours = new Set(pages.map(legendColour).filter(Boolean));
+  if (colours.size === 0) {
+    // A reworded legend would otherwise strip every shaded exam unnoticed.
+    const message = "No BYOD legend found — BYOD is marked only from titles";
+    return {
+      shadedRoots: {},
+      warnings: [{ code: "W_BYOD_LEGEND_MISSING", message }],
+    };
+  }
 
   const shaded = {};
   for (const page of pages) {
@@ -138,5 +146,5 @@ export function parseByodShading(svg, wordBoxes) {
       ((shaded[page.number] ??= {})[termType] ??= []).push(root);
     }
   }
-  return shaded;
+  return { shadedRoots: shaded, warnings: [] };
 }

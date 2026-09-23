@@ -59,16 +59,15 @@ function poppler(tool, args) {
 }
 
 function readPdf(pdfPath) {
-  return {
-    rawText: poppler(
-      "pdftotext",
-      ["-layout", "-enc", "UTF-8", "-eol", "unix", pdfPath, "-"],
-    ),
-    shadedRoots: parseByodShading(
-      poppler("pdftocairo", ["-svg", pdfPath, "-"]),
-      poppler("pdftotext", ["-bbox-layout", "-enc", "UTF-8", pdfPath, "-"]),
-    ),
-  };
+  const rawText = poppler(
+    "pdftotext",
+    ["-layout", "-enc", "UTF-8", "-eol", "unix", pdfPath, "-"],
+  );
+  const { shadedRoots, warnings } = parseByodShading(
+    poppler("pdftocairo", ["-svg", pdfPath, "-"]),
+    poppler("pdftotext", ["-bbox-layout", "-enc", "UTF-8", pdfPath, "-"]),
+  );
+  return { rawText, shadedRoots, shadingWarnings: warnings };
 }
 
 function parseCliArgs(argv) {
@@ -122,9 +121,13 @@ function refuseRemovals(out, plan) {
 function run(argv) {
   const options = parseCliArgs(argv);
   // The BYOD shading exists only in the PDF.
-  const { rawText, shadedRoots } = options.pdf
+  const { rawText, shadedRoots, shadingWarnings } = options.pdf
     ? readPdf(options.pdf)
-    : { rawText: readFileSync(options.text, "utf8"), shadedRoots: {} };
+    : {
+        rawText: readFileSync(options.text, "utf8"),
+        shadedRoots: {},
+        shadingWarnings: [],
+      };
 
   const parsed = parseExamPlanText(rawText);
   const plan = buildExamPlan(parsed, shadedRoots);
@@ -141,7 +144,7 @@ function run(argv) {
     `${formatReport({
       plan,
       errors,
-      warnings: [...parsed.warnings, ...warnings],
+      warnings: [...parsed.warnings, ...shadingWarnings, ...warnings],
       stats,
       catalogDiff,
     })}\n\n`,

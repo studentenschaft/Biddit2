@@ -38,8 +38,11 @@ bundles them.
   the word positions (`pdftotext -bbox-layout`) and marks each
   (page, term type, root) that sits inside a legend-coloured fill; a title
   that says "(BYOD)" counts as well. A root that is shaded in one row and plain
-  in another of the same page and term type is fatal. `--text` input has no
-  shading and marks only the titled exams.
+  in another of the same page and term type is fatal. If no page carries the
+  legend's exact words, nothing counts as shaded: only the titled exams are
+  marked, and the report warns `W_BYOD_LEGEND_MISSING` ("No BYOD legend found
+  — BYOD is marked only from titles"). `--text` input has no shading and marks
+  only the titled exams.
 - UTC offsets are computed per date for Europe/Zurich, so a summer plan comes
   out in CEST.
 
@@ -87,8 +90,9 @@ malformed snapshot may crash the CLI: it is a developer's own input.
 - **Freshness is manual.** Someone must re-run the pipeline when HSG publishes
   a plan; nothing alerts. Runbook: `app/scripts/ingest-exam-plan/README.md`.
 - **A new layout fails loudly.** New start times work as long as the header
-  labels them; a new column arrangement, row shape or legend is an error to fix
-  in the parser, not a silently wrong plan.
+  labels them; a new column arrangement or row shape is an error to fix in the
+  parser, not a silently wrong plan. A reworded BYOD legend is the one layout
+  change that still writes: it only warns, so read the report's warnings.
 - **poppler is a developer prerequisite** for `--pdf` only. The tests and CI
   run off the committed fixtures.
 - **Semesters accumulate.** Each one adds its PDF, artifact, two fixtures and a

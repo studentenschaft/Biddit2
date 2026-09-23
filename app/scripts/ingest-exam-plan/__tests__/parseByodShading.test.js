@@ -55,7 +55,7 @@ const wordBoxes = (...pages) =>
 
 describe("parseByodShading", () => {
   it("lists the roots printed on the legend's colour, by page and term type", () => {
-    const shaded = parseByodShading(
+    const { shadedRoots } = parseByodShading(
       svg([...SWATCH, cell(SHADE, 0), cell(HEADER_BLUE, 1)], [cell(SHADE, 3)]),
       wordBoxes(
         [
@@ -69,7 +69,7 @@ describe("parseByodShading", () => {
         [...exam(0, "OT", ["3,200"]), ...exam(3, "OT", ["3,802", "4,802"])],
       ),
     );
-    expect(shaded).toEqual({
+    expect(shadedRoots).toEqual({
       1: { OT: ["3,200"] },
       2: { OT: ["3,802", "4,802"] },
     });
@@ -79,7 +79,7 @@ describe("parseByodShading", () => {
     // As 7,408 | 8,417 on page 2 of the Winter 2027 plan. A root takes the
     // term type of its own cell, not of the left-hand one; one without a term
     // type in its row (the oral page) is not a written exam.
-    const shaded = parseByodShading(
+    const { shadedRoots } = parseByodShading(
       svg([...SWATCH, cell(SHADE, 0), cell(SHADE, 1, RIGHT), cell(SHADE, 2)]),
       wordBoxes([
         ...LEGEND,
@@ -89,14 +89,14 @@ describe("parseByodShading", () => {
         inRow(2, 98.4, "7,421"),
       ]),
     );
-    expect(shaded).toEqual({ 1: { OT: ["3,900", "7,408", "8,417"] } });
+    expect(shadedRoots).toEqual({ 1: { OT: ["3,900", "7,408", "8,417"] } });
   });
 
   it("ignores outlines, which cairo writes with fill=\"none\"", () => {
     // Taken for fills, the swatch's outline would make "none" the BYOD
     // colour, or a cell's outline would hide its shading.
     const frame = (row) => outline([60.24, top(row), 310.46, top(row) + 6.23]);
-    const shaded = parseByodShading(
+    const { shadedRoots } = parseByodShading(
       svg([
         outline([23.57, 131.38, 60.36, 138.21]),
         ...SWATCH,
@@ -110,7 +110,7 @@ describe("parseByodShading", () => {
         ...exam(1, "OT", ["3,202"]),
       ]),
     );
-    expect(shaded).toEqual({ 1: { OT: ["3,200"] } });
+    expect(shadedRoots).toEqual({ 1: { OT: ["3,200"] } });
   });
 
   it("throws when it can read no word at all", () => {
@@ -121,10 +121,26 @@ describe("parseByodShading", () => {
     );
   });
 
-  it("marks nothing in a plan without the BYOD legend", () => {
+  it("warns, and marks nothing, when it finds no BYOD legend", () => {
+    // As if HSG reworded it: the swatch and the shading are still drawn, but
+    // nothing says which colour means BYOD.
+    const reworded = LEGEND.map((each) =>
+      each.replace(">digitale<", ">digital<"),
+    );
     expect(
-      parseByodShading(svg([cell(SHADE, 0)]), wordBoxes(exam(0, "OT", ["3,200"]))),
-    ).toEqual({});
+      parseByodShading(
+        svg([...SWATCH, cell(SHADE, 0)]),
+        wordBoxes([...reworded, ...exam(0, "OT", ["3,200"])]),
+      ),
+    ).toEqual({
+      shadedRoots: {},
+      warnings: [
+        {
+          code: "W_BYOD_LEGEND_MISSING",
+          message: "No BYOD legend found — BYOD is marked only from titles",
+        },
+      ],
+    });
   });
 
   it("throws when the legend has no colour swatch", () => {
