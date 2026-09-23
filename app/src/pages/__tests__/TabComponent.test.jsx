@@ -346,7 +346,7 @@ describe("TabComponent scroll affordance", () => {
   it.each([
     ["Scroll tabs right", "canScrollRight", 180],
     ["Scroll tabs left", "canScrollLeft", -180],
-  ])("steps the row by 60%% of its width from %s", (name, flag, expected) => {
+  ])("steps the row by 60 percent of its width from %s", (name, flag, expected) => {
     affordance[flag] = true;
     renderTabs();
 
