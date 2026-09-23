@@ -55,8 +55,9 @@ surfaces, `text-red-300` on dark tooltips — and kept apart from lecture
 overlaps, which stay amber: a lecture clash costs a session, an exam clash an
 exam. A clashing Calendar block is also dashed, since a phone cuts its words
 off and red against green is the pair colour-blind users confuse most. Every
-surface that shows an exam date or clash says "Indicative — verify
-officially.": the data is our extraction, not the university's publication.
+surface that shows an exam date or clash carries the indicative disclaimer
+(short on the list, Summary and Calendar, long in Course Details): the data is
+our extraction, not the university's publication.
 
 ## Consequences
 

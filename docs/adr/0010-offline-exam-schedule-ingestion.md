@@ -65,8 +65,8 @@ checked against the PDF. The file is renamed into place, never half-written.
 (`startIso`), duration, term type, roots and title, and `byod: true` only when
 marked. The oral page prints no times, only blocks of days (a "-" in the date
 gutter opens a range), so an oral exam carries its block's `dateStart` and
-`dateEnd` and nothing more. Version 2 marks that change; the app refuses any
-other version (ADR 0011).
+`dateEnd` and no time. Version 2 marks that change; the app refuses any other
+version (ADR 0011).
 
 **AT rows are kept, but they are not this semester's.** The 48 AT rows of the
 Winter 2027 PDF are dated inside the OT period and mostly carry spring roots:

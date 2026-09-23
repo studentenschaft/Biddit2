@@ -34,8 +34,11 @@ refetch. It is not an async selector: Recoil's selector cache is global across
 
 - `loading` until the fetch settles;
 - `ready` with a plan this code understands;
-- `none` when there is no plan: a non-OK response, or one that is not JSON
-  (the Vite dev server answers a missing file with `index.html` and a 200);
+- `none` when there is no plan: a non-OK response, or one that is not JSON.
+  In production a missing plan is a 404 because `app/public/_redirects` sends
+  `/exams/*` to `index.html` with status 404, ahead of the SPA's 200 fallback;
+  keep that line. The Vite dev server answers with `index.html` and a 200,
+  which the JSON check catches;
 - `error` for a network failure, unparseable JSON, or an unsupported
   `schemaVersion` or shape. There is no retry.
 
@@ -68,12 +71,13 @@ jumps to the exam weeks and back.
 **Unavailable is said, not implied.**
 
 - Course Details lists each exam with date, time, duration and
-  "digital (BYOD)" when marked. A decentral-only course says the lecturer
-  schedules it, whatever the plan's status. On `error` it says the dates could
-  not be loaded. When a ready plan does not list a central course, or a course
-  without a usable number, it says the date was not found and points to the
-  official plan; any other unlisted course reads "Not in the central exam
-  schedule". Loading, `none` and borrowed semesters show nothing.
+  "digital (BYOD)" when marked. A decentral-only course that the plan does not
+  list says the lecturer schedules it, whatever the plan's status; one the plan
+  lists shows its dates. On `error` it says the dates could not be loaded.
+  When a ready plan does not list a central course, or a course without a
+  usable number, it says the date was not found and points to the official
+  plan; any other unlisted course reads "Not in the central exam schedule".
+  Loading, `none` and borrowed semesters show nothing.
 - Once the plan has settled, the Semester Summary ends with an "Exam check"
   line: the result, or "unavailable" with the reason for `none` and `error`.
 - Both name their source, the plan's term label and publication date, and
