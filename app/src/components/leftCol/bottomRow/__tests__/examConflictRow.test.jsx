@@ -11,7 +11,13 @@
  * serves the fixture), which is the path production takes.
  */
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
 import { describe, expect, it, vi } from "vitest";
@@ -31,6 +37,17 @@ vi.mock("../../../helpers/useEventListDataManager", () => ({
   useEventListDataManager: () => ({ isLoading: false }),
   default: () => ({ isLoading: false }),
 }));
+
+// The tooltip positions itself with floating-ui, which watches the anchor's
+// size; jsdom has no ResizeObserver.
+vi.stubGlobal(
+  "ResizeObserver",
+  class {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  },
+);
 
 const SEMESTER = "HS26";
 
@@ -145,6 +162,19 @@ describe("exam conflicts in the course list", () => {
         "Exam clash with: Microeconomics II. Indicative — verify officially.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("shows the clash in the exam red of the dark tooltips", async () => {
+    renderList({ selectedIds: BOTH });
+
+    fireEvent.mouseEnter(
+      await findClashIcon("Microeconomics II", /^Exam clash with/),
+    );
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(
+      "Exam clash with: Causal Inference. Indicative — verify officially.",
+    );
+    expect(tooltip).toHaveClass("text-red-300");
   });
 
   it("leaves a course whose exam is on another date alone", async () => {

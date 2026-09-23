@@ -322,7 +322,7 @@ export default function EventListContainer({
                 aria-hidden={false}
                 aria-label={examClash.label}
                 className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
-                data-tooltip-id="course-list-tooltip"
+                data-tooltip-id="exam-clash-tooltip"
                 data-tooltip-content={examClash.label}
               />
             )}
@@ -459,14 +459,22 @@ export default function EventListContainer({
           </FixedSizeList>
         )}
       </AutoSizer>
-      {/* One instance serves every anchor in the list; anchors carry their
-          own data-tooltip-content. */}
+      {/* Each instance serves every anchor of its id in the list; anchors
+          carry their own data-tooltip-content. */}
       <ReactTooltip
         id="course-list-tooltip"
         place="top"
         effect="solid"
         style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
         className="bg-gray-800 text-white text-xs rounded px-2 py-1"
+      />
+      {/* Exam clashes read in the red every dark exam tooltip uses. */}
+      <ReactTooltip
+        id="exam-clash-tooltip"
+        place="top"
+        effect="solid"
+        style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
+        className="bg-gray-800 text-red-300 text-xs rounded px-2 py-1"
       />
     </Suspense>
   );
