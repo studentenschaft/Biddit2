@@ -47,17 +47,11 @@ clash with". A course counts as planned when its root is among the roots of the
 user's courses — not among the planned exams' names, which name a cross-listed
 exam once — so a second listing the user also planned still reads as a clash.
 
-**Where it shows, and how.** Exam clashes appear in the course-list row, in the
-Semester Summary (next to the lock, in the conflict tooltip, and counted in the
-"Exam check" line), under the exam in Course Details, and on the Calendar block
-with its tooltip and mobile sheet. They are red — `danger` (#DC2626) on light
-surfaces, `text-red-300` on dark tooltips — and kept apart from lecture
-overlaps, which stay amber: a lecture clash costs a session, an exam clash an
-exam. A clashing Calendar block is also dashed, since a phone cuts its words
-off and red against green is the pair colour-blind users confuse most. Every
-surface that shows an exam date or clash carries the indicative disclaimer
-(short on the list, Summary and Calendar, long in Course Details): the data is
-our extraction, not the university's publication.
+**Where it shows, and how.** Wherever the app lists the user's courses or
+exams, an exam clash is red (lecture overlaps stay amber), dashed on the
+Calendar, where a phone cuts the words off and colour alone fails colour-blind
+users, and always disclaimed: the dates are our extraction, not the
+university's publication.
 
 ## Consequences
 

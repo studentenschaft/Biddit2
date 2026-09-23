@@ -98,7 +98,8 @@ Run every command in `app/` (`cd app` from the repository root).
    ```
 
    Commit the PDF, the artifact, both fixtures, the golden case (new semester
-   only) and a CHANGELOG entry. CI runs the same two commands on every push.
+   only) and a CHANGELOG entry. CI runs the same two commands, and
+   `npm run build`, on every push.
 
 ## Re-ingesting a revised plan
 

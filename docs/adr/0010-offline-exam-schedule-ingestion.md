@@ -25,48 +25,28 @@ bundles them.
 
 **Everything is read from the PDF, nothing is guessed.**
 
-- The semester comes from the title. The PDF names the exam period, so
-  "Winter 2027" is HS26 and "Summer 2027" is FS27.
-- Start times come from each page's own table header
-  ("Prüfungsbeginn (schriftl.): hh.mm Uhr"). An exam takes the time of the
-  label it starts nearest to, because the columns move from page to page. No
-  label, more than two, labels out of order, two headers on one page that
-  disagree, or an exam more than 20 columns from every label is fatal.
-- BYOD comes from the shading. The PDF fills a digital exam's cell with the
-  colour of the legend swatch "= digitale Prüfungen (BYOD)", which
-  `pdftotext -layout` drops. The CLI reads the fills (`pdftocairo -svg`) and
-  the word positions (`pdftotext -bbox-layout`) and marks each
-  (page, term type, root) that sits inside a legend-coloured fill; a title
-  that says "(BYOD)" counts as well. A root that is shaded in one row and plain
-  in another of the same page and term type is fatal. If no page carries the
-  legend's exact words, nothing counts as shaded: only the titled exams are
-  marked, and the report warns `W_BYOD_LEGEND_MISSING` ("No BYOD legend found
-  — BYOD is marked only from titles"). `--text` input has no shading and marks
-  only the titled exams.
+- The semester comes from the title, which names the exam period: "Winter
+  2027" is HS26.
+- Each exam takes the start time of the nearest label in its page's own table
+  header, and a header or an exam that does not fit that layout is fatal.
+- BYOD comes from cells shaded in the colour of the legend swatch
+  "= digitale Prüfungen (BYOD)", or from "(BYOD)" in a title; without the
+  legend's exact words nothing counts as shaded and the report warns
+  `W_BYOD_LEGEND_MISSING`.
 - UTC offsets are computed per date for Europe/Zurich, so a summer plan comes
   out in CEST.
 
-**Errors block the write.** Anything the parser cannot place throws. The
-validator then re-derives what it can from the raw text: the number of
-written rows (`E_COUNT_MISMATCH`), the residue left of each row's first exam
-(`E_UNCONSUMED_LINE`), page furniture inside a title (`E_TITLE_BLEED`), dates
-outside the exam period, durations outside 30–240 minutes, duplicate ids, and
-oral notes that name a course number (`E_ORAL_EXAM_IN_NOTE`, since nothing
-else counts oral rows). One error and nothing is written; `--dry-run` reports
-without writing.
+**Errors block the write.** Anything the parser cannot place throws, and the
+validator re-derives what it can from the raw text — above all the number of
+exam rows, so a row the parser missed cannot vanish. One error and nothing is
+written; `--dry-run` reports without writing.
 
-**A re-ingest cannot shrink the plan unnoticed.** A write over an existing
-artifact is refused, listing each id, when an exam of that file is missing from
-the new plan. The id holds term type, date, start time and roots, so a moved
-exam is listed too. `--allow-removals` overrides once each listed exam has been
-checked against the PDF.
+**A re-ingest cannot shrink the plan unnoticed.** A write that would drop an
+exam of the existing artifact is refused without `--allow-removals`; see
+"Re-ingesting a revised plan" in the runbook.
 
-**Schema version 2.** A written exam carries its date, start time
-(`startIso`), duration, term type, roots and title, and `byod: true` only when
-marked. The oral page prints no times, only blocks of days (a "-" in the date
-gutter opens a range), so an oral exam carries its block's `dateStart` and
-`dateEnd` and no time. Version 2 marks that change; the app refuses any other
-version (ADR 0011).
+**Schema version 2** carries oral exams as date ranges, since the oral page
+prints no times; the app refuses any other version (ADR 0011).
 
 **AT rows are kept, but they are not this semester's.** The 48 AT rows of the
 Winter 2027 PDF are dated inside the OT period and mostly carry spring roots:
@@ -91,11 +71,12 @@ malformed snapshot may crash the CLI: it is a developer's own input.
   a plan; nothing alerts. Runbook: `app/scripts/ingest-exam-plan/README.md`.
 - **A new layout fails loudly.** New start times work as long as the header
   labels them; a new column arrangement or row shape is an error to fix in the
-  parser, not a silently wrong plan. A reworded BYOD legend is the one layout
-  change that still writes: it only warns, so read the report's warnings.
+  parser, not a silently wrong plan. BYOD is the exception: a reworded legend
+  only warns, and shading that is dropped or recoloured while the legend
+  stays writes silently with fewer exams marked. Only comparing the dry run's
+  BYOD count with the PDF (runbook step 2) catches that.
 - **poppler is a developer prerequisite** for `--pdf` only. The tests and CI
   run off the committed fixtures.
 - **Semesters accumulate.** Each one adds its PDF, artifact, two fixtures and a
   golden case, and replaces nothing of an earlier semester.
-- BYOD is now as complete as the PDF's shading, but the UI still only ever says
-  "digital (BYOD)", never "not BYOD".
+- The UI shows BYOD present-or-silent (ADR 0011).

@@ -115,13 +115,11 @@ export const examCalendarEventsSelector = selectorFamily({
           examDate: formatExamDate(exam.date),
           examMeta: formatExamMeta(exam),
           conflictsWith,
-          // Outlined rather than filled: a filled hsg-900 block sat 1.32:1 in
-          // lightness from the enrolled-lecture green. A clash is dashed as
-          // well as red — a phone cuts its words off, and red against green is
-          // the pair colour-vision deficiencies confuse most. Border width and
-          // style are classes because FullCalendar only takes colours per
-          // event, important because its own stylesheet loads after ours;
-          // `exam-block` carries the focus style in calendar.css.
+          // Outlined, unlike the filled lecture blocks, and dashed on a clash
+          // (ADR 0012). Border width and style are classes because
+          // FullCalendar only takes colours per event, important because its
+          // own stylesheet loads after ours; `exam-block` carries the focus
+          // style in calendar.css.
           backgroundColor: "#FFFFFF",
           borderColor: accent,
           textColor: accent,

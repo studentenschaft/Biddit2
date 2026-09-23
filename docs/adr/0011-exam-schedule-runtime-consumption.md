@@ -70,21 +70,9 @@ jumps to the exam weeks and back. It draws lectures and exams alike at Zurich
 wall-clock time, whatever the reader's time zone, so its times are the ones
 Course Details and the official plan print.
 
-**Unavailable is said, not implied.**
-
-- Course Details lists each exam with date, time, duration and
-  "digital (BYOD)" when marked. A decentral-only course that the plan does not
-  list says the lecturer schedules it, whatever the plan's status; one the plan
-  lists shows its dates. On `error` it says the dates could not be loaded.
-  When a ready plan does not list a central course, or a course without a
-  usable number, it says the date was not found and points to the official
-  plan; any other unlisted course reads "Not in the central exam schedule".
-  Loading, `none` and borrowed semesters show nothing.
-- Once the plan has settled, the Semester Summary ends with an "Exam check"
-  line: the result, or "unavailable" with the reason for `none` and `error`.
-- Both name their source, the plan's term label and publication date, and
-  every surface that shows an exam date carries the "indicative — verify
-  officially" disclaimer (ADR 0012).
+**Unavailable is said, not implied.** Every plan state has an explicit
+message in Course Details, the Semester Summary's "Exam check" line says when
+the check is unavailable or incomplete, and both name the plan they read.
 
 ## Consequences
 

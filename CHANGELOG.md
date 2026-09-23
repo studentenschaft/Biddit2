@@ -10,30 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Exam dates and exam-clash warnings for HS26, from the HSG central exam plan.
-  Course Details shows each course's central written exam — date, start time,
-  duration and "digital (BYOD)" when the plan marks it — and oral exams with
-  their date range; it also says when an exam is decentral, when a central
-  exam is missing from the plan and when the plan could not be loaded. When
-  two courses in the user's plan (enrolled or wishlisted) have written exams
-  that overlap in time, a red exam-clash warning shows in the course list, the
-  Semester Summary, Course Details and the Calendar; a course the user is only
-  browsing warns that its exam *would* clash. The Summary ends with an "Exam
-  check" line: clashes found, none, or unavailable. The Calendar draws the
-  user's exams as outlined blocks, red and dashed on a clash, and an "Exams"
-  button jumps to the exam weeks and back. Only ordinary-date (OT) written
-  exams count: the plan's AT rows are Summer 2026 courses' alternative dates,
-  and oral exams have no times. Courses match the plan on their two-segment
-  root, so exercise groups inherit their lecture's exam; borrowed
-  reference-semester catalogs never show exam data; every exam surface says
-  the dates are indicative. The data comes from the new
-  `npm run ingest:exams`, which turns the PDF into a validated
-  `app/public/exams/<SEMESTER>.json` — BYOD read from the cell shading, any
-  error blocks the write, and a re-ingest refuses to drop exams without
-  `--allow-removals`. It ships `HS26.json`: 178 written exams on 15 dates (130
-  OT) and 3 oral exams, pinned by a golden test. Runbook in
+  Course Details shows each course's central exams: written ones with date,
+  start time, duration and, when marked, "digital (BYOD)"; oral ones with their
+  date range. When two courses in the user's plan have overlapping written
+  exams, the course list, Semester Summary, Course Details and Calendar warn in
+  red; a course the user is only browsing warns that its exam *would* clash.
+  The Summary's "Exam check" line says what the check found and which central
+  courses it could not find, or that it could not run. The Calendar draws the
+  exams as blocks, and an "Exams" button jumps to the exam weeks and back. The
+  dates are indicative. They come from `app/public/exams/HS26.json`, built from
+  the PDF by `npm run ingest:exams`; runbook in
   `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010–0012.
-- CI: a GitHub Actions workflow runs `npm ci`, `npm run lint` and
-  `npx vitest run` in `app/` on every push and pull request.
+- CI: a GitHub Actions workflow runs `npm ci`, `npm run lint`,
+  `npx vitest run` and `npm run build` in `app/` on every push and pull
+  request.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
