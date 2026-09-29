@@ -68,7 +68,9 @@ export default function ExamTable({ semester, onOpenCourse }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* p-px: the rows' outline is a 1px ring drawn outside the box, which
+          the scroll container would otherwise clip. */}
+      <div className="overflow-x-auto p-px">
         <div
           role="table"
           aria-labelledby="exam-table-heading"
