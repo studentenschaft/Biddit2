@@ -33,6 +33,7 @@ import { getCourseRootKey } from "../helpers/courseUtils";
 import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 import { Heatmap } from "./Heatmap";
+import ExamTable from "./ExamTable";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
@@ -461,6 +462,10 @@ export default function SemesterSummary() {
           {examCheckText && (
             <p className="px-2 text-xs text-gray-500">{examCheckText}</p>
           )}
+          <ExamTable
+            semester={selectedSemesterState}
+            onOpenCourse={courseSelector}
+          />
         </div>
       </div>
     );

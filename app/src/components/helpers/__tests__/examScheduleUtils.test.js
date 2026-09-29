@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   describeExamClashes,
   examClashes,
+  examTableRows,
   examsForCourse,
   formatExamClash,
   formatExamDate,
@@ -366,5 +367,64 @@ describe("formatPlanSource", () => {
         source: { publishedAt: "2026-08-18" },
       }),
     ).toBe("Winter 2027 plan, published 18.08.2026");
+  });
+});
+
+describe("examTableRows", () => {
+  const exam = (id, date, slot, rootNumbers, termType = "OT") => ({
+    id,
+    date,
+    slot,
+    rootNumbers,
+    termType,
+  });
+  const plan = {
+    written: [
+      exam("late", "2027-02-05", "09:15", ["3,140"]),
+      exam("afternoon", "2027-01-18", "14:00", ["3,200"]),
+      exam("morning", "2027-01-18", "09:15", ["7,850", "3,140"]),
+      exam("alternative", "2027-01-10", "09:15", ["3,200"], "AT"),
+    ],
+    oral: [
+      {
+        id: "oral",
+        dateStart: "2027-01-30",
+        dateEnd: "2027-02-06",
+        rootNumbers: ["7,421"],
+      },
+    ],
+  };
+  const lecture = { courseNumber: "3,200,1.00", shortName: "Micro" };
+  const exercises = { courseNumber: "3,200,2.01", shortName: "Micro Ex" };
+  const ops = { courseNumber: "3,140,1.00", shortName: "Ops" };
+  const macro = { courseNumber: "7,850,1.00", shortName: "Macro" };
+  const privacy = { courseNumber: "7,421,1.00", shortName: "Privacy" };
+
+  it("lists each OT and oral exam once, by date then time", () => {
+    const rows = examTableRows(plan, [privacy, ops, lecture, macro]);
+
+    expect(rows.map((row) => [row.exam.id, row.oral])).toEqual([
+      ["morning", false],
+      ["afternoon", false],
+      ["oral", true],
+      ["late", false],
+    ]);
+  });
+
+  it("names a cross-listed exam by each of my courses sitting it", () => {
+    const [morning] = examTableRows(plan, [ops, macro]);
+
+    expect(morning.courses.map((c) => c.shortName)).toEqual(["Ops", "Macro"]);
+  });
+
+  it("gives a lecture and its exercise group one row and one name", () => {
+    const rows = examTableRows(plan, [lecture, exercises]);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].courses).toEqual([lecture]);
+  });
+
+  it("is empty when the plan lists none of the courses", () => {
+    expect(examTableRows(plan, [{ courseNumber: "9,999,1.00" }])).toEqual([]);
   });
 });

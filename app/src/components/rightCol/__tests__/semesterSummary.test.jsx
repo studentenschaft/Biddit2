@@ -98,6 +98,10 @@ vi.mock("../../leftCol/bottomRow/LockClosed", () => {
 vi.mock("../../helpers/useOpenCourseDetails", () => ({
   useOpenCourseDetails: () => vi.fn(),
 }));
+// The exam table repeats the course names; ExamTable.test.jsx covers it.
+vi.mock("../ExamTable", () => ({
+  default: ({ semester }) => <div data-testid="exam-table">{semester}</div>,
+}));
 
 import SemesterSummary from "../SemesterSummary";
 import { formatEcts } from "../../helpers/formatEcts";
@@ -378,6 +382,12 @@ describe("semester summary exam clashes", () => {
 });
 
 describe("semester summary exam check", () => {
+  it("mounts the exam table for the summary's semester", () => {
+    renderExamSummary();
+
+    expect(screen.getByTestId("exam-table")).toHaveTextContent("HS26");
+  });
+
   it("counts the clashing exams and points at the red markers", () => {
     renderExamSummary();
 

@@ -78,6 +78,37 @@ export function planExams(plan, courses) {
   return planned;
 }
 
+/**
+ * The Summary's exam table: one row per central exam (written OT or oral) of
+ * `courses`, soonest first, with the courses that sit it, one per root — so a
+ * lecture and its exercise group share one row, named by the first of them.
+ *
+ * @param {Object} plan - Parsed exam plan artifact
+ * @param {Array} courses - Typically the user's courses for the semester
+ * @returns {Array<{exam: Object, oral: boolean, courses: Array}>}
+ */
+export function examTableRows(plan, courses) {
+  const rows = new Map();
+  const add = (exam, oral, course) => {
+    const row = rows.get(exam.id) ?? { exam, oral, courses: [] };
+    const rootKey = getCourseRootKey(course);
+    if (!row.courses.some((c) => getCourseRootKey(c) === rootKey)) {
+      row.courses.push(course);
+    }
+    rows.set(exam.id, row);
+  };
+  for (const course of courses) {
+    const { written, oral } = examsForCourse(plan, course);
+    written.forEach((exam) => add(exam, false, course));
+    oral.forEach((exam) => add(exam, true, course));
+  }
+  // "2027-01-18 09:15"; an oral block, which has no time, sorts by its first
+  // day.
+  const when = ({ exam, oral }) =>
+    oral ? exam.dateStart : `${exam.date} ${exam.slot}`;
+  return [...rows.values()].sort((a, b) => when(a).localeCompare(when(b)));
+}
+
 // [start, end) in epoch ms. `startIso` carries its Zurich offset, so the
 // reader's timezone never enters.
 const interval = (exam) => {
@@ -167,6 +198,16 @@ export const EXAM_DISCLAIMER_SHORT = "Indicative — verify officially.";
 export const EXAM_DISCLAIMER_LONG =
   "Extracted automatically from the official PDF — indicative only, " +
   "always verify against the official exam schedule.";
+
+/** The Summary exam table's warning, which comes before any of its dates. */
+export const EXAM_TABLE_DISCLAIMER = {
+  heading: "Automatically extracted — verify before relying on it",
+  body: (plan) =>
+    "These dates were extracted automatically from the university's central " +
+    `exam plan (${formatPlanSource(plan)}). We cannot guarantee they are ` +
+    "complete or correct — treat them as an early indicator only and always " +
+    "check the official exam schedule.",
+};
 
 /**
  * What the course list and the Summary say about a course's exam clashes:

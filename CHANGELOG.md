@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   dates are indicative. They come from `app/public/exams/HS26.json`, built from
   the PDF by `npm run ingest:exams`; runbook in
   `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010–0012.
+- Semester Summary lists your central exams in a table, under an
+  "automatically extracted — verify" warning.
 - CI: a GitHub Actions workflow runs `npm ci`, `npm run lint`,
   `npx vitest run` and `npm run build` in `app/` on every push and pull
   request.
