@@ -75,8 +75,5 @@ malformed snapshot may crash the CLI: it is a developer's own input.
   only warns, and shading that is dropped or recoloured while the legend
   stays writes silently with fewer exams marked. Only comparing the dry run's
   BYOD count with the PDF (runbook step 2) catches that.
-- **poppler is a developer prerequisite** for `--pdf` only. The tests and CI
-  run off the committed fixtures.
 - **Semesters accumulate.** Each one adds its PDF, artifact, two fixtures and a
   golden case, and replaces nothing of an earlier semester.
-- The UI shows BYOD present-or-silent (ADR 0011).

@@ -76,8 +76,6 @@ the check is unavailable or incomplete, and both name the plan they read.
 
 ## Consequences
 
-- Clash warnings fail open: without a ready plan there are none, and the
-  Summary's exam-check line is what tells the student so.
 - A stale artifact is not detected. The source line lets a user notice.
 - BYOD is present-or-silent: the UI shows "digital (BYOD)" when marked and
   never "not BYOD".

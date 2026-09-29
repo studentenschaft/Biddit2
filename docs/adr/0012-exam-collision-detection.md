@@ -59,8 +59,6 @@ university's publication.
   still check by hand, and the CW42 re-ingest does not change that.
 - Two overlapping exams of the same root are not reported against each other.
   HS26 has none.
-- A plan with a third start time or free-form times needs no change here; the
-  parser still requires every exam to sit under a labelled column (ADR 0010).
 - A browsed row can show red before the student has done anything. That is
   the point: the warning is about the bid.
 - The course list and the Summary name each clashing course once, however many

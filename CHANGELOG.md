@@ -16,13 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   exams, the course list, Semester Summary, Course Details and Calendar warn in
   red; a course the user is only browsing warns that its exam *would* clash.
   The Summary's "Exam check" line says what the check found and which central
-  courses it could not find, or that it could not run. The Calendar draws the
-  exams as blocks, and an "Exams" button jumps to the exam weeks and back. The
-  dates are indicative. They come from `app/public/exams/HS26.json`, built from
-  the PDF by `npm run ingest:exams`; runbook in
-  `app/scripts/ingest-exam-plan/README.md`, rationale in ADR 0010–0012.
-- Semester Summary lists your central exams in a table, under an
-  "automatically extracted — verify" warning.
+  courses it could not find, or that it could not run, and a table below it
+  lists the central exams under an "automatically extracted — verify"
+  warning. The Calendar draws the exams as blocks, and an "Exams" button jumps
+  to the exam weeks and back. The dates are indicative. They come from
+  `app/public/exams/HS26.json`, built from the PDF by `npm run ingest:exams`;
+  runbook in `app/scripts/ingest-exam-plan/README.md`, rationale in ADR
+  0010–0012.
 - CI: a GitHub Actions workflow runs `npm ci`, `npm run lint`,
   `npx vitest run` and `npm run build` in `app/` on every push and pull
   request.
