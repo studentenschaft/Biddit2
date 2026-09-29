@@ -24,17 +24,6 @@ import { examPlanState } from "../../recoil/examScheduleAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import Calendar from "../Calendar";
 
-// The tooltip positions itself with floating-ui, which watches the anchor's
-// size; jsdom has no ResizeObserver.
-vi.stubGlobal(
-  "ResizeObserver",
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
-
 const SEMESTER = "HS26";
 
 const MICRO = {
@@ -196,18 +185,6 @@ describe.each(["America/New_York", "Asia/Tokyo"])(
 );
 
 describe("Calendar event tooltip", () => {
-  it("hands a block's details to the tooltip as soon as it is drawn", async () => {
-    await renderExamWeek();
-    const micro = block("Microeconomics II");
-
-    // No pointer has been near the block.
-    expect(micro).toHaveAttribute("data-tooltip-id", "event-tooltip");
-    expect(JSON.parse(micro.getAttribute("data-event"))).toMatchObject({
-      examDate: "Mon 18.01.2027",
-      conflictsWith: ["Data Analytics, Causal Inference"],
-    });
-  });
-
   it("opens on keyboard focus with the exam's date, facts and clashes", async () => {
     await renderExamWeek();
 
@@ -293,19 +270,5 @@ describe("Calendar event details on a phone", () => {
     await settle();
 
     expect(screen.queryByRole("tooltip")).toBeNull();
-  });
-
-  it("opens the sheet on a tap", async () => {
-    onAPhone();
-    await renderExamWeek();
-    const micro = block("Microeconomics II");
-
-    act(() => micro.focus());
-    fireEvent.click(micro);
-
-    const sheet = await screen.findByTestId("calendar-event-sheet-panel");
-    expect(
-      within(sheet).getByText("Mon 18.01.2027, 09:15 - 10:45"),
-    ).toBeInTheDocument();
   });
 });

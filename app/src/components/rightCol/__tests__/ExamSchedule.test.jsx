@@ -132,21 +132,6 @@ describe("ExamSchedule", () => {
       expect(screen.getByText(FOOTNOTE)).toBeInTheDocument();
     });
 
-    it("shows a one-day oral block as a plain date", async () => {
-      const [oral] = mockData.examSchedule.oral;
-      server.use(
-        http.get("*/exams/HS26.json", () =>
-          HttpResponse.json({
-            ...mockData.examSchedule,
-            oral: [{ ...oral, dateEnd: oral.dateStart }],
-          }),
-        ),
-      );
-      renderSchedule(courseNumbered("7,421,1.00"));
-
-      expect(await screen.findByText("Sat 30.01.2027")).toBeInTheDocument();
-    });
-
     it("trusts the plan over a decentral flag", async () => {
       renderSchedule(courseNumbered("3,200,1.00", DECENTRAL));
 

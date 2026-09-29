@@ -1,11 +1,8 @@
 /**
- * examCalendarEventsSelector turns the ingested plan into calendar blocks.
- *
- * What matters here and is not covered by the clash tests: only ordinary
- * written exams become blocks (orals have no time, and this PDF's AT rows are
- * another term's alternative dates), one exam is one block however many of the
- * user's courses sit it, and each block takes its red and its names from its
- * own exam's clashes.
+ * examCalendarEventsSelector turns the ingested plan into calendar blocks:
+ * what a block carries, and that each block takes its red and its names from
+ * its own exam's clashes. Which exams are the user's is planExams' job
+ * (examScheduleUtils.test, plannedExamsSelector.test).
  */
 
 import { describe, expect, it } from "vitest";
@@ -21,7 +18,7 @@ import { unifiedCourseDataState } from "../unifiedCourseDataAtom";
 
 const SEMESTER = "HS26";
 
-// Covers OT and AT rows, an oral exam, and 3,200 and 7,850 in one slot.
+// 3,200 and 7,850 share one slot.
 const PLAN = mockData.examSchedule;
 
 const course = (courseNumber, shortName) => ({
@@ -31,28 +28,18 @@ const course = (courseNumber, shortName) => ({
 });
 
 const MICRO = course("3,200,1.00", "Microeconomics II");
-const MICRO_EXERCISE = course("3,200,2.04", "Microeconomics II Exercises");
 const CAUSAL = course("7,850,1.00", "Causal Inference");
 const OPS = course("3,140,1.00", "Operations Management");
-const GERMAN = course("3,802,1.00", "German C1");
-const PRIVACY = course("7,421,1.00", "Data Protection Law");
 
-const eventsIn = ({
-  available = [MICRO, MICRO_EXERCISE, CAUSAL, OPS, GERMAN, PRIVACY],
-  enrolledIds = [],
-  selectedIds = [],
-  filtered = [],
-  plan = PLAN,
-  semester = SEMESTER,
-}) =>
+const eventsIn = ({ enrolledIds = [], selectedIds = [], plan = PLAN }) =>
   snapshot_UNSTABLE(({ set }) => {
     set(unifiedCourseDataState, {
       semesters: {
         [SEMESTER]: {
           enrolledIds,
-          available,
+          available: [MICRO, CAUSAL, OPS],
           selectedIds,
-          filtered,
+          filtered: [],
           studyPlan: [],
           ratings: {},
           cisId: "1",
@@ -62,14 +49,9 @@ const eventsIn = ({
       latestValidTerm: SEMESTER,
       selectedCourseInfo: null,
     });
-    if (semester) {
-      set(
-        examPlanState(semester),
-        plan ? { status: "ready", plan } : { status: "loading", plan: null },
-      );
-    }
+    set(examPlanState(SEMESTER), { status: "ready", plan });
   })
-    .getLoadable(examCalendarEventsSelector(semester))
+    .getLoadable(examCalendarEventsSelector(SEMESTER))
     .getValue();
 
 describe("examCalendarEventsSelector", () => {
@@ -85,25 +67,6 @@ describe("examCalendarEventsSelector", () => {
       entryType: "exam",
       conflictsWith: [],
     });
-  });
-
-  it("draws one block for a lecture and its exercise group", () => {
-    const events = eventsIn({
-      enrolledIds: [MICRO.courseNumber, MICRO_EXERCISE.courseNumber],
-    });
-
-    expect(events).toHaveLength(1);
-    expect(events[0].id).toBe("OT-2027-01-18-0915-3,200");
-  });
-
-  it("never draws oral exams or alternative dates", () => {
-    const events = eventsIn({
-      enrolledIds: [GERMAN.courseNumber, PRIVACY.courseNumber],
-    });
-
-    expect(events.map((event) => event.id)).toEqual([
-      "OT-2027-01-26-0915-3,802|4,802",
-    ]);
   });
 
   it("colors colliding exams red and names the other course", () => {
@@ -157,27 +120,5 @@ describe("examCalendarEventsSelector", () => {
     events.forEach((event) => {
       expect(event.borderColor).toBe(EXAM_COLLISION_COLOR);
     });
-  });
-
-  it("ignores courses the user has not planned", () => {
-    // Every course above is in the catalog; none is enrolled or wishlisted.
-    expect(eventsIn({})).toEqual([]);
-  });
-
-  it("keeps the block of a course a search filter has hidden", () => {
-    const events = eventsIn({
-      enrolledIds: [MICRO.courseNumber],
-      filtered: [OPS],
-    });
-
-    expect(events.map((event) => event.id)).toEqual([
-      "OT-2027-01-18-0915-3,200",
-    ]);
-  });
-
-  it("is empty while the plan is still loading", () => {
-    expect(eventsIn({ enrolledIds: [MICRO.courseNumber], plan: null })).toEqual(
-      [],
-    );
   });
 });

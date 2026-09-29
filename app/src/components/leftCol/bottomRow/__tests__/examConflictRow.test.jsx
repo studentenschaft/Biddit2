@@ -35,17 +35,6 @@ vi.mock("../../../helpers/useEventListDataManager", () => ({
   default: () => ({ isLoading: false }),
 }));
 
-// The tooltip positions itself with floating-ui, which watches the anchor's
-// size; jsdom has no ResizeObserver.
-vi.stubGlobal(
-  "ResizeObserver",
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
-
 const SEMESTER = "HS26";
 
 // The MSW exam fixture puts 3,200 and 7,850 in the same 18.01.2027 09:15 slot;

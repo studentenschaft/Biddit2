@@ -17,6 +17,15 @@ vi.mock("react-ga4", () => ({
   },
 }));
 
+// jsdom has no ResizeObserver; the tooltips (floating-ui) and the scroll
+// affordance watch element sizes with one. Tests that need callbacks stub
+// their own.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+
 // Start MSW server before all tests
 beforeAll(() => {
   server.listen({

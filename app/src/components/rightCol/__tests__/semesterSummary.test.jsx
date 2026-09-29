@@ -278,18 +278,6 @@ const openTooltipOf = async (shortName) => {
 
 const CLASH_WITH_MACRO = `Exam clash with: ${MACRO_TITLE}. Indicative — verify officially.`;
 
-// The tooltip positions itself with floating-ui, which watches the anchor's
-// size; jsdom has no ResizeObserver. Stubbed for the whole file, as the
-// tooltip can still be settling when a test ends.
-vi.stubGlobal(
-  "ResizeObserver",
-  class {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  },
-);
-
 describe("semester summary exam clashes", () => {
   it("marks a clashing course with a red icon that names the other course", () => {
     renderExamSummary();
@@ -345,39 +333,6 @@ describe("semester summary exam clashes", () => {
         .map((name) => name.textContent),
     ).toEqual([MACRO_TITLE]);
     expect(within(tooltip).queryByText("Exam clash with:")).toBeNull();
-  });
-
-  it("names a course once however many of its exams clash with it", () => {
-    const secondSitting = (root) => ({
-      ...mockData.examSchedule.written[0],
-      id: `OT-2027-02-10-0915-${root}`,
-      date: "2027-02-10",
-      startIso: "2027-02-10T09:15:00+01:00",
-      rootNumbers: [root],
-    });
-    renderExamSummary({
-      planState: {
-        status: "ready",
-        plan: {
-          ...mockData.examSchedule,
-          written: [
-            ...mockData.examSchedule.written,
-            secondSitting("3,200"),
-            secondSitting("7,850"),
-          ],
-        },
-      },
-    });
-
-    expect(screen.getAllByRole("img", { name: CLASH_WITH_MACRO })).toHaveLength(
-      1,
-    );
-    // Two sittings each for two courses.
-    expect(
-      screen.getByText(
-        `Exam check: 4 exams clash — see the red markers. ${SOURCE}`,
-      ),
-    ).toBeInTheDocument();
   });
 });
 

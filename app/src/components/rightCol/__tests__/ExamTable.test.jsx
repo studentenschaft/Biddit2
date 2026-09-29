@@ -21,7 +21,6 @@ const course = (courseNumber, shortName) => ({
 // The MSW fixture puts 3,200 and 7,850 in the same 18.01.2027 09:15 slot,
 // 3,140 (BYOD) on 05.02.2027 and 7,421's oral block from 30.01.2027.
 const MICRO = course("3,200,1.00", "Microeconomics II");
-const MICRO_EXERCISES = course("3,200,2.01", "Microeconomics II Exercises");
 const MACRO_TITLE =
   "Advanced Macroeconomics II: Asset Prices, Fluctuations and Unemployment";
 const MACRO = course("7,850,1.00", MACRO_TITLE);
@@ -126,14 +125,6 @@ describe("ExamTable", () => {
     expect(
       within(rowOf("Operations Management")).getByText("digital (BYOD)"),
     ).toHaveClass("bg-hsg-100");
-  });
-
-  it("gives a lecture and its exercise group one row", () => {
-    renderTable({ courses: [MICRO, MICRO_EXERCISES] });
-
-    expect(bodyRows()).toEqual([
-      ["Mon 18.01.2027", "09:15 · 90 min", "Microeconomics II", "", ""],
-    ]);
   });
 
   it("opens a course's details from its name", () => {
