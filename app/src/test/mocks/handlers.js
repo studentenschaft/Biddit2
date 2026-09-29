@@ -146,6 +146,72 @@ const mockData = {
     distances: [[]],
     metadatas: [[]],
   },
+  // Stand-in for the shipped public/exams/HS26.json (178 written entries),
+  // cut to the fields the app reads. Covers the shapes the UI branches on:
+  // OT, an AT row it must ignore, BYOD, cross-listed roots, oral, and two
+  // overlapping OT exams so clashes have real data.
+  examSchedule: {
+    schemaVersion: 2,
+    sourceTermLabel: "Winter 2027",
+    source: { publishedAt: "2026-08-18" },
+    written: [
+      {
+        id: "OT-2027-01-18-0915-3,200",
+        date: "2027-01-18",
+        slot: "09:15",
+        startIso: "2027-01-18T09:15:00+01:00",
+        durationMin: 90,
+        termType: "OT",
+        rootNumbers: ["3,200"],
+      },
+      {
+        // Same date and slot as 3,200 above: the collision fixture.
+        id: "OT-2027-01-18-0915-7,850",
+        date: "2027-01-18",
+        slot: "09:15",
+        startIso: "2027-01-18T09:15:00+01:00",
+        durationMin: 120,
+        termType: "OT",
+        rootNumbers: ["7,850"],
+      },
+      {
+        id: "OT-2027-02-05-0915-3,140",
+        date: "2027-02-05",
+        slot: "09:15",
+        startIso: "2027-02-05T09:15:00+01:00",
+        durationMin: 90,
+        termType: "OT",
+        rootNumbers: ["3,140"],
+        byod: true,
+      },
+      {
+        id: "AT-2027-01-19-0915-3,802|4,802",
+        date: "2027-01-19",
+        slot: "09:15",
+        startIso: "2027-01-19T09:15:00+01:00",
+        durationMin: 120,
+        termType: "AT",
+        rootNumbers: ["3,802", "4,802"],
+      },
+      {
+        id: "OT-2027-01-26-0915-3,802|4,802",
+        date: "2027-01-26",
+        slot: "09:15",
+        startIso: "2027-01-26T09:15:00+01:00",
+        durationMin: 120,
+        termType: "OT",
+        rootNumbers: ["3,802", "4,802"],
+      },
+    ],
+    oral: [
+      {
+        id: "ORAL-2027-01-30-7,421",
+        dateStart: "2027-01-30",
+        dateEnd: "2027-02-06",
+        rootNumbers: ["7,421"],
+      },
+    ],
+  },
 };
 
 /**
@@ -318,9 +384,27 @@ const unisgHandlers = [
 ];
 
 /**
+ * Static assets served from public/ — not an API, so no error simulation.
+ * Only HS26 was ingested. Netlify answers a missing semester with a 404
+ * (`_redirects`), but the Vite dev server falls back to index.html with a 200
+ * — the case the content-type check exists for, so that is what the mock
+ * serves.
+ */
+const staticAssetHandlers = [
+  http.get("*/exams/HS26.json", () => HttpResponse.json(mockData.examSchedule)),
+  http.get("*/exams/*", () =>
+    HttpResponse.html("<!DOCTYPE html><html><body>SPA fallback</body></html>"),
+  ),
+];
+
+/**
  * All handlers combined
  */
-export const handlers = [...shsgHandlers, ...unisgHandlers];
+export const handlers = [
+  ...shsgHandlers,
+  ...unisgHandlers,
+  ...staticAssetHandlers,
+];
 
 /**
  * Export mock data for test assertions

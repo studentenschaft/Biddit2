@@ -44,6 +44,22 @@ export function getCourseIdentifier(course) {
 }
 
 /**
+ * Normalizes a course to its two-segment root key.
+ * "3,135,1.00" and "3,135,2.04" both yield "3,135", so an exercise group shares
+ * its parent lecture's key — which is also the key the central exam plan prints.
+ *
+ * @param {Object|null|undefined} course - The course object
+ * @returns {string|null} The root key, or null when no numeric course number exists
+ */
+export function getCourseRootKey(course) {
+  const raw = getCourseIdentifier(course) || course?.courseId;
+  if (typeof raw !== "string") return null;
+
+  const match = raw.match(/^(\d+),(\d+),/);
+  return match ? `${match[1]},${match[2]}` : null;
+}
+
+/**
  * Sorts courses by enrollment and selection status.
  * Order: enrolled first, then selected, then everything else.
  * Maintains relative order within each group (stable sort).

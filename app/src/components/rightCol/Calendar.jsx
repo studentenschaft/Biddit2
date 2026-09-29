@@ -1,14 +1,17 @@
 // Dependencies
 import React from "react";
+import moment from "moment/moment";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 import FullCalendar from "@fullcalendar/react"; // must go before plugins
 import timeGridPlugin from "@fullcalendar/timegrid";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import {
+  BookOpenIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
+  ClipboardCheckIcon,
 } from "@heroicons/react/solid";
 
 // Other
@@ -18,27 +21,62 @@ import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
 import LoadingText from "../common/LoadingText";
 import CalendarEventSheet from "./CalendarEventSheet";
 
-// The event sheet is the touch-only stand-in for the hover tooltip, so it is
-// gated to the same breakpoint the mobile layout uses (Tailwind md = 768px).
+// One detail view per viewport, split at the breakpoint the mobile layout uses
+// (Tailwind md = 768px): below it a tapped event opens the event sheet, from it
+// up the tooltip shows on hover and keyboard focus.
 import { isMobileViewport } from "../helpers/isMobileViewport";
 
 //Debug attempt for calendar not showing labels when clicking calendar while app is still loading
-import { currentSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
+import {
+  currentSemesterSelector,
+  selectedSemesterSelector,
+} from "../recoil/unifiedCourseDataSelectors";
+
+// Central written exams as calendar blocks.
+import { examCalendarEventsSelector } from "../recoil/examScheduleSelectors";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  formatExamClashLead,
+} from "../helpers/examScheduleUtils";
 
 // future semesters handling
 import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 
-// Same clock everywhere: the hover tooltip and the event sheet describe the
-// same event, so they must not disagree about whether it is 14:15 or 02:15 PM.
+// Same clock everywhere, and the 24-hour one: the blocks, the tooltip and the
+// event sheet describe the same event, so none may call 15:15 "3:15".
+const TIME_FORMAT = { hour: "2-digit", minute: "2-digit", hour12: false };
 const formatEventTime = (date) =>
-  date
-    ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : "";
+  date ? date.toLocaleTimeString([], TIME_FORMAT) : "";
+
+// What the tooltip and the event sheet show about a block, built once. Exams
+// have no room, so their detail line carries the exam facts instead, and for
+// an exam the date is the key fact, so it leads the time.
+const eventDetails = ({ title, start, end, extendedProps }) => {
+  const isExam = extendedProps.entryType === "exam";
+  const timeRange = `${formatEventTime(start) || "N/A"} - ${
+    formatEventTime(end) || "N/A"
+  }`;
+  return {
+    title,
+    when: isExam ? `${extendedProps.examDate}, ${timeRange}` : timeRange,
+    detail: isExam
+      ? extendedProps.examMeta
+      : `Room: ${extendedProps.room || "N/A"}`,
+    conflictsWith: extendedProps.conflictsWith || [],
+    entryType: extendedProps.entryType,
+  };
+};
 
 // Implementation of calendar widget
 export default function Calendar() {
   const finalEvents = useRecoilValue(calendarEntriesSelector);
   const currentSemester = useRecoilValue(currentSemesterSelector);
+  // Same semester `calendarEntriesSelector` builds its lecture events from, so
+  // the two event sets can never describe different terms.
+  const selectedSemester = useRecoilValue(selectedSemesterSelector);
+  const examEvents = useRecoilValue(
+    examCalendarEventsSelector(selectedSemester),
+  );
   const [isLoading, setIsLoading] = React.useState(true);
   const [displaySelectCoursesFirst, setDisplaySelectCoursesFirst] =
     React.useState(false);
@@ -57,17 +95,27 @@ export default function Calendar() {
   // Get first and last event dates for future semester navigation
   const [firstEventDate, setFirstEventDate] = React.useState(null);
   const [lastEventDate, setLastEventDate] = React.useState(null);
+  // Where lecture navigation stood when the user jumped to the exam period, so
+  // the toggle can put them back where they left off.
+  const [lectureReturnDate, setLectureReturnDate] = React.useState(null);
 
   const shouldShowLoading = isLoading;
 
-  // Keep empty-state message in sync with incoming events
+  // Exam blocks are appended only to what FullCalendar renders, never to the
+  // percentile boot logic below: they sit weeks after the last lecture, so
+  // letting them into that sample would drag the opening week off the semester.
+  const allEvents = React.useMemo(
+    () => [...finalEvents, ...examEvents],
+    [finalEvents, examEvents],
+  );
+
+  // Keep empty-state message in sync with incoming events. Exams count: a
+  // plan can list the user's exams before any lecture is scheduled.
   React.useEffect(() => {
-    const hasEvents = Array.isArray(finalEvents) && finalEvents.length > 0;
-    setDisplaySelectCoursesFirst(!hasEvents);
-    if (!hasEvents) {
-      setIsLoading(false);
-    }
-  }, [finalEvents]);
+    setDisplaySelectCoursesFirst(allEvents.length === 0);
+    // Without lectures the boot logic below has nothing to wait for.
+    if (finalEvents.length === 0) setIsLoading(false);
+  }, [allEvents, finalEvents]);
 
   // Determine initial date and event boundaries when events change, ignoring outlier events
   React.useEffect(() => {
@@ -122,31 +170,42 @@ export default function Calendar() {
     }
   }, [finalEvents, currentSemester, isFutureSemesterSelectedState]);
 
-  // Information on hovering
-  const hoverEvent = (info) => {
-    let title = info.event.title;
-    let startTime = info.event.start.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    let endTime = info.event.end.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-    let room = info.event._def.extendedProps.room;
-    let conflictsWith = info.event._def.extendedProps.conflictsWith || [];
+  // A semester switch starts navigation over: the week the exam toggle would
+  // return to, and any date navigated to, belong to the old term. A future
+  // semester gets its opening date from the effect above.
+  React.useEffect(() => {
+    setLectureReturnDate(null);
+    if (!isFutureSemesterSelectedState) setInitialDate(new Date());
+  }, [selectedSemester, isFutureSemesterSelectedState]);
 
-    info.el.setAttribute("data-tip", `${title}`);
-    info.el.setAttribute("data-tooltip-id", "event-tooltip");
-    info.el.setAttribute("data-tooltip-content", `${title}`);
-    info.el.setAttribute("data-room", `${room}`);
-    info.el.setAttribute("data-start-time", `${startTime}`);
-    info.el.setAttribute("data-end-time", `${endTime}`);
-    info.el.setAttribute("data-conflicts-with", conflictsWith.join(", "));
+  // The exam weeks, Monday of the first to the end of the last: the jump lands
+  // on the first, and while the calendar is inside them the button leads back
+  // to the lectures. No exams, no button.
+  const examWeeks = React.useMemo(() => {
+    if (!examEvents.length) return null;
+    const starts = examEvents.map((event) => new Date(event.start).getTime());
+    return {
+      start: moment(Math.min(...starts)).startOf("isoWeek").toDate(),
+      end: moment(Math.max(...starts)).endOf("isoWeek").toDate(),
+    };
+  }, [examEvents]);
+
+  const showingExamPeriod =
+    !!examWeeks &&
+    initialDate >= examWeeks.start &&
+    initialDate <= examWeeks.end;
+
+  // The tooltip renders from this attribute alone. It is set as soon as a
+  // block is drawn, not on mouse enter, so the tooltip also opens when the
+  // block gets keyboard focus (react-tooltip 5.28 opens on focus as well as
+  // mouseover, and FullCalendar makes clickable blocks tabbable).
+  const describeEventForTooltip = ({ el, event }) => {
+    el.setAttribute("data-tooltip-id", "event-tooltip");
+    el.setAttribute("data-event", JSON.stringify(eventDetails(event)));
   };
 
-  // Details shown when tapping an event (the only detail affordance on touch
-  // devices, where the hover tooltip never triggers).
+  // Details shown when an event is tapped: the mobile detail view, and the only
+  // one below md (the tooltip stands down there, see its render).
   //
   // Mobile only, and gated here rather than with `md:hidden` on the sheet: the
   // sheet is a Headless UI Dialog, so a merely invisible one would still be
@@ -155,24 +214,37 @@ export default function Calendar() {
   const clickEvent = (arg) => {
     if (!isMobileViewport()) return;
 
-    setSelectedEvent({
-      title: arg.event.title,
-      startTime: formatEventTime(arg.event.start),
-      endTime: formatEventTime(arg.event.end),
-      room: arg.event.extendedProps.room,
-      conflictsWith: arg.event.extendedProps.conflictsWith || [],
-    });
+    setSelectedEvent(eventDetails(arg.event));
   };
 
-  // Text to be displayed when hovering
+  // Text inside a block. An exam leads with its start time, the line a
+  // 60-minute block still has room for, cut on a narrow block the way a
+  // lecture's time is (the outline already says "exam"). Where it fits, a
+  // clash says so in words too; the dashed red border says it at any width.
+  // The block's look comes with the event (examCalendarEventsSelector).
   function renderEventContent(eventInfo) {
+    const details = eventInfo.event.extendedProps;
+    if (details.entryType === "exam") {
+      // Clipped here, not on the event: a clash's three lines outgrow a
+      // 60-minute block, and clipping the event would also cut off its focus
+      // ring (calendar.css).
+      return (
+        <div className="h-full overflow-hidden">
+          <p className="truncate font-semibold uppercase">
+            {formatEventTime(eventInfo.event.start)} · Exam
+          </p>
+          {details.conflictsWith.length > 0 && (
+            <p className="truncate font-bold uppercase">Clash</p>
+          )}
+          <p className="font-bold truncate">{eventInfo.event.title}</p>
+        </div>
+      );
+    }
     return (
       <>
         <p className="truncate">{eventInfo.timeText}</p>
         <p className="font-bold truncate">{eventInfo.event.title}</p>
-        <p className="truncate text-red">
-          {eventInfo.event._def.extendedProps.room}
-        </p>
+        <p className="truncate text-red">{details.room}</p>
       </>
     );
   }
@@ -228,6 +300,37 @@ export default function Calendar() {
   const goToPrevWeek = () => WeekChange("prev");
   const goToNextWeek = () => WeekChange("next");
 
+  // The exam period lies weeks past the last lecture, so it is only reachable
+  // through this jump; pressing it again returns to the week left behind.
+  const toggleExamPeriod = () => {
+    if (showingExamPeriod) {
+      NavigateToDate(lectureReturnDate || firstEventDate);
+      return;
+    }
+    setLectureReturnDate(initialDate);
+    NavigateToDate(examWeeks.start);
+  };
+
+  // Rendered in both navigation clusters. A 320px phone's toolbar has no room
+  // for the word, so there the button is an icon named by its label; on
+  // desktop the visible word is its whole name (WCAG 2.5.3).
+  const renderExamJumpButton = ({ iconOnly }) => {
+    if (!examWeeks) return null;
+    const label = showingExamPeriod ? "Lectures" : "Exams";
+    const Icon = showingExamPeriod ? BookOpenIcon : ClipboardCheckIcon;
+    return (
+      <button
+        className={`bg-hsg-900 hover:bg-hsg-800 active:bg-hsg-700 text-white ${
+          iconOnly ? "p-1.5" : "px-3 py-1.5"
+        } rounded-md transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hsg-500 flex items-center gap-1 font-medium text-xs`}
+        onClick={toggleExamPeriod}
+        aria-label={iconOnly ? label : undefined}
+      >
+        {iconOnly ? <Icon className="w-4 h-4" aria-hidden="true" /> : label}
+      </button>
+    );
+  };
+
   var cal = {
     firstDay: "1",
     dayHeaderFormat: {
@@ -243,27 +346,44 @@ export default function Calendar() {
       <ReactTooltip
         id="event-tooltip"
         style={{ zIndex: 9999, maxWidth: "min(350px, 90vw)" }}
-        render={({ content, activeAnchor }) => {
-          const conflictsWith = activeAnchor?.getAttribute("data-conflicts-with");
-          const conflictList = conflictsWith ? conflictsWith.split(", ") : [];
+        // Content that appears on focus must be dismissable without moving
+        // focus (WCAG 1.4.13).
+        globalCloseEvents={{ escape: true }}
+        render={({ activeAnchor }) => {
+          // A tap on a phone also fires mouseover and focus on the block, and
+          // the sheet hands focus back to it on closing, so below md the
+          // tooltip would open on top of the sheet. Asked as it is about to
+          // show, like the sheet's own check at click time.
+          if (isMobileViewport() || !activeAnchor) return null;
+          const event = JSON.parse(activeAnchor.getAttribute("data-event"));
+          const isExam = event.entryType === "exam";
           return (
             <div>
-              <div className="font-medium">{content}</div>
-              <div className="text-gray-300">
-                Room: {activeAnchor?.getAttribute("data-room") || "N/A"}
-              </div>
-              <div className="text-gray-300">
-                {activeAnchor?.getAttribute("data-start-time") || "N/A"} -{" "}
-                {activeAnchor?.getAttribute("data-end-time") || "N/A"}
-              </div>
-              {conflictList.length > 0 && (
-                <div className="text-amber-300 mt-1 pt-1 border-t border-gray-600">
-                  <div className="font-medium">⚠ Conflicts with:</div>
+              <div className="font-medium">{event.title}</div>
+              <div className="text-gray-300">{event.detail}</div>
+              <div className="text-gray-300">{event.when}</div>
+              {event.conflictsWith.length > 0 && (
+                <div
+                  className={`mt-1 pt-1 border-t border-gray-600 ${
+                    isExam ? "text-red-300" : "text-amber-300"
+                  }`}
+                >
+                  <div className="font-medium">
+                    ⚠ {isExam ? formatExamClashLead(true) : "Conflicts with:"}
+                  </div>
                   <ul className="list-disc list-inside text-sm">
-                    {conflictList.map((course, idx) => (
-                      <li key={idx} className="truncate">{course}</li>
+                    {event.conflictsWith.map((course, idx) => (
+                      <li key={idx} className="break-words">
+                        {course}
+                      </li>
                     ))}
                   </ul>
+                </div>
+              )}
+              {/* The dates come from our own PDF extraction (ADR 0012). */}
+              {isExam && (
+                <div className="mt-1 text-xs text-gray-400">
+                  {EXAM_DISCLAIMER_SHORT}
                 </div>
               )}
             </div>
@@ -355,6 +475,8 @@ export default function Calendar() {
                   aria-hidden="true"
                 />
               </button>
+
+              {renderExamJumpButton({ iconOnly: true })}
             </div>
 
             <button
@@ -398,6 +520,8 @@ export default function Calendar() {
                   End
                   <ChevronDoubleRightIcon className="w-3 h-3" />
                 </button>
+
+                {renderExamJumpButton({ iconOnly: false })}
               </div>
 
               <button
@@ -420,7 +544,7 @@ export default function Calendar() {
                 initialView="timeGridWeek"
                 initialDate={initialDate} // This ensures correct date on mount
                 height="100%"
-                events={finalEvents}
+                events={allEvents}
                 firstDay={cal.firstDay}
                 slotMinTime="08:00:00"
                 slotMaxTime="22:00:00"
@@ -428,8 +552,9 @@ export default function Calendar() {
                 eventColor="#006625"
                 expandRows={true}
                 slotEventOverlap={false}
+                eventTimeFormat={TIME_FORMAT}
                 eventContent={renderEventContent}
-                eventMouseEnter={hoverEvent}
+                eventDidMount={describeEventForTooltip}
                 eventClick={clickEvent}
                 allDaySlot={false}
                 headerToolbar={false}

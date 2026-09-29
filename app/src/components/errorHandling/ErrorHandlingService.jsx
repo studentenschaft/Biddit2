@@ -2,7 +2,6 @@
 
 import { toast } from "react-toastify";
 import ErrorToast from "./ErrorToast";
-import { v4 as uuidv4 } from "uuid"; // Ensure uuid is installed
 import { sanitizeHeaders } from "../helpers/sanitizeHeaders";
 
 /**
@@ -103,7 +102,7 @@ const classifyError = (error) => {
 
 export const errorHandlingService = {
   handleError: (error, user = null) => {
-    const errorId = uuidv4();
+    const errorId = crypto.randomUUID();
     const errorMessage =
       error.response?.data?.message ||
       error.message ||

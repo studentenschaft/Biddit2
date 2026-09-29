@@ -1,5 +1,6 @@
 import { selector } from "recoil";
 import moment from "moment/moment";
+import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 // Import unified course data
 import {
@@ -202,13 +203,14 @@ export const calendarEntriesSelector = selector({
           color = "rgb(156 163 175)"; // Gray for locally selected courses
         }
 
-        // Return the final shape for FullCalendar
+        // Return the final shape for FullCalendar. The times are Zurich
+        // wall-clock strings; collisions above compare the instants.
         return {
           // Copy over any original fields (like room, courseNumber, etc.)
           ...entry,
           title: course?.shortName,
-          start: startMoment.toISOString(),
-          end: endMoment.toISOString(),
+          start: toZurichWallClock(startMoment),
+          end: toZurichWallClock(endMoment),
           selected: true,
           overlapping: metadata.overlapping,
           collisionGroupId: metadata.collisionGroupId,

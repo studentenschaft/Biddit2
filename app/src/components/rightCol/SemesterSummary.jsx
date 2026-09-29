@@ -10,13 +10,30 @@ import {
 } from "../recoil/unifiedCourseDataSelectors";
 
 import { calendarEntriesSelector } from "../recoil/calendarEntriesSelector";
+import {
+  examPlanSelector,
+  plannedExamsSelector,
+} from "../recoil/examScheduleSelectors";
+
+import { ExclamationIcon } from "@heroicons/react/outline";
 
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  describeExamClashes,
+  examClashes,
+  examsForCourse,
+  formatExamClashLead,
+  formatPlanSource,
+} from "../helpers/examScheduleUtils";
 import { formatEcts } from "../helpers/formatEcts";
+import { getCourseRootKey } from "../helpers/courseUtils";
+import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 import { Heatmap } from "./Heatmap";
+import ExamTable from "./ExamTable";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
@@ -35,6 +52,39 @@ import { Heatmap } from "./Heatmap";
 const ROW_GRID_CLASSES =
   "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 md:grid-cols-12 md:gap-4";
 
+/**
+ * The "Exam check" line, which makes no red marker read as "checked, no
+ * clash" rather than "not checked", and says which courses it could not
+ * check. Nothing while the plan loads.
+ *
+ * @param {string} status - `examPlanSelector` status
+ * @param {Object|null} plan - The plan, when ready
+ * @param {number} clashingExams - Distinct planned exams with a clash
+ * @param {number} centralNotFound - Central courses the plan does not list
+ * @returns {string|null}
+ */
+function examCheck(status, plan, clashingExams, centralNotFound) {
+  // "none" also stands for a borrowed semester, which may have a plan that
+  // must not be shown, so it gives no reason.
+  if (status === "none") return "Exam check unavailable for this semester.";
+  if (status === "error") {
+    return "Exam check unavailable: the exam plan could not be loaded — reload to retry.";
+  }
+  if (status !== "ready") return null;
+  const result =
+    clashingExams === 0
+      ? "no clashes between your central written exams"
+      : `${clashingExams} ${
+          clashingExams === 1 ? "exam clashes" : "exams clash"
+        } — see the red markers`;
+  const notFound =
+    centralNotFound === 0
+      ? ""
+      : centralNotFound === 1
+      ? " 1 central course not found in the plan — check it officially."
+      : ` ${centralNotFound} central courses not found in the plan — check them officially.`;
+  return `Exam check: ${result}. ${formatPlanSource(plan)}. ${EXAM_DISCLAIMER_SHORT}${notFound}`;
+}
 
 export default function SemesterSummary() {
   const openCourseDetails = useOpenCourseDetails();
@@ -51,6 +101,37 @@ export default function SemesterSummary() {
   // The user's courses (enrolled ∪ selected) — same source as the calendar,
   // so the table and the schedule cannot drift apart.
   const currCourses = useRecoilValue(myCoursesSelector(selectedSemesterState));
+
+  const { status: examPlanStatus, plan: examPlan } = useRecoilValue(
+    examPlanSelector(selectedSemesterState)
+  );
+  const plannedExams = useRecoilValue(
+    plannedExamsSelector(selectedSemesterState)
+  );
+  // Central-exam clashes, kept separate from the lecture conflicts: different
+  // source, different remedy.
+  const examClashesByCourse = currCourses.map((course) =>
+    examClashes(plannedExams, examPlan, course)
+  );
+  // Central courses the plan lists no exam for, once per root (an exercise
+  // group shares its lecture's): the check did not cover them.
+  const centralNotFound = examPlan
+    ? new Set(
+        currCourses
+          .filter((course) => {
+            if (!course.achievementFormStatus?.isCentral) return false;
+            const { written, oral } = examsForCourse(examPlan, course);
+            return written.length === 0 && oral.length === 0;
+          })
+          .map(getCourseRootKey)
+      ).size
+    : 0;
+  const examCheckText = examCheck(
+    examPlanStatus,
+    examPlan,
+    new Set(examClashesByCourse.flatMap((clashes) => [...clashes.keys()])).size,
+    centralNotFound
+  );
 
   const totalCredits = currCourses.reduce((acc, curr) => {
     return acc + curr.credits / 100;
@@ -131,8 +212,9 @@ export default function SemesterSummary() {
         continue; // Skip entries with empty eventDate
       }
 
-      // Shift event date to match the target year (for future semesters)
-      const originalEventDate = new Date(entry.eventDate);
+      // Shift event date to match the target year (for future semesters).
+      // Zurich wall-clock time, like the heatmap and the calendar.
+      const originalEventDate = new Date(toZurichWallClock(entry.eventDate));
       const shiftedEventDate = getShiftedEventDate(
         originalEventDate,
         targetYear
@@ -191,17 +273,41 @@ export default function SemesterSummary() {
           style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
           render={({ activeAnchor }) => {
             const conflicts = activeAnchor?.getAttribute("data-conflicts");
-            if (!conflicts) return null;
-            const conflictList = conflicts.split(", ");
+            const examConflicts = activeAnchor?.getAttribute(
+              "data-exam-conflicts"
+            );
+            if (!conflicts && !examConflicts) return null;
+            // JSON, not ", "-joined: real titles contain commas.
+            const namesOf = (value) =>
+              JSON.parse(value).map((course, idx) => (
+                <li key={idx} className="break-words">
+                  {course}
+                </li>
+              ));
             return (
-              <div className="text-amber-300">
-                <div className="font-medium">⚠ Conflicts with:</div>
-                <ul className="list-disc list-inside text-sm">
-                  {conflictList.map((course, idx) => (
-                    <li key={idx} className="truncate">{course}</li>
-                  ))}
-                </ul>
-              </div>
+              <>
+                {conflicts && (
+                  <div className="text-amber-300">
+                    <div className="font-medium">⚠ Conflicts with:</div>
+                    <ul className="list-disc list-inside text-sm">
+                      {namesOf(conflicts)}
+                    </ul>
+                  </div>
+                )}
+                {/* Lecture clashes cost a session; an exam clash you cannot
+                    sit at all, so it gets its own block and its own colour. */}
+                {examConflicts && (
+                  <div className="text-red-300">
+                    <div className="font-medium">
+                      {formatExamClashLead(true)}
+                    </div>
+                    <ul className="list-disc list-inside text-sm">
+                      {namesOf(examConflicts)}
+                    </ul>
+                    <div className="text-gray-300">{EXAM_DISCLAIMER_SHORT}</div>
+                  </div>
+                )}
+              </>
             );
           }}
         />
@@ -229,6 +335,12 @@ export default function SemesterSummary() {
               {currCourses.map((course, index) => {
                 const conflicts = getConflictsForCourse(course);
                 const hasConflicts = conflicts.length > 0;
+                // Every course here is the user's, so it clashes, never
+                // "would".
+                const examClash = describeExamClashes(
+                  examClashesByCourse[index],
+                  true
+                );
                 return (
                   <div
                     key={index}
@@ -244,8 +356,17 @@ export default function SemesterSummary() {
                   >
                     <div
                       className="text-center"
-                      data-tooltip-id={hasConflicts ? "conflict-tooltip" : undefined}
-                      data-conflicts={hasConflicts ? conflicts.join(", ") : undefined}
+                      data-tooltip-id={
+                        hasConflicts || examClash
+                          ? "conflict-tooltip"
+                          : undefined
+                      }
+                      data-conflicts={
+                        hasConflicts ? JSON.stringify(conflicts) : undefined
+                      }
+                      data-exam-conflicts={
+                        examClash ? JSON.stringify(examClash.names) : undefined
+                      }
                     >
                       <div
                         className={`flex justify-center items-center align-center h-full ${
@@ -266,6 +387,18 @@ export default function SemesterSummary() {
                           <LockClosed clg="w-4 h-4 " />
                         ) : (
                           <LockOpen clg="w-4 h-4 " event={course} />
+                        )}
+                        {/* The tooltip needs something to hover; the lock's
+                            colour already speaks for the lecture side only.
+                            heroicons hide their icons from assistive
+                            technology, so this one is exposed. */}
+                        {examClash && (
+                          <ExclamationIcon
+                            role="img"
+                            aria-hidden={false}
+                            aria-label={examClash.label}
+                            className="flex-shrink-0 w-4 h-4 text-danger"
+                          />
                         )}
                       </div>
                     </div>
@@ -326,6 +459,13 @@ export default function SemesterSummary() {
               )}
             </div>
           </div>
+          {examCheckText && (
+            <p className="px-2 text-xs text-gray-500">{examCheckText}</p>
+          )}
+          <ExamTable
+            semester={selectedSemesterState}
+            onOpenCourse={courseSelector}
+          />
         </div>
       </div>
     );

@@ -108,7 +108,12 @@ const CurriculumGrid = ({
       (c) => c.courseNumber === item.courseId || c.id === item.courseId
     );
 
-    openCourseDetails(fullCourse, { source: "curriculum-map" });
+    // A card of a projected semester holds a course of its reference
+    // semester, so the course alone would pass for that one.
+    openCourseDetails(fullCourse, {
+      source: "curriculum-map",
+      semester: semKey,
+    });
   }, [unifiedCourseData, openCourseDetails]);
 
   // Scroll affordance — gradient fades indicating hidden content

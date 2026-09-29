@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Exam dates and exam-clash warnings for HS26, from the HSG central exam plan.
+  Course Details shows each course's central exams: written ones with date,
+  start time, duration and, when marked, "digital (BYOD)"; oral ones with their
+  date range. When two courses in the user's plan have overlapping written
+  exams, the course list, Semester Summary, Course Details and Calendar warn in
+  red; a course the user is only browsing warns that its exam *would* clash.
+  The Summary's "Exam check" line says what the check found and which central
+  courses it could not find, or that it could not run, and a table below it
+  lists the central exams under an "automatically extracted — verify"
+  warning. The Calendar draws the exams as blocks, and an "Exams" button jumps
+  to the exam weeks and back. The dates are indicative. They come from
+  `app/public/exams/HS26.json`, built from the PDF by `npm run ingest:exams`;
+  runbook in `app/scripts/ingest-exam-plan/README.md`, rationale in ADR
+  0010–0012.
+- CI: a GitHub Actions workflow runs `npm ci`, `npm run lint`,
+  `npx vitest run` and `npm run build` in `app/` on every push and pull
+  request.
 - Mobile: tap on a calendar event opens a bottom sheet with the full course
   name, time, room and conflicts (desktop keeps the hover tooltip).
 - Mobile: the side nav opens as a labeled overlay drawer (Rate courses ·
@@ -88,7 +105,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Curriculum Map: enrolled (bid) courses can be dragged to another category row
   and the correction is saved with the plan. They stay in the semester they were
   bid in (a cross-semester drop is refused with a hint) and cannot be removed.
-
+- Course Details no longer crashes on a course without
+  `achievementFormStatus`. The central/decentral line read three fields off it
+  unguarded, so any catalog entry missing the object took the whole panel down.
+- Calendar and Semester Summary: conflict lists no longer split a course title
+  at its comma or cut long names off. The calendar tooltip also opens on
+  keyboard focus and closes with Escape, and blocks, tooltip and event sheet
+  share the 24-hour clock.
+- Calendar and Semester Summary: lectures and exams show St. Gallen (Zurich)
+  time for students abroad too. The calendar used the reader's own time zone,
+  so from London a 09:15 exam read 08:15, and in the Americas morning exams
+  fell before the 08:00 start and vanished.
 - Transcript: saved courses from past semesters can be removed again. The
   open-lock button next to a saved course did nothing at all — `LockOpen`
   called `stopPropagation()` before checking whether it had a course to
@@ -163,3 +190,16 @@ DebugView). Smoke-check in DebugView on `biddit.app`: exactly one `page_view`
 per navigation, session starts with `page_view` then
 `tab_select { from: null, to: summary }`, `page_location` never contains
 `#code` or `?` on any event, and dev hosts emit nothing.
+
+### Security
+
+- Dependencies updated to close all 78 open Dependabot alerts: all
+  in-range updates (axios 1.20, vite 6.4.3, rollup, postcss and transitive
+  packages), plus uuid 11, vitest 4 and react-router-dom 7. The router
+  keeps v6 behaviour via `<BrowserRouter useTransitions={false}>`, because
+  Recoil does not support the `React.startTransition` updates v7 would
+  otherwise use. React and React DOM are now declared explicitly
+  (`^18.3.1`) instead of arriving only as peers. The unused
+  `@azure/msal-node` (a Node.js library that bundled uuid 8) was removed.
+  Node 20+ is required (22 recommended; set via `app/.nvmrc`).
+- uuid dropped; error ids use `crypto.randomUUID()`.
