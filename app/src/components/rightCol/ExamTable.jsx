@@ -46,9 +46,17 @@ export default function ExamTable({ semester, onOpenCourse }) {
 
   return (
     <div className="mt-4">
+      {/* Heading first, so the warning below reads as being about the exams,
+          not the course table above. */}
+      <h3
+        id="exam-table-heading"
+        className="px-2 pb-2 text-sm font-semibold text-gray-900"
+      >
+        Central exams
+      </h3>
       <div
         role="note"
-        className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900"
+        className="mb-3 flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900"
       >
         <ExclamationIcon
           aria-hidden="true"
@@ -60,12 +68,6 @@ export default function ExamTable({ semester, onOpenCourse }) {
         </div>
       </div>
 
-      <h3
-        id="exam-table-heading"
-        className="px-2 pt-4 pb-2 text-sm font-semibold text-gray-900"
-      >
-        Central exams
-      </h3>
       <div className="overflow-x-auto">
         <div
           role="table"
