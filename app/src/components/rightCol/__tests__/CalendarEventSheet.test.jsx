@@ -88,8 +88,15 @@ describe("CalendarEventSheet", () => {
 
     // Headless UI closes on any click outside the panel, so the backdrop needs
     // no handler of its own — this pins that the wiring is actually in place.
-    fireEvent.mouseDown(screen.getByTestId("calendar-event-sheet-backdrop"));
-    fireEvent.click(screen.getByTestId("calendar-event-sheet-backdrop"));
+    // Fire the full sequence a real click produces: Headless UI >= 2.2.3
+    // detects the outside click on pointerdown→pointerup, earlier versions on
+    // mousedown→click.
+    const backdrop = screen.getByTestId("calendar-event-sheet-backdrop");
+    fireEvent.pointerDown(backdrop);
+    fireEvent.mouseDown(backdrop);
+    fireEvent.pointerUp(backdrop);
+    fireEvent.mouseUp(backdrop);
+    fireEvent.click(backdrop);
     expect(onClose).toHaveBeenCalled();
   });
 

@@ -188,3 +188,15 @@ DebugView). Smoke-check in DebugView on `biddit.app`: exactly one `page_view`
 per navigation, session starts with `page_view` then
 `tab_select { from: null, to: summary }`, `page_location` never contains
 `#code` or `?` on any event, and dev hosts emit nothing.
+
+### Security
+
+- Dependencies updated to close all 78 open Dependabot alerts: all
+  in-range updates (axios 1.20, vite 6.4.3, rollup, postcss and transitive
+  packages), plus uuid 11, vitest 4 and react-router-dom 7. The router
+  keeps v6 behaviour via `<BrowserRouter useTransitions={false}>`, because
+  Recoil does not support the `React.startTransition` updates v7 would
+  otherwise use. React and React DOM are now declared explicitly
+  (`^18.3.1`) instead of arriving only as peers. The unused
+  `@azure/msal-node` (a Node.js library that bundled uuid 8) was removed.
+  Node 20+ is required (22 recommended; set via `app/.nvmrc`).
