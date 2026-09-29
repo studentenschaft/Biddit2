@@ -23,6 +23,21 @@ td {
   background: transparent !important;
 }
 
+/* Today, marked the way Outlook does: the date in a green pill and the
+   column in a light green tint. After the generic column-frame rule above,
+   which has the same specificity. */
+.fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion {
+  background-color: #007a2d; /* hsg-700 */
+  color: white;
+  border-radius: 9999px;
+  padding: 1px 8px;
+}
+
+.fc-timegrid-col.fc-day-today .fc-timegrid-col-frame {
+  background-color: #ebfff2; /* hsg-50 */
+  box-shadow: 0px 0px 0px 1px #99ffbe; /* hsg-200 */
+}
+
 .fc-axis,
 .fc-time,
 .fc-timegrid-slot-label {
