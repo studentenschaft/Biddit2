@@ -35,7 +35,8 @@ td {
 
 .fc-timegrid-col.fc-day-today .fc-timegrid-col-frame {
   background-color: #ebfff2; /* hsg-50 */
-  box-shadow: 0px 0px 0px 1px #99ffbe; /* hsg-200 */
+  /* Inset: an outer ring's top edge is clipped by FullCalendar's scroller. */
+  box-shadow: inset 0px 0px 0px 1px #99ffbe; /* hsg-200 */
 }
 
 .fc-axis,
