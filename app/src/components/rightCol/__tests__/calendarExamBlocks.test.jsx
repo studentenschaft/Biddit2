@@ -302,11 +302,8 @@ describe("Calendar event details on a phone", () => {
 
     act(() => micro.focus());
     fireEvent.click(micro);
-    // Only the Dialog's own tick: a longer wait lets FullCalendar 6.0.3 redraw
-    // through react-dom/test-utils' deprecated act(), which warns.
-    await act(async () => {});
 
-    const sheet = screen.getByTestId("calendar-event-sheet-panel");
+    const sheet = await screen.findByTestId("calendar-event-sheet-panel");
     expect(
       within(sheet).getByText("Mon 18.01.2027, 09:15 - 10:45"),
     ).toBeInTheDocument();
