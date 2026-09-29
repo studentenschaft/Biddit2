@@ -46,13 +46,28 @@ const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
 
   const NoteIcon = hasNote ? AnnotationIconSolid : AnnotationIconOutline;
 
+  // The semester we are in, marked like today's column in the Calendar: the
+  // key in a green pill and the header in a light green tint with an outline.
+  const isCurrent = status === "current";
+  const headerBg = isCurrent
+    ? "bg-hsg-50 ring-1 ring-inset ring-hsg-200"
+    : style.bg;
+  const semesterKey = isCurrent ? (
+    <div className="font-bold text-sm">
+      <span className="rounded-full bg-hsg-700 px-2 text-white">{key}</span>
+      <span className="sr-only"> (current semester)</span>
+    </div>
+  ) : (
+    <div className="font-bold text-sm text-gray-800">{key}</div>
+  );
+
   // Column orientation — used as a column header in flipped grid mode
   if (orientation === "column") {
     return (
       <div
-        className={`${style.bg} relative p-2 border-b border-gray-100 text-center min-w-[120px]`}
+        className={`${headerBg} relative p-2 border-b border-gray-100 text-center min-w-[120px]`}
       >
-        <div className="font-bold text-sm text-gray-800">{key}</div>
+        {semesterKey}
         <div className="text-[10px] text-gray-500 mt-0.5">
           {totalCredits > 0 ? (
             <>
@@ -99,11 +114,11 @@ const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
 
   return (
     <div
-      className={`${style.bg} ${roundedClass} relative p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
+      className={`${headerBg} ${roundedClass} relative p-2 sticky left-0 z-10 flex flex-col justify-center min-h-[70px] border-b border-gray-100`}
     >
       {/* Semester key + note icon */}
       <div className="flex items-center gap-1">
-        <div className="font-bold text-sm text-gray-800">{key}</div>
+        {semesterKey}
         {onSetNote && (
           <button
             onClick={() => setShowNotePopover((prev) => !prev)}
