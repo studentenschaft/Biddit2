@@ -202,3 +202,4 @@ per navigation, session starts with `page_view` then
   (`^18.3.1`) instead of arriving only as peers. The unused
   `@azure/msal-node` (a Node.js library that bundled uuid 8) was removed.
   Node 20+ is required (22 recommended; set via `app/.nvmrc`).
+- uuid dropped; error ids use `crypto.randomUUID()`.

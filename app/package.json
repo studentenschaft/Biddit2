@@ -47,8 +47,7 @@
     "react-virtualized-auto-sizer": "^1.0.24",
     "react-window": "^1.8.10",
     "recoil": "^0.7.7",
-    "tailwind-scrollbar-hide": "^1.1.7",
-    "uuid": "^11.1.1"
+    "tailwind-scrollbar-hide": "^1.1.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
