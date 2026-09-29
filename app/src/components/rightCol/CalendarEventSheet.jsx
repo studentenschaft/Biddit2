@@ -27,10 +27,7 @@ import {
 
 const CalendarEventSheet = ({ event, onClose }) => {
   const conflictList = event?.conflictsWith || [];
-  // Exams have no room in the plan (it is assigned per student later), so the
-  // room line is replaced rather than left saying "N/A".
   const isExam = event?.entryType === "exam";
-  const timeRange = `${event?.startTime || "N/A"} - ${event?.endTime || "N/A"}`;
 
   return (
     <Dialog
@@ -79,13 +76,8 @@ const CalendarEventSheet = ({ event, onClose }) => {
           </button>
         </div>
 
-        {/* For an exam the date is the key fact, so it leads the time. */}
-        <div className="mt-2 text-sm text-gray-600">
-          {isExam ? `${event.examDate}, ${timeRange}` : timeRange}
-        </div>
-        <div className="text-sm text-gray-600">
-          {isExam ? event.examMeta : `Room: ${event?.room || "N/A"}`}
-        </div>
+        <div className="mt-2 text-sm text-gray-600">{event?.when}</div>
+        <div className="text-sm text-gray-600">{event?.detail}</div>
 
         {conflictList.length > 0 && (
           <div
@@ -117,13 +109,10 @@ const CalendarEventSheet = ({ event, onClose }) => {
 CalendarEventSheet.propTypes = {
   event: PropTypes.shape({
     title: PropTypes.string,
-    startTime: PropTypes.string,
-    endTime: PropTypes.string,
-    room: PropTypes.string,
+    when: PropTypes.string,
+    detail: PropTypes.string,
     conflictsWith: PropTypes.arrayOf(PropTypes.string),
     entryType: PropTypes.string,
-    examDate: PropTypes.string,
-    examMeta: PropTypes.string,
   }),
   onClose: PropTypes.func.isRequired,
 };

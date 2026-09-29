@@ -52,13 +52,17 @@ const SemesterRow = ({ semester, isLast, onSetNote, orientation = "row" }) => {
   const headerBg = isCurrent
     ? "bg-hsg-50 ring-1 ring-inset ring-hsg-200"
     : style.bg;
-  const semesterKey = isCurrent ? (
-    <div className="font-bold text-sm">
-      <span className="rounded-full bg-hsg-700 px-2 text-white">{key}</span>
-      <span className="sr-only"> (current semester)</span>
+  const semesterKey = (
+    <div className="font-bold text-sm text-gray-800">
+      <span
+        className={
+          isCurrent ? "rounded-full bg-hsg-700 px-2 text-white" : undefined
+        }
+      >
+        {key}
+      </span>
+      {isCurrent && <span className="sr-only"> (current semester)</span>}
     </div>
-  ) : (
-    <div className="font-bold text-sm text-gray-800">{key}</div>
   );
 
   // Column orientation — used as a column header in flipped grid mode

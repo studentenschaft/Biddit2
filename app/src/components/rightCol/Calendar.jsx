@@ -48,17 +48,24 @@ const TIME_FORMAT = { hour: "2-digit", minute: "2-digit", hour12: false };
 const formatEventTime = (date) =>
   date ? date.toLocaleTimeString([], TIME_FORMAT) : "";
 
-// What the tooltip and the event sheet show about a block, built once.
-const eventDetails = ({ title, start, end, extendedProps }) => ({
-  title,
-  startTime: formatEventTime(start),
-  endTime: formatEventTime(end),
-  room: extendedProps.room,
-  conflictsWith: extendedProps.conflictsWith || [],
-  entryType: extendedProps.entryType,
-  examDate: extendedProps.examDate,
-  examMeta: extendedProps.examMeta,
-});
+// What the tooltip and the event sheet show about a block, built once. Exams
+// have no room, so their detail line carries the exam facts instead, and for
+// an exam the date is the key fact, so it leads the time.
+const eventDetails = ({ title, start, end, extendedProps }) => {
+  const isExam = extendedProps.entryType === "exam";
+  const timeRange = `${formatEventTime(start) || "N/A"} - ${
+    formatEventTime(end) || "N/A"
+  }`;
+  return {
+    title,
+    when: isExam ? `${extendedProps.examDate}, ${timeRange}` : timeRange,
+    detail: isExam
+      ? extendedProps.examMeta
+      : `Room: ${extendedProps.room || "N/A"}`,
+    conflictsWith: extendedProps.conflictsWith || [],
+    entryType: extendedProps.entryType,
+  };
+};
 
 // Implementation of calendar widget
 export default function Calendar() {
@@ -350,20 +357,11 @@ export default function Calendar() {
           if (isMobileViewport() || !activeAnchor) return null;
           const event = JSON.parse(activeAnchor.getAttribute("data-event"));
           const isExam = event.entryType === "exam";
-          const timeRange = `${event.startTime || "N/A"} - ${
-            event.endTime || "N/A"
-          }`;
           return (
             <div>
               <div className="font-medium">{event.title}</div>
-              {/* Exams have no room; the same line carries the exam facts. */}
-              <div className="text-gray-300">
-                {isExam ? event.examMeta : `Room: ${event.room || "N/A"}`}
-              </div>
-              {/* For an exam the date is the key fact, so it leads the time. */}
-              <div className="text-gray-300">
-                {isExam ? `${event.examDate}, ${timeRange}` : timeRange}
-              </div>
+              <div className="text-gray-300">{event.detail}</div>
+              <div className="text-gray-300">{event.when}</div>
               {event.conflictsWith.length > 0 && (
                 <div
                   className={`mt-1 pt-1 border-t border-gray-600 ${

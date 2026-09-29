@@ -199,16 +199,6 @@ export const EXAM_DISCLAIMER_LONG =
   "Extracted automatically from the official PDF — indicative only, " +
   "always verify against the official exam schedule.";
 
-/** The Summary exam table's warning, which comes before any of its dates. */
-export const EXAM_TABLE_DISCLAIMER = {
-  heading: "Automatically extracted — verify before relying on it",
-  body: (plan) =>
-    "These dates were extracted automatically from the university's central " +
-    `exam plan (${formatPlanSource(plan)}). We cannot guarantee they are ` +
-    "complete or correct — treat them as an early indicator only and always " +
-    "check the official exam schedule.",
-};
-
 /**
  * What the course list and the Summary say about a course's exam clashes:
  * each clashing course once, however many of its exams clash, and the

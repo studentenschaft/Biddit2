@@ -62,31 +62,13 @@ export const EXAM_COLOR = "#00521E";
 /** danger — the red every exam-clash surface uses (ADR 0012); 4.8:1. */
 export const EXAM_COLLISION_COLOR = "#DC2626";
 
-/**
- * The user's central written exams as FullCalendar events.
- *
- * A sibling of `calendarEntriesSelector` rather than part of it: that selector
- * pins the lecture collision logic and the filter-leak invariant, and exams
- * neither participate in its Union-Find nor come from `calendarEntry` rows.
- * `Calendar.jsx` concatenates the two event sets. Same fail-open contract as
- * `plannedExamsSelector`: no plan, no exam blocks (ADR 0011).
- *
- * OT written exams only, one block per planned exam — orals publish no time,
- * and fabricating a block for one would be worse than showing none.
- *
- * Each event also carries how its block looks and the text its tooltip and
- * sheet show (`examDate`, `examMeta`), so neither surface rebuilds it.
- *
- * @returns {Array<Object>} FullCalendar events carrying `entryType: "exam"`
- */
+/** The user's central written exams as FullCalendar events; see ADR 0011/0012. */
 export const examCalendarEventsSelector = selectorFamily({
   key: "examCalendarEventsSelector",
   get:
     (semesterShortName) =>
     ({ get }) => {
-      const { status, plan } = get(examPlanSelector(semesterShortName));
-      if (status !== "ready") return [];
-
+      const { plan } = get(examPlanSelector(semesterShortName));
       const plannedExams = get(plannedExamsSelector(semesterShortName));
 
       // Each block is red with its own exam's clashes. Several of my courses

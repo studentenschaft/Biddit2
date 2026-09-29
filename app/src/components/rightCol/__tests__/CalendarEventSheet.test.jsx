@@ -19,10 +19,9 @@ const renderSheet = async (event, onClose = () => {}) => {
 
 const baseEvent = {
   title: "Corporate Finance",
-  // 24-hour, as the calendar formats it for the tooltip and the sheet alike.
-  startTime: "08:15",
-  endTime: "10:00",
-  room: "01-013",
+  // Prebuilt by Calendar's eventDetails, 24-hour as for the tooltip.
+  when: "08:15 - 10:00",
+  detail: "Room: 01-013",
   conflictsWith: [],
 };
 
@@ -67,11 +66,6 @@ describe("CalendarEventSheet", () => {
     expect(screen.getByText(/conflicts with/i)).toBeInTheDocument();
     expect(screen.getByText("Macroeconomics")).toBeInTheDocument();
     expect(screen.getByText("Business Law")).toBeInTheDocument();
-  });
-
-  it("falls back to N/A for a missing room", async () => {
-    await renderSheet({ ...baseEvent, room: undefined });
-    expect(screen.getByText(/N\/A/)).toBeInTheDocument();
   });
 
   it("calls onClose when the close button is pressed", async () => {
@@ -128,17 +122,15 @@ describe("CalendarEventSheet", () => {
   /**
    * Exams have no room in the plan and are our own PDF extraction, so the sheet
    * swaps the room line for the exam facts, puts the date first and always
-   * says the dates are indicative (ADR 0012). The facts arrive prebuilt from
-   * examCalendarEventsSelector, which also owns the BYOD wording.
+   * says the dates are indicative (ADR 0012). The lines arrive prebuilt from
+   * Calendar's eventDetails; examCalendarEventsSelector owns the BYOD wording.
    */
   describe("exam blocks", () => {
     const examEvent = {
       title: "Advanced Cybersecurity",
-      startTime: "15:15",
-      endTime: "17:15",
+      when: "Tue 19.01.2027, 15:15 - 17:15",
+      detail: "Exam · 120 min · digital (BYOD)",
       entryType: "exam",
-      examDate: "Tue 19.01.2027",
-      examMeta: "Exam · 120 min · digital (BYOD)",
       conflictsWith: [],
     };
 

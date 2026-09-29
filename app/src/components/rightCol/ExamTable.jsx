@@ -7,12 +7,12 @@ import {
 } from "../recoil/examScheduleSelectors";
 import { myCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
 import {
-  EXAM_TABLE_DISCLAIMER,
   examClashes,
   examTableRows,
   formatExamClash,
   formatExamDate,
   formatExamDateRange,
+  formatPlanSource,
 } from "../helpers/examScheduleUtils";
 
 /**
@@ -63,8 +63,12 @@ export default function ExamTable({ semester, onOpenCourse }) {
           className="mt-0.5 h-5 w-5 flex-shrink-0"
         />
         <div className="text-sm">
-          <p className="font-bold">{EXAM_TABLE_DISCLAIMER.heading}</p>
-          <p>{EXAM_TABLE_DISCLAIMER.body(plan)}</p>
+          <p className="font-bold">
+            Automatically extracted — verify before relying on it
+          </p>
+          <p>
+            {`These dates were extracted automatically from the university's central exam plan (${formatPlanSource(plan)}). We cannot guarantee they are complete or correct — treat them as an early indicator only and always check the official exam schedule.`}
+          </p>
         </div>
       </div>
 

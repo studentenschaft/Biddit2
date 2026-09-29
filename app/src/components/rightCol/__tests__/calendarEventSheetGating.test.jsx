@@ -151,6 +151,19 @@ describe("Calendar event sheet viewport gate", () => {
     expect(screen.getByText("14:15 - 16:00")).toBeInTheDocument();
   });
 
+  it("falls back to N/A for a missing room", async () => {
+    setViewportWidth(390);
+    const clickEvent = await renderCalendar();
+
+    await act(async () =>
+      clickEvent({
+        event: { ...EVENT_ARG.event, extendedProps: { conflictsWith: [] } },
+      }),
+    );
+
+    expect(screen.getByText("Room: N/A")).toBeInTheDocument();
+  });
+
   /**
    * Switching semester or removing a course rebuilds the event set; the open
    * sheet would otherwise keep describing an event that no longer exists.
