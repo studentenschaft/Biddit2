@@ -111,7 +111,7 @@ export function examTableRows(plan, courses) {
 
 // [start, end) in epoch ms. `startIso` carries its Zurich offset, so the
 // reader's timezone never enters.
-const interval = (exam) => {
+export const interval = (exam) => {
   const start = Date.parse(exam.startIso);
   return [start, start + exam.durationMin * 60000];
 };
@@ -193,11 +193,8 @@ export const formatExamClash = (names, planned) =>
   `${formatExamClashLead(planned)} ${names.join(", ")}`;
 
 // The dates come from our own PDF extraction, so every surface that shows an
-// exam date or clash carries one of these.
+// exam date or clash carries this; the exam schedule's footnote spells it out.
 export const EXAM_DISCLAIMER_SHORT = "Indicative — verify officially.";
-export const EXAM_DISCLAIMER_LONG =
-  "Extracted automatically from the official PDF — indicative only, " +
-  "always verify against the official exam schedule.";
 
 /**
  * What the course list and the Summary say about a course's exam clashes:

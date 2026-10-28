@@ -6,15 +6,7 @@
  * Pure: no fs, no clock, no process.
  */
 
-const ROOT_SEGMENTS = 2;
-
-/**
- * "3,200,1.00" (course) and "3,200,2.00" (its exercise group) share the root
- * "3,200" that the exam plan prints — the rule `getCourseRootKey` applies at
- * runtime.
- */
-const courseNumberToRoot = (courseNumber) =>
-  courseNumber.split(",").slice(0, ROOT_SEGMENTS).join(",");
+import { getCourseRootKey } from "../../src/components/helpers/courseUtils.js";
 
 export function validateAgainstCatalog(plan, catalog) {
   // DevTools exports arrive either bare or wrapped in `{ data: [...] }`.
@@ -22,7 +14,9 @@ export function validateAgainstCatalog(plan, catalog) {
   const catalogByRoot = new Map();
   const centralRoots = new Set();
   for (const course of courses) {
-    const root = courseNumberToRoot(course.courseNumber);
+    // "3,200,1.00" and its exercise group "3,200,2.00" share the plan's
+    // "3,200", by the same rule the app joins on.
+    const root = getCourseRootKey(course);
     if (!catalogByRoot.has(root)) catalogByRoot.set(root, course);
     if (course.achievementFormStatus?.isCentral) centralRoots.add(root);
   }

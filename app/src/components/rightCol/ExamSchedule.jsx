@@ -7,7 +7,6 @@ import {
 } from "../recoil/examScheduleSelectors";
 import { myCoursesSelector } from "../recoil/unifiedCourseDataSelectors";
 import {
-  EXAM_DISCLAIMER_LONG,
   examClashes,
   examsForCourse,
   formatExamClash,
@@ -116,7 +115,8 @@ function PlanFootnote({ plan }) {
         className="mt-0.5 h-4 w-4 flex-shrink-0"
       />
       <span>
-        {formatPlanSource(plan)}. {EXAM_DISCLAIMER_LONG}
+        {formatPlanSource(plan)}. Extracted automatically from the official PDF
+        — indicative only, always verify against the official exam schedule.
       </span>
     </p>
   );

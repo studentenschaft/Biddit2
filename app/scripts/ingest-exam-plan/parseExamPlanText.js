@@ -57,7 +57,6 @@ const WEEKDAY_GUTTER_RE = new RegExp(`^(?:${WEEKDAYS_SOURCE})\\s*\\/?\\s*`);
 // header gives no start time for (e.g. a second label the regex cannot read).
 const MAX_LABEL_OFFSET = 20;
 
-const warning = (code, message, context) => ({ code, message, context });
 const matchFooters = (text) => [...text.matchAll(FOOTER_RE)];
 
 /** "written", "oral", or null for a page without either banner. */
@@ -349,13 +348,12 @@ function parseFooters(rawText, warnings) {
     );
   }
   if (dates.length > 1) {
-    warnings.push(
-      warning(
-        "W_PUBLISHED_AT_MIXED",
+    warnings.push({
+      code: "W_PUBLISHED_AT_MIXED",
+      message:
         "Pages carry different revision dates — the plan may mix revisions",
-        dates.join(", "),
-      ),
-    );
+      context: dates.join(", "),
+    });
   }
   return dates[0];
 }

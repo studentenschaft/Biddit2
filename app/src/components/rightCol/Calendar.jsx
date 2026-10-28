@@ -46,16 +46,14 @@ import { isFutureSemesterSelected } from "../recoil/isFutureSemesterSelected";
 // event sheet describe the same event, so none may call 15:15 "3:15".
 const TIME_FORMAT = { hour: "2-digit", minute: "2-digit", hour12: false };
 const formatEventTime = (date) =>
-  date ? date.toLocaleTimeString([], TIME_FORMAT) : "";
+  date ? date.toLocaleTimeString([], TIME_FORMAT) : "N/A";
 
 // What the tooltip and the event sheet show about a block, built once. Exams
 // have no room, so their detail line carries the exam facts instead, and for
 // an exam the date is the key fact, so it leads the time.
 const eventDetails = ({ title, start, end, extendedProps }) => {
   const isExam = extendedProps.entryType === "exam";
-  const timeRange = `${formatEventTime(start) || "N/A"} - ${
-    formatEventTime(end) || "N/A"
-  }`;
+  const timeRange = `${formatEventTime(start)} - ${formatEventTime(end)}`;
   return {
     title,
     when: isExam ? `${extendedProps.examDate}, ${timeRange}` : timeRange,

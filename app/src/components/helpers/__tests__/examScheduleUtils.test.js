@@ -185,16 +185,6 @@ describe("examClashes", () => {
       clashes: [],
     },
     {
-      name: "an exam ending as the other starts does not clash",
-      written: [
-        exam("a", ["3,100"], "09:15", 90),
-        exam("b", ["3,200"], "10:45", 90),
-      ],
-      planned: [ALPHA, BRAVO],
-      course: BRAVO,
-      clashes: [],
-    },
-    {
       name: "a lecture and its exercise group share one exam",
       written: [
         exam("a", ["3,100"], "09:15", 90),

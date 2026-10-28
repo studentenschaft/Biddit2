@@ -8,6 +8,7 @@ import {
   examClashes,
   formatExamDate,
   formatExamMeta,
+  interval,
   planExams,
 } from "../helpers/examScheduleUtils";
 import { toZurichWallClock } from "../helpers/zurichWallClock";
@@ -82,6 +83,7 @@ export const examCalendarEventsSelector = selectorFamily({
       }
 
       return plannedExams.map(({ exam, name }) => {
+        const [start, end] = interval(exam);
         const conflictsWith = clashesById.get(exam.id) ?? [];
         const clashing = conflictsWith.length > 0;
         const accent = clashing ? EXAM_COLLISION_COLOR : EXAM_COLOR;
@@ -89,10 +91,8 @@ export const examCalendarEventsSelector = selectorFamily({
           id: exam.id,
           title: name,
           // Zurich wall-clock time, like the lectures.
-          start: toZurichWallClock(exam.startIso),
-          end: toZurichWallClock(
-            Date.parse(exam.startIso) + exam.durationMin * 60000,
-          ),
+          start: toZurichWallClock(start),
+          end: toZurichWallClock(end),
           entryType: "exam",
           examDate: formatExamDate(exam.date),
           examMeta: formatExamMeta(exam),

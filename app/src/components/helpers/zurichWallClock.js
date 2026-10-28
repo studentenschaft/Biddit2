@@ -1,15 +1,11 @@
 // HSG runs on Zurich time, and the calendar says so to a student abroad too:
 // FullCalendar draws an event in the reader's zone, but a string without an
-// offset "floats" and is drawn as written (ADR 0011).
-const ZURICH = new Intl.DateTimeFormat("en-CA", {
+// offset "floats" and is drawn as written (ADR 0011). The sv-SE locale prints
+// the ISO-like "YYYY-MM-DD HH:mm:ss", so only the space needs swapping.
+const ZURICH = new Intl.DateTimeFormat("sv-SE", {
   timeZone: "Europe/Zurich",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  second: "2-digit",
-  hourCycle: "h23",
+  dateStyle: "short",
+  timeStyle: "medium",
 });
 
 /**
@@ -20,11 +16,5 @@ const ZURICH = new Intl.DateTimeFormat("en-CA", {
  * @returns {string} "2026-09-21T10:15:00"
  */
 export function toZurichWallClock(dateLike) {
-  const part = Object.fromEntries(
-    ZURICH.formatToParts(new Date(dateLike)).map(({ type, value }) => [
-      type,
-      value,
-    ]),
-  );
-  return `${part.year}-${part.month}-${part.day}T${part.hour}:${part.minute}:${part.second}`;
+  return ZURICH.format(new Date(dateLike)).replace(" ", "T");
 }

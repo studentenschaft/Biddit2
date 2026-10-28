@@ -134,7 +134,7 @@ describe("CalendarEventSheet", () => {
       conflictsWith: [],
     };
 
-    it("leads with the exam's date and shows its facts instead of a room", async () => {
+    it("leads with the exam's date, shows its facts instead of a room and disclaims it", async () => {
       await renderSheet(examEvent);
 
       expect(
@@ -145,11 +145,6 @@ describe("CalendarEventSheet", () => {
       ).toBeInTheDocument();
       expect(screen.queryByText(/Room:/)).not.toBeInTheDocument();
       expect(screen.queryByText(/N\/A/)).not.toBeInTheDocument();
-    });
-
-    it("carries the indicative-only disclaimer", async () => {
-      await renderSheet(examEvent);
-
       expect(
         screen.getByText("Indicative — verify officially."),
       ).toBeInTheDocument();

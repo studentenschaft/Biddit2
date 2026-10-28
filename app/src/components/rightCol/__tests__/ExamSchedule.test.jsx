@@ -83,18 +83,13 @@ const servePlanWith = (...written) =>
 
 describe("ExamSchedule", () => {
   describe("for a course the plan lists", () => {
-    it("shows weekday, date, slot and exam facts for a written exam", async () => {
+    it("shows weekday, date, slot and exam facts for a written exam, and credits the artifact it read", async () => {
       renderSchedule(courseNumbered("3,200,1.00"));
 
       expect(await screen.findByText("Mon 18.01.2027")).toBeInTheDocument();
       expect(screen.getByText("09:15")).toBeInTheDocument();
       expect(screen.getByText("Exam · 90 min")).toBeInTheDocument();
-    });
-
-    it("credits the artifact it read and calls the dates indicative", async () => {
-      renderSchedule(courseNumbered("3,200,1.00"));
-
-      expect(await screen.findByText(FOOTNOTE)).toBeInTheDocument();
+      expect(screen.getByText(FOOTNOTE)).toBeInTheDocument();
     });
 
     it("shows the ordinary date and never the plan's alternative one", async () => {
