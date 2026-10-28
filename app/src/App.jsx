@@ -65,7 +65,11 @@ const App = () => {
     <ErrorBoundary>
       <AppStateProvider>
         <div className="App">
-          <BrowserRouter>
+          {/* useTransitions={false} keeps React Router 6 behaviour: v7 wraps
+              router state updates in React.startTransition by default, and
+              Recoil 0.7 does not support concurrent rendering, so route
+              changes must stay synchronous updates. */}
+          <BrowserRouter useTransitions={false}>
             <Analytics /> {/* Pageviews, events, MSAL-gated GA4 startup */}
             {/* Outside both templates: logged-out visitors see it too */}
             <AnalyticsNotice />

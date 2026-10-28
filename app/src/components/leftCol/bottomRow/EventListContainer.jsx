@@ -42,11 +42,21 @@ import {
   selectedCoursesSelector,
   smartSearchResultsSelector,
   smartSearchActiveSelector,
+  myCoursesSelector,
 } from "../../recoil/unifiedCourseDataSelectors";
 import { smartSearchState } from "../../recoil/smartSearchAtom";
+import {
+  examPlanSelector,
+  plannedExamsSelector,
+} from "../../recoil/examScheduleSelectors";
+import {
+  describeExamClashes,
+  examClashes,
+  isPlannedCourse,
+} from "../../helpers/examScheduleUtils";
 
 // Icons
-import { PlusIcon } from "@heroicons/react/outline";
+import { ExclamationIcon, PlusIcon } from "@heroicons/react/outline";
 import { StarIcon } from "@heroicons/react/solid";
 import { Tooltip as ReactTooltip } from "react-tooltip";
 
@@ -100,6 +110,16 @@ export default function EventListContainer({
         type: "filtered",
       })
     ) || [];
+
+  const { plan: examPlan } = useRecoilValue(
+    examPlanSelector(selectedSemesterShortName)
+  );
+  const plannedExams = useRecoilValue(
+    plannedExamsSelector(selectedSemesterShortName)
+  );
+  const myCourses = useRecoilValue(
+    myCoursesSelector(selectedSemesterShortName)
+  );
 
   // Smart (semantic) search replaces the keyword-filtered pool with vector-DB
   // matches once a query has run for the selected semester; the rows themselves
@@ -250,10 +270,18 @@ export default function EventListContainer({
     const wasPreviouslyEnrolled =
       event.enrolled && data.selectedSemester?.isProjected;
 
+    // A browsed course warns too, in "would clash" wording: the exam plan
+    // itself tells students not to bid on courses whose exams clash.
+    const examClash = describeExamClashes(
+      examClashes(data.plannedExams, data.examPlan, event),
+      isPlannedCourse(data.myCourses, event)
+    );
+
     return (
       <div
         ref={setNodeRef}
         key={index}
+        data-testid="course-list-row"
         className={`flex w-full h-full overflow-visible pb-2.5 ${
           isDragging ? "opacity-50" : ""
         }`}
@@ -278,10 +306,28 @@ export default function EventListContainer({
               : "bg-white text-gray-800"
           } ${isDragging ? "cursor-grabbing" : ""}`}
         >
-          <div className="pb-2 font-semibold">
-            <p className="truncate">
+          <div className="flex items-center gap-1 pb-2 font-semibold">
+            <p className="min-w-0 truncate">
               {event.shortName ? event.shortName : "Loading..."}
             </p>
+            {/* Next to the name rather than in the metadata grid below, which
+                has no spare column. Distinct from the lock, which carries the
+                lecture-overlap signal. heroicons hide their icons from
+                assistive technology; this one is the clash's only carrier. */}
+            {examClash && (
+              <ExclamationIcon
+                role="img"
+                aria-hidden={false}
+                aria-label={examClash.label}
+                className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
+                data-tooltip-id="course-list-tooltip"
+                data-tooltip-content={examClash.label}
+                // The red every dark exam tooltip uses. Important, because
+                // react-tooltip injects its dark variant's white after our
+                // stylesheet.
+                data-tooltip-class-name="!text-red-300"
+              />
+            )}
           </div>
           <div
             className={`text-xs grid grid-cols-12 ${
@@ -311,7 +357,7 @@ export default function EventListContainer({
           id="select_course"
           onClick={() => data.addOrRemoveCourse(event)}
           disabled={isEnrolled}
-          data-tooltip-id={isEnrolled ? "enrolled-tooltip" : undefined}
+          data-tooltip-id={isEnrolled ? "course-list-tooltip" : undefined}
           data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
           className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
             wasPreviouslyEnrolled
@@ -384,6 +430,9 @@ export default function EventListContainer({
     openCourseDetails,
     setIsLeftViewVisibleState,
     addOrRemoveCourse,
+    examPlan,
+    plannedExams,
+    myCourses,
   };
 
   return (
@@ -412,11 +461,15 @@ export default function EventListContainer({
           </FixedSizeList>
         )}
       </AutoSizer>
+      {/* One instance serves every anchor of its id in the list; anchors
+          carry their own data-tooltip-content (and exam clashes their red).
+          The dark variant's text is already white. */}
       <ReactTooltip
-        id="enrolled-tooltip"
+        id="course-list-tooltip"
         place="top"
         effect="solid"
-        className="bg-gray-800 text-white text-xs rounded px-2 py-1"
+        style={{ zIndex: 9999, maxWidth: "min(320px, 85vw)" }}
+        className="bg-gray-800 text-xs rounded px-2 py-1"
       />
     </Suspense>
   );

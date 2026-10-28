@@ -20,9 +20,14 @@
 import PropTypes from "prop-types";
 import { Dialog } from "@headlessui/react";
 import { XIcon } from "@heroicons/react/solid";
+import {
+  EXAM_DISCLAIMER_SHORT,
+  formatExamClashLead,
+} from "../helpers/examScheduleUtils";
 
 const CalendarEventSheet = ({ event, onClose }) => {
   const conflictList = event?.conflictsWith || [];
+  const isExam = event?.entryType === "exam";
 
   return (
     <Dialog
@@ -71,22 +76,30 @@ const CalendarEventSheet = ({ event, onClose }) => {
           </button>
         </div>
 
-        <div className="mt-2 text-sm text-gray-600">
-          {event?.startTime || "N/A"} - {event?.endTime || "N/A"}
-        </div>
-        <div className="text-sm text-gray-600">
-          Room: {event?.room || "N/A"}
-        </div>
+        <div className="mt-2 text-sm text-gray-600">{event?.when}</div>
+        <div className="text-sm text-gray-600">{event?.detail}</div>
 
         {conflictList.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-200 text-amber-700">
-            <div className="font-medium">⚠ Conflicts with:</div>
+          <div
+            className={`mt-3 pt-3 border-t border-gray-200 ${
+              isExam ? "text-danger" : "text-amber-700"
+            }`}
+          >
+            <div className="font-medium">
+              ⚠ {isExam ? formatExamClashLead(true) : "Conflicts with:"}
+            </div>
             <ul className="list-disc list-inside text-sm">
               {conflictList.map((course, idx) => (
                 <li key={idx}>{course}</li>
               ))}
             </ul>
           </div>
+        )}
+
+        {/* The dates are extracted from a PDF by us, not published by the
+            university — every exam surface says so (ADR 0012). */}
+        {isExam && (
+          <p className="mt-3 text-xs text-gray-500">{EXAM_DISCLAIMER_SHORT}</p>
         )}
       </Dialog.Panel>
     </Dialog>
@@ -96,10 +109,10 @@ const CalendarEventSheet = ({ event, onClose }) => {
 CalendarEventSheet.propTypes = {
   event: PropTypes.shape({
     title: PropTypes.string,
-    startTime: PropTypes.string,
-    endTime: PropTypes.string,
-    room: PropTypes.string,
+    when: PropTypes.string,
+    detail: PropTypes.string,
     conflictsWith: PropTypes.arrayOf(PropTypes.string),
+    entryType: PropTypes.string,
   }),
   onClose: PropTypes.func.isRequired,
 };
