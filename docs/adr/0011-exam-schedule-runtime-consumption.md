@@ -70,9 +70,9 @@ jumps to the exam weeks and back. It draws lectures and exams alike at Zurich
 wall-clock time, whatever the reader's time zone, so its times are the ones
 Course Details and the official plan print.
 
-**Unavailable is said, not implied.** Every plan state has an explicit
-message in Course Details, the Semester Summary's "Exam check" line says when
-the check is unavailable or incomplete, and both name the plan they read.
+**Unavailable is said, not implied.** The Semester Summary's "Exam check" line
+says when the check is unavailable or incomplete. Course Details and the
+Summary's exam table name the plan they read.
 
 ## Consequences
 

@@ -15,11 +15,8 @@ import {
   formatPlanSource,
 } from "../helpers/examScheduleUtils";
 
-/**
- * The course list's md+ twelve-column row. Five text-heavy columns cannot
- * squeeze onto a phone the way the course list's do, so below 36rem the table
- * scrolls sideways instead.
- */
+// Date, time and course only: BYOD sits under the time and a clash under the
+// course name, so a phone shows the whole row without scrolling sideways.
 const ROW_GRID_CLASSES = "grid grid-cols-12 gap-2 md:gap-4";
 
 /**
@@ -36,13 +33,12 @@ export default function ExamTable({ semester, onOpenCourse }) {
   if (rows.length === 0) return null;
 
   // An exam sat by several of my roots (a cross-listing) is red with the
-  // clashes of the first that reports any, as in the calendar.
-  const clashOf = ({ exam, oral, courses }) =>
-    oral
-      ? undefined
-      : courses
-          .map((course) => examClashes(plannedExams, plan, course).get(exam.id))
-          .find(Boolean);
+  // clashes of the first that reports any, as in the calendar. Oral exams
+  // never clash: `examClashes` keys written exams only.
+  const clashOf = ({ exam, courses }) =>
+    courses
+      .map((course) => examClashes(plannedExams, plan, course).get(exam.id))
+      .find(Boolean);
 
   return (
     <div className="mt-4">
@@ -72,92 +68,76 @@ export default function ExamTable({ semester, onOpenCourse }) {
         </div>
       </div>
 
-      {/* p-px: the rows' outline is a 1px ring drawn outside the box, which
-          the scroll container would otherwise clip. */}
-      <div className="overflow-x-auto p-px">
+      <div role="table" aria-labelledby="exam-table-heading">
         <div
-          role="table"
-          aria-labelledby="exam-table-heading"
-          className="min-w-[36rem]"
+          role="row"
+          className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
         >
-          <div
-            role="row"
-            className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
-          >
-            <div role="columnheader" className="col-span-2">
-              Date
-            </div>
-            <div role="columnheader" className="col-span-2">
-              Time
-            </div>
-            <div role="columnheader" className="col-span-3">
-              Course
-            </div>
-            <div role="columnheader" className="col-span-2">
-              BYOD
-            </div>
-            <div role="columnheader" className="col-span-3">
-              Clash
-            </div>
+          <div role="columnheader" className="col-span-3">
+            Date
           </div>
-          <div
-            role="rowgroup"
-            className="ring-1 ring-black ring-opacity-5 md:rounded-lg"
-          >
-            {rows.map((row) => {
-              const { exam, oral, courses } = row;
-              const clash = clashOf(row);
-              return (
-                <div
-                  key={exam.id}
-                  role="row"
-                  className={`${ROW_GRID_CLASSES} px-2 py-1 text-sm text-gray-900 rounded group hover:bg-gray-300`}
-                >
-                  <div role="cell" className="col-span-2">
-                    {oral
-                      ? formatExamDateRange(exam.dateStart, exam.dateEnd)
-                      : formatExamDate(exam.date)}
-                  </div>
-                  <div role="cell" className="col-span-2">
+          <div role="columnheader" className="col-span-3">
+            Time
+          </div>
+          <div role="columnheader" className="col-span-6">
+            Course
+          </div>
+        </div>
+        <div
+          role="rowgroup"
+          className="ring-1 ring-black ring-opacity-5 md:rounded-lg"
+        >
+          {rows.map((row) => {
+            const { exam, oral, courses } = row;
+            const clash = clashOf(row);
+            return (
+              <div
+                key={exam.id}
+                role="row"
+                className={`${ROW_GRID_CLASSES} px-2 py-1 text-sm text-gray-900 rounded group hover:bg-gray-300`}
+              >
+                <div role="cell" className="col-span-3">
+                  {oral
+                    ? formatExamDateRange(exam.dateStart, exam.dateEnd)
+                    : formatExamDate(exam.date)}
+                </div>
+                <div role="cell" className="col-span-3">
+                  <div>
                     {oral
                       ? "Oral — individual time in Compass"
                       : `${exam.slot} · ${exam.durationMin} min`}
                   </div>
-                  <div
-                    role="cell"
-                    className="col-span-3 min-w-0 font-semibold truncate"
-                  >
+                  {/* Present-or-silent, never "not BYOD". */}
+                  {exam.byod === true && (
+                    <span className="inline-block rounded bg-hsg-100 px-1 text-xs text-hsg-800">
+                      digital (BYOD)
+                    </span>
+                  )}
+                </div>
+                <div role="cell" className="col-span-6 min-w-0 break-words">
+                  <div>
                     {courses.map((course, index) => (
                       <span key={course.courseNumber ?? index}>
                         {index > 0 && ", "}
-                        <span
-                          className="cursor-pointer"
+                        <button
+                          type="button"
+                          className="text-left font-semibold hover:underline"
                           onClick={() => onOpenCourse(course)}
                         >
                           {course.shortName}
-                        </span>
+                        </button>
                       </span>
                     ))}
                   </div>
-                  <div role="cell" className="col-span-2">
-                    {/* Present-or-silent, never "not BYOD". */}
-                    {exam.byod === true && (
-                      <span className="rounded bg-hsg-100 px-1 text-xs text-hsg-800">
-                        digital (BYOD)
-                      </span>
-                    )}
-                  </div>
-                  <div role="cell" className="col-span-3 min-w-0 break-words">
-                    {clash && (
-                      <span className="text-danger">
-                        {formatExamClash(clash, true)}
-                      </span>
-                    )}
-                  </div>
+                  {clash && (
+                    <div className="text-danger">
+                      {formatExamClash(clash, true)}
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

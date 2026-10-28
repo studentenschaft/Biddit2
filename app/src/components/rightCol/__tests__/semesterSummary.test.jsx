@@ -247,8 +247,6 @@ const OPS = {
 };
 
 const READY = { status: "ready", plan: mockData.examSchedule };
-const SOURCE =
-  "Winter 2027 plan, published 18.08.2026. Indicative — verify officially.";
 
 const renderExamSummary = ({
   courses = [MICRO, MACRO, OPS],
@@ -343,16 +341,6 @@ describe("semester summary exam check", () => {
     expect(screen.getByTestId("exam-table")).toHaveTextContent("HS26");
   });
 
-  it("counts the clashing exams and points at the red markers", () => {
-    renderExamSummary();
-
-    expect(
-      screen.getByText(
-        `Exam check: 2 exams clash — see the red markers. ${SOURCE}`,
-      ),
-    ).toBeInTheDocument();
-  });
-
   it("says so when one exam clashes", () => {
     // Pins the singular wording on a synthetic plan. Exam B is cross-listed
     // with 3,200 and 7,850 and overlaps 3,200's exam A. An exam also sat by
@@ -373,7 +361,7 @@ describe("semester summary exam check", () => {
 
     expect(
       screen.getByText(
-        `Exam check: 1 exam clashes — see the red markers. ${SOURCE}`,
+        `Exam check: 1 exam clashes — see the red markers.`,
       ),
     ).toBeInTheDocument();
   });
@@ -383,7 +371,7 @@ describe("semester summary exam check", () => {
 
     expect(
       screen.getByText(
-        `Exam check: no clashes between your central written exams. ${SOURCE}`,
+        `Exam check: no clashes between your central written exams.`,
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
@@ -415,7 +403,7 @@ describe("semester summary exam check", () => {
 
     expect(
       screen.getByText(
-        `Exam check: no clashes between your central written exams. ${SOURCE} 1 central course not found in the plan — check it officially.`,
+        `Exam check: no clashes between your central written exams. 1 central course not found in the plan — check it officially.`,
       ),
     ).toBeInTheDocument();
   });
@@ -434,7 +422,7 @@ describe("semester summary exam check", () => {
 
     expect(
       screen.getByText(
-        `Exam check: 2 exams clash — see the red markers. ${SOURCE} 2 central courses not found in the plan — check them officially.`,
+        `Exam check: 2 exams clash — see the red markers. 2 central courses not found in the plan — check them officially.`,
       ),
     ).toBeInTheDocument();
   });

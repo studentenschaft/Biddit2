@@ -52,7 +52,7 @@ const renderTable = ({ courses, planState = READY, onOpenCourse = vi.fn() }) =>
     </RecoilRoot>,
   );
 
-/** The body rows, each as its cells' text. */
+/** The body rows, each as its cells' first line (BYOD and clashes sit below). */
 const bodyRows = () =>
   screen
     .getAllByRole("row")
@@ -60,7 +60,7 @@ const bodyRows = () =>
     .map((row) =>
       within(row)
         .getAllByRole("cell")
-        .map((cell) => cell.textContent),
+        .map((cell) => cell.firstChild.textContent),
     );
 
 const rowOf = (text) => screen.getByText(text).closest('[role="row"]');
@@ -88,8 +88,8 @@ describe("ExamTable", () => {
 
     expect(
       screen.getAllByRole("columnheader").map((th) => th.textContent),
-    ).toEqual(["Date", "Time", "Course", "BYOD", "Clash"]);
-    expect(bodyRows().map(([date, time, name]) => [date, time, name])).toEqual([
+    ).toEqual(["Date", "Time", "Course"]);
+    expect(bodyRows()).toEqual([
       ["Mon 18.01.2027", "09:15 · 90 min", "Microeconomics II"],
       ["Mon 18.01.2027", "09:15 · 120 min", MACRO_TITLE],
       [
@@ -131,7 +131,7 @@ describe("ExamTable", () => {
     const onOpenCourse = vi.fn();
     renderTable({ courses: [MICRO], onOpenCourse });
 
-    fireEvent.click(screen.getByText("Microeconomics II"));
+    fireEvent.click(screen.getByRole("button", { name: "Microeconomics II" }));
     expect(onOpenCourse).toHaveBeenCalledWith(expect.objectContaining(MICRO));
   });
 
