@@ -203,3 +203,9 @@ per navigation, session starts with `page_view` then
   `@azure/msal-node` (a Node.js library that bundled uuid 8) was removed.
   Node 20+ is required (22 recommended; set via `app/.nvmrc`).
 - uuid dropped; error ids use `crypto.randomUUID()`.
+- Dependencies patched to close the remaining Dependabot alerts: vite 6.4.5,
+  vitest 4.1.12, follow-redirects 1.16.2, source-map-js 1.2.2 and
+  postcss-selector-parser 6.1.5. The unused `@tailwindcss/typography` was
+  removed, because it pinned a vulnerable postcss-selector-parser. None of
+  these packages ship to the browser: the JavaScript bundle is unchanged and
+  the CSS only loses the unused `.prose` rules (12 KB).
