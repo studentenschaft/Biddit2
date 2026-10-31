@@ -12,6 +12,7 @@ import {
 
 import { useRecoilState, useRecoilValue } from "recoil";
 import { authTokenState } from "../../recoil/authAtom";
+import { useDegradedMode } from "../../common/useDegradedMode";
 
 // import { ReviewCourse } from "./ReviewCourse";
 import { StarIcon } from "@heroicons/react/outline";
@@ -75,6 +76,7 @@ export const ReviewButton = ({ showLabel = false }) => {
   // };
 
   const token = useRecoilValue(authTokenState);
+  const { isDegradedMode } = useDegradedMode();
 
   // this object can ultimately be passed to the backend
   // check the handleSubmit function for more details
@@ -187,6 +189,12 @@ export const ReviewButton = ({ showLabel = false }) => {
         aria-label={showLabel ? undefined : NAV_LABELS.review}
         className={`relative ${navItemClassName(showLabel)}`}
         onClick={() => updateCookie()}
+        disabled={isDegradedMode}
+        title={
+          isDegradedMode
+            ? "Course ratings temporarily unavailable — back soon"
+            : undefined
+        }
       >
         <StarIcon
           className={`block w-6 h-6 shrink-0 ${

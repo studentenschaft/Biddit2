@@ -7,6 +7,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { calculateCreditsAndGrades } from "../helpers/calculateGrades";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { useCourseSelection } from "../helpers/useCourseSelection";
+import { useDegradedMode } from "../common/useDegradedMode";
 
 /**
  * Helper to format numbers to two decimal places.
@@ -44,7 +45,7 @@ const getBackgroundColor = (isCompleted, level, isPlaceholder = false) => {
 /**
  * CustomGradeInput component allows users to input and update custom grades.
  */
-const CustomGradeInput = React.memo(({ initialValue, onUpdate }) => {
+const CustomGradeInput = React.memo(({ initialValue, onUpdate, disabled = false }) => {
   const [inputValue, setInputValue] = useState(initialValue?.toString() || "");
   const [isFocused, setIsFocused] = useState(false);
 
@@ -93,7 +94,14 @@ const CustomGradeInput = React.memo(({ initialValue, onUpdate }) => {
   };
 
   return (
-    <div className="relative inline-flex items-center">
+    <div
+      className="relative inline-flex items-center"
+      title={
+        disabled
+          ? "What-if grades temporarily unavailable — back soon"
+          : undefined
+      }
+    >
       <input
         type="text"
         inputMode="decimal"
@@ -105,13 +113,15 @@ const CustomGradeInput = React.memo(({ initialValue, onUpdate }) => {
           setIsFocused(false);
           validateAndUpdate();
         }}
-        className={`w-12 h-6 text-right bg-gray-100 border-none text-sm px-1 rounded 
-          ${isFocused ? "ring-1 ring-green-500" : ""} 
-          ${inputValue ? "pr-5" : "pr-1"} 
+        disabled={disabled}
+        className={`w-12 h-6 text-right bg-gray-100 border-none text-sm px-1 rounded
+          ${isFocused ? "ring-1 ring-green-500" : ""}
+          ${inputValue ? "pr-5" : "pr-1"}
+          ${disabled ? "opacity-50 cursor-not-allowed" : ""}
           focus:outline-none focus:ring-1 focus:ring-green-500`}
         placeholder="-"
       />
-      {inputValue && (
+      {inputValue && !disabled && (
         <button
           onClick={clearValue}
           className="absolute right-1 text-gray-400 hover:text-gray-600"
@@ -139,6 +149,7 @@ const CustomGradeInput = React.memo(({ initialValue, onUpdate }) => {
 CustomGradeInput.propTypes = {
   initialValue: PropTypes.number,
   onUpdate: PropTypes.func.isRequired,
+  disabled: PropTypes.bool,
 };
 
 // Set a display name for the memoized component
@@ -159,6 +170,7 @@ const GradeTranscript = ({
 }) => {
   const [customGradeUpdate, setCustomGradeUpdate] = useState(0);
   const { getCustomGrade, updateCustomGrade } = useCustomGrades();
+  const { isDegradedMode } = useDegradedMode();
 
   // Initialize course selection hook for handling saved courses
   const { addOrRemoveCourse } = useCourseSelection({
@@ -366,6 +378,7 @@ const GradeTranscript = ({
                           onUpdate={(value) =>
                             handleCustomGradeChange(subItem.shortName, value)
                           }
+                          disabled={isDegradedMode}
                         />
                       )}
                     </div>
