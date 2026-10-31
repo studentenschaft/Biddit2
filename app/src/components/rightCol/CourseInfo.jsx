@@ -11,6 +11,8 @@ import SimilarCourses from "./SimilarCourses.jsx";
 import { RATING_TOOLTIP_TEXTS } from "../../constants/ratingTooltips";
 import ExerciseGroupDisclaimer from "../common/ExerciseGroupDisclaimer";
 import { isExerciseGroup } from "../helpers/smartExerciseGroupHandler";
+import ExamSchedule from "./ExamSchedule.jsx";
+import { courseDetailsSemesterAtom } from "../recoil/courseDetailsSemesterAtom";
 import { useDegradedMode } from "../common/useDegradedMode";
 import DegradedPlaceholder from "../common/DegradedPlaceholder";
 
@@ -18,6 +20,7 @@ import DegradedPlaceholder from "../common/DegradedPlaceholder";
 import {
   selectedCourseInfoSelector,
   selectedCourseSemesterSelector,
+  selectedSemesterSelector,
 } from "../recoil/unifiedCourseDataSelectors";
 
 // error handling
@@ -32,6 +35,8 @@ const UNKNOWN_EXAM_TYPE = "—";
 export default function CourseInfo() {
   const selectedCourse = useRecoilValue(selectedCourseInfoSelector);
   const semesterAbbreviation = useRecoilValue(selectedCourseSemesterSelector);
+  const selectedSemester = useRecoilValue(selectedSemesterSelector);
+  const openedForSemester = useRecoilValue(courseDetailsSemesterAtom);
   const authToken = useRecoilValue(authTokenState);
   const { isDegradedMode } = useDegradedMode();
   const [examinationIdState, setExaminationIdState] = useRecoilState(
@@ -191,6 +196,10 @@ export default function CourseInfo() {
     );
   }
 
+  // Not every catalog entry carries it (exercise groups, preview data), and a
+  // missing one used to take the whole panel down.
+  const achievementFormStatus = selectedCourse.achievementFormStatus ?? {};
+
   return (
     <>
       {/* // Course Name and Link to courses page and course info sheet // */}
@@ -233,13 +242,13 @@ export default function CourseInfo() {
             <div className="" label="credits and exam info">
               {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
               {selectedCourse.classification}{" "}
-              {selectedCourse.achievementFormStatus.isCentral &&
-              selectedCourse.achievementFormStatus.isDeCentral
-                ? `| Central & Decentral (${selectedCourse.achievementFormStatus.description})`
-                : selectedCourse.achievementFormStatus.isCentral
-                ? `| Central (${selectedCourse.achievementFormStatus.description})`
-                : selectedCourse.achievementFormStatus.isDeCentral
-                ? `| Decentral (${selectedCourse.achievementFormStatus.description})`
+              {achievementFormStatus.isCentral &&
+              achievementFormStatus.isDeCentral
+                ? `| Central & Decentral (${achievementFormStatus.description})`
+                : achievementFormStatus.isCentral
+                ? `| Central (${achievementFormStatus.description})`
+                : achievementFormStatus.isDeCentral
+                ? `| Decentral (${achievementFormStatus.description})`
                 : ""}
             </div>
             <div className="mb-4">
@@ -371,6 +380,21 @@ export default function CourseInfo() {
             <h2 className="text-lg font-bold text-gray-700 ">
               Exam Information
             </h2>
+            {/* A projected semester reuses its reference's cisId, so the
+                lookup above can name HS26 while HS27 is on screen, or while
+                the map opened the course from an HS27 card. Exam dates are
+                judged on the semester the student is looking at; any
+                mismatch shows none. */}
+            <ExamSchedule
+              course={selectedCourse}
+              semester={
+                semesterAbbreviation === selectedSemester &&
+                (openedForSemester === null ||
+                  openedForSemester === selectedSemester)
+                  ? semesterAbbreviation
+                  : null
+              }
+            />
             <div className="pb-1">
               {examInformationState ? (
                 examInformationState.examinationParts.map((part, index) => {
@@ -389,7 +413,7 @@ export default function CourseInfo() {
                 })
               ) : (
                 <div className="text-base text-gray-700">
-                  No Exam Information
+                  No exam breakdown available
                 </div>
               )}
             </div>

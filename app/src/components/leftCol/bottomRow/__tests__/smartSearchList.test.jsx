@@ -295,10 +295,10 @@ describe("smart search in the course list", () => {
 
     const selectedRow = screen
       .getByText("Data Visualisation")
-      .closest("div.flex.w-full");
+      .closest("[data-testid='course-list-row']");
     const otherRow = screen
       .getByText("Machine Learning")
-      .closest("div.flex.w-full");
+      .closest("[data-testid='course-list-row']");
 
     expect(
       selectedRow.querySelector("#select_course").className

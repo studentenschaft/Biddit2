@@ -424,6 +424,51 @@ describe("useCurriculumPlan hook integration", () => {
     expect(success).toBe(true);
   });
 
+  it("moveCourse rejects a cross-semester move of an enrolled course", async () => {
+    const { useCurriculumPlan } = await import("../useCurriculumPlan");
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    let success;
+    await act(async () => {
+      success = await result.current.moveCourse("ABC123", "FS26", "HS26", "Core", {
+        isEnrolled: true,
+      });
+    });
+
+    expect(success).toBe(false);
+    expect(curriculumPlansApi.upsertPlacement).not.toHaveBeenCalled();
+  });
+
+  it("moveCourse persists a category-only move of an enrolled course without a placement", async () => {
+    const { useCurriculumPlan } = await import("../useCurriculumPlan");
+
+    const { result } = renderHook(() => useCurriculumPlan(), { wrapper });
+
+    let success;
+    await act(async () => {
+      success = await result.current.moveCourse(
+        "ABC123",
+        "FS26",
+        "FS26",
+        "Contextual Studies/Skills",
+        { isEnrolled: true },
+      );
+    });
+
+    expect(success).toBe(true);
+    const call = curriculumPlansApi.upsertPlacement.mock.calls.find(
+      (c) => c[1] === "course-ABC123",
+    );
+    expect(call).toBeDefined();
+    expect(call[2]).toMatchObject({
+      type: "course",
+      courseId: "ABC123",
+      semester: "FS26",
+      categoryPath: "Contextual Studies/Skills",
+    });
+  });
+
   it("removeCourse returns true", async () => {
     const { useCurriculumPlan } = await import("../useCurriculumPlan");
 

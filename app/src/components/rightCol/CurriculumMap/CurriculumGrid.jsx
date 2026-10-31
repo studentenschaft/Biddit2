@@ -24,6 +24,59 @@ import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { useHorizontalScrollAffordance } from "../../helpers/useHorizontalScrollAffordance";
 import { useGridLayout } from "../../helpers/useGridLayout";
+import {
+  getRequirementThreshold,
+  getFillPercentage,
+  formatCreditRange,
+} from "../../recoil/curriculumMapSelector";
+import { formatEcts } from "../../helpers/formatEcts";
+
+
+/**
+ * Credit summary for a parent band: the credits that actually count toward the
+ * requirement, plus any earned beyond a child's ceiling that therefore do not.
+ */
+const ParentCreditSummary = ({ parent }) => {
+  const label = formatCreditRange(parent);
+  if (!label) return null;
+
+  return (
+    <span className="text-[10px] text-gray-600 whitespace-nowrap">
+      <span
+        className={
+          parent.isComplete ? "font-semibold text-green-700" : "font-medium"
+        }
+      >
+        {formatEcts(parent.countedTotal)}
+      </span>
+      <span className="text-gray-500"> / {label} ECTS</span>
+      {parent.excessCredits > 0 && (() => {
+        const excess = formatEcts(parent.excessCredits);
+        const explanation = `${excess} ECTS beyond a category maximum — not counted toward ${parent.name}`;
+        return (
+          <span
+            className="ml-1 px-1 rounded bg-gray-200 text-gray-600 font-medium align-middle"
+            title={explanation}
+            aria-label={explanation}
+          >
+            +{excess}
+          </span>
+        );
+      })()}
+    </span>
+  );
+};
+
+ParentCreditSummary.propTypes = {
+  parent: PropTypes.shape({
+    name: PropTypes.string,
+    minCredits: PropTypes.number,
+    maxCredits: PropTypes.number,
+    countedTotal: PropTypes.number,
+    excessCredits: PropTypes.number,
+    isComplete: PropTypes.bool,
+  }).isRequired,
+};
 
 const CurriculumGrid = ({
   categories,
@@ -55,7 +108,12 @@ const CurriculumGrid = ({
       (c) => c.courseNumber === item.courseId || c.id === item.courseId
     );
 
-    openCourseDetails(fullCourse, { source: "curriculum-map" });
+    // A card of a projected semester holds a course of its reference
+    // semester, so the course alone would pass for that one.
+    openCourseDetails(fullCourse, {
+      source: "curriculum-map",
+      semester: semKey,
+    });
   }, [unifiedCourseData, openCourseDetails]);
 
   // Scroll affordance — gradient fades indicating hidden content
@@ -318,7 +376,7 @@ const CurriculumGrid = ({
                   <Fragment key={parent.id}>
                     {/* Parent group header spanning all columns */}
                     {parent.children.length > 1 && (() => {
-                      const targetCredits = parent.maxCredits || parent.minCredits || 0;
+                      const targetCredits = getRequirementThreshold(parent);
                       return (
                         <div
                           className="relative bg-gray-100 p-2 border-b border-gray-100 flex items-center gap-2 overflow-hidden"
@@ -330,7 +388,7 @@ const CurriculumGrid = ({
                                 parent.isComplete ? "bg-green-100" : "bg-gray-200"
                               }`}
                               style={{
-                                width: `${Math.min(100, Math.round((((parent.earnedCredits || 0) + (parent.plannedCredits || 0)) / targetCredits) * 100))}%`,
+                                width: `${getFillPercentage(parent.countedTotal, parent)}%`,
                               }}
                             />
                           )}
@@ -338,23 +396,7 @@ const CurriculumGrid = ({
                             <span className="font-bold text-sm text-gray-800">
                               {parent.name}
                             </span>
-                            {targetCredits > 0 && (
-                              <span className="text-[10px] text-gray-600">
-                                <span
-                                  className={
-                                    parent.isComplete
-                                      ? "font-semibold text-green-700"
-                                      : "font-medium"
-                                  }
-                                >
-                                  {(parent.earnedCredits || 0) + (parent.plannedCredits || 0)}
-                                </span>
-                                <span className="text-gray-500">
-                                  {" "}
-                                  / {targetCredits} ECTS
-                                </span>
-                              </span>
-                            )}
+                            <ParentCreditSummary parent={parent} />
                           </div>
                         </div>
                       );
@@ -398,7 +440,7 @@ const CurriculumGrid = ({
             {categoryHierarchy.map((parent) => {
               const isParentCollapsed = collapsedParents.has(parent.id);
               const childPaths = parent.children?.map((c) => c.path) || [];
-              const targetCredits = parent.maxCredits || parent.minCredits || 0;
+              const targetCredits = getRequirementThreshold(parent);
 
               return (
                 <div
@@ -418,7 +460,7 @@ const CurriculumGrid = ({
                         parent.isComplete ? 'bg-green-100' : 'bg-gray-200'
                       }`}
                       style={{
-                        width: `${Math.min(100, Math.round((((parent.earnedCredits || 0) + (parent.plannedCredits || 0)) / targetCredits) * 100))}%`,
+                        width: `${getFillPercentage(parent.countedTotal, parent)}%`,
                       }}
                     />
                   )}
@@ -444,14 +486,7 @@ const CurriculumGrid = ({
                         <span className="font-bold text-sm text-gray-800 truncate">
                           {parent.name}
                         </span>
-                        {targetCredits > 0 && (
-                          <span className="text-[10px] text-gray-600">
-                            <span className={parent.isComplete ? "font-semibold text-green-700" : "font-medium"}>
-                              {(parent.earnedCredits || 0) + (parent.plannedCredits || 0)}
-                            </span>
-                            <span className="text-gray-500"> / {targetCredits} ECTS</span>
-                          </span>
-                        )}
+                        <ParentCreditSummary parent={parent} />
                       </div>
                       <button
                         onClick={() => toggleParentCollapse(parent.id, childPaths)}

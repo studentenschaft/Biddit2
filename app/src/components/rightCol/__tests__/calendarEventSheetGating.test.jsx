@@ -18,6 +18,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const CALENDAR_ENTRIES = "calendar-entries-selector";
 const CURRENT_SEMESTER = "current-semester-selector";
+const SELECTED_SEMESTER = "selected-semester-selector";
+const EXAM_EVENTS = "exam-calendar-events-selector";
 const IS_FUTURE_SEMESTER = "is-future-semester-selector";
 
 const fullCalendar = vi.hoisted(() => ({ props: null }));
@@ -40,6 +42,10 @@ vi.mock("../../recoil/calendarEntriesSelector", () => ({
 }));
 vi.mock("../../recoil/unifiedCourseDataSelectors", () => ({
   currentSemesterSelector: CURRENT_SEMESTER,
+  selectedSemesterSelector: SELECTED_SEMESTER,
+}));
+vi.mock("../../recoil/examScheduleSelectors", () => ({
+  examCalendarEventsSelector: () => EXAM_EVENTS,
 }));
 vi.mock("../../recoil/isFutureSemesterSelected", () => ({
   isFutureSemesterSelected: IS_FUTURE_SEMESTER,
@@ -82,6 +88,8 @@ beforeEach(() => {
     { title: "Corporate Finance", start: START, end: END },
   ]);
   recoil.values.set(CURRENT_SEMESTER, "FS26");
+  recoil.values.set(SELECTED_SEMESTER, "FS26");
+  recoil.values.set(EXAM_EVENTS, []);
   recoil.values.set(IS_FUTURE_SEMESTER, false);
 });
 
@@ -103,7 +111,8 @@ describe("Calendar event sheet viewport gate", () => {
     setViewportWidth(390);
     const clickEvent = await renderCalendar();
 
-    act(() => clickEvent(EVENT_ARG));
+    // Async act: the Dialog settles its transition a tick after it opens.
+    await act(async () => clickEvent(EVENT_ARG));
 
     expect(sheet()).toBeInTheDocument();
     expect(screen.getByText("Corporate Finance")).toBeInTheDocument();
@@ -130,23 +139,29 @@ describe("Calendar event sheet viewport gate", () => {
   });
 
   /**
-   * The sheet and the hover tooltip describe the same event, so they must not
-   * disagree about the clock — the tooltip uses toLocaleTimeString, and the
-   * sheet used to use moment's "hh:mm A".
+   * The sheet and the hover tooltip describe the same event, so they share one
+   * clock, and it is the 24-hour one students read their timetable in.
    */
-  it("shows the same clock the hover tooltip uses", async () => {
+  it("shows 24-hour times", async () => {
     setViewportWidth(390);
     const clickEvent = await renderCalendar();
 
-    act(() => clickEvent(EVENT_ARG));
+    await act(async () => clickEvent(EVENT_ARG));
 
-    const asTooltipWouldRender = (date) =>
-      date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    expect(
-      screen.getByText(
-        `${asTooltipWouldRender(START)} - ${asTooltipWouldRender(END)}`,
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("14:15 - 16:00")).toBeInTheDocument();
+  });
+
+  it("falls back to N/A for a missing room", async () => {
+    setViewportWidth(390);
+    const clickEvent = await renderCalendar();
+
+    await act(async () =>
+      clickEvent({
+        event: { ...EVENT_ARG.event, extendedProps: { conflictsWith: [] } },
+      }),
+    );
+
+    expect(screen.getByText("Room: N/A")).toBeInTheDocument();
   });
 
   /**
@@ -158,7 +173,7 @@ describe("Calendar event sheet viewport gate", () => {
     const { default: Calendar } = await import("../Calendar");
     const { rerender } = render(<Calendar />);
 
-    act(() => fullCalendar.props.eventClick(EVENT_ARG));
+    await act(async () => fullCalendar.props.eventClick(EVENT_ARG));
     expect(sheet()).toBeInTheDocument();
 
     act(() => {
@@ -167,6 +182,8 @@ describe("Calendar event sheet viewport gate", () => {
       ]);
     });
     rerender(<Calendar />);
+    // The closing Dialog settles its transition a tick later.
+    await act(async () => {});
 
     expect(sheet()).toBeNull();
   });

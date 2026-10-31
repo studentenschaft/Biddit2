@@ -117,6 +117,17 @@ const extractClassifications = (categoryItem) => {
       keywords: ["core", "kern", "foundation"],
       values: ["core", "kern", "Core", "Foundation", "Kernbereich"],
     },
+    {
+      keywords: ["skill", "kompetenz", "competence"],
+      values: [
+        "skills",
+        "Skills",
+        "kompetenz",
+        "Kompetenz",
+        "Handlungskompetenz",
+        "Competences",
+      ],
+    },
     { keywords: ["seminar"], values: ["seminar", "Seminar", "Seminare"] },
     {
       keywords: ["integration", "capstone"],
@@ -253,7 +264,7 @@ const flattenCategoriesForGrid = (categories) => {
     ? categories[0].children
     : categories;
 
-  const recurse = (cats, depth, groupingParentId = null) => {
+  const recurse = (cats, depth, groupingParentId = null, ancestors = []) => {
     cats.forEach((cat) => {
       const parentIdForChildren = depth === 0 ? cat.id : groupingParentId;
       const isLeaf = !cat.children?.length;
@@ -263,15 +274,112 @@ const flattenCategoriesForGrid = (categories) => {
           ...cat,
           children: [],
           topLevelParentId: depth === 0 ? null : groupingParentId,
+          // Grouping nodes are not grid rows, so a classification naming one
+          // can only be resolved through the leaves that sit beneath it.
+          ancestors,
         });
       } else {
-        recurse(cat.children, depth + 1, parentIdForChildren);
+        recurse(cat.children, depth + 1, parentIdForChildren, [
+          ...ancestors,
+          { id: cat.id, name: cat.name },
+        ]);
       }
     });
   };
 
-  recurse(effectiveCategories, 0, null);
+  recurse(effectiveCategories, 0, null, []);
   return flattened;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Credit requirements
+//
+// A scorecard requirement node encodes a RANGE, not a single target:
+// `minCredits` is the floor you must reach, `maxCredits` the ceiling that
+// counts toward the parent. Anything above the ceiling is earned but does not
+// count.
+//
+// A `maxCredits` of 0 means "no ceiling", NOT "counts for nothing" — the
+// university's own roll-up confirms it: in Scorecard_BBWL, Contextual Studies
+// reports sumOfCredits 13, which includes all 4 credits from its Languages
+// child even though that child is min 0 / max 0. Such a node simply carries
+// neither a floor nor a ceiling.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Credits a category must reach to count as satisfied. 0 = no requirement. */
+export const getRequirementThreshold = ({
+  minCredits = 0,
+  maxCredits = 0,
+} = {}) => (minCredits > 0 ? minCredits : maxCredits || 0);
+
+const getTotal = ({ earnedCredits = 0, plannedCredits = 0 } = {}) =>
+  earnedCredits + plannedCredits;
+
+/**
+ * True when a category has a real requirement and meets it. Drives the green
+ * treatment, so a category with no requirement is never "complete".
+ */
+const meetsRequirement = (category) => {
+  const threshold = getRequirementThreshold(category);
+  return threshold > 0 && getTotal(category) >= threshold;
+};
+
+/**
+ * True when a category has an explicit minimum and is below it. Drives the
+ * parent gate.
+ *
+ * Keys off `minCredits` alone, NOT `getRequirementThreshold`: a maximum is a
+ * ceiling, not an obligation, so a min-0/max-12 bucket ("Skills") sitting at 4
+ * is under-filled but not deficient and must not hold its parent back.
+ *
+ * Consequently this is not the negation of `meetsRequirement` — a category can
+ * both fail to be complete and fail to fall short. That asymmetry is what keeps
+ * parents of unconstrained leaves reachable.
+ */
+const fallsShort = (category) =>
+  (category?.minCredits || 0) > 0 && getTotal(category) < category.minCredits;
+
+/** A category's ceiling. `Infinity` when it declares none. */
+const getCreditCap = ({ maxCredits = 0 } = {}) =>
+  maxCredits > 0 ? maxCredits : Infinity;
+
+/**
+ * Roll leaves up into a parent. Each leaf contributes at most its own ceiling;
+ * the remainder is reported as `excessCredits` rather than inflating the total.
+ */
+const summarizeLeafCredits = (leaves = []) =>
+  leaves.reduce(
+    (acc, leaf) => {
+      const total = getTotal(leaf);
+      const counted = Math.min(total, getCreditCap(leaf));
+
+      acc.countedTotal += counted;
+      acc.excessCredits += total - counted;
+      acc.allLeavesMeetRequirement =
+        acc.allLeavesMeetRequirement && !fallsShort(leaf);
+      return acc;
+    },
+    { countedTotal: 0, excessCredits: 0, allLeavesMeetRequirement: true },
+  );
+
+/** "12–27" for a range, "15" when the bounds coincide, "" when unconstrained. */
+export const formatCreditRange = ({ minCredits = 0, maxCredits = 0 } = {}) => {
+  if (!minCredits && !maxCredits) return "";
+  if (!minCredits || !maxCredits || minCredits === maxCredits) {
+    return String(getRequirementThreshold({ minCredits, maxCredits }));
+  }
+  return `${minCredits}–${maxCredits}`;
+};
+
+/**
+ * Progress bar fill, denominated by the completion threshold so the bar reaches
+ * 100% exactly when the requirement is met. A category with min 12 / max 24
+ * sitting at 20 therefore shows a full bar while its label still advertises 24
+ * — intended: the bar tracks the requirement, the label shows the range.
+ */
+export const getFillPercentage = (counted, category) => {
+  const threshold = getRequirementThreshold(category);
+  return threshold > 0 ? Math.min(100, Math.round((counted / threshold) * 100)) : 0;
 };
 
 /**
@@ -302,18 +410,25 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
     const isLeaf = descendantLeaves.length === 0;
     const leaves = isLeaf ? [groupCat] : descendantLeaves;
 
-    const earnedCredits = leaves.reduce(
-      (sum, leaf) => sum + (leaf.earnedCredits || 0),
-      0,
-    );
-    const plannedCredits = leaves.reduce(
-      (sum, leaf) => sum + (leaf.plannedCredits || 0),
-      0,
-    );
-    const totalCredits = earnedCredits + plannedCredits;
-    const targetCredits = groupCat.maxCredits || groupCat.minCredits || 0;
+    const {
+      countedTotal: leafTotal,
+      excessCredits: leafExcess,
+      allLeavesMeetRequirement,
+    } = summarizeLeafCredits(leaves);
+
+    // The parent has a ceiling of its own, so credits can be lost twice: once
+    // to a child's cap, then again to the parent's. Both surface in the badge.
+    const countedTotal = Math.min(leafTotal, getCreditCap(groupCat));
+    const excessCredits = leafExcess + (leafTotal - countedTotal);
+
+    // Complete only when the credits that actually count meet this node's own
+    // requirement AND no leaf below it is short of its own minimum. Without the
+    // second condition an over-filled category masks a starved sibling.
+    const targetCredits = getRequirementThreshold(groupCat);
     const isComplete =
-      targetCredits > 0 && earnedCredits + plannedCredits >= targetCredits;
+      targetCredits > 0 &&
+      countedTotal >= targetCredits &&
+      allLeavesMeetRequirement;
 
     return {
       id: groupCat.id,
@@ -323,9 +438,8 @@ const buildCategoryHierarchy = (categories, flatCategories) => {
       isLeaf,
       minCredits: groupCat.minCredits,
       maxCredits: groupCat.maxCredits,
-      earnedCredits,
-      plannedCredits,
-      totalCredits,
+      countedTotal,
+      excessCredits,
       isComplete,
       children: leaves.map((leaf) => ({
         id: leaf.id,
@@ -363,27 +477,173 @@ const computeSemesterCreditStats = (semesterCourses) => {
   };
 };
 
+/** True when `classification` is covered by a category's keyword list. */
+const matchesValidClassification = (category, lowerClassification) =>
+  category.validClassifications.some(
+    (vc) =>
+      vc.toLowerCase() === lowerClassification ||
+      lowerClassification.includes(vc.toLowerCase()),
+  );
+
 /**
- * Match a course classification to a category using direct name match,
- * then fuzzy keyword match as fallback.
+ * Leaves sitting under a grouping (non-leaf) category of that name. Grid rows
+ * are leaves only, so an ancestor name is otherwise unreachable.
+ */
+const findLeavesUnderAncestor = (lowerClassification, flatCategories) =>
+  flatCategories.filter((cat) =>
+    cat.ancestors.some((a) => a.name.toLowerCase() === lowerClassification),
+  );
+
+/** Best guess among several leaves of one ancestor, using the classification alone. */
+const pickLeafUnderAncestor = (lowerClassification, candidates) =>
+  candidates.find((cat) =>
+    lowerClassification.includes(cat.name.toLowerCase()),
+  ) ||
+  candidates.find((cat) =>
+    matchesValidClassification(cat, lowerClassification),
+  ) ||
+  candidates[0];
+
+/**
+ * Match a classification (or a course-name prefix) to a grid category.
+ *
+ * Order: exact leaf name → ancestor (grouping) name resolved to a leaf, its
+ * only one or the best guess among several → keyword/substring match against a
+ * leaf's validClassifications.
  *
  * @returns {object|undefined} The matched category, or undefined if no match
  */
 const matchClassificationToCategory = (classification, flatCategories) => {
+  if (!classification) return undefined;
   const lowerClassification = classification.toLowerCase();
+  const underAncestor = findLeavesUnderAncestor(
+    lowerClassification,
+    flatCategories,
+  );
 
   return (
     flatCategories.find(
       (cat) => cat.name.toLowerCase() === lowerClassification,
     ) ||
+    (underAncestor.length
+      ? pickLeafUnderAncestor(lowerClassification, underAncestor)
+      : undefined) ||
     flatCategories.find((cat) =>
-      cat.validClassifications.some(
-        (vc) =>
-          vc.toLowerCase() === lowerClassification ||
-          lowerClassification.includes(vc.toLowerCase()),
-      ),
+      matchesValidClassification(cat, lowerClassification),
     )
   );
+};
+
+/** Course names carry their category as a prefix: "Skills: Julia - …". */
+const MAX_PREFIX_WORDS = 3;
+
+/**
+ * Extract the category prefix from a course name, i.e. the text before the
+ * first colon when it is short enough to be a category rather than a title.
+ *
+ * @returns {string|null} The prefix, or null when the name carries none
+ */
+export const inferClassificationFromCourseName = (name) => {
+  if (!name) return null;
+  const colonIndex = name.indexOf(":");
+  if (colonIndex <= 0) return null;
+
+  const prefix = name.slice(0, colonIndex).trim();
+  if (!prefix) return null;
+
+  return prefix.split(/\s+/).length <= MAX_PREFIX_WORDS ? prefix : null;
+};
+
+const FOCUS_AREA_KEYWORDS = [
+  "focus",
+  "schwerpunkt",
+  "concentration",
+  "area of concentration",
+];
+
+/**
+ * Programs without a skills bucket file "Skills:" courses under their focus
+ * area. (A skills bucket itself is already reachable by keyword.)
+ */
+const findFocusAreaLeaf = (flatCategories) =>
+  flatCategories.find((cat) =>
+    FOCUS_AREA_KEYWORDS.some(
+      (kw) =>
+        cat.name.toLowerCase().includes(kw) ||
+        cat.validClassifications.some((vc) => vc.toLowerCase().includes(kw)),
+    ),
+  );
+
+/** Resolve a course-name prefix against a set of leaves. */
+const matchPrefix = (prefix, categories) =>
+  matchClassificationToCategory(prefix, categories) ||
+  (prefix.toLowerCase() === "skills" ? findFocusAreaLeaf(categories) : undefined);
+
+/**
+ * Resolve the grid category for a course: the classification first, the
+ * category prefix carried by the course name second.
+ *
+ * The one wrinkle is an ambiguous ancestor: when the classification names a
+ * grouping node with several leaves, the prefix breaks the tie — but only among
+ * that node's leaves. The classification is what the university says about the
+ * enrolment, so it always wins the group; the prefix reaches other branches only
+ * when the classification matched nothing at all.
+ *
+ * @returns {object|undefined} The matched category, or undefined if no match
+ */
+export const resolveCategoryForCourse = ({
+  classification,
+  courseName,
+  flatCategories = [],
+}) => {
+  const prefix = inferClassificationFromCourseName(courseName);
+  const lowerClassification = (classification || "").toLowerCase();
+
+  const isExactLeaf = flatCategories.some(
+    (cat) => cat.name.toLowerCase() === lowerClassification,
+  );
+  const ambiguousAncestor =
+    lowerClassification && !isExactLeaf
+      ? findLeavesUnderAncestor(lowerClassification, flatCategories)
+      : [];
+
+  if (prefix && ambiguousAncestor.length > 1) {
+    const tiebreak = matchPrefix(prefix, ambiguousAncestor);
+    if (tiebreak) return tiebreak;
+  }
+
+  return (
+    matchClassificationToCategory(classification, flatCategories) ||
+    (prefix ? matchPrefix(prefix, flatCategories) : undefined)
+  );
+};
+
+/**
+ * Least-wrong bucket for a course we could not classify. An elective leaf does
+ * not inflate compulsory progress, so it is preferred over the first column.
+ *
+ * @returns {object|undefined} The fallback category, or undefined if none
+ */
+export const resolveFallbackCategory = (flatCategories = []) =>
+  flatCategories.find((cat) =>
+    cat.validClassifications.some((vc) => vc.toLowerCase() === "elective"),
+  ) || flatCategories[flatCategories.length - 1];
+
+/**
+ * The category a plan placement pins a course to, when that path is a real grid
+ * row. Returns null when the course has no usable placement.
+ *
+ * @returns {string|null} A valid category path, or null
+ */
+const findPlacementCategoryPath = (plannedItems, courseId, flatCategories) => {
+  const placement = (plannedItems || []).find(
+    (item) => item.type === "course" && item.courseId === courseId,
+  );
+  if (!placement?.categoryPath) return null;
+
+  return flatCategories.some((cat) => cat.path === placement.categoryPath)
+    ? placement.categoryPath
+    : null;
 };
 
 /**
@@ -646,11 +906,14 @@ export const curriculumMapSelector = selector({
 
         // Fallback to classification matching
         if (!targetCatPath) {
-          const matchedCat = matchClassificationToCategory(
+          const matchedCat = resolveCategoryForCourse({
             classification,
+            courseName:
+              course.shortName || fullCourse?.shortName || fullCourse?.description,
             flatCategories,
-          );
-          targetCatPath = matchedCat?.path || flatCategories[0]?.path;
+          });
+          targetCatPath =
+            matchedCat?.path || resolveFallbackCategory(flatCategories)?.path;
 
           if (import.meta.env.DEV && !matchedCat) {
             console.warn(
@@ -695,6 +958,10 @@ export const curriculumMapSelector = selector({
     });
 
     // ── Place enrolled courses ────────────────────────────────────────────
+    // Courses rendered as enrolled cards, so the plan pass does not duplicate
+    // them from their (override) placement.
+    const enrolledCourseIdsBySemester = {};
+
     Object.entries(unifiedCourseData.semesters || {}).forEach(
       ([semKey, semData]) => {
         const normalizedSemKey = normalizeSemesterKey(semKey);
@@ -721,13 +988,31 @@ export const curriculumMapSelector = selector({
           const classification =
             fullCourse.classification || fullCourse.big_type || "elective";
 
-          const matchedCat = matchClassificationToCategory(
-            classification,
+          // A plan placement for the same course is the student's own
+          // correction and outranks any inferred category.
+          const overridePath = findPlacementCategoryPath(
+            curriculumPlan.plannedItems?.[normalizedSemKey],
+            enrolledId,
             flatCategories,
           );
-          const targetCatPath = matchedCat?.path || flatCategories[0]?.path;
 
-          if (import.meta.env.DEV && !matchedCat) {
+          const matchedCat =
+            overridePath === null
+              ? resolveCategoryForCourse({
+                  classification,
+                  courseName: fullCourse.shortName || fullCourse.description,
+                  flatCategories,
+                })
+              : null;
+          const targetCatPath =
+            overridePath ??
+            matchedCat?.path ??
+            resolveFallbackCategory(flatCategories)?.path;
+
+          enrolledCourseIdsBySemester[normalizedSemKey] ??= new Set();
+          enrolledCourseIdsBySemester[normalizedSemKey].add(enrolledId);
+
+          if (import.meta.env.DEV && !matchedCat && overridePath === null) {
             console.warn(
               `[CurriculumMap] No category match for enrolled course "${fullCourse.shortName || enrolledId}"`,
               `\n  Classification: "${classification}"`,
@@ -780,6 +1065,17 @@ export const curriculumMapSelector = selector({
         }
 
         items.forEach((item) => {
+          // The enrolled pass already rendered this course (using this very
+          // placement as its category override) — don't duplicate the card.
+          if (
+            item.type === "course" &&
+            enrolledCourseIdsBySemester[normalizeSemesterKey(semKey)]?.has(
+              item.courseId,
+            )
+          ) {
+            return;
+          }
+
           // First try the stored categoryPath
           let targetCatPath = item.categoryPath;
 
@@ -808,21 +1104,27 @@ export const curriculumMapSelector = selector({
                 );
                 const classification =
                   fullCourse?.classification || item.categoryPath || "elective";
-                const matchedCat = matchClassificationToCategory(
+                const matchedCat = resolveCategoryForCourse({
                   classification,
+                  courseName:
+                    item.shortName ||
+                    fullCourse?.shortName ||
+                    fullCourse?.description,
                   flatCategories,
-                );
+                });
                 targetCatPath =
-                  matchedCat?.path || flatCategories[0]?.path || "";
+                  matchedCat?.path ||
+                  resolveFallbackCategory(flatCategories)?.path ||
+                  "";
               } else {
-                targetCatPath = flatCategories[0]?.path || "";
+                targetCatPath = resolveFallbackCategory(flatCategories)?.path || "";
               }
             }
           }
 
-          // Fall back to first category if still no match
+          // Fall back to the least-wrong bucket if still no match
           if (!targetCatPath) {
-            targetCatPath = flatCategories[0]?.path || "";
+            targetCatPath = resolveFallbackCategory(flatCategories)?.path || "";
           }
 
           if (coursesBySemesterAndCategory[semKey][targetCatPath]) {
@@ -941,10 +1243,7 @@ export const curriculumMapSelector = selector({
         earnedCredits,
         plannedCredits,
         totalCredits: earnedCredits + plannedCredits,
-        isComplete:
-          earnedCredits + plannedCredits >=
-          (cat.maxCredits || cat.minCredits || 0),
-        isOverfilled: earnedCredits + plannedCredits > (cat.maxCredits || 0),
+        isComplete: meetsRequirement({ ...cat, earnedCredits, plannedCredits }),
       };
     });
 
@@ -1080,7 +1379,13 @@ export const _testHelpers = {
   extractCoursesFromHierarchy,
   flattenCategoriesForGrid,
   buildCategoryHierarchy,
+  meetsRequirement,
+  fallsShort,
+  summarizeLeafCredits,
   matchClassificationToCategory,
+  resolveFallbackCategory,
+  inferClassificationFromCourseName,
+  resolveCategoryForCourse,
   estimateCompletion,
   computeSemesterCreditStats,
 };

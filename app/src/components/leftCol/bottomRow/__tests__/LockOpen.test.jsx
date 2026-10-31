@@ -1,86 +1,132 @@
-/**
- * Tests for LockOpen's degraded-mode gate. Mocks `useDegradedMode` directly
- * (same pattern as DegradedModeBanner.test.jsx) and `useCourseSelection` so
- * the test doesn't need to stand up the full wishlist Recoil graph — only
- * the toggle handler and disabled styling are under test here.
- */
+// LockOpen is both a self-contained toggle (course list) and a plain icon inside
+// someone else's button (Transcript). Both roles are pinned here, along with the
+// degraded-mode gate. `useDegradedMode` and `useCourseSelection` are mocked so
+// the test doesn't need to stand up the full wishlist Recoil graph.
 
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, cleanup, fireEvent } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import LockOpen from "../LockOpen";
 import { useDegradedMode } from "../../../common/useDegradedMode";
+
+const addOrRemoveCourse = vi.fn();
 
 vi.mock("../../../common/useDegradedMode", () => ({
   useDegradedMode: vi.fn(),
 }));
 
-const addOrRemoveCourseMock = vi.fn();
 vi.mock("../../../helpers/useCourseSelection", () => ({
-  useCourseSelection: () => ({ addOrRemoveCourse: addOrRemoveCourseMock }),
+  useCourseSelection: () => ({ addOrRemoveCourse }),
 }));
 
-afterEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-});
+const COURSE = {
+  id: "course-1",
+  shortName: "Skills: Werteorientiertes Fundraising",
+  courseNumber: "7,035,1.00",
+  semester: "FS23",
+};
 
-const event = { courseNumber: "1234", selected: false, enrolled: false };
-
-const renderLockOpen = () =>
+const renderInButton = (props) => {
+  const onParentClick = vi.fn();
   render(
     <RecoilRoot>
-      <LockOpen clg="w-4 h-4" event={event} />
+      <button onClick={onParentClick} data-testid="row-button">
+        <LockOpen clg="w-4 h-4" {...props} />
+      </button>
     </RecoilRoot>
   );
+  return { onParentClick, lock: screen.getByTestId("row-button").querySelector("svg") };
+};
 
 describe("LockOpen", () => {
-  describe("normal mode", () => {
-    it("toggles the course on click", () => {
-      useDegradedMode.mockReturnValue({ isDegradedMode: false, message: null });
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useDegradedMode.mockReturnValue({ isDegradedMode: false, message: null });
+  });
 
-      const { container } = renderLockOpen();
-      const svg = container.querySelector("svg");
+  describe("as a plain icon (no event prop)", () => {
+    it("lets the click reach the wrapping button", () => {
+      const { onParentClick, lock } = renderInButton();
 
-      fireEvent.click(svg);
+      fireEvent.click(lock);
 
-      expect(addOrRemoveCourseMock).toHaveBeenCalledWith(event);
+      expect(onParentClick).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not toggle anything itself", () => {
+      const { lock } = renderInButton();
+
+      fireEvent.click(lock);
+
+      expect(addOrRemoveCourse).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("as a self-contained toggle (event prop)", () => {
+    it("toggles the course", () => {
+      const { lock } = renderInButton({ event: COURSE });
+
+      fireEvent.click(lock);
+
+      expect(addOrRemoveCourse).toHaveBeenCalledWith(COURSE);
+    });
+
+    it("stops the click so a parent handler cannot remove the course twice", () => {
+      const { onParentClick, lock } = renderInButton({ event: COURSE });
+
+      fireEvent.click(lock);
+
+      expect(onParentClick).not.toHaveBeenCalled();
+    });
+
+    it("ignores enrolled courses, which the user may not unassign", () => {
+      const { onParentClick, lock } = renderInButton({
+        event: { ...COURSE, enrolled: true },
+      });
+
+      fireEvent.click(lock);
+
+      expect(addOrRemoveCourse).not.toHaveBeenCalled();
+      expect(onParentClick).not.toHaveBeenCalled();
     });
 
     it("has no degraded tooltip or disabled styling", () => {
-      useDegradedMode.mockReturnValue({ isDegradedMode: false, message: null });
+      const { lock } = renderInButton({ event: COURSE });
 
-      const { container } = renderLockOpen();
-      const svg = container.querySelector("svg");
-
-      expect(svg).not.toHaveAttribute("title");
-      expect(svg.getAttribute("class")).not.toContain("cursor-not-allowed");
+      expect(lock).not.toHaveAttribute("title");
+      expect(lock.getAttribute("class")).not.toContain("cursor-not-allowed");
     });
   });
 
   describe("degraded mode", () => {
-    it("no-ops the click handler", () => {
+    beforeEach(() => {
       useDegradedMode.mockReturnValue({ isDegradedMode: true, message: null });
+    });
 
-      const { container } = renderLockOpen();
-      const svg = container.querySelector("svg");
+    it("no-ops the click handler", () => {
+      const { lock } = renderInButton({ event: COURSE });
 
-      fireEvent.click(svg);
+      fireEvent.click(lock);
 
-      expect(addOrRemoveCourseMock).not.toHaveBeenCalled();
+      expect(addOrRemoveCourse).not.toHaveBeenCalled();
+    });
+
+    it("keeps the click from a wrapping button that would toggle the course", () => {
+      const { onParentClick, lock } = renderInButton();
+
+      fireEvent.click(lock);
+
+      expect(onParentClick).not.toHaveBeenCalled();
     });
 
     it("renders disabled styling and a tooltip", () => {
-      useDegradedMode.mockReturnValue({ isDegradedMode: true, message: null });
+      const { lock } = renderInButton({ event: COURSE });
 
-      const { container } = renderLockOpen();
-      const svg = container.querySelector("svg");
-
-      expect(svg).toHaveAttribute(
+      expect(lock).toHaveAttribute(
         "title",
         "Wishlist temporarily unavailable — back soon"
       );
-      expect(svg.getAttribute("class")).toContain("cursor-not-allowed");
+      expect(lock.getAttribute("class")).toContain("cursor-not-allowed");
     });
   });
 });

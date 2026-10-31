@@ -33,6 +33,10 @@ export const isExerciseGroup = (course) => {
 // - Prefer a normalized root key from identifiers like courseNumber/courseId/id
 //   Example: "3,135,1.00" and "3,135,2.04" -> root key "3,135"
 // - Fall back to a cleaned base name when identifiers are missing
+// Deliberately NOT `courseUtils.getCourseRootKey`: that helper resolves ids in
+// `getCourseIdentifier` order (nested course first) for the exam-plan join,
+// and swapping the precedence here would change which groups the ECTS logic
+// below zeroes out.
 const getCourseRootKey = (course) => {
   const raw = course?.courseNumber || course?.courseId || course?.id || null;
   if (!raw || typeof raw !== 'string') return null;
@@ -46,6 +50,53 @@ const getThirdSegment = (course) => {
   const cn = typeof raw === 'string' ? raw : '';
   const m = cn.match(/^\d+,\d+,(\d+)\./);
   return m ? parseInt(m[1], 10) : null;
+};
+
+// The root keys ("a,b") that own a main event ("a,b,1.xx") in a catalog.
+const buildMainEventRootKeys = (courses) => {
+  const rootKeys = new Set();
+
+  courses.forEach((course) => {
+    if (getThirdSegment(course) !== 1) return;
+    const rootKey = getCourseRootKey(course);
+    if (rootKey) rootKeys.add(rootKey);
+  });
+
+  return rootKeys;
+};
+
+// A dependent sub-event carries no ECTS of its own: its title names a companion
+// form (exerciseGroupRegex), or its number is "a,b,N.xx" with N >= 2 and the
+// catalog also lists an "a,b,1.xx" main event. An orphan is decided by its name
+// alone. See ADR 0009.
+const isDependentSubEvent = (course, mainEventRootKeys) => {
+  if (!course) return false;
+  if (isExerciseGroup(course)) return true;
+
+  const segment = getThirdSegment(course);
+  if (segment === null || segment < 2) return false;
+
+  const rootKey = getCourseRootKey(course);
+  return Boolean(rootKey && mainEventRootKeys.has(rootKey));
+};
+
+/**
+ * Zero the ECTS of every dependent sub-event in a flattened catalog, so a
+ * course counts once no matter how many events HSG publishes it as.
+ *
+ * Groups STRICTLY by course-number root key -- unlike processExerciseGroupECTS,
+ * which may fall back to names because it only ever sees a user's own courses.
+ */
+export const processCatalogSubEventECTS = (courses) => {
+  if (!Array.isArray(courses)) return [];
+
+  const mainEventRootKeys = buildMainEventRootKeys(courses);
+
+  return courses.map((course) =>
+    isDependentSubEvent(course, mainEventRootKeys)
+      ? { ...course, credits: 0 }
+      : course
+  );
 };
 
 // Prefer grouping by normalized identifier root; fallback to base-name grouping.
@@ -89,6 +140,12 @@ export const isLikelySubgroupByNumber = (course, courseGroup) => {
   );
 };
 
+// Curriculum map placeholders are user-authored intent ("TBD elective, 4 ECTS"),
+// not catalog entries. Two placeholders with the same label are deliberately
+// distinct, so they must never be treated as lecture/exercise-group duplicates.
+export const isPlaceholderEntry = (course) =>
+  Boolean(course && (course.isPlaceholder || course.status === 'placeholder'));
+
 const createCourseIdentifier = (course) => {
   return course.id || 
          course.hierarchy || 
@@ -103,7 +160,9 @@ export const processExerciseGroupECTS = (courses) => {
     return courses || [];
   }
   
-  const courseGroups = groupCoursesByBaseName(courses);
+  const courseGroups = groupCoursesByBaseName(
+    courses.filter(course => !isPlaceholderEntry(course))
+  );
   const shouldZeroECTS = new Set();
   
   courseGroups.forEach((courseGroup) => {
@@ -143,7 +202,7 @@ export const processExerciseGroupECTS = (courses) => {
   return courses.map(course => {
     const identifier = createCourseIdentifier(course);
     
-    if (shouldZeroECTS.has(identifier)) {
+    if (!isPlaceholderEntry(course) && shouldZeroECTS.has(identifier)) {
       return { ...course, credits: 0 };
     }
     

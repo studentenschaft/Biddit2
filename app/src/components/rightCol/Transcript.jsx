@@ -19,8 +19,11 @@ import { useState } from 'react';
 import GradeTranscript from './GradeTranscript';
 import React, { useMemo, useCallback } from 'react';
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
-import { studyPlanAtom } from '../recoil/studyPlanAtom';
-import { deleteCourse } from '../helpers/api';
+import {
+  CLEAR_LOAD_FAILURE_MESSAGE,
+  clearOutcome,
+  clearSavedCourses,
+} from '../helpers/clearSavedCourses';
 import { trackWishlistCleared } from '../helpers/analytics';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
@@ -46,7 +49,6 @@ const Transcript = () => {
   
   // State needed for GradeTranscript component
   const [selectedCourseIds, setSelectedCourseIds] = useRecoilState(selectedCourseIdsAtom);
-  const [studyPlan, setStudyPlan] = useRecoilState(studyPlanAtom);
   const handleError = useErrorHandler();
   
   // Get current semester for UI
@@ -300,11 +302,7 @@ const Transcript = () => {
     }
   }, [wishlistCourses, selectedCourseIds, setSelectedCourseIds]);
 
-  /**
-   * Handler to clear all saved courses from the backend.
-   * Iterates over ALL study plans (all semesters), not just the current one,
-   * to ensure courses from past semesters are also cleared.
-   */
+  /** Wipes the wishlist across every semester, not just the one on screen. */
   const handleClearCourses = async () => {
     if (
       !window.confirm(
@@ -314,62 +312,23 @@ const Transcript = () => {
       return;
     }
 
-    // Collect all courses from all study plans
-    const allPlansWithCourses = [];
-
-    // Check allPlans array for courses across all semesters
-    if (studyPlan?.allPlans && Array.isArray(studyPlan.allPlans)) {
-      studyPlan.allPlans.forEach(plan => {
-        if (plan?.courses && plan.courses.length > 0) {
-          allPlansWithCourses.push({
-            planId: plan.id,
-            courses: plan.courses
-          });
-        }
-      });
-    }
-
-    // Also check currentPlan if it has courses not in allPlans
-    if (studyPlan?.currentPlan?.courses?.length > 0) {
-      const currentPlanExists = allPlansWithCourses.some(p => p.planId === studyPlan.currentPlan.id);
-      if (!currentPlanExists) {
-        allPlansWithCourses.push({
-          planId: studyPlan.currentPlan.id,
-          courses: studyPlan.currentPlan.courses
-        });
-      }
-    }
-
-    if (allPlansWithCourses.length === 0) {
-      alert("No saved courses found to clear.");
+    let result;
+    try {
+      result = await clearSavedCourses(authToken);
+    } catch (error) {
+      console.error("Error clearing saved courses:", error);
+      alert(CLEAR_LOAD_FAILURE_MESSAGE);
       return;
     }
 
-    const totalCourses = allPlansWithCourses.reduce((sum, plan) => sum + plan.courses.length, 0);
-    console.log(`🧹 [Transcript] Clearing ${totalCourses} courses from ${allPlansWithCourses.length} study plans`);
+    if (result.deleted > 0) {
+      trackWishlistCleared(result.deleted);
+    }
 
-    trackWishlistCleared(totalCourses);
-
-    try {
-      // Iterate over each saved course and call the deleteCourse API.
-      for (const plan of allPlansWithCourses) {
-        console.log(`🧹 [Transcript] Clearing ${plan.courses.length} courses from plan: ${plan.planId}`);
-        for (const courseId of plan.courses) {
-          await deleteCourse(plan.planId, courseId, authToken);
-        }
-      }
-      // Update local study plan state to reflect that all courses have been cleared.
-      setStudyPlan((prev) => ({
-        ...prev,
-        currentPlan: prev.currentPlan ? { ...prev.currentPlan, courses: [] } : null,
-        allPlans: prev.allPlans?.map(plan => ({ ...plan, courses: [] })) || []
-      }));
-
-      alert("All saved courses have been cleared from all semesters - refreshing the page now.");
+    const { message, reload } = clearOutcome(result);
+    alert(message);
+    if (reload) {
       window.location.reload();
-    } catch (error) {
-      console.error("Error clearing saved courses:", error);
-      handleError(error);
     }
   };
 

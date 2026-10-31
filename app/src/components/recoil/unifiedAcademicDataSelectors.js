@@ -8,6 +8,10 @@ import {
   getAvailableCoursesWithFallback,
   findMainProgram
 } from "../helpers/academicDataTransformers";
+import {
+  deriveMainProgramEraStart,
+  isSemesterInProgramEra
+} from "../helpers/programEraScope";
 
 /**
  * Selector to get the current program data
@@ -293,6 +297,15 @@ export const studyOverviewViewSelector = selector({
       )
     );
 
+    // Saved courses arrive keyed by semester alone, with no programme attached.
+    // Without this window a Bachelor-era wishlist entry would be handed to the
+    // current Master programme and enriched from today's catalogue. The entries
+    // stay on the server and stay removable via "Clear all saved courses".
+    const eraStartSemester = deriveMainProgramEraStart(
+      academicData.programs,
+      mainProgramId
+    );
+
     const result = {};
 
     Object.entries(academicData.programs).forEach(([programId, programData]) => {
@@ -315,11 +328,19 @@ export const studyOverviewViewSelector = selector({
           semesterStats: { creditsEarned: 0, coursesCompleted: 0, coursesPlanned: 0, hasActivity: false }
         };
 
+        // The era only scopes the main programme: other programmes keep their
+        // own enrolments, which are already dated by their own scorecard.
+        const isInProgramEra =
+          !isMainProgram || isSemesterInProgramEra(semesterKey, eraStartSemester);
+
         // Get current selections from unifiedCourseDataState (reactive!)
-        const currentSelectedIds = isMainProgram
-          ? (unifiedCourseData.semesters?.[semesterKey]?.selectedIds || [])
+        const currentSelectedIds =
+          isMainProgram && isInProgramEra
+            ? (unifiedCourseData.semesters?.[semesterKey]?.selectedIds || [])
+            : [];
+        const currentEnrolledIds = isInProgramEra
+          ? (unifiedCourseData.semesters?.[semesterKey]?.enrolledIds || [])
           : [];
-        const currentEnrolledIds = unifiedCourseData.semesters?.[semesterKey]?.enrolledIds || [];
 
         // Union of selected and enrolled IDs
         const allSelectedIds = Array.from(new Set([...currentSelectedIds, ...currentEnrolledIds]));

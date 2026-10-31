@@ -5,7 +5,8 @@
  * Shows course name, credits, and status indicators.
  * Uses HSG color palette for consistent branding.
  *
- * Phase 2: Draggable for planned courses (not completed/enrolled)
+ * Draggable for everything but completed courses; enrolled (bid) courses can
+ * be re-filed into another category but not removed.
  * Phase 4: Note, color picker, and label editing
  */
 
@@ -81,15 +82,16 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Planned items and placeholders are draggable (not completed, not enrolled)
-  const isDraggable =
-    !isCompleted && status !== "completed" && status !== "enrolled";
+  // Everything but a completed course can be dragged. Enrolled (bid) courses
+  // are draggable so the student can correct the category they were auto-placed
+  // in; they stay bound to the semester they were bid in (guarded in
+  // useCurriculumPlan.moveCourse).
+  const isEnrolled = status === "enrolled";
+  const isDraggable = !isCompleted && status !== "completed";
 
-  // Items can be removed if they are draggable OR if they are placeholders
-  const isRemovable = isDraggable || isPlaceholder;
-
-  // Items can have notes/colors if draggable OR placeholder
-  const isEditable = isDraggable || isPlaceholder;
+  // Enrolled courses are real commitments: they can be re-filed, never removed
+  // — and, like completed ones, they carry no notes/colors/labels either.
+  const isRemovable = (isDraggable && !isEnrolled) || isPlaceholder;
 
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -322,7 +324,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
       <div className="flex items-center">
         <span className="font-medium leading-tight truncate flex-1 flex items-center">
           {dragHandle}
-          {isPlaceholder && isEditable ? (
+          {isPlaceholder && isRemovable ? (
             <button
               onClick={handleLabelClick}
               className="text-left truncate hover:underline w-full"
@@ -337,7 +339,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
 
       {/* Credits and grade on same line */}
       <div className="flex items-center justify-between mt-0.5 text-[10px]">
-        {isPlaceholder && isEditable ? (
+        {isPlaceholder && isRemovable ? (
           <button
             onClick={handleCreditsClick}
             className="text-gray-500 hover:underline hover:text-gray-700"
@@ -362,7 +364,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
       {/* Action buttons - bottom right, shown on hover */}
       <div className="absolute bottom-0.5 right-1 flex items-center gap-0.5">
         {/* Note indicator - always visible if has note, otherwise only on hover */}
-        {isEditable && (
+        {isRemovable && (
           <button
             onClick={handleNoteClick}
             className={`p-0.5 rounded transition-colors ${
@@ -377,14 +379,14 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
         )}
 
         {/* Non-editable note indicator */}
-        {note && !isEditable && (
+        {note && !isRemovable && (
           <span className="text-blue-500" title={`Note: ${note}`}>
             <AnnotationIcon className="w-3 h-3" />
           </span>
         )}
 
         {/* Color picker button - 4-section color wheel, only on hover */}
-        {isEditable && (
+        {isRemovable && (
           <button
             onClick={handleColorClick}
             className="p-0.5 rounded transition-colors opacity-0 group-hover:opacity-100"

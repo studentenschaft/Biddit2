@@ -9,7 +9,12 @@
 import PropTypes from "prop-types";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
 import { useDndContext } from "@dnd-kit/core";
-import { doesClassificationMatchCategory } from "../../recoil/curriculumMapSelector";
+import {
+  doesClassificationMatchCategory,
+  formatCreditRange,
+  getFillPercentage,
+} from "../../recoil/curriculumMapSelector";
+import { formatEcts } from "../../helpers/formatEcts";
 
 const CategoryHeader = ({
   category,
@@ -47,14 +52,20 @@ const CategoryHeader = ({
   // Column is highlighted if this category OR its parent is complete
   const isHighlighted = isComplete || isParentComplete;
 
-  // Total credits for display
+  // Displayed total is deliberately uncapped, so a category sitting above its
+  // ceiling reads "10 / 9" and the parent's excess badge has a visible source.
   const totalCredits = earnedCredits + plannedCredits;
-  const targetCredits = maxCredits || minCredits || 0;
+  const creditRangeLabel = formatCreditRange({ minCredits, maxCredits });
 
-  // Calculate fill percentage for visual progress
-  const fillPercentage = targetCredits > 0
-    ? Math.min(100, Math.round((totalCredits / targetCredits) * 100))
-    : 0;
+  // The bar, by contrast, tracks the credits that actually count.
+  const cappedTotal = Math.min(
+    totalCredits,
+    maxCredits > 0 ? maxCredits : Infinity,
+  );
+  const fillPercentage = getFillPercentage(cappedTotal, {
+    minCredits,
+    maxCredits,
+  });
 
   // Truncate long names
   const displayName = name.length > 22 ? name.substring(0, 20) + "..." : name;
@@ -88,17 +99,17 @@ const CategoryHeader = ({
           <div className="text-xs font-semibold text-gray-800 leading-tight truncate">
             {displayName}
           </div>
-          <div className="text-[10px] text-gray-700 mt-0.5">
+          <div className="text-[10px] text-gray-700 mt-0.5 whitespace-nowrap">
             <span
               className={
                 isComplete ? "font-semibold text-green-700" : "font-medium"
               }
             >
-              {totalCredits}
+              {formatEcts(totalCredits)}
             </span>
             <span className="text-gray-500">
               {" / "}
-              {targetCredits > 0 ? targetCredits : "?"}
+              {creditRangeLabel || "?"}
             </span>
             <span className="text-gray-500 ml-0.5">ECTS</span>
           </div>
@@ -186,13 +197,13 @@ const CategoryHeader = ({
 
         {/* Credit info - simplified X/Y ECTS format */}
         <div className="flex items-center justify-between mt-auto">
-          <div className="text-[10px] text-gray-700">
+          <div className="text-[10px] text-gray-700 whitespace-nowrap">
             <span className={isComplete ? "font-semibold text-green-700" : "font-medium"}>
-              {totalCredits}
+              {formatEcts(totalCredits)}
             </span>
             <span className="text-gray-500">
               {" / "}
-              {targetCredits > 0 ? targetCredits : "?"}
+              {creditRangeLabel || "?"}
             </span>
             <span className="text-gray-500 ml-0.5">ECTS</span>
           </div>
@@ -214,7 +225,6 @@ CategoryHeader.propTypes = {
     earnedCredits: PropTypes.number,
     plannedCredits: PropTypes.number,
     isComplete: PropTypes.bool,
-    isOverfilled: PropTypes.bool,
     validClassifications: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
   isFirst: PropTypes.bool,

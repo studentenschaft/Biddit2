@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { toast } from "react-toastify";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   curriculumPlanState,
@@ -65,10 +66,21 @@ export const useCurriculumPlan = () => {
    * @param {string} fromSemester - Source semester key
    * @param {string} toSemester - Target semester key
    * @param {string} toCategoryPath - Target category path
+   * @param {object} [options]
+   * @param {boolean} [options.isEnrolled] - Course is a bid/enrolled course
    * @returns {Promise<boolean>} - Whether the move was successful
    */
   const moveCourse = useCallback(
-    async (courseId, fromSemester, toSemester, toCategoryPath) => {
+    async (courseId, fromSemester, toSemester, toCategoryPath, options = {}) => {
+      // An enrolled course belongs to the semester it was bid in; only its
+      // category may be corrected.
+      if (options.isEnrolled && fromSemester !== toSemester) {
+        toast.info("Bid courses stay in their semester — only the category can be changed.", {
+          toastId: "enrolled-move-semester",
+        });
+        return false;
+      }
+
       // Prevent moves to completed semesters
       if (isSemesterCompleted(toSemester)) {
         if (import.meta.env.DEV) {
