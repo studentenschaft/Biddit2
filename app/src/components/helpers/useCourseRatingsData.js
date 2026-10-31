@@ -27,6 +27,7 @@ import { useRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
 import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
@@ -45,6 +46,7 @@ export const useCourseRatingsData = ({ authToken }) => {
     updateCourseRatingsForAllSemesters:
       updateUnifiedCourseRatingsForAllSemesters,
   } = useUnifiedCourseData();
+  const { isDegradedMode } = useDegradedMode();
 
   // Local loading state
   const [isCourseRatingsLoading, setIsCourseRatingsLoading] = useState(true);
@@ -91,9 +93,17 @@ export const useCourseRatingsData = ({ authToken }) => {
       }
     };
 
+    // Degraded mode: SHSG API is disabled, so skip the fetch entirely and
+    // leave ratings state untouched. isDegradedMode is a dep so flipping
+    // back off re-runs this effect and fetches normally.
+    if (isDegradedMode) {
+      setIsCourseRatingsLoading(false);
+      return;
+    }
+
     fetchCourseRatings();
     //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken]);
+  }, [authToken, isDegradedMode]);
 
   return {
     isCourseRatingsLoading,

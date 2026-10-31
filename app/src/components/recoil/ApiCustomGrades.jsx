@@ -10,8 +10,12 @@ export async function fetchCustomGrades(token) {
     const response = await apiClient.get(API_URL, token);
     return response.data;
   } catch (error) {
-    console.error("Error fetching custom grades:", error);
-    errorHandlingService.handleError(error);
+    // Kill switch flipped on mid-flight: expected, not a real failure - skip
+    // the console noise (see docs/adr/0001-degraded-mode-kill-switch.md).
+    if (!error?.isDegradedModeError) {
+      console.error("Error fetching custom grades:", error);
+      errorHandlingService.handleError(error);
+    }
     return {};
   }
 }

@@ -12,7 +12,7 @@
  * way the UI persists curriculum-plan data to the SHSG backend.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue } from "recoil";
 
@@ -23,6 +23,11 @@ import {
 } from "../../recoil/curriculumPlanAtom";
 import { curriculumPlansRegistryState } from "../../recoil/curriculumPlansRegistryAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
+import {
+  DegradedModeError,
+  _fetchStatusOnce,
+  _resetForTests,
+} from "../degradedModeService";
 
 // --- Mocks ---
 // vi.mock() factories are hoisted above module-level consts, so we capture
@@ -185,6 +190,89 @@ describe("loadPlans", () => {
 
     expect(result.current.registry.isLoaded).toBe(true);
     expect(mockToast.error).toHaveBeenCalled();
+  });
+});
+
+// --- loadPlans / degraded mode ---
+// Regression coverage for Finding 2: CurriculumMap's loadPlans() must not
+// fire a raw toast.error (bypassing the silenced error classifier) or mark
+// the registry isLoaded while degraded, since that would poison the
+// `!plansRegistry.isLoaded` gate and block the automatic recovery reload.
+
+describe("loadPlans - degraded mode", () => {
+  const setDegradedMode = async (isDegradedMode) => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ degradedMode: isDegradedMode }),
+      }),
+    );
+    await _fetchStatusOnce();
+  };
+
+  afterEach(() => {
+    _resetForTests();
+    vi.unstubAllGlobals();
+  });
+
+  it("skips the API call and does not toast while degraded, leaving the registry unloaded", async () => {
+    await setDegradedMode(true);
+
+    const { result } = renderManager();
+
+    await act(async () => {
+      await result.current.manager.loadPlans();
+    });
+
+    expect(api.getCurriculumPlans).not.toHaveBeenCalled();
+    expect(mockToast.error).not.toHaveBeenCalled();
+    expect(result.current.registry.isLoaded).toBe(false);
+  });
+
+  it("loads normally once degraded mode clears (recovery)", async () => {
+    await setDegradedMode(true);
+
+    const { result } = renderManager();
+
+    await act(async () => {
+      await result.current.manager.loadPlans();
+    });
+    expect(api.getCurriculumPlans).not.toHaveBeenCalled();
+
+    api.getCurriculumPlans.mockResolvedValueOnce(planResponse());
+    // Flip degraded mode off via the same listener mechanism the app uses;
+    // wrap in act() so the resulting useDegradedMode re-render (and thus
+    // the fresh loadPlans closure) is flushed before we call it again.
+    await act(async () => {
+      await setDegradedMode(false);
+    });
+
+    await act(async () => {
+      await result.current.manager.loadPlans();
+    });
+
+    expect(api.getCurriculumPlans).toHaveBeenCalledWith(TOKEN);
+    expect(result.current.registry.isLoaded).toBe(true);
+  });
+
+  it("swallows an in-flight DegradedModeError without toasting or marking the registry loaded", async () => {
+    // Simulates the kill switch flipping ON between the isDegradedMode
+    // check inside loadPlans and the request landing: the interceptor
+    // rejects with a DegradedModeError instead of a generic failure.
+    api.getCurriculumPlans.mockRejectedValueOnce(
+      new DegradedModeError("SHSG degraded"),
+    );
+
+    const { result } = renderManager();
+
+    await act(async () => {
+      await result.current.manager.loadPlans();
+    });
+
+    expect(mockToast.error).not.toHaveBeenCalled();
+    expect(result.current.registry.isLoaded).toBe(false);
   });
 });
 
