@@ -15,8 +15,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { useUnifiedCourseDataWriters } from './useUnifiedCourseDataWriters';
 import { useRecoilValue } from 'recoil';
 import { termListState } from '../recoil/termListState';
-import { apiClient } from './axiosClient';
-import { catalogUrl } from './apiEndpoints';
+import { loadCatalogForTerm } from './catalogLoader';
 
 /**
  * Identifies semesters that need course data loading
@@ -114,18 +113,15 @@ export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
       // Mark as being processed
       setLoadedSemesters(prev => new Set([...prev, targetSemester]));
 
-      try {
-        const response = await apiClient.get(
-          catalogUrl(targetSemesterInfo.cisId),
-          authToken,
-          { headers: { "X-RequestedLanguage": "EN" }, suppressErrorToast: true }
-        );
-        updateAvailableCourses(targetSemester, response.data);
-      } catch (error) {
+      const result = await loadCatalogForTerm({ term: targetSemesterInfo, authToken });
+      if (result.source !== 'none') {
+        updateAvailableCourses(targetSemester, result.courses, {
+          usingReferenceData: result.usingReferenceData,
+          referenceSemester: result.referenceSemester,
+        });
+      } else if (import.meta.env.DEV) {
         // Enrichment falls back to course IDs when the catalog cannot load.
-        if (import.meta.env.DEV) {
-          console.warn(`[useUnifiedCourseLoader] Could not load catalog for ${targetSemester}:`, error?.message);
-        }
+        console.warn(`[useUnifiedCourseLoader] Could not load catalog for ${targetSemester}:`, result.error?.message);
       }
     });
 

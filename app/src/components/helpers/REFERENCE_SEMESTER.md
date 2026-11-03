@@ -12,7 +12,7 @@ The UniSG EventApi creates a term shell (e.g. `HS26`) and may even mark it
 the user would see an empty or near-empty course list during the bidding window.
 
 To avoid that, a term whose own catalog is empty/sparse (fewer than
-`REFERENCE_FALLBACK_MIN_COURSES`, see `useCourseInfoData.js`) or whose catalog
+`REFERENCE_FALLBACK_MIN_COURSES`, see `catalogLoader.js`) or whose catalog
 errors is shown with a **preview**: the same-season previous-year catalog
 (`HS26 → HS25`, `FS27 → FS26`). This is the "reference semester."
 
@@ -24,7 +24,7 @@ belong to it**. That distinction is the whole point of this document.
 | Field | Meaning | Set where |
 |-------|---------|-----------|
 | `referenceSemester` | The same-season previous-year term these courses really come from (a `shortName` like `"HS25"`). A stable, deterministic property of *any* term. | `useTermSelection.js` (computed for every term) → stored via `useEventListDataManager.js` → `initializeUnifiedSemester`. Re-asserted in `updateAvailableCourses` when a preview loads. |
-| `usingReferenceData` | Transient: is the `available` array **right now** holding the reference preview rather than the term's own catalog? | `useCourseInfoData.js` passes it to `updateAvailableCourses`; persisted on the semester (it is NOT a guarded metadata key). |
+| `usingReferenceData` | Transient: is the `available` array **right now** holding the reference preview rather than the term's own catalog? | `catalogLoader.js` returns it; its callers (`useCourseInfoData.js` and the map/enrichment loaders) pass it to `updateAvailableCourses`; persisted on the semester (it is NOT a guarded metadata key). |
 
 `referenceSemester` is the **value**; `usingReferenceData` is the **state**.
 
@@ -50,7 +50,7 @@ Both display reference courses, but they reach that state differently:
    reference term's `cisId`, so the catalog is fetched directly — `usingReferenceData`
    is typically **false** even though the data is the reference catalog.
 2. **Current-but-sparse terms** (`isCurrent` true, `isFutureSemester` false): a
-   real API term whose own catalog is empty/sparse, so `useCourseInfoData.js`
+   real API term whose own catalog is empty/sparse, so `catalogLoader.js`
    falls back to the reference catalog — `usingReferenceData` is **true**.
 
 > The single correct predicate for "are the displayed courses borrowed?" is
