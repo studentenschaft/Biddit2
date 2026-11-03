@@ -1,7 +1,6 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
-import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
 import {
   curriculumPlanState,
   sortSemesters,
@@ -802,7 +801,6 @@ export const curriculumMapSelector = selector({
   get: ({ get }) => {
     const categoryStructure = get(curriculumCategoryStructureSelector);
     const unifiedCourseData = get(unifiedCourseDataState);
-    const localSelectedCourses = get(localSelectedCoursesSemKeyState);
     const curriculumPlan = get(curriculumPlanState);
 
     if (!categoryStructure.isReady) {
@@ -825,9 +823,6 @@ export const curriculumMapSelector = selector({
 
     completedCourses.forEach((c) =>
       allSemesterKeys.add(normalizeSemesterKey(c.semester)),
-    );
-    Object.keys(localSelectedCourses).forEach((k) =>
-      allSemesterKeys.add(normalizeSemesterKey(k)),
     );
     Object.keys(curriculumPlan.plannedItems || {}).forEach((k) =>
       allSemesterKeys.add(normalizeSemesterKey(k)),
@@ -869,56 +864,53 @@ export const curriculumMapSelector = selector({
     });
 
     // ── Place wishlist courses ────────────────────────────────────────────
-    Object.entries(localSelectedCourses).forEach(([semKey, courses]) => {
-      if (!coursesBySemesterAndCategory[semKey]) return;
+    // The wishlist is each semester's selectedIds, resolved against its
+    // catalog. Enrolled courses and courses with a plan placement are rendered
+    // by their own passes, so they are skipped here to avoid a second card.
+    const placedCourseIds = new Set(
+      Object.values(curriculumPlan.plannedItems || {})
+        .flat()
+        .filter((item) => item.type === "course")
+        .map((item) => item.courseId),
+    );
 
-      // Per-plan wishlist overrides: skip courses hidden in the active plan
-      const removedIds =
-        curriculumPlan.wishlistOverrides?.[semKey]?.removedCourseIds || [];
+    Object.entries(unifiedCourseData.semesters || {}).forEach(
+      ([rawSemKey, semData]) => {
+        const semKey = normalizeSemesterKey(rawSemKey);
+        if (!coursesBySemesterAndCategory[semKey]) return;
 
-      const availableCourses =
-        unifiedCourseData.semesters?.[semKey]?.available || [];
+        // Per-plan wishlist overrides: skip courses hidden in the active plan
+        const removedIds =
+          curriculumPlan.wishlistOverrides?.[semKey]?.removedCourseIds || [];
+        const enrolledIds = semData.enrolledIds || [];
+        const availableCourses = semData.available || [];
 
-      courses.forEach((course) => {
-        const courseId = course.id || course.courseNumber;
-        if (removedIds.includes(courseId)) return;
-        const fullCourse = availableCourses.find(
-          (c) =>
-            c.courseNumber === course.id ||
-            c.id === course.id ||
-            c.courseNumber === course.courseNumber,
-        );
+        (semData.selectedIds || []).forEach((courseId) => {
+          const fullCourse = availableCourses.find(
+            (c) => c.courseNumber === courseId || c.id === courseId,
+          );
+          // Overrides and placements written before ids were unified may
+          // carry the catalog event id instead of the course number.
+          const ids = [courseId, fullCourse?.id].filter(Boolean);
+          if (
+            enrolledIds.includes(courseId) ||
+            ids.some((id) => removedIds.includes(id) || placedCourseIds.has(id))
+          ) {
+            return;
+          }
 
-        const classification =
-          course.classification ||
-          fullCourse?.classification ||
-          course.big_type ||
-          "elective";
-
-        // Use stored categoryPath first (from drag-and-drop), validate it exists
-        let targetCatPath = course.categoryPath;
-
-        if (
-          targetCatPath &&
-          !flatCategories.some((cat) => cat.path === targetCatPath)
-        ) {
-          targetCatPath = null;
-        }
-
-        // Fallback to classification matching
-        if (!targetCatPath) {
+          const classification = fullCourse?.classification || "elective";
           const matchedCat = resolveCategoryForCourse({
             classification,
-            courseName:
-              course.shortName || fullCourse?.shortName || fullCourse?.description,
+            courseName: fullCourse?.shortName || fullCourse?.description,
             flatCategories,
           });
-          targetCatPath =
+          const targetCatPath =
             matchedCat?.path || resolveFallbackCategory(flatCategories)?.path;
 
           if (import.meta.env.DEV && !matchedCat) {
             console.warn(
-              `[CurriculumMap] No category match for course "${course.shortName || course.id}"`,
+              `[CurriculumMap] No category match for course "${fullCourse?.shortName || courseId}"`,
               `\n  Classification: "${classification}"`,
               `\n  Available categories:`,
               flatCategories.map(
@@ -926,37 +918,36 @@ export const curriculumMapSelector = selector({
               ),
             );
           }
-        }
 
-        if (
-          targetCatPath &&
-          coursesBySemesterAndCategory[semKey][targetCatPath]
-        ) {
-          coursesBySemesterAndCategory[semKey][targetCatPath].push({
-            id: course.id || course.courseNumber,
-            courseId: course.id || course.courseNumber,
-            name: course.shortName || fullCourse?.shortName || course.id,
-            credits: normalizeCourseCredits(
-              course.credits ??
+          if (
+            targetCatPath &&
+            coursesBySemesterAndCategory[semKey][targetCatPath]
+          ) {
+            coursesBySemesterAndCategory[semKey][targetCatPath].push({
+              id: courseId,
+              courseId,
+              name: fullCourse?.shortName || courseId,
+              credits: normalizeCourseCredits(
                 fullCourse?.credits ??
-                findCreditsInAnySemester(
-                  course.id || course.courseNumber,
-                  unifiedCourseData.semesters,
-                ),
-              null,
-            ),
-            semester: semKey,
-            categoryPath: targetCatPath,
-            status: "planned",
-            isCompleted: false,
-            isPlanned: true,
-            classification,
-            source: "wishlist",
-            calendarEntry: course.calendarEntry || fullCourse?.calendarEntry,
-          });
-        }
-      });
-    });
+                  findCreditsInAnySemester(
+                    courseId,
+                    unifiedCourseData.semesters,
+                  ),
+                null,
+              ),
+              semester: semKey,
+              categoryPath: targetCatPath,
+              status: "planned",
+              isCompleted: false,
+              isPlanned: true,
+              classification,
+              source: "wishlist",
+              calendarEntry: fullCourse?.calendarEntry,
+            });
+          }
+        });
+      },
+    );
 
     // ── Place enrolled courses ────────────────────────────────────────────
     // Courses rendered as enrolled cards, so the plan pass does not duplicate

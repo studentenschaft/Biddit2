@@ -1,7 +1,7 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
-import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
+import { coursesWithTypesSelector } from "./coursesWithTypesSelector";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 import {
   enrichCourseFromAvailable,
@@ -37,16 +37,30 @@ export const unifiedStudyPlanSelector = selector({
   key: "unifiedStudyPlanSelector",
   get: ({ get }) => {
     const academicData = get(unifiedAcademicDataState);
-    const localSelectedBySemester = get(localSelectedCoursesSemKeyState);
+    const unifiedCourseData = get(unifiedCourseDataState);
+    const categoryTypeMap = get(coursesWithTypesSelector);
 
     if (!academicData.programs || Object.keys(academicData.programs).length === 0) {
       return {};
     }
 
-    // Build optimized lookup maps for local selections (O(1) lookups)
-    const localSelectedMaps = {};
-    for (const [semesterKey, courses] of Object.entries(localSelectedBySemester)) {
-      localSelectedMaps[semesterKey] = new Set(courses.map(course => course.id));
+    // The wishlist per semester: selectedIds resolved against that semester's
+    // catalog. The lookup set holds both the course number and the catalog id.
+    const wishlistBySemester = {};
+    const wishlistIdSets = {};
+    for (const [semesterKey, semData] of Object.entries(unifiedCourseData.semesters || {})) {
+      const available = semData.available || [];
+      wishlistBySemester[semesterKey] = (semData.selectedIds || []).map((courseId) => {
+        const fullCourse = available.find(
+          (c) => c.courseNumber === courseId || c.id === courseId
+        );
+        return { courseId, fullCourse };
+      });
+      wishlistIdSets[semesterKey] = new Set(
+        wishlistBySemester[semesterKey].flatMap(({ courseId, fullCourse }) =>
+          [courseId, fullCourse?.id].filter(Boolean)
+        )
+      );
     }
 
     const finalData = {};
@@ -81,31 +95,31 @@ export const unifiedStudyPlanSelector = selector({
         let processedCourses = baseCourses.map(course => ({ ...course }));
 
         // PHASE 1: REMOVAL PASS
-        // Remove wishlist courses that are no longer in local selections
+        // Remove wishlist courses that are no longer selected
         processedCourses = processedCourses.filter(course => {
           if (!course.type?.endsWith('-wishlist')) return true;
-          
-          const localCoursesSet = localSelectedMaps[semesterKey];
-          return localCoursesSet && localCoursesSet.has(course.id);
+          return Boolean(wishlistIdSets[semesterKey]?.has(course.id));
         });
 
         // PHASE 2: ADDITION PASS
-        // Add new locally selected courses that aren't in the unified state yet
+        // Add selected courses that aren't in the semester map yet
         const existingCourseIds = new Set(processedCourses.map(course => course.id));
-        const localCourses = localSelectedBySemester[semesterKey] || [];
+        const wishlist = wishlistBySemester[semesterKey] || [];
 
-        for (const localCourse of localCourses) {
-          if (!existingCourseIds.has(localCourse.id)) {
-            processedCourses.push({
-              name: localCourse.shortName || localCourse.id,
-              credits: localCourse.credits ? localCourse.credits / 100 : 0,
-              type: `${localCourse.classification}-wishlist`,
-              grade: null,
-              id: localCourse.id,
-              big_type: localCourse.big_type,
-              calendarEntry: localCourse.calendarEntry || [],
-            });
+        for (const { courseId, fullCourse } of wishlist) {
+          if (existingCourseIds.has(courseId) || existingCourseIds.has(fullCourse?.id)) {
+            continue;
           }
+          const classification = fullCourse?.classification;
+          processedCourses.push({
+            name: fullCourse?.shortName || courseId,
+            credits: fullCourse?.credits ? fullCourse.credits / 100 : 0,
+            type: `${classification}-wishlist`,
+            grade: null,
+            id: courseId,
+            big_type: categoryTypeMap[classification] || "",
+            calendarEntry: fullCourse?.calendarEntry || [],
+          });
         }
 
         // PHASE 2.5: SMART EXERCISE GROUP PROCESSING

@@ -986,6 +986,153 @@ describe('curriculumMapSelector — enrolled course category override', () => {
   });
 });
 
+describe('curriculumMapSelector — wishlist from unified selectedIds', () => {
+  const SEMESTER = 'HS25';
+  const COURSE_ID = '7,035,1.00';
+  const PROGRAM = 'Bachelor in Business Administration';
+
+  const scorecard = {
+    items: [
+      {
+        isTitle: true,
+        hierarchy: 'program',
+        description: PROGRAM,
+        maxCredits: '180',
+        items: [
+          {
+            isTitle: true,
+            hierarchy: 'core',
+            description: 'Core Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'core-comp',
+                description: 'Compulsory Subjects',
+                minCredits: '30',
+                items: [],
+              },
+            ],
+          },
+          {
+            isTitle: true,
+            hierarchy: 'ctx',
+            description: 'Contextual Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'ctx-skills',
+                description: 'Skills',
+                items: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  const AVAILABLE = [
+    {
+      id: 'event-guid-1',
+      courseNumber: COURSE_ID,
+      shortName: 'Skills: Negotiation',
+      credits: 400,
+      classification: 'Skills',
+    },
+  ];
+
+  const readMap = ({
+    selectedIds = [COURSE_ID],
+    enrolledIds = [],
+    plannedItems = {},
+    wishlistOverrides = {},
+  } = {}) => {
+    const snapshot = snapshot_UNSTABLE(({ set }) => {
+      set(unifiedAcademicDataState, {
+        programs: {
+          [PROGRAM]: {
+            transcript: { rawScorecard: scorecard },
+            metadata: { isMainStudy: true },
+          },
+        },
+        currentProgram: PROGRAM,
+        initialization: { isLoading: false, isInitialized: true, error: null },
+      });
+      set(unifiedCourseDataState, {
+        semesters: {
+          [SEMESTER]: { enrolledIds, available: AVAILABLE, selectedIds },
+        },
+        selectedSemester: SEMESTER,
+        latestValidTerm: SEMESTER,
+        selectedCourseInfo: null,
+      });
+      set(curriculumPlanState, {
+        ...getDefaultPlanState(),
+        plannedItems,
+        wishlistOverrides,
+      });
+    });
+    return snapshot.getLoadable(curriculumMapSelector).getValue();
+  };
+
+  const P = (path) => `${PROGRAM}/${path}`;
+  const allCards = (map) =>
+    Object.values(map.coursesBySemesterAndCategory[SEMESTER]).flat();
+
+  it('a server-loaded wishlist course appears on the map after reload', () => {
+    const map = readMap();
+
+    const cell = map.coursesBySemesterAndCategory[SEMESTER][P('Contextual Studies/Skills')];
+    expect(cell).toHaveLength(1);
+    expect(cell[0]).toMatchObject({
+      id: COURSE_ID,
+      courseId: COURSE_ID,
+      name: 'Skills: Negotiation',
+      credits: 4,
+      semester: SEMESTER,
+      categoryPath: P('Contextual Studies/Skills'),
+      status: 'planned',
+      classification: 'Skills',
+      source: 'wishlist',
+    });
+  });
+
+  it('skips a wishlist course hidden in the active plan', () => {
+    const map = readMap({
+      wishlistOverrides: { [SEMESTER]: { removedCourseIds: [COURSE_ID] } },
+    });
+    expect(allCards(map)).toHaveLength(0);
+  });
+
+  it('renders a wishlisted course the student is enrolled in once, as enrolled', () => {
+    const map = readMap({ enrolledIds: [COURSE_ID] });
+
+    const cards = allCards(map);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].source).toBe('enrolled');
+  });
+
+  it('renders a wishlisted course with a plan placement once, from the plan', () => {
+    const map = readMap({
+      plannedItems: {
+        HS26: [
+          {
+            id: `course-${COURSE_ID}`,
+            type: 'course',
+            courseId: COURSE_ID,
+            categoryPath: P('Core Studies/Compulsory Subjects'),
+          },
+        ],
+      },
+    });
+
+    expect(allCards(map)).toHaveLength(0);
+    const hs26Cards = Object.values(map.coursesBySemesterAndCategory.HS26).flat();
+    expect(hs26Cards).toHaveLength(1);
+    expect(hs26Cards[0].source).toBe('plan');
+  });
+});
+
 // ── course-name prefix inference ──────────────────────────────────────────
 
 describe('inferClassificationFromCourseName', () => {

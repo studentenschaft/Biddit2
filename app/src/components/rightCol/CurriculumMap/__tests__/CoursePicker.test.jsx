@@ -10,7 +10,6 @@ import { RecoilRoot } from 'recoil';
 import { DndContext } from '@dnd-kit/core';
 import CoursePicker from '../CoursePicker';
 import { unifiedCourseDataState } from '../../../recoil/unifiedCourseDataAtom';
-import { localSelectedCoursesSemKeyState } from '../../../recoil/localSelectedCoursesSemKeyAtom';
 import { curriculumPlanState } from '../../../recoil/curriculumPlanAtom';
 
 // Test wrapper with all required providers
@@ -20,6 +19,7 @@ const TestWrapper = ({ children, initialState = {} }) => {
     set(unifiedCourseDataState, {
       semesters: {
         'FS26': {
+          selectedIds: initialState.selectedIds || [],
           available: [
             { courseNumber: 'ABC123', shortName: 'Test Course 1', credits: 600, classification: 'core' },
             { courseNumber: 'DEF456', shortName: 'Test Course 2', credits: 300, classification: 'elective' },
@@ -33,11 +33,6 @@ const TestWrapper = ({ children, initialState = {} }) => {
         },
       },
       ...initialState.unifiedCourseData,
-    });
-
-    // Set up local selected courses (wishlist)
-    set(localSelectedCoursesSemKeyState, {
-      'FS26': initialState.selectedCourses || [],
     });
 
     // Set up curriculum plan
@@ -194,12 +189,8 @@ describe('CoursePicker', () => {
 
   describe('already added courses', () => {
     it('excludes courses already in wishlist', () => {
-      const selectedCourses = [
-        { id: 'ABC123', courseNumber: 'ABC123' },
-      ];
-
       render(
-        <TestWrapper initialState={{ selectedCourses }}>
+        <TestWrapper initialState={{ selectedIds: ['ABC123'] }}>
           <CoursePicker futureSemesters={['FS26', 'HS26']} />
         </TestWrapper>
       );
@@ -228,14 +219,8 @@ describe('CoursePicker', () => {
     });
 
     it('shows message when all courses are added', () => {
-      const selectedCourses = [
-        { id: 'ABC123', courseNumber: 'ABC123' },
-        { id: 'DEF456', courseNumber: 'DEF456' },
-        { id: 'GHI789', courseNumber: 'GHI789' },
-      ];
-
       render(
-        <TestWrapper initialState={{ selectedCourses }}>
+        <TestWrapper initialState={{ selectedIds: ['ABC123', 'DEF456', 'GHI789'] }}>
           <CoursePicker futureSemesters={['FS26', 'HS26']} />
         </TestWrapper>
       );

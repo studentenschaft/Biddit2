@@ -1,8 +1,5 @@
 // hooks/useCourseSelection.js
 import { useCallback } from "react";
-import { useRecoilState, useRecoilValue } from "recoil";
-import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
-import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { useInvalidateStudyPlan } from "../recoil/studyPlanLoadState";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
@@ -43,14 +40,6 @@ export function useCourseSelection({
   // the study plan is refetched to re-sync it.
   const invalidateStudyPlan = useInvalidateStudyPlan();
 
-  // Recoil: local course selections keyed by semester shortName
-  const [, setLocalSelectedCoursesSemKey] = useRecoilState(
-    localSelectedCoursesSemKeyState
-  );
-
-  // Recoil: classification to big_type map for categorizing
-  const categoryTypeMap = useRecoilValue(coursesWithTypesSelector);
-
   /**
    * Adds or removes the course from local state and from the backend.
    * @param {Object} course - the course object with {id, shortName, classification, credits, ...}
@@ -79,60 +68,15 @@ export function useCourseSelection({
       const courseNumber =
         course.courses?.[0]?.courseNumber || course.courseNumber || course.courseId || course.id;
 
-      const minimalCourse = {
-        id: course.id,
-        shortName: course.shortName,
-        classification: course.classification,
-        credits: normalizeCredits(course.credits),
-        big_type: categoryTypeMap[course.classification] || "",
-        calendarEntry: course.calendarEntry || [],
-        courseNumber: course.courseNumber || course.coursesNumber || "",
-      };
-
       trackWishlistChange({
         action: isCourseSelected ? "remove" : "add",
         courseNumber,
-        credits: minimalCourse.credits,
+        credits: normalizeCredits(course.credits),
         classification: course.classification,
         semester: normalizedCourseSemester,
       });
 
-      // Update local selected courses (indexed by shortName)
-      // Use the course's actual semester for accurate state updates
-      setLocalSelectedCoursesSemKey((prevCourses) => {
-        const semKey = normalizedCourseSemester;
-
-        if (typeof prevCourses === "object" && prevCourses !== null) {
-          const updatedCourses = { ...prevCourses };
-
-          if (isCourseSelected) {
-            // Remove course
-            const courseIndex = updatedCourses[semKey]?.findIndex(
-              (c) => c.id === minimalCourse.id
-            );
-            if (courseIndex > -1) {
-              updatedCourses[semKey] = [
-                ...updatedCourses[semKey].slice(0, courseIndex),
-                ...updatedCourses[semKey].slice(courseIndex + 1),
-              ];
-            }
-          } else {
-            // Add course
-            updatedCourses[semKey] = [
-              ...(updatedCourses[semKey] || []),
-              minimalCourse,
-            ];
-          }
-
-          return updatedCourses;
-        }
-
-        // Create new entry if prevCourses is not an object
-        return isCourseSelected ? {} : { [semKey]: [minimalCourse] };
-      });
-
       try {
-
         // Use the course's actual semester for API calls - this is critical for Transcript
         // where courses from multiple semesters are displayed
         const studyPlanId = normalizedCourseSemester;
@@ -201,10 +145,8 @@ export function useCourseSelection({
       selectedCourseIds,
       setSelectedCourseIds,
       selectedSemesterShortName,
-      categoryTypeMap,
       addSelectedCourse,
       removeSelectedCourse,
-      setLocalSelectedCoursesSemKey,
       invalidateStudyPlan,
     ]
   );

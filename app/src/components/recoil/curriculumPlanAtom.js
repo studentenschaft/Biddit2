@@ -7,14 +7,14 @@ import { atom } from "recoil";
  * This enables students to plan future semesters with placeholders and track progress
  * toward degree requirements.
  *
- * Key differences from localSelectedCoursesSemKeyState:
+ * Key differences from the wishlist (unifiedCourseDataState selectedIds):
  * - Supports "placeholder" items (generic credit allocations without specific courses)
  * - Stores category path assignments for proper grid placement
  * - Maintains validation state for conflicts and warnings
  * - Designed for multi-semester planning beyond current/next semester
  *
  * Data Flow:
- * 1. Current semester courses: localSelectedCoursesSemKeyState (existing wishlist)
+ * 1. Wishlist courses: unifiedCourseDataState.semesters[semKey].selectedIds
  * 2. Future semester courses: curriculumPlanState (this atom)
  * 3. Combined view: curriculumMapSelector (merges both)
  *
