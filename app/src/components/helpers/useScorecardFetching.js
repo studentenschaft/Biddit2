@@ -162,14 +162,6 @@ export const useScorecardFetching = () => {
         return inFlightFetch;
       }
 
-      if (scorecardState.loading && !force) {
-        return {
-          success: true,
-          data: scorecardState.rawScorecards,
-          loading: true,
-        };
-      }
-
       if (scorecardState.isLoaded && !force) {
         return { success: true, data: scorecardState.rawScorecards };
       }
@@ -184,7 +176,6 @@ export const useScorecardFetching = () => {
     [
       loadScorecards,
       scorecardState.isLoaded,
-      scorecardState.loading,
       scorecardState.rawScorecards,
     ]
   );

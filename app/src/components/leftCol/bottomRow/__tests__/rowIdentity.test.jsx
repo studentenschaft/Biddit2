@@ -22,7 +22,6 @@ vi.mock("react-virtualized-auto-sizer", () => ({
 // The data manager only coordinates fetching; the seeded atom is the fixture.
 vi.mock("../../../helpers/useEventListDataManager", () => ({
   useEventListDataManager: () => ({ isLoading: false }),
-  default: () => ({ isLoading: false }),
 }));
 
 const SEMESTER = "HS25";

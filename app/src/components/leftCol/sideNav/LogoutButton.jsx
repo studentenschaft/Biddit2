@@ -4,7 +4,6 @@ import { useMsal } from "@azure/msal-react";
 import PropTypes from "prop-types";
 import { LogoutIcon } from "@heroicons/react/outline";
 import { NAV_LABELS, navItemClassName } from "./navItem";
-import { log } from "../../helpers/log";
 // import { useEffect } from "react";
 
 export default function LogoutButton({ showLabel = false }) {
@@ -14,7 +13,7 @@ export default function LogoutButton({ showLabel = false }) {
   const navigate = useNavigate();
 
   const handleLogoutRedirect = () => {
-    instance.logoutRedirect(navigate("/login")).catch((e) => log.debug(e));
+    instance.logoutRedirect(navigate("/login")).catch((e) => console.warn(e));
   };
 
   return (
@@ -29,8 +28,6 @@ export default function LogoutButton({ showLabel = false }) {
           {showLabel && <span>{NAV_LABELS.logout}</span>}
         </button>
       )}
-      {log.debug("Active Account:", activeAccount)}
-      {log.debug("Accounts:", accounts)}
     </AuthenticatedTemplate>
   );
 }

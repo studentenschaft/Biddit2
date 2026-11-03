@@ -14,13 +14,13 @@ const termIdList = [
   { shortName: "HS27" },
 ];
 
-const renderSemesterState = () =>
+const renderSemesterState = (w = wrapper) =>
   renderHook(
     () => ({
       api: useUnifiedSemesterState(),
       state: useRecoilValue(unifiedCourseDataState),
     }),
-    { wrapper }
+    { wrapper: w }
   );
 
 describe("useUnifiedSemesterState", () => {
@@ -53,13 +53,7 @@ describe("useUnifiedSemesterState", () => {
         {children}
       </RecoilRoot>
     );
-    const { result } = renderHook(
-      () => ({
-        api: useUnifiedSemesterState(),
-        state: useRecoilValue(unifiedCourseDataState),
-      }),
-      { wrapper: seeded }
-    );
+    const { result } = renderSemesterState(seeded);
 
     act(() => result.current.api.setSelectedSemester("HS25", termIdList, "HS25"));
 

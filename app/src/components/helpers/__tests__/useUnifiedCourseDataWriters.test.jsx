@@ -17,9 +17,6 @@ describe("useUnifiedCourseDataWriters", () => {
     );
     const first = result.current;
     rerender();
-    expect(result.current.updateSelectedCourses).toBe(
-      first.updateSelectedCourses
-    );
     Object.keys(first).forEach((name) => {
       expect(result.current[name], name).toBe(first[name]);
     });

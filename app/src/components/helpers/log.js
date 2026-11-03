@@ -10,5 +10,3 @@ export const log = {
   warn: (...args) => console.warn(...args),
   error: (...args) => console.error(...args),
 };
-
-export default log;

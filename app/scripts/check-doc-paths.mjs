@@ -1,5 +1,5 @@
-// Fails CI when CLAUDE.md names a file or folder that does not exist.
-// Usage (from app/): node scripts/check-doc-paths.mjs
+// Local check: lists every file or folder CLAUDE.md names that does not exist
+// and exits 1 if there is any. Usage (from app/): node scripts/check-doc-paths.mjs
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -34,13 +34,10 @@ const resolves = (token) =>
     ? roots.some((root) => exists(resolve(root, token)))
     : srcFileNames.has(token);
 
-const withoutFencedBlocks = (markdown) =>
-  markdown.replace(/```[\s\S]*?```/g, "");
-
 const markdown = readFileSync(resolve(repoRoot, "CLAUDE.md"), "utf8");
-const tokens = [
-  ...withoutFencedBlocks(markdown).matchAll(/`([^`\n]+)`/g),
-].map(([, token]) => token.trim());
+const tokens = [...markdown.matchAll(/`([^`\n]+)`/g)].map(([, token]) =>
+  token.trim()
+);
 
 const missing = [...new Set(tokens.filter(isCheckable))].filter(
   (token) => !resolves(token)
