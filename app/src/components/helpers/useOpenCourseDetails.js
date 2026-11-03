@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useSetRecoilState } from "recoil";
 import { trackCourseDetailsOpened } from "./analytics";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
@@ -18,13 +19,16 @@ export function useOpenCourseDetails() {
   const setOpenedForSemester = useSetRecoilState(courseDetailsSemesterAtom);
   const { updateSelectedCourseInfo } = useUnifiedCourseDataWriters();
 
-  return (course, { source = "unknown", semester = null } = {}) => {
-    if (!course) return;
-    updateSelectedCourseInfo(course);
-    // Set on every open, so a caller that names no semester never inherits
-    // the previous caller's.
-    setOpenedForSemester(semester);
-    setSelectedTab(TAB.COURSE_DETAILS);
-    trackCourseDetailsOpened(source);
-  };
+  return useCallback(
+    (course, { source = "unknown", semester = null } = {}) => {
+      if (!course) return;
+      updateSelectedCourseInfo(course);
+      // Set on every open, so a caller that names no semester never inherits
+      // the previous caller's.
+      setOpenedForSemester(semester);
+      setSelectedTab(TAB.COURSE_DETAILS);
+      trackCourseDetailsOpened(source);
+    },
+    [updateSelectedCourseInfo, setOpenedForSemester, setSelectedTab]
+  );
 }
