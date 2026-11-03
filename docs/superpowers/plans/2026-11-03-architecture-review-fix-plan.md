@@ -79,7 +79,7 @@ cd app && npm run lint && npx vitest run --testTimeout=10000 && npm run build &&
 | Phase | Parallel groups (run left to right; items in one group may run concurrently) |
 |---|---|
 | 0 | {0.1, 0.4, 0.6} then {0.2} then {0.3} then {0.5} then {0.7} |
-| 1 | {1.1} then {1.2, 1.4} then {1.3} then {1.5, 1.6} then {1.7} |
+| 1 | {1.1} then {1.2, 1.4} then {1.3} then {1.5, 1.6} then {1.7, 1.8} |
 | 2 | {2.1, 2.2} then {2.3} then {2.4} |
 | 3 | {3.1, 3.2} |
 | 4 | {4.1} then {4.2} |
@@ -442,7 +442,9 @@ git commit -m "chore(logging): DEV-gated logger, no-console lint rule, redacted 
 
 ## Phase 1: Data-layer consolidation (closes P2-B, P2-C, P3, C3-A, E6 part)
 
-Branch `refactor/arch-fix-phase-1`, cut from `dev` after Phase 0 merges.
+Branch `refactor/arch-fix-phase-1`, cut from `dev` after Phase 0 merges; if Phase 0 is still unmerged, continue on `architecture-fixes-nov26` on top of debef66 and the PR carries both phases.
+
+Tasks 1.7 and 1.8 absorb three defects found by the Phase 0 browser verification (all pre-existing on `dev`): a double toast on scorecard failure, a Transcript that never leaves its loading state after a scorecard failure, and an enrolment effect without a cancel guard.
 
 ### Task 1.1: Safety-net tests for the startup and catalog hooks
 
@@ -646,16 +648,100 @@ git add -A src
 git commit -m "refactor(state): wishlist for map and study plan comes from unified selectedIds"
 ```
 
-### Task 1.7: Remove the duplicate startup enrolment fetch
+### Task 1.7: Remove the duplicate startup enrolment fetch and guard the enrolment effect
 
 **Files:**
-- Modify: `src/components/helpers/useTermSelection.js:202-238` (no `myCoursesUrl` request; `latestValidTerm = primaryTermShortName` directly), `src/components/helpers/useEnrolledCoursesData.js` (no change expected)
-- Test: `src/components/helpers/__tests__/useTermSelection.test.jsx` (assert the handler for `myCoursesUrl` is hit 0 times), `src/test/resilience/degradedMode.test.jsx` (already proves `enrolledIds` lands via `useEnrolledCoursesData`)
+- Modify: `src/components/helpers/useTermSelection.js:202-238` (no `myCoursesUrl` request; `latestValidTerm = primaryTermShortName` directly), `src/components/helpers/useEnrolledCoursesData.js:48-95` (effect gets a cancel guard)
+- Test: `src/components/helpers/__tests__/useTermSelection.test.jsx` (assert the handler for `myCoursesUrl` is hit 0 times), `src/components/helpers/__tests__/useEnrolledCoursesData.test.jsx` (new), `src/test/resilience/degradedMode.test.jsx` (already proves `enrolledIds` lands via `useEnrolledCoursesData`)
 
-- [ ] **Step 1: Add the failing assertion, run, implement, re-run; full suite; commit**
+**Interfaces:**
+- Consumes: `myCoursesUrl` from Task 0.2; `useUnifiedCourseDataWriters().updateEnrolledCourses` from Task 0.3.
+- `useEnrolledCoursesData({ authToken, selectedSemester })` keeps its signature and return shape.
+
+- [ ] **Step 1: Add the failing assertion to `useTermSelection.test.jsx`, run, implement, re-run**
+
+- [ ] **Step 2: Write the failing cancel-guard test**
+
+Browser verification on 2026-11-03 showed two enrolment requests and two toasts for one 404 in dev, because React StrictMode runs the effect twice and nothing ignores the first run's result.
+
+```jsx
+it("ignores the result of a superseded fetch", async () => {
+  const seen = [];
+  server.use(http.get(myCoursesUrl("term-1"), async () => { await delay(50); return HttpResponse.json([{ id: "old" }]); }),
+             http.get(myCoursesUrl("term-2"), () => HttpResponse.json([{ id: "new" }])));
+  const { rerender } = renderHook(({ sem }) => useEnrolledCoursesData({ authToken: "t", selectedSemester: sem }), { wrapper, initialProps: { sem: { id: "term-1", shortName: "HS25" } } });
+  rerender({ sem: { id: "term-2", shortName: "FS26" } });
+  await waitFor(() => expect(readSemester("FS26").enrolledIds).toEqual(["new"]));
+  await new Promise((r) => setTimeout(r, 80));
+  expect(readSemester("HS25").enrolledIds).toEqual([]);   // the stale response was dropped
+});
+it("reports a failed fetch once", async () => {
+  server.use(http.get(myCoursesUrl("term-1"), () => new HttpResponse(null, { status: 404 })));
+  const spy = vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+  renderHook(() => useEnrolledCoursesData({ authToken: "t", selectedSemester: { id: "term-1", shortName: "HS25" } }), { wrapper: StrictModeWrapper });
+  await waitFor(() => expect(spy).toHaveBeenCalledTimes(1));
+});
+```
+`StrictModeWrapper` wraps `RecoilRoot` in `React.StrictMode`.
+
+- [ ] **Step 3: Run to verify failure, implement, re-run**
+
+In the effect: `let cancelled = false;` before the async call, `if (cancelled) return;` before every state write and before `handleError`, and `return () => { cancelled = true; };`. Remove the `eslint-disable-next-line react-hooks/exhaustive-deps` and list the real dependencies (`authToken`, `selectedSemester?.id`, `selectedSemester?.shortName`, `updateUnifiedEnrolledCourses`).
+
+Run: `npx vitest run --testTimeout=10000 src/components/helpers/__tests__/useEnrolledCoursesData.test.jsx src/components/helpers/__tests__/useTermSelection.test.jsx`
+Expected: PASS.
+
+- [ ] **Step 4: Full suite, lint, commit**
 
 ```bash
-git commit -am "perf(startup): drop the duplicate enrolment request from term selection"
+git add src/components/helpers
+git commit -m "perf(startup): drop the duplicate enrolment request and guard the enrolment effect"
+```
+
+### Task 1.8: Scorecard failure surfaces once and the Transcript leaves its loading state
+
+**Files:**
+- Modify: `src/components/recoil/ApiScorecardDetails.jsx:23-36` (pass `suppressErrorToast: true`, delete the `catch` that calls `errorHandlingService.handleError`; the error propagates), `src/components/helpers/useScorecardFetching.js:80-143` (one `errorHandlingService.handleError` when `errors.length > 0`, with the first failing programme's error; the per-programme collection stays), `src/components/rightCol/Transcript.jsx:39,341-358` (`scorecardError` comes from `useScorecardFetching().error`, not `useState(false)`)
+- Test: extend `src/components/helpers/__tests__/scorecardBootstrapOnce.test.jsx`; `src/components/rightCol/__tests__/Transcript.errorState.test.jsx` (new)
+
+**Interfaces:**
+- Consumes: `useScorecardFetching()` from Task 0.5 (`fetchAll`, `isLoaded`, `loading`, `error`), `suppressErrorToast` from the Phase 0 fix round.
+- Produces: no new exports. `useScorecardFetching().error` is a string or `null`; it is the single source of the Transcript's error state.
+
+Browser verification on 2026-11-03: a forced scorecard 500 showed two toasts per attempt (the `apiClient` interceptor plus `ApiScorecardDetails`'s own catch) and left the Transcript on "Loading transcript data..." indefinitely. The Phase 0 review also deferred the inverse gap: a failure of one programme out of several produced no toast at all. Both close here.
+
+- [ ] **Step 1: Write the failing tests**
+
+In `scorecardBootstrapOnce.test.jsx`, with the mocked `fetchScoreCardDetails` rejecting once for one programme:
+
+```js
+it("reports a scorecard failure exactly once", async () => {
+  const spy = vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+  // render useScorecardFetching, call fetchAll("t"), two programmes, one rejects
+  await waitFor(() => expect(result.current.error).toMatch(/BIA/));
+  expect(spy).toHaveBeenCalledTimes(1);
+});
+```
+
+In `Transcript.errorState.test.jsx`, seed `scorecardDataState` (the atom `useScorecardFetching` reads) with `{ loading: false, isLoaded: false, error: "BIA: 500" }` and the auth token, render `<Transcript />` inside `RecoilRoot`:
+
+```js
+expect(screen.getByText(/couldn.t load your scorecard data/i)).toBeInTheDocument();   // ScorecardErrorMessage copy
+expect(screen.queryByText("Loading transcript data...")).toBeNull();
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `npx vitest run --testTimeout=10000 src/components/helpers/__tests__/scorecardBootstrapOnce.test.jsx src/components/rightCol/__tests__/Transcript.errorState.test.jsx`
+Expected: FAIL (`handleError` called 2 times; the loading text is still rendered).
+
+- [ ] **Step 3: Implement the three edits, re-run; full suite; lint; commit**
+
+Keep `Transcript`'s per-mount retry from Phase 0 (`useInitializeScoreCards`), so a remount after an error still attempts once more.
+
+```bash
+git add src/components/recoil/ApiScorecardDetails.jsx src/components/helpers src/components/rightCol
+git commit -m "fix(academic-data): one toast per scorecard failure and a visible Transcript error state"
 ```
 
 **Phase 1 gate:** gate command, whole-branch review, PR "Phase 1: data-layer consolidation (P2-B/C, P3, C3-A)". Record in the PR body the request count on cold start before and after (Chrome network panel, filter `integration.unisg.ch`).
@@ -893,13 +979,13 @@ Branch `refactor/arch-fix-phase-5`. Tasks 5.1 to 5.3 are independent.
 
 | Task | Status | Commit | Notes |
 |---|---|---|---|
-| 0.1 | | | |
-| 0.2 | | | |
-| 0.3 | | | |
-| 0.4 | | | |
-| 0.5 | | | |
-| 0.6 | | | |
-| 0.7 | | | |
+| 0.1 | done | 49b0830 | +e035e83 (stable callbacks, fix round 1) |
+| 0.2 | done | e1ac0eb | +0ffdf4b (`suppressErrorToast` opt-out, fix round 1) |
+| 0.3 | done | 52d7add | also switched useEventListDataManager and useTermSelection |
+| 0.4 | done (partial) | ef65f6b | CLAUDE.md is gitignored: doc edits uncommitted, CI step not added; decision pending |
+| 0.5 | done | 6806475 | +bbfc650 (per-mount retry, fix round 1); in-flight dedupe added |
+| 0.6 | done | dd55b6d | also removed `semesterIndex` prop |
+| 0.7 | done | 1f6079b | +debef66 (review simplifications) |
 | 1.1 | | | |
 | 1.2 | | | |
 | 1.3 | | | |
@@ -907,6 +993,7 @@ Branch `refactor/arch-fix-phase-5`. Tasks 5.1 to 5.3 are independent.
 | 1.5 | | | |
 | 1.6 | | | |
 | 1.7 | | | |
+| 1.8 | | | |
 | 2.1 | | | |
 | 2.2 | | | |
 | 2.3 | | | |
