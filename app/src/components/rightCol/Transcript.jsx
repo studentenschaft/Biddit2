@@ -53,7 +53,6 @@ const Transcript = () => {
   
   // Get current semester for UI
   const currentSemester = useCurrentSemester();
-  const currentSemesterIndex = 0;
 
   // Initialize scorecard data (needed for unified system)
   useInitializeScoreCards(handleError);
@@ -381,7 +380,6 @@ const Transcript = () => {
       <GradeTranscript
         scorecardDetails={finalTranscript}
         semesterShortName={currentSemester}
-        semesterIndex={currentSemesterIndex}
         authToken={authToken}
         selectedCourseIds={selectedCourseIds}
         setSelectedCourseIds={setSelectedCourseIds}

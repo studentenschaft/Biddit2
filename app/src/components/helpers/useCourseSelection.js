@@ -1,6 +1,5 @@
 // hooks/useCourseSelection.js
 import { useRecoilState, useRecoilValue } from "recoil";
-import { localSelectedCoursesState } from "../recoil/localSelectedCoursesAtom";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { saveCourse, deleteCourse } from "./api";
@@ -27,21 +26,17 @@ const normalizeCredits = (credits) => {
  *   selectedCourseIds: the array of currently selected course IDs (in local state)
  *   setSelectedCourseIds: the setter for selectedCourseIds (optional - can be null)
  *   selectedSemesterShortName: e.g. 'FS 23'
- *   index: the integer index of the selected semester (optional)
  *   authToken: the user authentication token
  */
 export function useCourseSelection({
   selectedCourseIds,
   setSelectedCourseIds = null, // Now optional
   selectedSemesterShortName,
-  index,
   authToken,
 }) {
   // Unified course data hook for managing selected courses
   const { addSelectedCourse, removeSelectedCourse } = useUnifiedCourseData();
 
-  // Recoil: local course selections
-  const [, setLocalSelectedCourses] = useRecoilState(localSelectedCoursesState);
   // Recoil: local course selections keyed by semester shortName
   const [, setLocalSelectedCoursesSemKey] = useRecoilState(
     localSelectedCoursesSemKeyState
@@ -93,34 +88,6 @@ export function useCourseSelection({
       credits: minimalCourse.credits,
       classification: course.classification,
       semester: normalizedCourseSemester,
-    });
-
-    // Update local selected courses (indexed by semester index)
-    setLocalSelectedCourses((prevCourses) => {
-      if (typeof prevCourses === "object" && prevCourses !== null) {
-        const updatedCourses = { ...prevCourses };
-
-        if (isCourseSelected) {
-          // Remove course
-          const courseIndex = updatedCourses[index]?.findIndex(
-            (c) => c.id === course.id
-          );
-          if (courseIndex > -1) {
-            updatedCourses[index] = [
-              ...updatedCourses[index].slice(0, courseIndex),
-              ...updatedCourses[index].slice(courseIndex + 1),
-            ];
-          }
-        } else {
-          // Add course
-          updatedCourses[index] = [...(updatedCourses[index] || []), course];
-        }
-
-        return updatedCourses;
-      } else {
-        console.error("prevCourses is not an object:", prevCourses);
-        return isCourseSelected ? {} : { [index]: [course] };
-      }
     });
 
     // Update local selected courses (indexed by shortName)

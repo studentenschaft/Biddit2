@@ -158,12 +158,11 @@ CustomGradeInput.displayName = "CustomGradeInput";
 /**
  * GradeTranscript component displays the transcript of grades and allows users to input custom grades.
  *  * NOTE: To enable removal of saved (wishlisted) courses, we  require additional props:
- * semesterShortName, semesterIndex, authToken, selectedCourseIds, and setSelectedCourseIds.
+ * semesterShortName, authToken, selectedCourseIds, and setSelectedCourseIds.
  */
 const GradeTranscript = ({
   scorecardDetails,
   semesterShortName,
-  semesterIndex,
   authToken,
   selectedCourseIds,
   setSelectedCourseIds,
@@ -177,7 +176,6 @@ const GradeTranscript = ({
     selectedCourseIds,
     setSelectedCourseIds,
     selectedSemesterShortName: semesterShortName,
-    index: semesterIndex,
     authToken,
   });
 
@@ -487,7 +485,6 @@ const GradeTranscript = ({
 GradeTranscript.propTypes = {
   scorecardDetails: PropTypes.object.isRequired,
   semesterShortName: PropTypes.string.isRequired,
-  semesterIndex: PropTypes.number.isRequired,
   authToken: PropTypes.string.isRequired,
   selectedCourseIds: PropTypes.array.isRequired,
   setSelectedCourseIds: PropTypes.func.isRequired,
