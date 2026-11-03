@@ -18,8 +18,7 @@
 
 import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
-import { Suspense } from "react";
-import { useEffect, useRef } from "react";
+import { Suspense, memo, useMemo } from "react";
 import { authTokenState } from "../../recoil/authAtom";
 import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { FixedSizeList } from "react-window";
@@ -33,7 +32,6 @@ import { CSS } from "@dnd-kit/utilities";
 // Simplified data management hooks
 import { useEventListDataManager } from "../../helpers/useEventListDataManager";
 import { useCourseSelection } from "../../helpers/useCourseSelection";
-import { useUnifiedCourseData } from "../../helpers/useUnifiedCourseData";
 import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 
 // Unified course selectors - PRIMARY DATA SOURCE
@@ -67,12 +65,203 @@ import { LockOpen } from "./LockOpen";
 // Recoil state
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 
+// Stable fallback so an empty selector result does not invalidate itemData.
+const NO_ITEMS = [];
+
 // Helper function - moved here for simplicity
 // Now uses the 'selected' property from filtered courses instead of separate selectedCourseIds
 function isEventOrNestedCourseSelected(event) {
   // The filtered courses already have the 'selected' property set by updateFilteredCourses
   return event.selected || false;
 }
+
+// Row renderer, module scope so react-window keeps row identity across renders.
+// Includes drag capability for CurriculumMap integration.
+const Row = memo(function Row({ index, style, data }) {
+  const event = data.filteredCourses[index];
+  const courseId = event?.courseNumber || event?.id || `row-${index}`;
+
+  // useDraggable hook for drag-and-drop (must be called unconditionally)
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({
+      id: `eventlist-${courseId}`,
+      data: {
+        type: "eventlist-course",
+        course: event,
+        semesterKey: data.selectedSemesterShortName,
+      },
+      disabled: !event, // Disable dragging if no event
+    });
+
+  // Early return after hooks
+  if (!event) {
+    return null;
+  }
+
+  // Apply transform during drag
+  const dragStyle = transform
+    ? { transform: CSS.Translate.toString(transform) }
+    : {};
+
+  const isSelected = isEventOrNestedCourseSelected(event);
+
+  // For projected semesters, we should not show any enrolled courses as locked
+  const isEnrolled = event.enrolled && !data.selectedSemester?.isProjected;
+
+  // For projected semesters, check if course was previously enrolled (for visual indication)
+  const wasPreviouslyEnrolled =
+    event.enrolled && data.selectedSemester?.isProjected;
+
+  // A browsed course warns too, in "would clash" wording: the exam plan
+  // itself tells students not to bid on courses whose exams clash.
+  const examClash = describeExamClashes(
+    examClashes(data.plannedExams, data.examPlan, event),
+    isPlannedCourse(data.myCourses, event)
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      key={index}
+      data-testid="course-list-row"
+      className={`flex w-full h-full overflow-visible pb-2.5 ${
+        isDragging ? "opacity-50" : ""
+      }`}
+      style={{ ...style, ...dragStyle }}
+      title={
+        wasPreviouslyEnrolled
+          ? "This course was enrolled in a previous semester and probably should not be taken again unless retaking"
+          : ""
+      }
+    >
+      {/* Course Info - draggable area */}
+      <div
+        {...listeners}
+        {...attributes}
+        onClick={() => {
+          data.openCourseDetails(event, { source: "course-list" });
+          data.setIsLeftViewVisibleState(false);
+        }}
+        className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-grab hover:shadow-md transition duration-500 ease-in-out ${
+          wasPreviouslyEnrolled
+            ? "bg-gray-100 text-gray-500"
+            : "bg-white text-gray-800"
+        } ${isDragging ? "cursor-grabbing" : ""}`}
+      >
+        <div className="flex items-center gap-1 pb-2 font-semibold">
+          <p className="min-w-0 truncate">
+            {event.shortName ? event.shortName : "Loading..."}
+          </p>
+          {/* Next to the name rather than in the metadata grid below, which
+              has no spare column. Distinct from the lock, which carries the
+              lecture-overlap signal. heroicons hide their icons from
+              assistive technology; this one is the clash's only carrier. */}
+          {examClash && (
+            <ExclamationIcon
+              role="img"
+              aria-hidden={false}
+              aria-label={examClash.label}
+              className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
+              data-tooltip-id="course-list-tooltip"
+              data-tooltip-content={examClash.label}
+              // The red every dark exam tooltip uses. Important, because
+              // react-tooltip injects its dark variant's white after our
+              // stylesheet.
+              data-tooltip-class-name="!text-red-300"
+            />
+          )}
+        </div>
+        <div
+          className={`text-xs grid grid-cols-12 ${
+            wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-700"
+          }`}
+        >
+          {event && event.avgRating && (
+            <p className="flex col-span-2 ">
+              <StarIcon
+                width={12}
+                color={wasPreviouslyEnrolled ? "#9CA3AF" : "#006625"}
+              />{" "}
+              {event.avgRating}
+            </p>
+          )}
+          <p className="hidden col-span-2 truncate md:block">
+            {event ? `${event.credits / 100} ECTS` : "NA"}
+          </p>
+          <p className="col-span-8 truncate">
+            {event ? `${event.classification}` : "NA"}
+          </p>
+        </div>
+      </div>
+
+      {/* Add/Remove Button */}
+      <button
+        id="select_course"
+        onClick={() => data.addOrRemoveCourse(event)}
+        disabled={isEnrolled}
+        data-tooltip-id={isEnrolled ? "course-list-tooltip" : undefined}
+        data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
+        className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
+          wasPreviouslyEnrolled
+            ? "bg-gray-100 border-gray-300 text-gray-400"
+            : "bg-white"
+        } ${
+          event.overlapping
+            ? "border-warning text-warning cursor-pointer hover:shadow-md"
+            : isEnrolled
+            ? "border-main text-main cursor-not-allowed"
+            : isSelected
+            ? "border-main text-main cursor-pointer hover:shadow-md"
+            : "hover:shadow-md"
+        }`}
+      >
+        {isEnrolled ? (
+          <LockClosed clg="w-6 h-6 " event={event} />
+        ) : isSelected ? (
+          <LockOpen clg="w-6 h-6 " event={event} />
+        ) : (
+          <PlusIcon
+            className={`w-6 h-6 ${
+              wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-800"
+            }`}
+          />
+        )}
+      </button>
+    </div>
+  );
+});
+
+Row.propTypes = {
+  index: PropTypes.number.isRequired,
+  style: PropTypes.object.isRequired,
+  data: PropTypes.object.isRequired,
+};
+
+const LoadingRow = ({ style }) => (
+  <div style={style} className="flex items-center justify-center">
+    <LoadingText>Loading courses...</LoadingText>
+  </div>
+);
+
+LoadingRow.propTypes = {
+  style: PropTypes.object.isRequired,
+};
+
+const NoCoursesRow = ({ style }) => (
+  <div
+    style={style}
+    className="flex flex-col items-center justify-center space-y-2"
+  >
+    <p className="text-xl text-main">No matching courses found</p>
+    <p className="text-sm text-main">
+      or they are not yet published for your selected semester
+    </p>
+  </div>
+);
+
+NoCoursesRow.propTypes = {
+  style: PropTypes.object.isRequired,
+};
 
 export default function EventListContainer({
   termListObject,
@@ -84,7 +273,6 @@ export default function EventListContainer({
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
   const openCourseDetails = useOpenCourseDetails();
-  const { courseData } = useUnifiedCourseData();
 
   // Get selected semester object from termListObject
   const selectedSemester = termListObject?.find(
@@ -93,7 +281,8 @@ export default function EventListContainer({
 
   // Get selected course IDs from unified state
   const selectedCourseIds =
-    useRecoilValue(selectedCoursesSelector(selectedSemesterShortName)) || [];
+    useRecoilValue(selectedCoursesSelector(selectedSemesterShortName)) ||
+    NO_ITEMS;
 
   // Use simplified data manager
   const { isLoading } = useEventListDataManager(
@@ -109,7 +298,7 @@ export default function EventListContainer({
         semester: selectedSemesterShortName,
         type: "filtered",
       })
-    ) || [];
+    ) || NO_ITEMS;
 
   const { plan: examPlan } = useRecoilValue(
     examPlanSelector(selectedSemesterShortName)
@@ -131,100 +320,6 @@ export default function EventListContainer({
   const displayedCourses = smartActive ? smartResults : filteredCourses;
   const isListLoading = isLoading || (smartActive && smartSearch.isLoading);
 
-  /**
-   * ========================= DEV LOGGING UTILITIES =========================
-   * Provides short summary lines plus expandable full objects for quick inspection
-   * Only runs in development mode (NODE_ENV === 'development') to avoid prod noise.
-   */
-  const lastLogSnapshotRef = useRef(null);
-
-  const buildSemesterSummary = (semData) => {
-    if (!semData) return "<no semester data>";
-    return `enrolledIds:${semData.enrolledIds?.length || 0} available:${
-      semData.available?.length || 0
-    } selectedIds:${semData.selectedIds?.length || 0} filtered:${
-      semData.filtered?.length || 0
-    } studyPlan:${semData.studyPlan?.length || 0}`;
-  };
-
-  const shallowSummary = () => {
-    const semesterData = courseData?.semesters?.[selectedSemesterShortName];
-    return {
-      semester: selectedSemesterShortName,
-      filteredCount: filteredCourses.length,
-      selectedCount: selectedCourseIds.length,
-      isLoading,
-      semesterSnapshot: buildSemesterSummary(semesterData),
-    };
-  };
-
-  const logAtomSummary = () => {
-    if (!import.meta.env.DEV) return; // dev only
-    try {
-      const summary = shallowSummary();
-      // Avoid duplicate logs by hashing snapshot
-      const snapshotKey = JSON.stringify({
-        f: summary.filteredCount,
-        s: summary.selectedCount,
-        l: summary.isLoading,
-        sem: summary.semesterSnapshot,
-      });
-      if (lastLogSnapshotRef.current === snapshotKey) return; // no change
-      lastLogSnapshotRef.current = snapshotKey;
-
-      const semesterData = courseData?.semesters?.[selectedSemesterShortName];
-      const groupLabel = `📋 EventListContainer @${selectedSemesterShortName} | filtered:${summary.filteredCount} selected:${summary.selectedCount} loading:${summary.isLoading}`;
-      // Collapsed group keeps console tidy
-      console.groupCollapsed(groupLabel);
-      console.log("Term List (len)", termListObject?.length, termListObject);
-      console.log("Selection Options", selectionOptions);
-      console.log(
-        "Auth Token (truncated)",
-        authToken ? authToken.slice(0, 8) + "…" : null
-      );
-      console.log("Selected Course IDs", selectedCourseIds);
-      console.log("Filtered Courses (first 5)", filteredCourses.slice(0, 5));
-      console.log("Semester Data Summary", summary.semesterSnapshot);
-      console.log("Full Semester Data", semesterData);
-      console.log(
-        "Unified Course Data (keys)",
-        Object.keys(courseData?.semesters || {})
-      );
-      console.groupEnd();
-    } catch (e) {
-      console.warn("[EventListContainer] Dev logging failed", e);
-    }
-  };
-
-  // Log whenever core inputs change
-  const enrolledCount =
-    courseData?.semesters?.[selectedSemesterShortName]?.enrolledIds?.length ||
-    0;
-  useEffect(() => {
-    logAtomSummary();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedSemesterShortName,
-    filteredCourses.length,
-    selectedCourseIds.length,
-    isLoading,
-    enrolledCount,
-  ]);
-
-  // Expose manual trigger for console via window for deeper inspection
-  useEffect(() => {
-    if (!import.meta.env.DEV) return;
-    window.__BIDDIT_DEBUG = window.__BIDDIT_DEBUG || {};
-    window.__BIDDIT_DEBUG.logEventListAtoms = logAtomSummary;
-    return () => {
-      if (window.__BIDDIT_DEBUG) {
-        delete window.__BIDDIT_DEBUG.logEventListAtoms;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  // ======================= END DEV LOGGING UTILITIES =======================
-
   // Course selection hook (simplified) - now works with unified state
   const { addOrRemoveCourse } = useCourseSelection({
     selectedCourseIds,
@@ -233,207 +328,39 @@ export default function EventListContainer({
     authToken,
   });
 
-  // Row renderer - simplified to use only filtered courses
-  // Now includes drag capability for CurriculumMap integration
-  const Row = ({ index, style, data }) => {
-    const event = data.filteredCourses[index];
-    const courseId = event?.courseNumber || event?.id || `row-${index}`;
-
-    // useDraggable hook for drag-and-drop (must be called unconditionally)
-    const { attributes, listeners, setNodeRef, transform, isDragging } =
-      useDraggable({
-        id: `eventlist-${courseId}`,
-        data: {
-          type: "eventlist-course",
-          course: event,
-          semesterKey: data.selectedSemesterShortName,
-        },
-        disabled: !event, // Disable dragging if no event
-      });
-
-    // Early return after hooks
-    if (!event) {
-      return null;
-    }
-
-    // Apply transform during drag
-    const dragStyle = transform
-      ? { transform: CSS.Translate.toString(transform) }
-      : {};
-
-    const isSelected = isEventOrNestedCourseSelected(event);
-
-    // For projected semesters, we should not show any enrolled courses as locked
-    const isEnrolled = event.enrolled && !data.selectedSemester?.isProjected;
-
-    // For projected semesters, check if course was previously enrolled (for visual indication)
-    const wasPreviouslyEnrolled =
-      event.enrolled && data.selectedSemester?.isProjected;
-
-    // A browsed course warns too, in "would clash" wording: the exam plan
-    // itself tells students not to bid on courses whose exams clash.
-    const examClash = describeExamClashes(
-      examClashes(data.plannedExams, data.examPlan, event),
-      isPlannedCourse(data.myCourses, event)
-    );
-
-    return (
-      <div
-        ref={setNodeRef}
-        key={index}
-        data-testid="course-list-row"
-        className={`flex w-full h-full overflow-visible pb-2.5 ${
-          isDragging ? "opacity-50" : ""
-        }`}
-        style={{ ...style, ...dragStyle }}
-        title={
-          wasPreviouslyEnrolled
-            ? "This course was enrolled in a previous semester and probably should not be taken again unless retaking"
-            : ""
-        }
-      >
-        {/* Course Info - draggable area */}
-        <div
-          {...listeners}
-          {...attributes}
-          onClick={() => {
-            data.openCourseDetails(event, { source: "course-list" });
-            data.setIsLeftViewVisibleState(false);
-          }}
-          className={`flex-1 py-2 pl-3 pr-4 rounded-lg shadow-sm overflow-hidden cursor-grab hover:shadow-md transition duration-500 ease-in-out ${
-            wasPreviouslyEnrolled
-              ? "bg-gray-100 text-gray-500"
-              : "bg-white text-gray-800"
-          } ${isDragging ? "cursor-grabbing" : ""}`}
-        >
-          <div className="flex items-center gap-1 pb-2 font-semibold">
-            <p className="min-w-0 truncate">
-              {event.shortName ? event.shortName : "Loading..."}
-            </p>
-            {/* Next to the name rather than in the metadata grid below, which
-                has no spare column. Distinct from the lock, which carries the
-                lecture-overlap signal. heroicons hide their icons from
-                assistive technology; this one is the clash's only carrier. */}
-            {examClash && (
-              <ExclamationIcon
-                role="img"
-                aria-hidden={false}
-                aria-label={examClash.label}
-                className="flex-shrink-0 ml-auto w-4 h-4 text-danger"
-                data-tooltip-id="course-list-tooltip"
-                data-tooltip-content={examClash.label}
-                // The red every dark exam tooltip uses. Important, because
-                // react-tooltip injects its dark variant's white after our
-                // stylesheet.
-                data-tooltip-class-name="!text-red-300"
-              />
-            )}
-          </div>
-          <div
-            className={`text-xs grid grid-cols-12 ${
-              wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-700"
-            }`}
-          >
-            {event && event.avgRating && (
-              <p className="flex col-span-2 ">
-                <StarIcon
-                  width={12}
-                  color={wasPreviouslyEnrolled ? "#9CA3AF" : "#006625"}
-                />{" "}
-                {event.avgRating}
-              </p>
-            )}
-            <p className="hidden col-span-2 truncate md:block">
-              {event ? `${event.credits / 100} ECTS` : "NA"}
-            </p>
-            <p className="col-span-8 truncate">
-              {event ? `${event.classification}` : "NA"}
-            </p>
-          </div>
-        </div>
-
-        {/* Add/Remove Button */}
-        <button
-          id="select_course"
-          onClick={() => data.addOrRemoveCourse(event)}
-          disabled={isEnrolled}
-          data-tooltip-id={isEnrolled ? "course-list-tooltip" : undefined}
-          data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
-          className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
-            wasPreviouslyEnrolled
-              ? "bg-gray-100 border-gray-300 text-gray-400"
-              : "bg-white"
-          } ${
-            event.overlapping
-              ? "border-warning text-warning cursor-pointer hover:shadow-md"
-              : isEnrolled
-              ? "border-main text-main cursor-not-allowed"
-              : isSelected
-              ? "border-main text-main cursor-pointer hover:shadow-md"
-              : "hover:shadow-md"
-          }`}
-        >
-          {isEnrolled ? (
-            <LockClosed clg="w-6 h-6 " event={event} />
-          ) : isSelected ? (
-            <LockOpen clg="w-6 h-6 " event={event} />
-          ) : (
-            <PlusIcon
-              className={`w-6 h-6 ${
-                wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-800"
-              }`}
-            />
-          )}
-        </button>
-      </div>
-    );
-  };
-
-  Row.propTypes = {
-    index: PropTypes.number.isRequired,
-    style: PropTypes.object.isRequired,
-    data: PropTypes.object.isRequired,
-  };
-
-  const LoadingRow = ({ style }) => (
-    <div style={style} className="flex items-center justify-center">
-      <LoadingText>Loading courses...</LoadingText>
-    </div>
-  );
-
-  LoadingRow.propTypes = {
-    style: PropTypes.object.isRequired,
-  };
-
-  const NoCoursesRow = ({ style }) => (
-    <div
-      style={style}
-      className="flex flex-col items-center justify-center space-y-2"
-    >
-      <p className="text-xl text-main">No matching courses found</p>
-      <p className="text-sm text-main">
-        or they are not yet published for your selected semester
-      </p>
-    </div>
-  );
-
-  NoCoursesRow.propTypes = {
-    style: PropTypes.object.isRequired,
-  };
-
   // Prepare itemData for Row component (includes all needed callbacks and state)
-  const itemData = {
-    filteredCourses: displayedCourses,
-    selectedSemesterShortName,
-    selectedSemester,
-    selectedCourseIds,
-    openCourseDetails,
-    setIsLeftViewVisibleState,
-    addOrRemoveCourse,
-    examPlan,
-    plannedExams,
-    myCourses,
-  };
+  const itemData = useMemo(
+    () => ({
+      filteredCourses: displayedCourses,
+      selectedSemesterShortName,
+      selectedSemester,
+      selectedCourseIds,
+      openCourseDetails,
+      setIsLeftViewVisibleState,
+      addOrRemoveCourse,
+      examPlan,
+      plannedExams,
+      myCourses,
+    }),
+    [
+      displayedCourses,
+      selectedSemesterShortName,
+      selectedSemester,
+      selectedCourseIds,
+      openCourseDetails,
+      setIsLeftViewVisibleState,
+      addOrRemoveCourse,
+      examPlan,
+      plannedExams,
+      myCourses,
+    ]
+  );
+
+  const ItemRenderer = isListLoading
+    ? LoadingRow
+    : !displayedCourses || displayedCourses.length === 0
+    ? NoCoursesRow
+    : Row;
 
   return (
     <Suspense
@@ -449,15 +376,7 @@ export default function EventListContainer({
             width={width}
             itemData={itemData}
           >
-            {({ index, style, data }) => {
-              if (isListLoading) {
-                return <LoadingRow style={style} />;
-              }
-              if (!displayedCourses || displayedCourses.length === 0) {
-                return <NoCoursesRow style={style} />;
-              }
-              return <Row index={index} style={style} data={data} />;
-            }}
+            {ItemRenderer}
           </FixedSizeList>
         )}
       </AutoSizer>
