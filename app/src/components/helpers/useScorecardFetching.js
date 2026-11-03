@@ -66,21 +66,15 @@ export const useScorecardFetching = () => {
           enrollmentInfos.map(async (enrollment) => {
             const attempt = enrollment.attempt || 1;
             try {
-              const response = await fetchScoreCardDetails(
+              const data = await fetchScoreCardDetails(
                 authToken,
                 enrollment.studyRegulationId,
                 attempt
               );
-              return {
-                programId: resolveProgramId(enrollment),
-                success: response?.success,
-                data: response?.data,
-                error: response?.error,
-              };
+              return { programId: resolveProgramId(enrollment), data };
             } catch (error) {
               return {
                 programId: resolveProgramId(enrollment),
-                success: false,
                 error: error.message,
                 cause: error,
               };
@@ -90,23 +84,20 @@ export const useScorecardFetching = () => {
 
         const rawScorecards = {};
         const errors = [];
+        let firstCause;
 
-        results.forEach(({ programId, success, data, error }) => {
-          if (success && data && programId) {
+        results.forEach(({ programId, data, error, cause }) => {
+          if (data && programId) {
             rawScorecards[programId] = data;
           } else if (programId) {
             errors.push(`${programId}: ${error || "unknown error"}`);
+            firstCause ??= cause;
           }
         });
 
         // One report per fetch, however many programmes failed.
         if (errors.length > 0) {
-          const firstFailure = results.find(
-            ({ programId, success, data }) => programId && !(success && data)
-          );
-          errorHandlingService.handleError(
-            firstFailure?.cause || new Error(errors[0])
-          );
+          errorHandlingService.handleError(firstCause || new Error(errors[0]));
         }
 
         // LEGACY: Keep scorecardDataState populated for backward compatibility

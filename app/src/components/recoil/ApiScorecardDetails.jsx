@@ -8,7 +8,7 @@ import { log } from "../helpers/log";
  * @param {string} authToken - The authentication token for API requests.
  * @param {string} studyRegulationId - The ID of the study regulation.
  * @param {number} attempt - The attempt number for the scorecard.
- * @returns {Promise<{ success: true, data: Object }>} The scorecard details.
+ * @returns {Promise<Object>} The scorecard details.
  */
 export const fetchScoreCardDetails = async (
   authToken,
@@ -21,8 +21,5 @@ export const fetchScoreCardDetails = async (
     { suppressErrorToast: true }
   );
   log.debug("ScorecardDetails data fetched: ", response.data);
-  return {
-    success: true,
-    data: response.data,
-  };
+  return response.data;
 };

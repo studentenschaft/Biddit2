@@ -192,8 +192,9 @@ export function useTermSelection() {
           }
 
           // The enrolments for this term are loaded by useEnrolledCoursesData.
-          const latestValidTerm = primaryTermShortName;
-          if (latestValidTerm) setUnifiedLatestValidTerm(latestValidTerm);
+          if (primaryTermShortName) {
+            setUnifiedLatestValidTerm(primaryTermShortName);
+          }
 
           // Build the final termListObject with proper ordering and metadata
           const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
@@ -204,7 +205,7 @@ export function useTermSelection() {
             0,
             2 -
               (sortedTerms.length -
-                sortedTerms.indexOf(latestValidTerm || sortedTerms[0]) -
+                sortedTerms.indexOf(primaryTermShortName || sortedTerms[0]) -
                 1)
           );
 
@@ -255,13 +256,12 @@ export function useTermSelection() {
               const termData = allTerms.find((t) => t.shortName === shortName);
               if (!termData) return null;
 
-              // Use calendar-based current semester (not the API's isCurrent flag)
-              // The API may mark a future term as "current" before courses are published
-              const calendarCurrent = latestValidTerm || primaryTermShortName;
-
-              const isFuture = calendarCurrent
+              // Relative to the calendar-based current term, not the API's
+              // isCurrent flag: the API may mark a future term as "current"
+              // before courses are published.
+              const isFuture = primaryTermShortName
                 ? allSortedTerms.indexOf(shortName) >
-                  allSortedTerms.indexOf(calendarCurrent)
+                  allSortedTerms.indexOf(primaryTermShortName)
                 : false;
 
               // Same-season previous year as reference (e.g. HS26 -> HS25).
@@ -305,8 +305,8 @@ export function useTermSelection() {
 
           // Set the selected semester to the latest valid term only if no semester is currently selected
           // This prevents overriding the user's existing semester selection when StudyOverview opens
-            if (!courseData.selectedSemester && latestValidTerm) {
-            setUnifiedSelectedSemester(latestValidTerm, termIdList, latestValidTerm);
+            if (!courseData.selectedSemester && primaryTermShortName) {
+            setUnifiedSelectedSemester(primaryTermShortName, termIdList, primaryTermShortName);
             }
 
           log.debug(

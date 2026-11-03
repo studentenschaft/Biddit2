@@ -29,8 +29,9 @@ const ENROLLMENTS = {
 
 vi.mock("../../recoil/ApiScorecardDetails", () => ({
   fetchScoreCardDetails: vi.fn(async () => ({
-    success: true,
-    data: { items: [], creditsFulfilledDe: false, creditsFulfilledEn: false },
+    items: [],
+    creditsFulfilledDe: false,
+    creditsFulfilledEn: false,
   })),
 }));
 
@@ -73,7 +74,7 @@ describe("scorecard bootstrap", () => {
   });
 
   it("does not refetch on its own after a failed attempt", async () => {
-    fetchScoreCardDetails.mockResolvedValueOnce({ success: false, error: "boom" });
+    fetchScoreCardDetails.mockRejectedValueOnce(new Error("boom"));
     const { result } = renderHook(
       () => {
         useInitializeScoreCards(vi.fn());
@@ -96,7 +97,7 @@ describe("scorecard bootstrap", () => {
   });
 
   it("tries once more when a consumer remounts after a failed attempt", async () => {
-    fetchScoreCardDetails.mockResolvedValueOnce({ success: false, error: "boom" });
+    fetchScoreCardDetails.mockRejectedValueOnce(new Error("boom"));
     let scorecards;
     const Consumer = () => {
       useInitializeScoreCards(vi.fn());
@@ -144,8 +145,9 @@ describe("scorecard bootstrap", () => {
     };
     fetchScoreCardDetails
       .mockResolvedValueOnce({
-        success: true,
-        data: { items: [], creditsFulfilledDe: false, creditsFulfilledEn: false },
+        items: [],
+        creditsFulfilledDe: false,
+        creditsFulfilledEn: false,
       })
       .mockRejectedValueOnce(new Error("Request failed with status code 500"));
     const spy = vi

@@ -62,7 +62,7 @@ export async function loadCatalogForTerm({ term, authToken }) {
 
   try {
     const courses = await fetchCatalog(term.cisId, authToken);
-    if ((courses?.length || 0) < REFERENCE_FALLBACK_MIN_COURSES) {
+    if (courses.length < REFERENCE_FALLBACK_MIN_COURSES) {
       const reference = await loadReference();
       if (reference !== null) return fromReference(reference);
     }

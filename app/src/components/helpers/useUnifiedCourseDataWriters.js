@@ -380,27 +380,11 @@ export function useUnifiedCourseDataWriters() {
    * Update the selected course info (for CourseInfo display)
    */
   const updateSelectedCourseInfo = useCallback((courseInfo) => {
-    setCourseData((prev) => {
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters || {},
-        ratings: prev.ratings || {},
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-        selectedCourseInfo: prev.selectedCourseInfo,
-      };
-
-      const newData = {
-        ...cleanPrev,
-        selectedCourseInfo: courseInfo,
-      };
-
-      log.debug(
-        `🎯 Updated selected course info:`,
-        courseInfo?.shortName || "cleared"
-      );
-      return newData;
-    });
+    setCourseData((prev) => ({ ...prev, selectedCourseInfo: courseInfo }));
+    log.debug(
+      `🎯 Updated selected course info:`,
+      courseInfo?.shortName || "cleared"
+    );
   }, [setCourseData]);
 
   /**
