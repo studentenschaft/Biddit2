@@ -40,7 +40,6 @@ const eventsIn = ({ enrolledIds = [], selectedIds = [], plan = PLAN }) =>
           available: [MICRO, CAUSAL, OPS],
           selectedIds,
           studyPlan: [],
-          ratings: {},
           cisId: "1",
         },
       },

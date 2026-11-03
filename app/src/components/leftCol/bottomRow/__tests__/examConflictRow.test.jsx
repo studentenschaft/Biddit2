@@ -93,7 +93,6 @@ const renderList = ({ selectedIds = [] } = {}) =>
               available: CATALOG,
               selectedIds,
               studyPlan: [],
-              ratings: {},
               cisId: "cis-hs26",
               isCurrent: true,
               isProjected: false,

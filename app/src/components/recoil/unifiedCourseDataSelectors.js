@@ -25,7 +25,6 @@ export const semesterCourseDataSelector = selectorFamily({
           available: [],
           selectedIds: [],
           studyPlan: [],
-          ratings: {},
           lastFetched: null,
           isFutureSemester: false,
           referenceSemester: null,
@@ -135,17 +134,19 @@ export const selectedCoursesSelector = selectorFamily({
     },
 });
 
+// Stable fallback so a missing map does not defeat selector caching.
+const NO_RATINGS = {};
+
 /**
- * Selector to get course ratings for a specific semester
+ * Course ratings. They apply to every semester and are stored once at the top
+ * level; the semester parameter is kept for existing callers.
  */
 export const semesterRatingsSelector = selectorFamily({
   key: "semesterRatingsSelector",
   get:
-    (semesterShortName) =>
-    ({ get }) => {
-      const semesterData = get(semesterCourseDataSelector(semesterShortName));
-      return semesterData.ratings || {};
-    },
+    () =>
+    ({ get }) =>
+      get(unifiedCourseDataState).ratings || NO_RATINGS,
 });
 
 /**
@@ -222,7 +223,7 @@ export const filteredCoursesSelector = selectorFamily({
     ({ get }) => {
       const semesterData = get(semesterCourseDataSelector(semesterShortName));
       const filterOptions = get(selectionOptionsState);
-      const ratingsMap = semesterData.ratings || {};
+      const ratingsMap = get(semesterRatingsSelector(semesterShortName));
       const enrolledIds = semesterData.enrolledIds || [];
       const selectedIds = semesterData.selectedIds || [];
 
@@ -488,7 +489,7 @@ export const smartSearchResultsSelector = selector({
 
     const enrolledIds = semesterData?.enrolledIds || [];
     const selectedIds = semesterData?.selectedIds || [];
-    const ratings = semesterData?.ratings || {};
+    const ratings = courseData.ratings || NO_RATINGS;
 
     return ordered.map((course) => {
       const courseNumber = getCourseIdentifier(course);

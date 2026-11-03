@@ -62,7 +62,6 @@ const seedState = ({ set }) => {
         available: COURSES,
         selectedIds: [],
         studyPlan: [],
-        ratings: {},
         lastFetched: null,
         isFutureSemester: false,
         referenceSemester: null,

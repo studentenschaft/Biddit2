@@ -58,7 +58,6 @@ const plannedExamIds = ({
           available: [MICRO, CAUSAL, OPS],
           selectedIds,
           studyPlan: [],
-          ratings: {},
           cisId: "1",
         },
       },

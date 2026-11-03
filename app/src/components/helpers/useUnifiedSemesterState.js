@@ -79,7 +79,6 @@ export function useUnifiedSemesterState() {
             enrolledIds: semesterData.enrolledIds || [],
             available: semesterData.available || [],
             selectedIds: semesterData.selectedIds || [],
-            ratings: semesterData.ratings || {},
             lastFetched: semesterData.lastFetched || null,
             cisId: semesterData.cisId || null,
             isFutureSemester: isFuture,

@@ -15,7 +15,7 @@
  * 1. Check if course ratings already exist (global data)
  * 2. If not, fetch from SHSG API
  * 3. Update legacy course ratings state
- * 4. Update unified course ratings for all semesters (since ratings are global)
+ * 4. Update the unified course ratings (stored once, shared by all semesters)
  * 5. Manage loading state throughout the process
  *
  * Note: Course ratings are global data that applies to all semesters,
@@ -43,10 +43,8 @@ export const useCourseRatingsData = ({ authToken }) => {
   const [shsgCourseRatings, setShsgCourseRatings] = useRecoilState(
     shsgCourseRatingsState
   );
-  const {
-    updateCourseRatingsForAllSemesters:
-      updateUnifiedCourseRatingsForAllSemesters,
-  } = useUnifiedCourseDataWriters();
+  const { updateCourseRatings: updateUnifiedCourseRatings } =
+    useUnifiedCourseDataWriters();
   const { isDegradedMode } = useDegradedMode();
 
   // Local loading state
@@ -79,9 +77,8 @@ export const useCourseRatingsData = ({ authToken }) => {
           // Update legacy course ratings state
           setShsgCourseRatings(response.data);
 
-          // Update unified course ratings for ALL semesters
-          // Since ratings are global data that applies to all semesters
-          updateUnifiedCourseRatingsForAllSemesters(response.data);
+          // Ratings apply to every semester and are stored once.
+          updateUnifiedCourseRatings(response.data);
         } catch (error) {
           console.error("❌ Error fetching course ratings:", error);
           errorHandlingService.handleError(error);

@@ -89,7 +89,6 @@ const renderExamWeek = async () => {
               available: COURSES,
               selectedIds: [],
               studyPlan: [],
-              ratings: {},
               cisId: "cis-hs26",
               isCurrent: true,
             },

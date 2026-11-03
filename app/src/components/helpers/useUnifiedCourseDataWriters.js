@@ -18,7 +18,6 @@ export const DEFAULT_SEMESTER_STRUCTURE = {
   available: [], // Full course objects for available courses
   selectedIds: [], // Course IDs/numbers for selected courses
   studyPlan: [], // Study plan courses for this semester
-  ratings: {},
   lastFetched: null,
   isFutureSemester: false,
   referenceSemester: null,
@@ -362,9 +361,10 @@ export function useUnifiedCourseDataWriters() {
   }, [patchSemester]);
 
   /**
-   * Update course ratings for a semester
+   * Store the SHSG course ratings. They apply to every semester, so they live
+   * once at the top level and leave the semester objects untouched.
    */
-  const updateCourseRatings = useCallback((semesterShortName, ratings) => {
+  const updateCourseRatings = useCallback((ratings) => {
     let ratingsMap = {};
     if (Array.isArray(ratings)) {
       ratings.forEach((r) => {
@@ -373,29 +373,7 @@ export function useUnifiedCourseDataWriters() {
     } else if (ratings && typeof ratings === "object") {
       ratingsMap = ratings;
     }
-    patchSemester(semesterShortName, { ratings: ratingsMap });
-  }, [patchSemester]);
-
-  /**
-   * Update course ratings for ALL semesters at once
-   * Since ratings are global data that applies to all semesters
-   */
-  const updateCourseRatingsForAllSemesters = useCallback((ratings) => {
-    let ratingsMap = {};
-    if (Array.isArray(ratings)) {
-      ratings.forEach((r) => {
-        if (r._id && r.avgRating) ratingsMap[r._id] = r.avgRating;
-      });
-    } else if (ratings && typeof ratings === "object") {
-      ratingsMap = ratings;
-    }
-    setCourseData((prev) => {
-      const semesters = { ...(prev.semesters || {}) };
-      Object.keys(semesters).forEach((s) => {
-        semesters[s] = { ...semesters[s], ratings: ratingsMap };
-      });
-      return { ...prev, semesters };
-    });
+    setCourseData((prev) => ({ ...prev, ratings: ratingsMap }));
   }, [setCourseData]);
 
   /**
@@ -406,6 +384,7 @@ export function useUnifiedCourseDataWriters() {
       // Create a clean copy that only includes the properties we want
       const cleanPrev = {
         semesters: prev.semesters || {},
+        ratings: prev.ratings || {},
         selectedSemester: prev.selectedSemester,
         latestValidTerm: prev.latestValidTerm,
         selectedCourseInfo: prev.selectedCourseInfo,
@@ -442,7 +421,6 @@ export function useUnifiedCourseDataWriters() {
     removeSelectedCourse,
     updateStudyPlan,
     updateCourseRatings,
-    updateCourseRatingsForAllSemesters,
     updateSelectedCourseInfo,
     clearSelectedCourseInfo,
   };

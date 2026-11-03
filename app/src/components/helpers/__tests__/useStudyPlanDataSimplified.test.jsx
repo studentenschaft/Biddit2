@@ -48,7 +48,6 @@ const seedWishlist = (set) => {
         available: [],
         selectedIds: ["existing-course"],
         studyPlan: ["existing-course"],
-        ratings: {},
         lastFetched: PRE_INCIDENT_TIMESTAMP,
         isFutureSemester: false,
         referenceSemester: null,
