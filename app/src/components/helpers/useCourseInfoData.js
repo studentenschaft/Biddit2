@@ -20,7 +20,8 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { apiClient } from "./axiosClient";
+import { catalogUrl } from "./apiEndpoints";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -52,17 +53,9 @@ export const useCourseInfoData = (params) => {
     if (!params) return;
 
     const fetchTerm = (cisId) =>
-      axios.get(
-        `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
-        {
-          headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
-            "API-Version": "1",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+      apiClient.get(catalogUrl(cisId), authToken, {
+        headers: { "X-RequestedLanguage": "EN" },
+      });
 
     const fetchCourseData = async () => {
       // Only fetch if we have required data

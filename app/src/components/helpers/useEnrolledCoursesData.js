@@ -20,7 +20,8 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { apiClient } from "./axiosClient";
+import { myCoursesUrl } from "./apiEndpoints";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -58,16 +59,10 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
           `🔄 [SIMPLIFIED] Fetching enrolled courses for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
-        const response = await axios.get(
-          `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${selectedSemester.id}`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
+        const response = await apiClient.get(
+          myCoursesUrl(selectedSemester.id),
+          authToken,
+          { headers: { "X-RequestedLanguage": "EN" } }
         );
 
         console.log(

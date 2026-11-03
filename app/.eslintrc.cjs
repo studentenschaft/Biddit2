@@ -17,9 +17,25 @@ module.exports = {
       files: ['scripts/**/*.js', 'scripts/**/*.mjs'],
       env: { node: true, browser: false },
     },
+    {
+      // The singleton apiClient is the only place allowed to use axios.
+      files: ['src/components/helpers/axiosClient.js'],
+      rules: { 'no-restricted-imports': 'off' },
+    },
   ],
   rules: {
     'react/jsx-no-target-blank': 'off',
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          {
+            name: 'axios',
+            message: 'Use apiClient from helpers/axiosClient.js',
+          },
+        ],
+      },
+    ],
     'react-refresh/only-export-components': [
       'warn',
       { allowConstantExport: true },

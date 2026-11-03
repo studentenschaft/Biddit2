@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
-import axios from "axios";
+import { apiClient } from "./axiosClient";
+import { myCoursesUrl, termsUrl } from "./apiEndpoints";
 import { authTokenState } from "../recoil/authAtom";
 import { cisIdList } from "../recoil/cisIdListAtom";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
@@ -130,17 +131,9 @@ export function useTermSelection() {
       (async () => {
         try {
           setIsLoading(true);
-          const response = await axios.get(
-            `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
-            {
-              headers: {
-                "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                "X-RequestedLanguage": "DE",
-                "API-Version": "1",
-                Authorization: `Bearer ${authToken}`,
-              },
-            }
-          );
+          const response = await apiClient.get(termsUrl(), authToken, {
+            headers: { "X-RequestedLanguage": "DE" },
+          });
           setCisIdList(response.data);
           console.log("✅ [TERM SELECTION] CIS ID list loaded:", response.data);
         } catch (error) {
@@ -205,16 +198,10 @@ export function useTermSelection() {
               (t) => t.shortName === primaryTermShortName
             );
             try {
-              const response = await axios.get(
-                `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${primaryTerm.id}`,
-                {
-                  headers: {
-                    "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-                    "X-RequestedLanguage": "DE",
-                    "API-Version": "1",
-                    Authorization: `Bearer ${authToken}`,
-                  },
-                }
+              const response = await apiClient.get(
+                myCoursesUrl(primaryTerm.id),
+                authToken,
+                { headers: { "X-RequestedLanguage": "DE" } }
               );
 
               // Update unified course data

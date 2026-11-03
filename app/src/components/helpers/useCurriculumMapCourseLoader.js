@@ -15,22 +15,13 @@
  */
 
 import { useEffect, useMemo, useRef } from "react";
-import axios from "axios";
 import { useRecoilValue } from "recoil";
 import { termListState } from "../recoil/termListState";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 import { useUnifiedCourseData } from "./useUnifiedCourseData";
 import { REFERENCE_FALLBACK_MIN_COURSES } from "./useCourseInfoData";
-
-const COURSE_SHEETS_URL = (cisId) =>
-  `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`;
-
-const requestHeaders = (authToken) => ({
-  "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-  "X-RequestedLanguage": "EN",
-  "API-Version": "1",
-  Authorization: `Bearer ${authToken}`,
-});
+import { apiClient } from "./axiosClient";
+import { catalogUrl } from "./apiEndpoints";
 
 const normalizeKey = (key) => (key ? key.replace(/\s+/g, "") : "");
 
@@ -77,8 +68,8 @@ export function useCurriculumMapCourseLoader(authToken, semesterKeys) {
       attemptedRef.current.add(key);
 
       const fetchTerm = (cisId) =>
-        axios.get(COURSE_SHEETS_URL(cisId), {
-          headers: requestHeaders(authToken),
+        apiClient.get(catalogUrl(cisId), authToken, {
+          headers: { "X-RequestedLanguage": "EN" },
         });
       const hasReference =
         term.referenceCisId && term.referenceCisId !== term.cisId;
