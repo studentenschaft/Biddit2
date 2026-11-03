@@ -56,6 +56,7 @@ export const useCourseInfoData = (params) => {
     const fetchTerm = (cisId) =>
       apiClient.get(catalogUrl(cisId), authToken, {
         headers: { "X-RequestedLanguage": "EN" },
+        suppressErrorToast: true,
       });
 
     const fetchCourseData = async () => {

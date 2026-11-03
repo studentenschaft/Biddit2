@@ -187,7 +187,9 @@ class ApiClient {
           // surface the offline modal here regardless and never show an error
           // toast/email for it.
           emitNetworkEvent("OFFLINE");
-        } else {
+        } else if (!originalRequest?.suppressErrorToast) {
+          // Callers that handle the failure themselves (or stay silent on
+          // purpose) pass `suppressErrorToast: true` in the request config.
           errorHandlingService.handleError(error);
         }
 

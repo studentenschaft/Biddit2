@@ -118,7 +118,7 @@ export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
         const response = await apiClient.get(
           catalogUrl(targetSemesterInfo.cisId),
           authToken,
-          { headers: { "X-RequestedLanguage": "EN" } }
+          { headers: { "X-RequestedLanguage": "EN" }, suppressErrorToast: true }
         );
         updateAvailableCourses(targetSemester, response.data);
       } catch (error) {

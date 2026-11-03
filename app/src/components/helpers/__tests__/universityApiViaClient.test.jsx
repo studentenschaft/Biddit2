@@ -29,9 +29,11 @@ const wrapperWith = (seed) => {
 
 const plainWrapper = wrapperWith(() => {});
 
+// The hooks handle failures themselves, so apiClient must not toast as well.
 const withLanguage = (language) =>
   expect.objectContaining({
     headers: expect.objectContaining({ "X-RequestedLanguage": language }),
+    suppressErrorToast: true,
   });
 
 let getSpy;

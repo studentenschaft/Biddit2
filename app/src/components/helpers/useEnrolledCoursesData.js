@@ -63,7 +63,7 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
         const response = await apiClient.get(
           myCoursesUrl(selectedSemester.id),
           authToken,
-          { headers: { "X-RequestedLanguage": "EN" } }
+          { headers: { "X-RequestedLanguage": "EN" }, suppressErrorToast: true }
         );
 
         log.debug(

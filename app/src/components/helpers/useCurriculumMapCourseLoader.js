@@ -70,6 +70,7 @@ export function useCurriculumMapCourseLoader(authToken, semesterKeys) {
       const fetchTerm = (cisId) =>
         apiClient.get(catalogUrl(cisId), authToken, {
           headers: { "X-RequestedLanguage": "EN" },
+          suppressErrorToast: true,
         });
       const hasReference =
         term.referenceCisId && term.referenceCisId !== term.cisId;

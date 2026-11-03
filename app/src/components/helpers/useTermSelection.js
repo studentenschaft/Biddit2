@@ -134,6 +134,7 @@ export function useTermSelection() {
           setIsLoading(true);
           const response = await apiClient.get(termsUrl(), authToken, {
             headers: { "X-RequestedLanguage": "DE" },
+            suppressErrorToast: true,
           });
           setCisIdList(response.data);
           log.debug("✅ [TERM SELECTION] CIS ID list loaded:", response.data);
@@ -202,7 +203,10 @@ export function useTermSelection() {
               const response = await apiClient.get(
                 myCoursesUrl(primaryTerm.id),
                 authToken,
-                { headers: { "X-RequestedLanguage": "DE" } }
+                {
+                  headers: { "X-RequestedLanguage": "DE" },
+                  suppressErrorToast: true,
+                }
               );
 
               // Update unified course data
