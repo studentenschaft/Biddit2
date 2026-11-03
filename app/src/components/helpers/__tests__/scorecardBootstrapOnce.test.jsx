@@ -2,7 +2,7 @@
 // and calls fetchAll itself) must fetch the scorecards once, not once each.
 
 import { useEffect } from "react";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authTokenState } from "../../recoil/authAtom";
@@ -92,5 +92,39 @@ describe("scorecard bootstrap", () => {
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
 
     expect(fetchScoreCardDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("tries once more when a consumer remounts after a failed attempt", async () => {
+    fetchScoreCardDetails.mockResolvedValueOnce({ success: false, error: "boom" });
+    let scorecards;
+    const Consumer = () => {
+      useInitializeScoreCards(vi.fn());
+      return null;
+    };
+    const Probe = () => {
+      scorecards = useRecoilValue(scorecardDataState);
+      return null;
+    };
+    const tree = (mounted) => (
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(authTokenState, "t");
+          set(currentEnrollmentsState, ENROLLMENTS);
+        }}
+      >
+        <Probe />
+        {mounted && <Consumer />}
+      </RecoilRoot>
+    );
+
+    const { rerender } = render(tree(true));
+    await waitFor(() => expect(scorecards.error).toMatch(/boom/));
+    expect(fetchScoreCardDetails).toHaveBeenCalledTimes(1);
+
+    rerender(tree(false));
+    rerender(tree(true));
+
+    await waitFor(() => expect(scorecards.isLoaded).toBe(true));
+    expect(fetchScoreCardDetails).toHaveBeenCalledTimes(2);
   });
 });
