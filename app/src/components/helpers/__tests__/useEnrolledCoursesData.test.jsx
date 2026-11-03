@@ -2,6 +2,7 @@
 // semester switch, or React StrictMode running the effect twice in dev).
 
 import { StrictMode } from "react";
+import PropTypes from "prop-types";
 import { renderHook, waitFor } from "@testing-library/react";
 import { delay, http, HttpResponse } from "msw";
 import { RecoilRoot, useRecoilValue } from "recoil";
@@ -33,6 +34,7 @@ const StrictModeWrapper = ({ children }) => (
     <RecoilRoot initializeState={seedSemesters}>{children}</RecoilRoot>
   </StrictMode>
 );
+StrictModeWrapper.propTypes = { children: PropTypes.node };
 
 const useHarness = ({ sem }) => {
   const enrolment = useEnrolledCoursesData({
