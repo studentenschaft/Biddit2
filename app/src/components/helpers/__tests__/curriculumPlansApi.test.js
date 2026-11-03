@@ -36,6 +36,8 @@ vi.mock("../../errorHandling/ErrorHandlingService", () => ({
 
 const PROD_BASE = "https://api.shsg.ch/curriculum-plans";
 const TOKEN = "test-token-xyz";
+// Every function reports its own failure, so it opts out of the interceptor toast.
+const OPT_OUT = { suppressErrorToast: true };
 
 describe("curriculumPlansApi", () => {
   beforeEach(() => {
@@ -64,7 +66,7 @@ describe("curriculumPlansApi", () => {
       const result = await getCurriculumPlans(TOKEN);
 
       expect(mockGet).toHaveBeenCalledTimes(1);
-      expect(mockGet).toHaveBeenCalledWith(PROD_BASE, TOKEN);
+      expect(mockGet).toHaveBeenCalledWith(PROD_BASE, TOKEN, OPT_OUT);
       expect(result).toBe(body);
     });
 
@@ -103,6 +105,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/active/plan-42`,
         {},
         TOKEN,
+        OPT_OUT,
       );
       expect(result).toEqual({ ok: true });
     });
@@ -129,6 +132,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42`,
         payload,
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -149,7 +153,7 @@ describe("curriculumPlansApi", () => {
 
       await deletePlanApi("plan-42", TOKEN);
 
-      expect(mockDelete).toHaveBeenCalledWith(`${PROD_BASE}/plan-42`, TOKEN);
+      expect(mockDelete).toHaveBeenCalledWith(`${PROD_BASE}/plan-42`, TOKEN, OPT_OUT);
     });
 
     it("reports and rethrows on failure", async () => {
@@ -173,6 +177,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/duplicate`,
         { name: "My Copy" },
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -203,6 +208,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/course-ABC123`,
         data,
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -226,6 +232,7 @@ describe("curriculumPlansApi", () => {
       expect(mockDelete).toHaveBeenCalledWith(
         `${PROD_BASE}/plan-42/course-ABC123`,
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -250,6 +257,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/semester-notes/FS26`,
         { note: "retake" },
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -263,6 +271,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/semester-notes/FS26`,
         { note: null },
         TOKEN,
+        OPT_OUT,
       );
     });
 

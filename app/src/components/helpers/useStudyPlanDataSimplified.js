@@ -67,9 +67,11 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔄 [SIMPLIFIED] Fetching study plan for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
+        // The catch below reports failures, so apiClient must not toast too.
         const response = await apiClient.get(
           "https://api.shsg.ch/study-plans",
-          authToken
+          authToken,
+          { suppressErrorToast: true }
         );
 
         if (cancelled) return;

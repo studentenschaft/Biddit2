@@ -67,6 +67,8 @@ export const useCourseRatingsData = ({ authToken }) => {
               headers: {
                 "X-RequestedLanguage": "DE",
               },
+              // The catch below reports failures, so apiClient must not toast too.
+              suppressErrorToast: true,
             }
           );
 

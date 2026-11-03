@@ -198,6 +198,28 @@ describe("useStudyPlanDataSimplified - once per session", () => {
     expect(hits).toBe(2);
   });
 
+  // A 404 is not retried, so the failure lands at once without fake timers.
+  it("a failed load reports once", async () => {
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () =>
+        HttpResponse.json({ message: "not found" }, { status: 404 })
+      )
+    );
+    const spy = vi
+      .spyOn(errorHandlingService, "handleError")
+      .mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(
+      () => useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isStudyPlanLoading).toBe(false));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
   it("refetches after the study plan is invalidated", async () => {
     const counter = countStudyPlanFetches();
 

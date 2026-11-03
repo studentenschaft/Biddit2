@@ -6,7 +6,9 @@ export const fetchCurrentEnrollments = async (authToken) => {
   try {
     const response = await apiClient.get(
       `https://integration.unisg.ch/StudyApi/MyEnrollments/currentEnrollments`,
-      authToken
+      authToken,
+      // The catch below reports failures, so apiClient must not toast too.
+      { suppressErrorToast: true }
     );
     log.debug("CurrentEnrollments data fetched: ", response.data);
     return response.data;

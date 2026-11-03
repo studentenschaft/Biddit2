@@ -40,7 +40,10 @@ export function querySimilarCourses({
   semester,
   numberOfResults = 10,
 }) {
+  // Both callers handle the failure (a 404 means "nothing embedded yet",
+  // anything else they report), so apiClient must not toast as well.
   return apiClient.get(`${SIMILAR_COURSES_BASE}/query`, authToken, {
+    suppressErrorToast: true,
     params: {
       courseDescription,
       numberOfResults,
@@ -114,7 +117,8 @@ export async function upsertSimilarCourses({
           program,
         })),
       },
-      authToken
+      authToken,
+      { suppressErrorToast: true }
     );
     return { upserted: true, semester };
   } catch (error) {

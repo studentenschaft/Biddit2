@@ -2,6 +2,8 @@ import { apiClient } from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 const BASE_URL = "https://api.shsg.ch/curriculum-plans";
+// Every function reports its own failure, so apiClient must not toast as well.
+const OWN_ERROR_REPORT = { suppressErrorToast: true };
 
 /**
  * Curriculum Plans API Client
@@ -16,7 +18,7 @@ const BASE_URL = "https://api.shsg.ch/curriculum-plans";
  */
 export const getCurriculumPlans = async (token) => {
   try {
-    const res = await apiClient.get(BASE_URL, token);
+    const res = await apiClient.get(BASE_URL, token, OWN_ERROR_REPORT);
     return res.data;
   } catch (err) {
     errorHandlingService.handleError(err);
@@ -33,7 +35,12 @@ export const getCurriculumPlans = async (token) => {
  */
 export const setActivePlanApi = async (planId, token) => {
   try {
-    const res = await apiClient.post(`${BASE_URL}/active/${planId}`, {}, token);
+    const res = await apiClient.post(
+      `${BASE_URL}/active/${planId}`,
+      {},
+      token,
+      OWN_ERROR_REPORT,
+    );
     return res.data;
   } catch (err) {
     errorHandlingService.handleError(err);
@@ -51,7 +58,12 @@ export const setActivePlanApi = async (planId, token) => {
  */
 export const upsertPlan = async (planId, data, token) => {
   try {
-    const res = await apiClient.post(`${BASE_URL}/${planId}`, data, token);
+    const res = await apiClient.post(
+      `${BASE_URL}/${planId}`,
+      data,
+      token,
+      OWN_ERROR_REPORT,
+    );
     return res.data;
   } catch (err) {
     errorHandlingService.handleError(err);
@@ -68,7 +80,11 @@ export const upsertPlan = async (planId, data, token) => {
  */
 export const deletePlanApi = async (planId, token) => {
   try {
-    const res = await apiClient.delete(`${BASE_URL}/${planId}`, token);
+    const res = await apiClient.delete(
+      `${BASE_URL}/${planId}`,
+      token,
+      OWN_ERROR_REPORT,
+    );
     return res.data;
   } catch (err) {
     errorHandlingService.handleError(err);
@@ -90,6 +106,7 @@ export const duplicatePlanApi = async (planId, name, token) => {
       `${BASE_URL}/${planId}/duplicate`,
       { name },
       token,
+      OWN_ERROR_REPORT,
     );
     return res.data;
   } catch (err) {
@@ -113,6 +130,7 @@ export const upsertPlacement = async (planId, placementId, data, token) => {
       `${BASE_URL}/${planId}/${placementId}`,
       data,
       token,
+      OWN_ERROR_REPORT,
     );
     return res.data;
   } catch (err) {
@@ -134,6 +152,7 @@ export const removePlacement = async (planId, placementId, token) => {
     const res = await apiClient.delete(
       `${BASE_URL}/${planId}/${placementId}`,
       token,
+      OWN_ERROR_REPORT,
     );
     return res.data;
   } catch (err) {
@@ -157,6 +176,7 @@ export const setSemesterNoteApi = async (planId, semesterKey, note, token) => {
       `${BASE_URL}/${planId}/semester-notes/${semesterKey}`,
       { note },
       token,
+      OWN_ERROR_REPORT,
     );
     return res.data;
   } catch (err) {

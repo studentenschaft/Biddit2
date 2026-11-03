@@ -31,10 +31,12 @@ export const saveCourse = async (studyPlanId, eventId, token) => {
       "eventId",
       eventId
     );
+    // The catch below reports failures, so apiClient must not toast too.
     await apiClient.post(
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
       {},
-      token
+      token,
+      { suppressErrorToast: true }
     );
     return true;
   } catch (err) {
@@ -57,9 +59,12 @@ export const deleteCourse = async (
       "eventId",
       eventId
     );
+    // Failures are reported below (or counted by bulk callers), never by
+    // apiClient: a bulk wipe must not stack one toast per course.
     const res = await apiClient.delete(
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
-      token
+      token,
+      { suppressErrorToast: true }
     );
     log.debug("SHSG API Call succesful; deleteCourse res.data", res.data);
     return true;

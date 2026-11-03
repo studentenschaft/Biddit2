@@ -5,10 +5,12 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { log } from "../helpers/log";
 
 const API_URL = "https://api.shsg.ch/course-grades";
+// Each function reports its own failure, so apiClient must not toast as well.
+const OWN_ERROR_REPORT = { suppressErrorToast: true };
 
 export async function fetchCustomGrades(token) {
   try {
-    const response = await apiClient.get(API_URL, token);
+    const response = await apiClient.get(API_URL, token, OWN_ERROR_REPORT);
     return response.data;
   } catch (error) {
     // Kill switch flipped on mid-flight: expected, not a real failure - skip
@@ -26,7 +28,8 @@ export async function updateCustomGrade(token, courseNumber, grade) {
     const response = await apiClient.post(
       API_URL,
       { courseNumber, grade },
-      token
+      token,
+      OWN_ERROR_REPORT
     );
     log.debug("Custom grade updated:", response.data);
     return response.data;
@@ -39,7 +42,8 @@ export async function deleteCustomGrade(token, courseNumber) {
   try {
     const response = await apiClient.delete(
       `${API_URL}/${encodeURIComponent(courseNumber)}`,
-      token
+      token,
+      OWN_ERROR_REPORT
     );
     return response.data;
   } catch (error) {

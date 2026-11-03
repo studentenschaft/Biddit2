@@ -56,6 +56,8 @@ export default function CourseInfo() {
           headers: {
             "API-Version": "3",
           },
+          // A failure falls through to the course-number lookup below.
+          suppressErrorToast: true,
         }
       );
 
@@ -72,6 +74,7 @@ export default function CourseInfo() {
             headers: {
               "API-Version": "3",
             },
+            suppressErrorToast: true,
           }
         );
 
@@ -98,7 +101,8 @@ export default function CourseInfo() {
     try {
       const res = await apiClient.get(
         `https://integration.unisg.ch/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
-        authToken
+        authToken,
+        { suppressErrorToast: true }
       );
 
       const examinationIdObject = {};
@@ -138,7 +142,8 @@ export default function CourseInfo() {
           selectedCourse.courses?.[0]?.courseNumber ||
           selectedCourse.courseNumber
         }`,
-        authToken
+        authToken,
+        { suppressErrorToast: true }
       );
       res.data = res.data.filter(
         (course) => course.courseNumber !== "7,721,1.00" // this has been requested to be removed
