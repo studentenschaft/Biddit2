@@ -44,8 +44,11 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
   const [isEnrolledCoursesLoading, setIsEnrolledCoursesLoading] =
     useState(true);
 
-  // Fetch enrolled courses effect
+  // Fetch enrolled courses effect. A superseded run (semester switch, or
+  // StrictMode's double effect in dev) must not write state or report errors.
   useEffect(() => {
+    let cancelled = false;
+
     const fetchEnrolledCourses = async () => {
       // Only fetch if we have required data
       if (!selectedSemester?.id || !selectedSemester?.shortName) {
@@ -65,6 +68,7 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
           authToken,
           { headers: { "X-RequestedLanguage": "EN" }, suppressErrorToast: true }
         );
+        if (cancelled) return;
 
         log.debug(
           `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} enrolled courses`
@@ -79,10 +83,11 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
         // Update ONLY unified enrolled courses state (no more legacy atoms)
         updateUnifiedEnrolledCourses(selectedSemester.shortName, response.data);
       } catch (error) {
+        if (cancelled) return;
         console.error("❌ Error fetching enrolled courses:", error);
         errorHandlingService.handleError(error);
       } finally {
-        setIsEnrolledCoursesLoading(false);
+        if (!cancelled) setIsEnrolledCoursesLoading(false);
       }
     };
 
@@ -92,8 +97,16 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
     } else {
       setIsEnrolledCoursesLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemester?.id, selectedSemester?.shortName]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    authToken,
+    selectedSemester?.id,
+    selectedSemester?.shortName,
+    updateUnifiedEnrolledCourses,
+  ]);
 
   return {
     isEnrolledCoursesLoading,

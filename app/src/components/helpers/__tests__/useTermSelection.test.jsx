@@ -27,10 +27,16 @@ const wrapper = ({ children }) => (
   </RecoilRoot>
 );
 
+let myCoursesHits;
+
 const renderTermSelection = (terms) => {
+  myCoursesHits = 0;
   server.use(
     http.get(termsUrl(), () => HttpResponse.json(terms)),
-    http.get(myCoursesUrl("*"), () => HttpResponse.json([]))
+    http.get(myCoursesUrl("*"), () => {
+      myCoursesHits++;
+      return HttpResponse.json([]);
+    })
   );
   return renderHook(
     () => ({
@@ -102,6 +108,16 @@ describe("useTermSelection", () => {
       expect(result.current?.state.selectedSemester).toBe("HS26")
     );
     expect(result.current.state.latestValidTerm).toBe("HS26");
+  });
+
+  it("leaves the enrolment request to useEnrolledCoursesData", async () => {
+    const { result } = renderTermSelection(THREE_TERMS);
+    await waitFor(() =>
+      expect(result.current?.state.latestValidTerm).toBe("HS26")
+    );
+    await waitForTermList(result);
+
+    expect(myCoursesHits).toBe(0);
   });
 
   it("falls back to the API's isCurrent term when the calendar term is missing", async () => {

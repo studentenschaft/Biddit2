@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRecoilState, useRecoilValue, useSetRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
-import { myCoursesUrl, termsUrl } from "./apiEndpoints";
+import { termsUrl } from "./apiEndpoints";
 import { authTokenState } from "../recoil/authAtom";
 import { cisIdList } from "../recoil/cisIdListAtom";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
@@ -37,10 +37,8 @@ export function useTermSelection() {
   const initialSelectionMadeRef = useRef(false);
 
   // Unified course data hooks
-  const {
-    updateEnrolledCourses: updateUnifiedEnrolledCourses,
-    initializeSemester: initializeUnifiedSemester,
-  } = useUnifiedCourseDataWriters();
+  const { initializeSemester: initializeUnifiedSemester } =
+    useUnifiedCourseDataWriters();
 
   // Unified semester state hook
   const {
@@ -168,7 +166,6 @@ export function useTermSelection() {
           });
 
           const currentTerms = termIdList.filter((term) => term.isCurrent);
-          let latestValidTerm = null;
           let primaryTermShortName = null;
 
           // Prefer calendar-based semester, fall back to API's isCurrent flag
@@ -194,40 +191,9 @@ export function useTermSelection() {
             );
           }
 
-          // Try to fetch enrolled courses to validate the term
-          if (primaryTermShortName) {
-            const primaryTerm = termIdList.find(
-              (t) => t.shortName === primaryTermShortName
-            );
-            try {
-              const response = await apiClient.get(
-                myCoursesUrl(primaryTerm.id),
-                authToken,
-                {
-                  headers: { "X-RequestedLanguage": "DE" },
-                  suppressErrorToast: true,
-                }
-              );
-
-              // Update unified course data
-              updateUnifiedEnrolledCourses(primaryTermShortName, response.data);
-              latestValidTerm = primaryTermShortName;
-              setUnifiedLatestValidTerm(primaryTermShortName);
-
-              log.debug(
-                "✅ [TERM SELECTION] Latest valid term:",
-                latestValidTerm
-              );
-            } catch (error) {
-              console.error(
-                "[TERM SELECTION] Error fetching courses for primary term:",
-                error
-              );
-              // Still set it as latest valid term even if no courses
-              latestValidTerm = primaryTermShortName;
-              setUnifiedLatestValidTerm(primaryTermShortName);
-            }
-          }
+          // The enrolments for this term are loaded by useEnrolledCoursesData.
+          const latestValidTerm = primaryTermShortName;
+          if (latestValidTerm) setUnifiedLatestValidTerm(latestValidTerm);
 
           // Build the final termListObject with proper ordering and metadata
           const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
@@ -362,7 +328,6 @@ export function useTermSelection() {
     authToken,
     termIdList,
     initializeUnifiedSemester,
-    updateUnifiedEnrolledCourses,
     setUnifiedLatestValidTerm,
     setUnifiedSelectedSemester,
     courseData.selectedSemester,
