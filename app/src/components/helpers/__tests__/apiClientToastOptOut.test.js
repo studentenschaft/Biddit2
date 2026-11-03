@@ -5,8 +5,9 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../../test/mocks/server";
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
+import { fetchScoreCardDetails } from "../../recoil/ApiScorecardDetails";
 import { apiClient } from "../axiosClient";
-import { catalogUrl } from "../apiEndpoints";
+import { catalogUrl, UNISG_API } from "../apiEndpoints";
 
 let handleErrorSpy;
 
@@ -39,5 +40,18 @@ describe("apiClient suppressErrorToast", () => {
       { response: { status: 404 } }
     );
     expect(handleErrorSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a scorecard failure to the caller, which reports it once", async () => {
+    server.use(
+      http.get(`${UNISG_API}/AchievementApi/MyScoreCards/detail/*`, () =>
+        HttpResponse.json({ message: "not found" }, { status: 404 })
+      )
+    );
+
+    await expect(fetchScoreCardDetails("t", "reg-1", 1)).rejects.toMatchObject({
+      response: { status: 404 },
+    });
+    expect(handleErrorSpy).not.toHaveBeenCalled();
   });
 });

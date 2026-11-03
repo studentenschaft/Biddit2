@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { RecoilRoot, useRecoilValue, useSetRecoilState } from "recoil";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
 import { authTokenState } from "../../recoil/authAtom";
 import { currentEnrollmentsState } from "../../recoil/currentEnrollmentsAtom";
 import { scorecardDataState } from "../../recoil/scorecardsAllRawAtom";
@@ -126,5 +127,50 @@ describe("scorecard bootstrap", () => {
 
     await waitFor(() => expect(scorecards.isLoaded).toBe(true));
     expect(fetchScoreCardDetails).toHaveBeenCalledTimes(2);
+  });
+
+  it("reports a scorecard failure exactly once", async () => {
+    const BIA = "Bachelor in International Affairs (BIA)";
+    const twoProgrammes = {
+      enrollmentInfos: [
+        ...ENROLLMENTS.enrollmentInfos,
+        {
+          studyProgramDescription: BIA,
+          studyRegulationId: "reg-2",
+          attempt: 1,
+          isMainStudy: false,
+        },
+      ],
+    };
+    fetchScoreCardDetails
+      .mockResolvedValueOnce({
+        success: true,
+        data: { items: [], creditsFulfilledDe: false, creditsFulfilledEn: false },
+      })
+      .mockRejectedValueOnce(new Error("Request failed with status code 500"));
+    const spy = vi
+      .spyOn(errorHandlingService, "handleError")
+      .mockImplementation(() => {});
+
+    const { result } = renderHook(() => useScorecardFetching(), {
+      wrapper: ({ children }) => (
+        <RecoilRoot
+          initializeState={({ set }) => {
+            set(authTokenState, "t");
+            set(currentEnrollmentsState, twoProgrammes);
+          }}
+        >
+          {children}
+        </RecoilRoot>
+      ),
+    });
+
+    act(() => {
+      result.current.fetchAll("t");
+    });
+
+    await waitFor(() => expect(result.current.error).toMatch(/BIA/));
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
   });
 });

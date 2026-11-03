@@ -82,6 +82,7 @@ export const useScorecardFetching = () => {
                 programId: resolveProgramId(enrollment),
                 success: false,
                 error: error.message,
+                cause: error,
               };
             }
           })
@@ -97,6 +98,16 @@ export const useScorecardFetching = () => {
             errors.push(`${programId}: ${error || "unknown error"}`);
           }
         });
+
+        // One report per fetch, however many programmes failed.
+        if (errors.length > 0) {
+          const firstFailure = results.find(
+            ({ programId, success, data }) => programId && !(success && data)
+          );
+          errorHandlingService.handleError(
+            firstFailure?.cause || new Error(errors[0])
+          );
+        }
 
         // LEGACY: Keep scorecardDataState populated for backward compatibility
         setScorecardState({

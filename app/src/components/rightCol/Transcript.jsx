@@ -14,7 +14,6 @@ import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonTranscript } from './LoadingSkeletons';
-import { useState } from 'react';
 import GradeTranscript from './GradeTranscript';
 import React, { useMemo, useCallback } from 'react';
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
@@ -27,6 +26,7 @@ import { trackWishlistCleared } from '../helpers/analytics';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
+import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
 import { getMainProgramKey } from '../helpers/getMainProgram';
 import { log } from '../helpers/log';
@@ -36,7 +36,11 @@ const Transcript = () => {
   const academicData = useRecoilValue(legacyAcademicDataSelector);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
-  const [scorecardError] = useState(false);
+  // A failed load with nothing to show replaces the loading state; a partial
+  // failure (one of several programmes) still renders what did load.
+  const { error: scorecardFetchError, isLoaded: scorecardsLoaded } =
+    useScorecardFetching();
+  const scorecardError = Boolean(scorecardFetchError) && !scorecardsLoaded;
 
   // Course data loading infrastructure (shared with StudyOverview)
   const { totalSemestersNeeded } = useUnifiedCourseLoader(
