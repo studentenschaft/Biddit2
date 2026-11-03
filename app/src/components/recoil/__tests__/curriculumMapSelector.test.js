@@ -1044,6 +1044,7 @@ describe('curriculumMapSelector — wishlist from unified selectedIds', () => {
   const readMap = ({
     selectedIds = [COURSE_ID],
     enrolledIds = [],
+    available = AVAILABLE,
     plannedItems = {},
     wishlistOverrides = {},
   } = {}) => {
@@ -1060,7 +1061,7 @@ describe('curriculumMapSelector — wishlist from unified selectedIds', () => {
       });
       set(unifiedCourseDataState, {
         semesters: {
-          [SEMESTER]: { enrolledIds, available: AVAILABLE, selectedIds },
+          [SEMESTER]: { enrolledIds, available, selectedIds },
         },
         selectedSemester: SEMESTER,
         latestValidTerm: SEMESTER,
@@ -1095,6 +1096,19 @@ describe('curriculumMapSelector — wishlist from unified selectedIds', () => {
       classification: 'Skills',
       source: 'wishlist',
     });
+  });
+
+  it('an unresolved wishlist id is not rendered', () => {
+    const map = readMap({ selectedIds: [COURSE_ID, '9,999'] });
+
+    const wishlistCards = allCards(map).filter((c) => c.source === 'wishlist');
+    expect(wishlistCards.map((c) => c.id)).toEqual([COURSE_ID]);
+  });
+
+  it('no wishlist cards while the catalog is empty', () => {
+    const map = readMap({ selectedIds: [COURSE_ID, '9,999'], available: [] });
+
+    expect(allCards(map).filter((c) => c.source === 'wishlist')).toEqual([]);
   });
 
   it('skips a wishlist course hidden in the active plan', () => {

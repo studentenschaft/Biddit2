@@ -71,4 +71,11 @@ describe("unifiedStudyPlanSelector", () => {
   it("has no wishlist entries when nothing is selected", () => {
     expect(readStudyPlan([])[PROGRAM].HS25).toEqual([]);
   });
+
+  it("leaves out a selected id that matches nothing in the catalog", () => {
+    const planned = readStudyPlan([COURSE_ID, "9,999"])[PROGRAM].HS25;
+
+    expect(planned.map((c) => c.id)).toEqual([COURSE_ID]);
+    expect(planned.reduce((sum, c) => sum + c.credits, 0)).toBe(4);
+  });
 });

@@ -865,7 +865,9 @@ export const curriculumMapSelector = selector({
 
     // ── Place wishlist courses ────────────────────────────────────────────
     // The wishlist is each semester's selectedIds, resolved against its
-    // catalog. Enrolled courses and courses with a plan placement are rendered
+    // catalog with myCoursesSelector's rule. An id that matches no course (or
+    // a catalog not loaded yet) renders nothing, so the map agrees with the
+    // Summary. Enrolled courses and courses with a plan placement are rendered
     // by their own passes, so they are skipped here to avoid a second card.
     const placedCourseIds = new Set(
       Object.values(curriculumPlan.plannedItems || {})
@@ -889,9 +891,10 @@ export const curriculumMapSelector = selector({
           const fullCourse = availableCourses.find(
             (c) => c.courseNumber === courseId || c.id === courseId,
           );
+          if (!fullCourse) return;
           // Overrides and placements written before ids were unified may
           // carry the catalog event id instead of the course number.
-          const ids = [courseId, fullCourse?.id].filter(Boolean);
+          const ids = [courseId, fullCourse.id].filter(Boolean);
           if (
             enrolledIds.includes(courseId) ||
             ids.some((id) => removedIds.includes(id) || placedCourseIds.has(id))
@@ -899,10 +902,10 @@ export const curriculumMapSelector = selector({
             return;
           }
 
-          const classification = fullCourse?.classification || "elective";
+          const classification = fullCourse.classification || "elective";
           const matchedCat = resolveCategoryForCourse({
             classification,
-            courseName: fullCourse?.shortName || fullCourse?.description,
+            courseName: fullCourse.shortName || fullCourse.description,
             flatCategories,
           });
           const targetCatPath =
@@ -910,7 +913,7 @@ export const curriculumMapSelector = selector({
 
           if (import.meta.env.DEV && !matchedCat) {
             console.warn(
-              `[CurriculumMap] No category match for course "${fullCourse?.shortName || courseId}"`,
+              `[CurriculumMap] No category match for course "${fullCourse.shortName || courseId}"`,
               `\n  Classification: "${classification}"`,
               `\n  Available categories:`,
               flatCategories.map(
@@ -926,9 +929,9 @@ export const curriculumMapSelector = selector({
             coursesBySemesterAndCategory[semKey][targetCatPath].push({
               id: courseId,
               courseId,
-              name: fullCourse?.shortName || courseId,
+              name: fullCourse.shortName || courseId,
               credits: normalizeCourseCredits(
-                fullCourse?.credits ??
+                fullCourse.credits ??
                   findCreditsInAnySemester(
                     courseId,
                     unifiedCourseData.semesters,
@@ -942,7 +945,7 @@ export const curriculumMapSelector = selector({
               isPlanned: true,
               classification,
               source: "wishlist",
-              calendarEntry: fullCourse?.calendarEntry,
+              calendarEntry: fullCourse.calendarEntry,
             });
           }
         });

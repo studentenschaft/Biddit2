@@ -45,20 +45,24 @@ export const unifiedStudyPlanSelector = selector({
     }
 
     // The wishlist per semester: selectedIds resolved against that semester's
-    // catalog. The lookup set holds both the course number and the catalog id.
+    // catalog with myCoursesSelector's rule. Ids that match no course (or a
+    // catalog not loaded yet) are left out. The lookup set holds both the
+    // course number and the catalog id.
     const wishlistBySemester = {};
     const wishlistIdSets = {};
     for (const [semesterKey, semData] of Object.entries(unifiedCourseData.semesters || {})) {
       const available = semData.available || [];
-      wishlistBySemester[semesterKey] = (semData.selectedIds || []).map((courseId) => {
-        const fullCourse = available.find(
-          (c) => c.courseNumber === courseId || c.id === courseId
-        );
-        return { courseId, fullCourse };
-      });
+      wishlistBySemester[semesterKey] = (semData.selectedIds || [])
+        .map((courseId) => ({
+          courseId,
+          fullCourse: available.find(
+            (c) => c.courseNumber === courseId || c.id === courseId
+          ),
+        }))
+        .filter(({ fullCourse }) => fullCourse);
       wishlistIdSets[semesterKey] = new Set(
         wishlistBySemester[semesterKey].flatMap(({ courseId, fullCourse }) =>
-          [courseId, fullCourse?.id].filter(Boolean)
+          [courseId, fullCourse.id].filter(Boolean)
         )
       );
     }
@@ -107,18 +111,18 @@ export const unifiedStudyPlanSelector = selector({
         const wishlist = wishlistBySemester[semesterKey] || [];
 
         for (const { courseId, fullCourse } of wishlist) {
-          if (existingCourseIds.has(courseId) || existingCourseIds.has(fullCourse?.id)) {
+          if (existingCourseIds.has(courseId) || existingCourseIds.has(fullCourse.id)) {
             continue;
           }
-          const classification = fullCourse?.classification;
+          const classification = fullCourse.classification;
           processedCourses.push({
-            name: fullCourse?.shortName || courseId,
-            credits: fullCourse?.credits ? fullCourse.credits / 100 : 0,
+            name: fullCourse.shortName || courseId,
+            credits: fullCourse.credits ? fullCourse.credits / 100 : 0,
             type: `${classification}-wishlist`,
             grade: null,
             id: courseId,
             big_type: categoryTypeMap[classification] || "",
-            calendarEntry: fullCourse?.calendarEntry || [],
+            calendarEntry: fullCourse.calendarEntry || [],
           });
         }
 
