@@ -13,8 +13,8 @@ module.exports = {
   plugins: ['react-refresh'],
   overrides: [
     {
-      // The ingestion CLI is a Node script, never bundled into the app.
-      files: ['scripts/**/*.js'],
+      // Node scripts (ingestion CLI, doc checks), never bundled into the app.
+      files: ['scripts/**/*.js', 'scripts/**/*.mjs'],
       env: { node: true, browser: false },
     },
   ],
