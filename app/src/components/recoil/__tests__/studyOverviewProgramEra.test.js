@@ -82,8 +82,14 @@ describe("studyOverviewViewSelector - programme era scoping", () => {
         "Master of Arts": program(["HS 25", "HS 26"], { isMainStudy: true }),
       },
       {
-        HS22: { selectedIds: ["7,015,1.00"], available: [] },
-        HS25: { selectedIds: ["11,702,1.00"], available: [] },
+        HS22: {
+          selectedIds: ["7,015,1.00"],
+          available: [catalogue("7,015,1.00", "Bachelor Seminar")],
+        },
+        HS25: {
+          selectedIds: ["11,702,1.00"],
+          available: [catalogue("11,702,1.00", "Master Core")],
+        },
         HS26: {
           selectedIds: ["8,404,1.00"],
           available: [catalogue("8,404,1.00", "Managerial Impact Project")],
@@ -122,9 +128,18 @@ describe("studyOverviewViewSelector - programme era scoping", () => {
         "Master of Arts": program([], { isMainStudy: true }),
       },
       {
-        HS22: { selectedIds: ["7,015,1.00"], available: [] },
-        FS26: { selectedIds: ["7,214,1.00"], available: [] },
-        HS26: { selectedIds: ["8,404,1.00"], available: [] },
+        HS22: {
+          selectedIds: ["7,015,1.00"],
+          available: [catalogue("7,015,1.00", "Bachelor Seminar")],
+        },
+        FS26: {
+          selectedIds: ["7,214,1.00"],
+          available: [catalogue("7,214,1.00", "Bachelor Thesis")],
+        },
+        HS26: {
+          selectedIds: ["8,404,1.00"],
+          available: [catalogue("8,404,1.00", "Managerial Impact Project")],
+        },
       }
     );
 
@@ -139,8 +154,14 @@ describe("studyOverviewViewSelector - programme era scoping", () => {
     const overview = readOverview(
       { "Bachelor of Arts": program([], { isMainStudy: true }) },
       {
-        HS22: { selectedIds: ["7,015,1.00"], available: [] },
-        HS26: { selectedIds: ["8,404,1.00"], available: [] },
+        HS22: {
+          selectedIds: ["7,015,1.00"],
+          available: [catalogue("7,015,1.00", "Bachelor Seminar")],
+        },
+        HS26: {
+          selectedIds: ["8,404,1.00"],
+          available: [catalogue("8,404,1.00", "Managerial Impact Project")],
+        },
       }
     );
 

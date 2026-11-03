@@ -292,6 +292,15 @@ export const transcriptViewSelector = selector({
   }
 });
 
+// The first catalog holding `courseId` (exact courseNumber or id match, as in
+// myCoursesSelector): the semester's own catalog first, then any loaded one.
+const findCatalogContaining = (courseId, ownCatalog, loadedCatalogs) => {
+  const holds = (catalog) =>
+    catalog.some((c) => c.courseNumber === courseId || c.id === courseId);
+  if (holds(ownCatalog)) return ownCatalog;
+  return loadedCatalogs.find(holds) || null;
+};
+
 /**
  * Selector to get study overview view for all programs
  * Provides semester-based planning view
@@ -323,6 +332,10 @@ export const studyOverviewViewSelector = selector({
       academicData.programs,
       mainProgramId
     );
+
+    const loadedCatalogs = Object.values(unifiedCourseData.semesters || {})
+      .map((semester) => semester.available || [])
+      .filter((available) => available.length > 0);
 
     const result = {};
 
@@ -369,11 +382,22 @@ export const studyOverviewViewSelector = selector({
           unifiedCourseData.semesters
         );
 
-        // Enrich selected courses with current data
+        // Enrich selected courses with current data. A wishlist id must resolve
+        // in this semester's catalog or, failing that, in another loaded one;
+        // one that resolves nowhere is dropped rather than shown as a 3-ECTS
+        // placeholder. Enrolled ids are kept as before.
         const enrichedSelectedCourses = allSelectedIds
-          .map(courseId => enrichCourseFromAvailable(courseId, availableCourses, {
-            enrolledIds: currentEnrolledIds
-          }))
+          .map(courseId => {
+            const catalog = currentEnrolledIds.includes(courseId)
+              ? availableCourses
+              : findCatalogContaining(courseId, availableCourses, loadedCatalogs);
+            return catalog
+              ? enrichCourseFromAvailable(courseId, catalog, {
+                  enrolledIds: currentEnrolledIds
+                })
+              : null;
+          })
+          .filter(Boolean)
           .filter(course => {
             // Filter out courses that are already in enrolledCourses (completed)
             const enrolledCourses = baseData.enrolledCourses || [];
