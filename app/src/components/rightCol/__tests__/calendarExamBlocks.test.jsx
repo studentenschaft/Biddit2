@@ -88,7 +88,6 @@ const renderExamWeek = async () => {
               enrolledIds: COURSES.map((course) => course.courseNumber),
               available: COURSES,
               selectedIds: [],
-              filtered: COURSES,
               studyPlan: [],
               ratings: {},
               cisId: "cis-hs26",

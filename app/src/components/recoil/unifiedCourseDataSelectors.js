@@ -1,9 +1,12 @@
 import { selector, selectorFamily } from "recoil";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
 import { smartSearchState, orderSmartResults } from "./smartSearchAtom";
+import { selectionOptionsState } from "./selectionOptionsAtom";
 import {
+  applyFilterCriteria,
   getCourseIdentifier,
   lookupCourseRating,
+  sortCoursesByStatus,
 } from "../helpers/courseUtils";
 import { log } from "../helpers/log";
 
@@ -21,7 +24,6 @@ export const semesterCourseDataSelector = selectorFamily({
           enrolledIds: [],
           available: [],
           selectedIds: [],
-          filtered: [],
           studyPlan: [],
           ratings: {},
           lastFetched: null,
@@ -209,6 +211,42 @@ export const semesterMetadataSelector = selectorFamily({
 });
 
 /**
+ * The course list's pool for a semester: `available` with ratings attached,
+ * narrowed by the filter options, flagged enrolled/selected from the id lists
+ * and sorted enrolled first, then selected.
+ */
+export const filteredCoursesSelector = selectorFamily({
+  key: "filteredCoursesSelector",
+  get:
+    (semesterShortName) =>
+    ({ get }) => {
+      const semesterData = get(semesterCourseDataSelector(semesterShortName));
+      const filterOptions = get(selectionOptionsState);
+      const ratingsMap = semesterData.ratings || {};
+      const enrolledIds = semesterData.enrolledIds || [];
+      const selectedIds = semesterData.selectedIds || [];
+
+      const courses = (semesterData.available || [])
+        // Ratings first: the rating filter reads avgRating.
+        .map((course) => ({
+          ...course,
+          avgRating: lookupCourseRating(course, ratingsMap) || course.avgRating,
+        }))
+        .filter((course) => applyFilterCriteria(course, filterOptions))
+        .map((course) => {
+          const courseNumber = getCourseIdentifier(course);
+          return {
+            ...course,
+            enrolled: courseNumber && enrolledIds.includes(courseNumber),
+            selected: courseNumber && selectedIds.includes(courseNumber),
+          };
+        });
+
+      return sortCoursesByStatus(courses);
+    },
+});
+
+/**
  * Selector to get courses for a specific semester by type (enrolled, available, selected, filtered)
  * This is the main selector used by EventListContainer
  */
@@ -316,8 +354,7 @@ export const semesterCoursesSelector = selectorFamily({
             return selectedCourses;
           }
         case "filtered":
-          // Return the actual filtered courses from the semester data
-          return semesterData.filtered || [];
+          return get(filteredCoursesSelector(semester));
         default:
           return semesterData.available || [];
       }
@@ -329,9 +366,9 @@ export const semesterCoursesSelector = selectorFamily({
  * identifier (courseNumber, falling back to id).
  *
  * Single source of truth for "my courses" as *domain* state. It is deliberately
- * independent of the search panel's `filtered` pool, which is view state — a
- * course must not drop out of the schedule because a filter hides it from the
- * browsing list (see docs/BUG-calendar-entries-filter-leak.md).
+ * independent of the search panel's filtered pool (`filteredCoursesSelector`),
+ * which is view state — a course must not drop out of the schedule because a
+ * filter hides it from the browsing list (see docs/BUG-calendar-entries-filter-leak.md).
  *
  * A course present in both lists appears once and keeps both flags.
  */
@@ -430,7 +467,7 @@ export const smartSearchActiveSelector = selector({
  *
  * The vector DB returns ids only, so they are resolved against the semester's
  * `available` courses. `available` carries no enrolled/selected flags (those are
- * attached to `filtered` by updateFilteredCourses), so they are re-attached here
+ * attached by filteredCoursesSelector), so they are re-attached here
  * — otherwise a wishlisted course would render with a "+" instead of its lock in
  * the shared EventListContainer row.
  */

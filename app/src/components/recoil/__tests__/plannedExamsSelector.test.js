@@ -2,7 +2,7 @@
  * plannedExamsSelector wires `planExams` to state.
  *
  * What its pure tests cannot show: the pool is the user's courses (enrolled ∪
- * selected), never the search panel's `filtered` view state
+ * selected), never the search panel's filtered view state
  * (docs/BUG-calendar-entries-filter-leak.md), and a semester without a ready
  * plan yields no exams rather than an error.
  */
@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { snapshot_UNSTABLE } from "recoil";
 
 import { examPlanState } from "../examScheduleAtom";
+import { selectionOptionsState } from "../selectionOptionsAtom";
 import { plannedExamsSelector } from "../examScheduleSelectors";
 import { unifiedCourseDataState } from "../unifiedCourseDataAtom";
 
@@ -46,7 +47,7 @@ const OPS = course("3,140,1.00", "Operations Management");
 
 const plannedExamIds = ({
   selectedIds = [],
-  filtered = [],
+  searchTerm = "",
   planState = { status: "ready", plan: PLAN },
 }) =>
   snapshot_UNSTABLE(({ set }) => {
@@ -56,7 +57,6 @@ const plannedExamIds = ({
           enrolledIds: [MICRO.courseNumber],
           available: [MICRO, CAUSAL, OPS],
           selectedIds,
-          filtered,
           studyPlan: [],
           ratings: {},
           cisId: "1",
@@ -67,6 +67,7 @@ const plannedExamIds = ({
       selectedCourseInfo: null,
     });
     set(examPlanState(SEMESTER), planState);
+    set(selectionOptionsState, (prev) => ({ ...prev, searchTerm }));
   })
     .getLoadable(plannedExamsSelector(SEMESTER))
     .getValue()
@@ -84,7 +85,10 @@ describe("plannedExamsSelector", () => {
   it("ignores the search filter in both directions", () => {
     // Filtered-out Causal Inference stays; filtered-in Operations stays out.
     expect(
-      plannedExamIds({ selectedIds: [CAUSAL.courseNumber], filtered: [OPS] }),
+      plannedExamIds({
+        selectedIds: [CAUSAL.courseNumber],
+        searchTerm: "Operations",
+      }),
     ).toEqual(["ot-micro", "ot-causal"]);
   });
 

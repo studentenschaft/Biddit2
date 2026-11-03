@@ -61,7 +61,6 @@ const seedState = ({ set }) => {
         enrolledIds: [],
         available: COURSES,
         selectedIds: [],
-        filtered: COURSES,
         studyPlan: [],
         ratings: {},
         lastFetched: null,

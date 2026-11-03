@@ -13,7 +13,7 @@
  * NEW SIMPLIFIED FLOW:
  * 1. Receive termListObject from useTermSelection (contains {cisId, shortName, isCurrent, isProjected})
  * 2. Fetch and update ONLY unifiedCourseDataAtom
- * 3. Use selectors to get filtered courses for display
+ * 3. Components read the filtered list from filteredCoursesSelector
  * 4. Remove intermediate state management
  */
 
@@ -30,26 +30,16 @@ import { log } from "./log";
  *
  * @param {Object} selectedSemester - Current selected semester from termListObject
  *   Structure: {cisId, shortName, isCurrent, isProjected}
- * @param {Object} selectionOptions - Selection options for filtering courses
  * @param {string} authToken - Authentication token for API calls
  * @returns {Object} Simplified data states and loading status
  */
-export function useEventListDataManager(
-  selectedSemester,
-  selectionOptions,
-  authToken
-) {
-  // Recoil state - simplified, only what's needed for filters
-  // selectionOptions is now passed as parameter
-
+export function useEventListDataManager(selectedSemester, authToken) {
   // Local state - simplified
   const [isLoading, setIsLoading] = useState(true);
 
   // Unified course data hook - this is now our single source of truth
-  const {
-    initializeSemester: initializeUnifiedSemester,
-    updateFilteredCourses: updateUnifiedFilteredCourses,
-  } = useUnifiedCourseDataWriters();
+  const { initializeSemester: initializeUnifiedSemester } =
+    useUnifiedCourseDataWriters();
 
   // Individual data hooks - these now update unified data directly
   const { isEnrolledCoursesLoading } = useEnrolledCoursesData({
@@ -90,55 +80,6 @@ export function useEventListDataManager(
     selectedSemester?.cisId,
     selectedSemester?.isCurrent,
     selectedSemester?.isProjected,
-  ]);
-
-  // Update filtered courses when selection options change
-  // AND when available courses are loaded
-  useEffect(() => {
-    if (selectedSemester?.shortName) {
-      log.debug(
-        `🔄 [SIMPLIFIED] Updating filtered courses for ${selectedSemester.shortName}`
-      );
-
-      // Update filtered courses using unified system
-      // Pass empty objects as defaults to ensure filtering happens even without selection options
-      updateUnifiedFilteredCourses(
-        selectedSemester.shortName,
-        selectionOptions || {}
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedSemester?.shortName,
-    selectionOptions,
-    isCourseDataLoading, // Re-run when course data finishes loading
-    isStudyPlanLoading, // Re-run when study plan finishes loading
-  ]);
-
-  // Specific effect to update filtered courses when data loading completes
-  useEffect(() => {
-    if (
-      selectedSemester?.shortName &&
-      !isCourseDataLoading &&
-      !isEnrolledCoursesLoading &&
-      !isStudyPlanLoading
-    ) {
-      log.debug(
-        `🔄 [SIMPLIFIED] Data loading complete - refreshing filtered courses for ${selectedSemester.shortName}`
-      );
-
-      // Force update filtered courses after all data is loaded
-      updateUnifiedFilteredCourses(
-        selectedSemester.shortName,
-        selectionOptions || {}
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedSemester?.shortName,
-    isCourseDataLoading,
-    isEnrolledCoursesLoading,
-    isStudyPlanLoading,
   ]);
 
   // Update overall loading state

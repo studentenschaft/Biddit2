@@ -50,26 +50,4 @@ describe("useUnifiedCourseDataWriters", () => {
       "7,035,1.00",
     ]);
   });
-
-  it("filters only semesters that exist, using the latest state", () => {
-    const { result } = renderHook(
-      () => ({
-        writers: useUnifiedCourseDataWriters(),
-        state: useRecoilValue(unifiedCourseDataState),
-      }),
-      { wrapper }
-    );
-    act(() => {
-      result.current.writers.updateFilteredCourses("FS26", {});
-    });
-    expect(result.current.state.semesters.FS26).toBeUndefined();
-
-    act(() => {
-      result.current.writers.updateAvailableCourses("HS25", [
-        { id: "a", courseNumber: "7,035,1.00", shortName: "A", credits: 400 },
-      ]);
-      result.current.writers.updateFilteredCourses("HS25", {});
-    });
-    expect(result.current.state.semesters.HS25.filtered).toHaveLength(1);
-  });
 });

@@ -92,7 +92,6 @@ const renderList = ({ selectedIds = [] } = {}) =>
               enrolledIds: [],
               available: CATALOG,
               selectedIds,
-              filtered: CATALOG,
               studyPlan: [],
               ratings: {},
               cisId: "cis-hs26",

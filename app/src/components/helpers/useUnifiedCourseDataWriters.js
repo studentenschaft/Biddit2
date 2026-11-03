@@ -5,12 +5,7 @@ import {
   initializedSemestersState,
 } from "../recoil/unifiedCourseDataAtom";
 import { processCatalogSubEventECTS } from "./smartExerciseGroupHandler";
-import {
-  getCourseIdentifier,
-  sortCoursesByStatus,
-  lookupCourseRating,
-  applyFilterCriteria,
-} from "./courseUtils";
+import { getCourseIdentifier } from "./courseUtils";
 import { log } from "./log";
 
 /**
@@ -22,7 +17,6 @@ export const DEFAULT_SEMESTER_STRUCTURE = {
   enrolledIds: [], // Course IDs/numbers for enrolled courses
   available: [], // Full course objects for available courses
   selectedIds: [], // Course IDs/numbers for selected courses
-  filtered: [], // Filtered courses with selected/enrolled flags attached
   studyPlan: [], // Study plan courses for this semester
   ratings: {},
   lastFetched: null,
@@ -320,20 +314,13 @@ export function useUnifiedCourseDataWriters() {
         return prev;
       }
       if (semester.selectedIds.includes(courseId)) return prev; // no change
-      const newSelectedIds = [...semester.selectedIds, courseId];
-      const updatedFiltered = (semester.filtered || []).map((c) => {
-        const id = getCourseIdentifier(c);
-        return id === courseId ? { ...c, selected: true } : c;
-      });
-      const sortedFiltered = sortCoursesByStatus(updatedFiltered);
       return {
         ...prev,
         semesters: {
           ...prev.semesters,
           [semesterShortName]: {
             ...semester,
-            selectedIds: newSelectedIds,
-            filtered: sortedFiltered,
+            selectedIds: [...semester.selectedIds, courseId],
           },
         },
       };
@@ -349,22 +336,13 @@ export function useUnifiedCourseDataWriters() {
       const semester = prev.semesters?.[semesterShortName];
       if (!semester) return prev;
       if (!semester.selectedIds.includes(courseId)) return prev;
-      const newSelectedIds = semester.selectedIds.filter(
-        (id) => id !== courseId
-      );
-      const updatedFiltered = (semester.filtered || []).map((c) => {
-        const id = getCourseIdentifier(c);
-        return id === courseId ? { ...c, selected: false } : c;
-      });
-      const sortedFiltered = sortCoursesByStatus(updatedFiltered);
       return {
         ...prev,
         semesters: {
           ...prev.semesters,
           [semesterShortName]: {
             ...semester,
-            selectedIds: newSelectedIds,
-            filtered: sortedFiltered,
+            selectedIds: semester.selectedIds.filter((id) => id !== courseId),
           },
         },
       };
@@ -421,144 +399,6 @@ export function useUnifiedCourseDataWriters() {
   }, [setCourseData]);
 
   /**
-   * Update filtered courses for a semester based on filter criteria
-   * This applies the same filtering logic as filteredCoursesSelector but stores results in unified state
-   */
-  const updateFilteredCourses = useCallback((semesterShortName, filterOptions = {}) => {
-    setCourseData((prev) => {
-      const semesterData = prev.semesters?.[semesterShortName];
-      if (!semesterData) return prev; // can't filter without data
-
-      // Get available courses to filter
-      const coursesToFilter = semesterData.available || [];
-
-      if (coursesToFilter.length === 0) {
-        log.debug(
-          `⚠️ No available courses to filter for ${semesterShortName}`
-        );
-        return prev; // no change
-      }
-
-      log.debug(
-        `🔍 Filtering ${coursesToFilter.length} available courses for ${semesterShortName} with options:`,
-        filterOptions
-      );
-
-      // Get ratings map BEFORE filtering so ratings are available during filter criteria
-      const ratingsMap = semesterData.ratings || {};
-      const enrolledIds = semesterData.enrolledIds || [];
-      const selectedIds = semesterData.selectedIds || [];
-
-      log.debug(
-        `🔍 [FILTERING] Using enrolled IDs (${enrolledIds.length}):`,
-        enrolledIds.slice(0, 5),
-        `and selected IDs (${selectedIds.length}):`,
-        selectedIds.slice(0, 5)
-      );
-
-
-      // Attach ratings to courses BEFORE filtering
-      const coursesWithRatings = coursesToFilter.map((course) => {
-        const rating = lookupCourseRating(course, ratingsMap);
-        return {
-          ...course,
-          avgRating: rating || course.avgRating, // Preserve existing rating if found
-        };
-      });
-
-      // Apply filter criteria to courses WITH ratings
-      const filtered = coursesWithRatings.filter((course) => {
-        return applyFilterCriteria(course, filterOptions);
-      });
-
-
-      // Add enrollment and selection status to filtered courses
-      const finalCourses = filtered.map((course) => {
-        const courseNumber = getCourseIdentifier(course);
-        const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
-        const isSelected = courseNumber && selectedIds.includes(courseNumber);
-
-        return {
-          ...course,
-          enrolled: isEnrolled,
-          selected: isSelected,
-        };
-      });
-
-      // Sort courses: enrolled first, then selected, then everything else
-      const sortedFinalCourses = sortCoursesByStatus(finalCourses);
-
-      const newData = {
-        ...prev,
-        semesters: {
-          ...prev.semesters,
-          [semesterShortName]: {
-            ...semesterData,
-            filtered: sortedFinalCourses,
-          },
-        },
-      };
-
-      log.debug(
-        `✅ Updated filtered courses for ${semesterShortName}: ${sortedFinalCourses.length} courses`
-      );
-
-      // Summary of selected courses
-      const selectedCount = sortedFinalCourses.filter((c) => c.selected).length;
-      const enrolledCount = sortedFinalCourses.filter((c) => c.enrolled).length;
-      log.debug(
-        `📊 [SUMMARY] Selected: ${selectedCount}, Enrolled: ${enrolledCount}, Total: ${sortedFinalCourses.length}`
-      );
-
-
-      return newData;
-    });
-  }, [setCourseData]);
-
-  /**
-   * Update filtered courses for ALL semesters at once
-   * Useful when filter criteria changes globally
-   * Now handles study plan data directly instead of using legacy selectedCourseIds atom
-   */
-  const updateFilteredCoursesForAllSemesters = useCallback((filterOptions = {}) => {
-    setCourseData((prev) => {
-      const semesters = { ...(prev.semesters || {}) };
-      Object.keys(semesters).forEach((semesterShortName) => {
-        const semesterData = semesters[semesterShortName];
-        const coursesToFilter = semesterData.available || [];
-        if (!coursesToFilter.length) {
-          semesters[semesterShortName] = { ...semesterData, filtered: [] };
-          return;
-        }
-        const ratingsMap = semesterData.ratings || {};
-        const enrolledIds = semesterData.enrolledIds || [];
-        const selectedIds = semesterData.selectedIds || [];
-        const filtered = coursesToFilter.filter((course) =>
-          applyFilterCriteria(course, filterOptions)
-        );
-        const coursesWithStatus = filtered.map((course) => {
-          const rating = lookupCourseRating(course, ratingsMap);
-          const courseNumber = getCourseIdentifier(course);
-          const isEnrolled = courseNumber && enrolledIds.includes(courseNumber);
-          const isSelected = courseNumber && selectedIds.includes(courseNumber);
-          return {
-            ...course,
-            avgRating: rating || course.avgRating,
-            enrolled: isEnrolled,
-            selected: isSelected,
-          };
-        });
-        const sortedCourses = sortCoursesByStatus(coursesWithStatus);
-        semesters[semesterShortName] = {
-          ...semesterData,
-          filtered: sortedCourses,
-        };
-      });
-      return { ...prev, semesters };
-    });
-  }, [setCourseData]);
-
-  /**
    * Update the selected course info (for CourseInfo display)
    */
   const updateSelectedCourseInfo = useCallback((courseInfo) => {
@@ -603,8 +443,6 @@ export function useUnifiedCourseDataWriters() {
     updateStudyPlan,
     updateCourseRatings,
     updateCourseRatingsForAllSemesters,
-    updateFilteredCourses,
-    updateFilteredCoursesForAllSemesters,
     updateSelectedCourseInfo,
     clearSelectedCourseInfo,
   };

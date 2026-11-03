@@ -933,7 +933,6 @@ describe('curriculumMapSelector — enrolled course category override', () => {
               },
             ],
             selectedIds: [],
-            filtered: [],
           },
         },
         selectedSemester: SEMESTER,

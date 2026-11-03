@@ -20,7 +20,6 @@ import PropTypes from "prop-types";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { Suspense, memo, useMemo } from "react";
 import { authTokenState } from "../../recoil/authAtom";
-import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import { FixedSizeList } from "react-window";
 import AutoSizer from "react-virtualized-auto-sizer";
 import LoadingText from "../../common/LoadingText";
@@ -36,7 +35,7 @@ import { useOpenCourseDetails } from "../../helpers/useOpenCourseDetails";
 
 // Unified course selectors - PRIMARY DATA SOURCE
 import {
-  semesterCoursesSelector,
+  filteredCoursesSelector,
   selectedCoursesSelector,
   smartSearchResultsSelector,
   smartSearchActiveSelector,
@@ -68,10 +67,8 @@ import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
 // Stable fallback so an empty selector result does not invalidate itemData.
 const NO_ITEMS = [];
 
-// Helper function - moved here for simplicity
-// Now uses the 'selected' property from filtered courses instead of separate selectedCourseIds
+// filteredCoursesSelector and smartSearchResultsSelector attach `selected`.
 function isEventOrNestedCourseSelected(event) {
-  // The filtered courses already have the 'selected' property set by updateFilteredCourses
   return event.selected || false;
 }
 
@@ -269,7 +266,6 @@ export default function EventListContainer({
 }) {
   // Simplified recoil state
   const authToken = useRecoilValue(authTokenState);
-  const selectionOptions = useRecoilValue(selectionOptionsState);
   const [, setIsLeftViewVisibleState] = useRecoilState(isLeftViewVisible);
 
   const openCourseDetails = useOpenCourseDetails();
@@ -285,20 +281,11 @@ export default function EventListContainer({
     NO_ITEMS;
 
   // Use simplified data manager
-  const { isLoading } = useEventListDataManager(
-    selectedSemester,
-    selectionOptions,
-    authToken
-  );
+  const { isLoading } = useEventListDataManager(selectedSemester, authToken);
 
-  // Get filtered courses directly from unified selectors
   const filteredCourses =
-    useRecoilValue(
-      semesterCoursesSelector({
-        semester: selectedSemesterShortName,
-        type: "filtered",
-      })
-    ) || NO_ITEMS;
+    useRecoilValue(filteredCoursesSelector(selectedSemesterShortName)) ||
+    NO_ITEMS;
 
   const { plan: examPlan } = useRecoilValue(
     examPlanSelector(selectedSemesterShortName)

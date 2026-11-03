@@ -99,7 +99,6 @@ const seedState = ({ set }) => {
         enrolledIds: [],
         available: [ML, DATAVIZ, KEYWORD_ONLY],
         selectedIds: [DATAVIZ.courseNumber],
-        filtered: [KEYWORD_ONLY],
         studyPlan: [],
         ratings: {},
         lastFetched: null,
@@ -114,7 +113,6 @@ const seedState = ({ set }) => {
         enrolledIds: [],
         available: [NEXT_TERM_COURSE],
         selectedIds: [],
-        filtered: [NEXT_TERM_COURSE],
         studyPlan: [],
         ratings: {},
         lastFetched: null,
@@ -245,7 +243,12 @@ const runSmartSearch = (query = "programming basics") => {
 
 describe("smart search in the course list", () => {
   it("keeps showing the keyword-filtered pool until a smart query runs", () => {
-    renderList();
+    renderList(({ set }) => {
+      set(selectionOptionsState, (prev) => ({
+        ...prev,
+        searchTerm: "keyword only",
+      }));
+    });
     expect(screen.getByText("Keyword Only Course")).toBeInTheDocument();
     expect(screen.queryByText("Machine Learning")).not.toBeInTheDocument();
   });
