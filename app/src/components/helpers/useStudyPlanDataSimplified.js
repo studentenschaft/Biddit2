@@ -19,7 +19,9 @@
  */
 
 import { useState, useEffect } from "react";
+import { useRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
+import { studyPlanLoadState } from "../recoil/studyPlanLoadState";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
@@ -42,19 +44,19 @@ export const useStudyPlanDataSimplified = (params = {}) => {
     updateStudyPlan,
   } = useUnifiedCourseDataWriters();
   const { isDegradedMode } = useDegradedMode();
+  const [{ loaded, version }, setLoadState] =
+    useRecoilState(studyPlanLoadState);
+  const hasSemester = Boolean(selectedSemester?.id && selectedSemester?.shortName);
 
   // Local loading state
   const [isStudyPlanLoading, setIsStudyPlanLoading] = useState(true);
 
-  // Fetch study plan effect
+  // Fetch study plan effect. The response covers every semester, so switching
+  // semesters does not refetch; only a session start or an invalidation does.
   useEffect(() => {
-    const fetchStudyPlan = async () => {
-      // Only fetch if we have required data
-      if (!selectedSemester?.id || !selectedSemester?.shortName) {
-        setIsStudyPlanLoading(false);
-        return;
-      }
+    let cancelled = false;
 
+    const fetchStudyPlan = async () => {
       setIsStudyPlanLoading(true);
 
       try {
@@ -67,6 +69,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           authToken
         );
 
+        if (cancelled) return;
         const studyPlansData = response.data;
 
         log.debug("🔍 [DEBUG] Study plans raw data:", studyPlansData);
@@ -145,6 +148,8 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           }
         });
         
+        setLoadState((prev) => ({ ...prev, loaded: true }));
+
         log.debug(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total valid courses across ${validSemesters.length} valid semesters (${allSemesters.length} total in API)`);
         
         // Also log what we processed for the currently selected semester specifically
@@ -153,6 +158,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           `🔍 [DEBUG] Current semester ${selectedSemester.shortName} has ${currentSemesterCourses.length} courses`
         );
       } catch (error) {
+        if (cancelled) return;
         // If the kill switch flipped ON between render (captured isDegradedMode)
         // and this request landing, the interceptor rejects with a
         // DegradedModeError here instead of short-circuiting before the call.
@@ -171,7 +177,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
         updateStudyPlan(selectedSemester.shortName, []);
         updateUnifiedSelectedCourses(selectedSemester.shortName, []);
       } finally {
-        setIsStudyPlanLoading(false);
+        if (!cancelled) setIsStudyPlanLoading(false);
       }
     };
 
@@ -186,19 +192,19 @@ export const useStudyPlanDataSimplified = (params = {}) => {
       return;
     }
 
-    // Only fetch if we have the required parameters
-    if (authToken && selectedSemester?.id) {
+    // Wait for a selected semester so the term list has initialized the
+    // semesters before the study plan writes into them.
+    if (authToken && hasSemester && !loaded) {
       fetchStudyPlan();
     } else {
       setIsStudyPlanLoading(false);
     }
+    return () => {
+      cancelled = true;
+    };
+    // selectedSemester is only read for the error fallback and logging.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    authToken,
-    selectedSemester?.id,
-    selectedSemester?.shortName,
-    isDegradedMode,
-  ]);
+  }, [authToken, hasSemester, isDegradedMode, loaded, version]);
 
   return {
     isStudyPlanLoading,

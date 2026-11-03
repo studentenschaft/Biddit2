@@ -3,6 +3,7 @@ import { useCallback } from "react";
 import { useRecoilState, useRecoilValue } from "recoil";
 import { localSelectedCoursesSemKeyState } from "../recoil/localSelectedCoursesSemKeyAtom";
 import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
+import { useInvalidateStudyPlan } from "../recoil/studyPlanLoadState";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
@@ -38,6 +39,9 @@ export function useCourseSelection({
 }) {
   // Unified course data hook for managing selected courses
   const { addSelectedCourse, removeSelectedCourse } = useUnifiedCourseDataWriters();
+  // A failed write leaves the optimistic local state ahead of the server, so
+  // the study plan is refetched to re-sync it.
+  const invalidateStudyPlan = useInvalidateStudyPlan();
 
   // Recoil: local course selections keyed by semester shortName
   const [, setLocalSelectedCoursesSemKey] = useRecoilState(
@@ -153,7 +157,8 @@ export function useCourseSelection({
           }
 
           // Delete from backend using the course's actual semester
-          await deleteCourse(studyPlanId, courseNumber, authToken);
+          const deleted = await deleteCourse(studyPlanId, courseNumber, authToken);
+          if (!deleted) invalidateStudyPlan();
           log.debug(
             `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
           );
@@ -179,7 +184,8 @@ export function useCourseSelection({
           }
 
           // Save to backend using the course's actual semester
-          await saveCourse(studyPlanId, courseNumber, authToken);
+          const saved = await saveCourse(studyPlanId, courseNumber, authToken);
+          if (!saved) invalidateStudyPlan();
           log.debug(
             `Course ${courseNumber} saved to backend (studyPlan: ${studyPlanId})`
           );
@@ -187,6 +193,7 @@ export function useCourseSelection({
       } catch (error) {
         console.error("Error updating course:", error);
         errorHandlingService.handleError(error);
+        invalidateStudyPlan();
       }
     },
     [
@@ -198,6 +205,7 @@ export function useCourseSelection({
       addSelectedCourse,
       removeSelectedCourse,
       setLocalSelectedCoursesSemKey,
+      invalidateStudyPlan,
     ]
   );
 

@@ -31,15 +31,16 @@ export const saveCourse = async (studyPlanId, eventId, token) => {
       "eventId",
       eventId
     );
-    const res = await apiClient.post(
+    await apiClient.post(
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
       {},
       token
     );
-    return res.data;
+    return true;
   } catch (err) {
     errorHandlingService.handleError(err);
     console.error("SHSG API Call: Error saving course:", err);
+    return false;
   }
 };
 

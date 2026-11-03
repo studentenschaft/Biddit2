@@ -12,11 +12,21 @@
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
 import { RecoilRoot } from "recoil";
+import {
+  server,
+  setErrorMode,
+  ErrorSimulation,
+} from "../../../test/mocks/server";
+import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
+import { useInvalidateStudyPlan } from "../../recoil/studyPlanLoadState";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { apiClient } from "../axiosClient";
+import { SHSG_API } from "../apiEndpoints";
 import { DegradedModeError } from "../degradedModeService";
+import { useCourseSelection } from "../useCourseSelection";
 import { useUnifiedCourseData } from "../useUnifiedCourseData";
 import { useStudyPlanDataSimplified } from "../useStudyPlanDataSimplified";
 
@@ -107,5 +117,121 @@ describe("useStudyPlanDataSimplified - degraded mode race", () => {
     expect(result.current.semesterData.lastFetched).toBe(
       PRE_INCIDENT_TIMESTAMP,
     );
+  });
+});
+
+describe("useStudyPlanDataSimplified - once per session", () => {
+  const HS25 = { id: "term-hs25", cisId: "cis-hs25", shortName: "HS25" };
+  const FS26 = { id: "term-fs26", cisId: "cis-fs26", shortName: "FS26" };
+  const wrapper = ({ children }) => <RecoilRoot>{children}</RecoilRoot>;
+
+  const countStudyPlanFetches = () => {
+    const counter = { hits: 0 };
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () => {
+        counter.hits++;
+        return HttpResponse.json({ HS25: ["7,035,1.00"], FS26: [] });
+      })
+    );
+    return counter;
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches /study-plans once across two semester switches", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { rerender } = renderHook(
+      ({ sem }) =>
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: sem }),
+      { wrapper, initialProps: { sem: HS25 } }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    rerender({ sem: FS26 });
+    rerender({ sem: HS25 });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(counter.hits).toBe(1);
+  });
+
+  it("refetches after the study plan is invalidated", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { result } = renderHook(
+      () => {
+        const { isStudyPlanLoading } = useStudyPlanDataSimplified({
+          authToken: "t",
+          selectedSemester: HS25,
+        });
+        return { isStudyPlanLoading, invalidate: useInvalidateStudyPlan() };
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    act(() => result.current.invalidate());
+
+    await waitFor(() => expect(counter.hits).toBe(2));
+  });
+
+  it("re-syncs from the server after a failed wishlist write", async () => {
+    const counter = countStudyPlanFetches();
+    vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(
+      () => {
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 });
+        return useCourseSelection({
+          selectedCourseIds: [],
+          selectedSemesterShortName: "HS25",
+          authToken: "t",
+        });
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    setErrorMode(ErrorSimulation.FORBIDDEN_403, "/study-plans/HS25/");
+    await act(async () => {
+      await result.current.addOrRemoveCourse({
+        id: "course-1",
+        courseNumber: "7,214,1.00",
+        semester: "HS25",
+      });
+    });
+
+    await waitFor(() => expect(counter.hits).toBe(2));
+  });
+
+  it("does not refetch after a successful wishlist write", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { result } = renderHook(
+      () => {
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 });
+        return useCourseSelection({
+          selectedCourseIds: [],
+          selectedSemesterShortName: "HS25",
+          authToken: "t",
+        });
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    await act(async () => {
+      await result.current.addOrRemoveCourse({
+        id: "course-1",
+        courseNumber: "7,214,1.00",
+        semester: "HS25",
+      });
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(counter.hits).toBe(1);
   });
 });
