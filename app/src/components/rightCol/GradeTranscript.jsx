@@ -8,6 +8,7 @@ import { calculateCreditsAndGrades } from "../helpers/calculateGrades";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { useCourseSelection } from "../helpers/useCourseSelection";
 import { useDegradedMode } from "../common/useDegradedMode";
+import { log } from "../helpers/log";
 
 /**
  * Helper to format numbers to two decimal places.
@@ -330,7 +331,7 @@ const GradeTranscript = ({
                         ) : (
                           <button
                             onClick={() => {
-                              console.log('🔍 [GradeTranscript] Remove button clicked:', {
+                              log.debug('🔍 [GradeTranscript] Remove button clicked:', {
                                 courseId: subItem.id || subItem.courseId,
                                 courseNumber: subItem.courseNumber,
                                 courseName: subItem.shortName || subItem.description,

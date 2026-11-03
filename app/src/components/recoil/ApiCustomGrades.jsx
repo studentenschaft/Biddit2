@@ -2,6 +2,7 @@ import { apiClient } from "../helpers/axiosClient";
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "../helpers/log";
 
 const API_URL = "https://api.shsg.ch/course-grades";
 
@@ -27,7 +28,7 @@ export async function updateCustomGrade(token, courseNumber, grade) {
       { courseNumber, grade },
       token
     );
-    console.log("Custom grade updated:", response.data);
+    log.debug("Custom grade updated:", response.data);
     return response.data;
   } catch (error) {
     console.error("Error updating custom grade:", error);

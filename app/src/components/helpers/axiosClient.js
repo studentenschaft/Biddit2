@@ -5,6 +5,7 @@ import {
   handleAuthFailure,
 } from "../auth/tokenService";
 import { getDegradedMode, DegradedModeError } from "./degradedModeService";
+import { log } from "./log";
 
 const SHSG_HOST = "api.shsg.ch";
 
@@ -278,7 +279,7 @@ class ApiClient {
     const jitter = baseDelay * 0.5 * Math.random();
     const delay = baseDelay + jitter; // e.g. 1-1.5s, 2-3s, 4-6s
 
-    console.log(
+    log.debug(
       `Retrying request (${retryCount}/${MAX_RETRIES}) after ${delay}ms:`,
       originalRequest.url,
     );

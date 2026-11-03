@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 
 import SHSGLogo from "../assets/SHSG_Logo_Circle_100x100mm_RGB_green.png";
+import { log } from "../components/helpers/log";
 
 /**
  * Renders the Login page component.
@@ -19,7 +20,7 @@ export default function Login() {
         ...loginRequest,
         prompt: "login",
       })
-      .catch((e) => console.log(e));
+      .catch((e) => log.debug(e));
   };
 
   const navigate = useNavigate();

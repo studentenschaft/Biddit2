@@ -12,6 +12,7 @@ import { useCallback, useEffect } from "react";
 
 // custom error handler
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "../helpers/log";
 
 // Use shared MSAL instance from authConfig (no longer creating a new one here)
 
@@ -33,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       } catch (error) {
         // Handle InteractionRequiredAuthError - use redirect (full page) for proper login flow
         if (error instanceof InteractionRequiredAuthError) {
-          console.log("Interaction required, redirecting to login...");
+          log.debug("Interaction required, redirecting to login...");
           await msalInstance.acquireTokenRedirect({
             scopes: apiScopes,
           });

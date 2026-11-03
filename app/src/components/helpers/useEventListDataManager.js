@@ -23,6 +23,7 @@ import { useEnrolledCoursesData } from "./useEnrolledCoursesData";
 import { useCourseInfoData } from "./useCourseInfoData";
 import { useCourseRatingsData } from "./useCourseRatingsData";
 import { useStudyPlanDataSimplified } from "./useStudyPlanDataSimplified";
+import { log } from "./log";
 
 /**
  * Simplified hook for managing EventListContainer data
@@ -71,7 +72,7 @@ export function useEventListDataManager(
   // Initialize unified semester data for the current semester
   useEffect(() => {
     if (selectedSemester?.shortName) {
-      console.log(
+      log.debug(
         `🔄 [SIMPLIFIED] Initializing unified semester data for: ${selectedSemester.shortName}`
       );
 
@@ -95,7 +96,7 @@ export function useEventListDataManager(
   // AND when available courses are loaded
   useEffect(() => {
     if (selectedSemester?.shortName) {
-      console.log(
+      log.debug(
         `🔄 [SIMPLIFIED] Updating filtered courses for ${selectedSemester.shortName}`
       );
 
@@ -122,7 +123,7 @@ export function useEventListDataManager(
       !isEnrolledCoursesLoading &&
       !isStudyPlanLoading
     ) {
-      console.log(
+      log.debug(
         `🔄 [SIMPLIFIED] Data loading complete - refreshing filtered courses for ${selectedSemester.shortName}`
       );
 
@@ -149,7 +150,7 @@ export function useEventListDataManager(
       isCourseRatingsLoading;
 
     if (newIsLoading !== isLoading) {
-      console.log(
+      log.debug(
         `⏳ [SIMPLIFIED] Overall loading state changed: ${
           newIsLoading ? "Loading..." : "Complete"
         }`

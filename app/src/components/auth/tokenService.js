@@ -3,6 +3,7 @@ import {
   BrowserAuthError,
 } from "@azure/msal-browser";
 import { msalInstance, initializeMsalInstance, apiScopes } from "./authConfig";
+import { log } from "../helpers/log";
 
 /**
  * Session event types emitted to listeners (consumed by AppStateProvider).
@@ -67,7 +68,7 @@ export const getRefreshToken = async () => {
     } catch (silentError) {
       // InteractionRequiredAuthError → session expired, full re-login needed.
       if (silentError instanceof InteractionRequiredAuthError) {
-        console.log("Interaction required - session expired");
+        log.debug("Interaction required - session expired");
         emitSessionEvent(SessionEvent.EXPIRED);
         return null;
       }

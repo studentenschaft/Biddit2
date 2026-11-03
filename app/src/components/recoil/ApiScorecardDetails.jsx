@@ -2,6 +2,7 @@ import { apiClient } from "../helpers/axiosClient";
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "../helpers/log";
 
 /**
  * Fetches scorecard details from the API.
@@ -24,7 +25,7 @@ export const fetchScoreCardDetails = async (
       authToken
     );
     // Log the fetched data for debugging purposes
-    console.log("ScorecardDetails data fetched: ", response.data);
+    log.debug("ScorecardDetails data fetched: ", response.data);
     return {
       success: true,
       data: response.data,

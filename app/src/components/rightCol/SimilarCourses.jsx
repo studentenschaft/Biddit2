@@ -25,6 +25,7 @@ import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
 import { useScorecardFetching } from "../helpers/useScorecardFetching";
 import { useDegradedMode } from "../common/useDegradedMode";
 import DegradedPlaceholder from "../common/DegradedPlaceholder";
+import { log } from "../helpers/log";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
@@ -212,7 +213,7 @@ export default function SimilarCourses({ selectedCourse }) {
         });
 
         setSimilarCourses(response.data);
-        console.log("Similar courses:", response.data);
+        log.debug("Similar courses:", response.data);
         setIsLoading(false);
 
         // Only attempt upsert once to prevent infinite recursion
@@ -231,7 +232,7 @@ export default function SimilarCourses({ selectedCourse }) {
       } catch (error) {
         console.error("Error querying database:", error);
         if (error.response && error.response.status === 404) {
-          console.log("No courses found, attempting upsert");
+          log.debug("No courses found, attempting upsert");
           if (!attemptedUpsert) {
             setIsLoadingLong(true);
             await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
@@ -246,7 +247,7 @@ export default function SimilarCourses({ selectedCourse }) {
         setIsLoading(false);
       }
     } else {
-      console.log("Program not yet loaded; will retry shortly");
+      log.debug("Program not yet loaded; will retry shortly");
       setTimeout(() => {
         fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
       }, 800);
@@ -336,8 +337,8 @@ export default function SimilarCourses({ selectedCourse }) {
         filteredDistances.push(distance);
         filteredMetadatas.push(similarCourses.metadatas[0][index]);
       } else {
-        console.log("Removed course due to low similarity:", id);
-        console.log("Distance:", distance);
+        log.debug("Removed course due to low similarity:", id);
+        log.debug("Distance:", distance);
       }
     });
 

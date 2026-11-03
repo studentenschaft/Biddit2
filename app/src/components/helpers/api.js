@@ -1,5 +1,6 @@
 import { apiClient } from "./axiosClient";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 export const getStudyPlan = async (token) => {
   try {
@@ -24,7 +25,7 @@ export const getStudyPlan = async (token) => {
 
 export const saveCourse = async (studyPlanId, eventId, token) => {
   try {
-    console.log(
+    log.debug(
       "SHSG API: running saveCourse with studyPlanId",
       studyPlanId,
       "eventId",
@@ -49,7 +50,7 @@ export const deleteCourse = async (
   { reportErrors = true } = {}
 ) => {
   try {
-    console.log(
+    log.debug(
       "SHSG API: running deleteCourse with studyPlanId",
       studyPlanId,
       "eventId",
@@ -59,7 +60,7 @@ export const deleteCourse = async (
       `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
       token
     );
-    console.log("SHSG API Call succesful; deleteCourse res.data", res.data);
+    log.debug("SHSG API Call succesful; deleteCourse res.data", res.data);
     return true;
   } catch (err) {
     // Never rethrows: callers delete speculatively under several id formats, so

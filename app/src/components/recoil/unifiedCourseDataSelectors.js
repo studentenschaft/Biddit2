@@ -5,6 +5,7 @@ import {
   getCourseIdentifier,
   lookupCourseRating,
 } from "../helpers/courseUtils";
+import { log } from "../helpers/log";
 
 /**
  * Selector to get all course data for a specific semester
@@ -254,7 +255,7 @@ export const semesterCoursesSelector = selectorFamily({
 
             if (import.meta?.env?.DEV) {
               // Minimal debug snapshot
-              console.debug(
+              log.debug(
                 "[semesterCoursesSelector] enrolled:",
                 semester,
                 {
@@ -301,7 +302,7 @@ export const semesterCoursesSelector = selectorFamily({
               });
 
             if (import.meta?.env?.DEV) {
-              console.debug(
+              log.debug(
                 "[semesterCoursesSelector] selected:",
                 semester,
                 {

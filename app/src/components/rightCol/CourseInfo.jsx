@@ -25,6 +25,7 @@ import {
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "../helpers/log";
 
 // The course sheet and the ExaminationTypes lookup are fetched independently, so
 // the sheet can arrive first. Until the lookup lands — or if it has no entry for
@@ -76,7 +77,7 @@ export default function CourseInfo() {
 
         return res.data;
       } catch (err) {
-        console.log(err);
+        log.debug(err);
         errorHandlingService.handleError(err);
         return null;
       }
@@ -110,7 +111,7 @@ export default function CourseInfo() {
 
       setExaminationIdState(examinationIdObject);
     } catch (err) {
-      console.log(err);
+      log.debug(err);
       errorHandlingService.handleError(err);
     }
   }
@@ -155,7 +156,7 @@ export default function CourseInfo() {
         setCourseWithRatings(updatedCourse);
       }
     } catch (err) {
-      console.log(err);
+      log.debug(err);
       errorHandlingService.handleError(err);
     }
   }

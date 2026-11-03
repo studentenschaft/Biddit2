@@ -3,6 +3,7 @@ import { authTokenState } from "./authAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { parseSemester } from "../helpers/transformScorecard";
 import { apiClient } from "../helpers/axiosClient";
+import { log } from "../helpers/log";
 
 export const coursesRatedState = atom({
   key: "coursesRated",
@@ -156,7 +157,7 @@ export async function SubmitCourseRatingById(token, courseRating) {
       courseRating,
       token
     );
-    console.log("Rating submitted successfully:", res.data);
+    log.debug("Rating submitted successfully:", res.data);
     return res.data;
   } catch (err) {
     console.error("Error submitting course rating:", err);
@@ -182,7 +183,7 @@ export const isSemesterRatable = (
   const currentSem = parseSemester(currentSemesterShortName);
 
   if (!targetSem || !currentSem) {
-    console.log("RATINGSV2: Failed to parse semester names.");
+    log.debug("RATINGSV2: Failed to parse semester names.");
     return false;
   }
   // A semester is ratable if:

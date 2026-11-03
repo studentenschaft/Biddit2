@@ -23,6 +23,7 @@ import { apiClient } from "./axiosClient";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 /**
  * Simplified hook for managing study plan data
@@ -57,7 +58,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
       setIsStudyPlanLoading(true);
 
       try {
-        console.log(
+        log.debug(
           `🔄 [SIMPLIFIED] Fetching study plan for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
@@ -68,8 +69,8 @@ export const useStudyPlanDataSimplified = (params = {}) => {
 
         const studyPlansData = response.data;
 
-        console.log("🔍 [DEBUG] Study plans raw data:", studyPlansData);
-        console.log(
+        log.debug("🔍 [DEBUG] Study plans raw data:", studyPlansData);
+        log.debug(
           `🔍 [DEBUG] Looking for semester: ${selectedSemester.shortName}`
         );
 
@@ -90,9 +91,9 @@ export const useStudyPlanDataSimplified = (params = {}) => {
         const validSemesters = allSemesters.filter(isValidSemesterName);
         const invalidSemesters = allSemesters.filter(name => !isValidSemesterName(name));
         
-        console.log("🔄 [FIXED] Processing study plan data:");
-        console.log(`  ✅ Valid semesters (${validSemesters.length}):`, validSemesters);
-        console.log(`  ⚠️ Skipping invalid/legacy semesters (${invalidSemesters.length}):`, invalidSemesters.slice(0, 3), invalidSemesters.length > 3 ? '...' : '');
+        log.debug("🔄 [FIXED] Processing study plan data:");
+        log.debug(`  ✅ Valid semesters (${validSemesters.length}):`, validSemesters);
+        log.debug(`  ⚠️ Skipping invalid/legacy semesters (${invalidSemesters.length}):`, invalidSemesters.slice(0, 3), invalidSemesters.length > 3 ? '...' : '');
         
         let totalCoursesProcessed = 0;
         
@@ -119,13 +120,13 @@ export const useStudyPlanDataSimplified = (params = {}) => {
           const invalidCourses = allCourses.filter(courseId => !isValidCourseId(courseId));
           
           if (validCourses.length > 0) {
-            console.log(
+            log.debug(
               `✅ [FIXED] Processing ${validCourses.length} valid courses for semester ${semesterName}:`,
               validCourses.slice(0, 3) // Show first 3 courses
             );
             
             if (invalidCourses.length > 0) {
-              console.log(`  ⚠️ Skipping ${invalidCourses.length} invalid course IDs:`, invalidCourses.slice(0, 2), invalidCourses.length > 2 ? '...' : '');
+              log.debug(`  ⚠️ Skipping ${invalidCourses.length} invalid course IDs:`, invalidCourses.slice(0, 2), invalidCourses.length > 2 ? '...' : '');
             }
 
             // Update BOTH the study plan raw data AND the unified selected courses
@@ -137,18 +138,18 @@ export const useStudyPlanDataSimplified = (params = {}) => {
             
             totalCoursesProcessed += validCourses.length;
           } else {
-            console.log(`⚠️ [FIXED] No valid courses found for semester ${semesterName} (had ${allCourses.length} invalid courses)`);
+            log.debug(`⚠️ [FIXED] No valid courses found for semester ${semesterName} (had ${allCourses.length} invalid courses)`);
             // Initialize empty data for semesters with no valid courses
             updateStudyPlan(semesterName, []);
             updateUnifiedSelectedCourses(semesterName, []);
           }
         });
         
-        console.log(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total valid courses across ${validSemesters.length} valid semesters (${allSemesters.length} total in API)`);
+        log.debug(`🎯 [FIXED] Completed processing ${totalCoursesProcessed} total valid courses across ${validSemesters.length} valid semesters (${allSemesters.length} total in API)`);
         
         // Also log what we processed for the currently selected semester specifically
         const currentSemesterCourses = studyPlansData[selectedSemester.shortName] || [];
-        console.log(
+        log.debug(
           `🔍 [DEBUG] Current semester ${selectedSemester.shortName} has ${currentSemesterCourses.length} courses`
         );
       } catch (error) {

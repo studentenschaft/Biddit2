@@ -29,6 +29,7 @@ import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 /**
  * Custom hook for managing course ratings data
@@ -59,7 +60,7 @@ export const useCourseRatingsData = ({ authToken }) => {
         setIsCourseRatingsLoading(true);
 
         try {
-          console.log("🔄 Fetching course ratings from SHSG API...");
+          log.debug("🔄 Fetching course ratings from SHSG API...");
 
           const response = await apiClient.get(
             "https://api.shsg.ch/course-ratings",
@@ -71,7 +72,7 @@ export const useCourseRatingsData = ({ authToken }) => {
             }
           );
 
-          console.log(
+          log.debug(
             `✅ Successfully fetched ${response.data.length} course ratings`
           );
 

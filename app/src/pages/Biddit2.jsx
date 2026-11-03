@@ -19,6 +19,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useCurriculumPlan } from "../components/helpers/useCurriculumPlan";
+import { log } from "../components/helpers/log";
 
 /**
  * Format credits for display, handling both "cents" format (300 = 3 ECTS)
@@ -186,7 +187,7 @@ export default function Biddit2() {
         dropData.semesterStatus === "completed"
       ) {
         if (import.meta.env.DEV) {
-          console.log("[Biddit2] Drop rejected: completed semester");
+          log.debug("[Biddit2] Drop rejected: completed semester");
         }
         return;
       }

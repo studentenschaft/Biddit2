@@ -11,6 +11,7 @@ import {
   lookupCourseRating,
   applyFilterCriteria,
 } from "./courseUtils";
+import { log } from "./log";
 
 /**
  * Default semester structure with all required fields
@@ -128,7 +129,7 @@ export function useUnifiedCourseDataWriters() {
           [semesterShortName]: newSemester,
         },
       };
-      console.log(`✅ Initialized semester ${semesterShortName}`, newSemester);
+      log.debug(`✅ Initialized semester ${semesterShortName}`, newSemester);
       return updated;
     });
     setInitializedSemesters((s) => new Set([...s, semesterShortName]));
@@ -202,7 +203,7 @@ export function useUnifiedCourseDataWriters() {
       { enrolledIds },
       { touchLastFetched: true }
     );
-    console.log(
+    log.debug(
       `✅ Updated enrolled course IDs for ${semesterShortName}: ${enrolledIds.length} courses`,
       enrolledIds.slice(0, 5)
     );
@@ -286,7 +287,7 @@ export function useUnifiedCourseDataWriters() {
       }
     }
 
-    console.log(
+    log.debug(
       `✅ Updated available courses for ${semesterShortName}: ${flattenedCourses.length} courses (flattened from ${(courses || []).length} parent courses)${meta.usingReferenceData ? ` [preview from ${meta.referenceSemester || "reference"}]` : ""}`
     );
   }, [patchSemester, updateSemesterMetadata]);
@@ -300,7 +301,7 @@ export function useUnifiedCourseDataWriters() {
       ? courseIds.filter(Boolean)
       : [];
     patchSemester(semesterShortName, { selectedIds });
-    console.log(
+    log.debug(
       `✅ Updated selected course IDs for ${semesterShortName}: ${selectedIds.length} courses`,
       selectedIds.slice(0, 5)
     );
@@ -379,7 +380,7 @@ export function useUnifiedCourseDataWriters() {
       { studyPlan: studyPlanCourses || [] },
       { touchLastFetched: true }
     );
-    console.log(`✅ Updated study plan for ${semesterShortName}`);
+    log.debug(`✅ Updated study plan for ${semesterShortName}`);
   }, [patchSemester]);
 
   /**
@@ -432,13 +433,13 @@ export function useUnifiedCourseDataWriters() {
       const coursesToFilter = semesterData.available || [];
 
       if (coursesToFilter.length === 0) {
-        console.log(
+        log.debug(
           `⚠️ No available courses to filter for ${semesterShortName}`
         );
         return prev; // no change
       }
 
-      console.log(
+      log.debug(
         `🔍 Filtering ${coursesToFilter.length} available courses for ${semesterShortName} with options:`,
         filterOptions
       );
@@ -448,7 +449,7 @@ export function useUnifiedCourseDataWriters() {
       const enrolledIds = semesterData.enrolledIds || [];
       const selectedIds = semesterData.selectedIds || [];
 
-      console.log(
+      log.debug(
         `🔍 [FILTERING] Using enrolled IDs (${enrolledIds.length}):`,
         enrolledIds.slice(0, 5),
         `and selected IDs (${selectedIds.length}):`,
@@ -498,14 +499,14 @@ export function useUnifiedCourseDataWriters() {
         },
       };
 
-      console.log(
+      log.debug(
         `✅ Updated filtered courses for ${semesterShortName}: ${sortedFinalCourses.length} courses`
       );
 
       // Summary of selected courses
       const selectedCount = sortedFinalCourses.filter((c) => c.selected).length;
       const enrolledCount = sortedFinalCourses.filter((c) => c.enrolled).length;
-      console.log(
+      log.debug(
         `📊 [SUMMARY] Selected: ${selectedCount}, Enrolled: ${enrolledCount}, Total: ${sortedFinalCourses.length}`
       );
 
@@ -575,7 +576,7 @@ export function useUnifiedCourseDataWriters() {
         selectedCourseInfo: courseInfo,
       };
 
-      console.log(
+      log.debug(
         `🎯 Updated selected course info:`,
         courseInfo?.shortName || "cleared"
       );

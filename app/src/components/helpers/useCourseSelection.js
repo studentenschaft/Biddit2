@@ -7,6 +7,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { trackWishlistChange } from "./analytics";
+import { log } from "./log";
 
 // Helper function to normalize credits from API format to display format
 const normalizeCredits = (credits) => {
@@ -130,7 +131,7 @@ export function useCourseSelection({
       // where courses from multiple semesters are displayed
       const studyPlanId = normalizedCourseSemester;
 
-      console.log('🔍 [useCourseSelection] API operation:', {
+      log.debug('🔍 [useCourseSelection] API operation:', {
         isCourseSelected,
         courseNumber,
         studyPlanId,
@@ -151,20 +152,20 @@ export function useCourseSelection({
 
         // Delete from backend using the course's actual semester
         await deleteCourse(studyPlanId, courseNumber, authToken);
-        console.log(
+        log.debug(
           `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
         );
 
         // Übergangslösung: To ensure old id-based courses get removed as well
         if (course.id && course.id !== courseNumber) {
           await deleteCourse(studyPlanId, course.id, authToken);
-          console.log(`Course ${course.id} deleted from backend (legacy)`);
+          log.debug(`Course ${course.id} deleted from backend (legacy)`);
         }
 
         // Also try deletion with course.courseId if different
         if (course.courseId && course.courseId !== courseNumber && course.courseId !== course.id) {
           await deleteCourse(studyPlanId, course.courseId, authToken);
-          console.log(`✅ Course ${course.courseId} deleted from backend (courseId)`);
+          log.debug(`✅ Course ${course.courseId} deleted from backend (courseId)`);
         }
       } else {
         // Add course to unified state using the course's actual semester
@@ -177,7 +178,7 @@ export function useCourseSelection({
 
         // Save to backend using the course's actual semester
         await saveCourse(studyPlanId, courseNumber, authToken);
-        console.log(
+        log.debug(
           `Course ${courseNumber} saved to backend (studyPlan: ${studyPlanId})`
         );
       }

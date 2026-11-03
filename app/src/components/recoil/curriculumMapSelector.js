@@ -10,6 +10,7 @@ import {
 } from "./curriculumPlanAtom";
 import { findMainProgram } from "../helpers/academicDataTransformers";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
+import { log } from "../helpers/log";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pure helper functions
@@ -756,7 +757,7 @@ export const curriculumCategoryStructureSelector = selector({
         ? categories[0].children
         : categories;
       const totalDepth = getHierarchyDepth(categories);
-      console.log("[CurriculumMap] Category hierarchy structure:", {
+      log.debug("[CurriculumMap] Category hierarchy structure:", {
         totalDepth,
         skippingProgramWrapper: shouldSkipLevel0,
         programName: shouldSkipLevel0 ? categories[0].name : "(none)",
@@ -1269,7 +1270,7 @@ export const curriculumMapSelector = selector({
       const hasNestedHeaders = categoryHierarchy.some(
         (p) => p.children.length > 1,
       );
-      console.log("[CurriculumMap] Hierarchy result:", {
+      log.debug("[CurriculumMap] Hierarchy result:", {
         hasNestedHeaders,
         parents: categoryHierarchy.map((p) => ({
           name: p.name,

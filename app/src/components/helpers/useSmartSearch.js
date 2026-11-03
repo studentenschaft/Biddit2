@@ -25,6 +25,7 @@ import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
 import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 import { smartSearchState } from "../recoil/smartSearchAtom";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 export function useSmartSearch() {
   const authToken = useRecoilValue(authTokenState);
@@ -213,7 +214,7 @@ export function useSmartSearch() {
         setSmartSearch((prev) => ({ ...prev, isLoading: false }));
       }
     } else {
-      console.log("Program not yet loaded; will retry shortly");
+      log.debug("Program not yet loaded; will retry shortly");
       setTimeout(() => {
         fetchSimilarCourses(query, category, attemptedUpsert);
       }, 800);

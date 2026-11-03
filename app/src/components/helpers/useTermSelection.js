@@ -10,6 +10,7 @@ import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 import { termListState } from "../recoil/termListState";
 import { getCurrentSemesterInfo } from "../recoil/curriculumPlanAtom";
+import { log } from "./log";
 
 /**
  * SIMPLIFIED Custom hook to handle term selection logic
@@ -135,7 +136,7 @@ export function useTermSelection() {
             headers: { "X-RequestedLanguage": "DE" },
           });
           setCisIdList(response.data);
-          console.log("✅ [TERM SELECTION] CIS ID list loaded:", response.data);
+          log.debug("✅ [TERM SELECTION] CIS ID list loaded:", response.data);
         } catch (error) {
           console.error("[CisIdList] Error fetching data:", error);
           errorHandlingService.handleError(error);
@@ -153,7 +154,7 @@ export function useTermSelection() {
       (async () => {
         try {
           setIsLoading(true);
-          console.log("🔄 [TERM SELECTION] Building term list object...");
+          log.debug("🔄 [TERM SELECTION] Building term list object...");
 
           // Initialize all semesters in unified data
           termIdList.forEach((term) => {
@@ -177,7 +178,7 @@ export function useTermSelection() {
 
           if (calendarTerm) {
             primaryTermShortName = calendarTerm.shortName;
-            console.log(
+            log.debug(
               "✅ [TERM SELECTION] Using calendar-based current term:",
               primaryTermShortName
             );
@@ -186,7 +187,7 @@ export function useTermSelection() {
               currentTerms.length > 0
                 ? currentTerms[0].shortName
                 : termIdList[0]?.shortName;
-            console.log(
+            log.debug(
               "⚠️ [TERM SELECTION] Calendar semester not in API list, falling back to:",
               primaryTermShortName
             );
@@ -209,7 +210,7 @@ export function useTermSelection() {
               latestValidTerm = primaryTermShortName;
               setUnifiedLatestValidTerm(primaryTermShortName);
 
-              console.log(
+              log.debug(
                 "✅ [TERM SELECTION] Latest valid term:",
                 latestValidTerm
               );
@@ -338,7 +339,7 @@ export function useTermSelection() {
             setUnifiedSelectedSemester(latestValidTerm, termIdList, latestValidTerm);
             }
 
-          console.log(
+          log.debug(
             "✅ [TERM SELECTION] Term list object built:",
             builtTermListObject
           );

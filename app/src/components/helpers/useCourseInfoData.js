@@ -24,6 +24,7 @@ import { apiClient } from "./axiosClient";
 import { catalogUrl } from "./apiEndpoints";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 // A term shows its previous-year same-season catalog as a preview until it has
 // published at least this many courses (or if its own catalog errors). Counts
@@ -76,7 +77,7 @@ export const useCourseInfoData = (params) => {
         if (!hasReference) return false;
         try {
           const refResponse = await fetchTerm(selectedSemester.referenceCisId);
-          console.log(
+          log.debug(
             `🔄 [${reason}] Previewing ${selectedSemester.shortName} with ${refResponse.data.length} courses from reference ${selectedSemester.referenceSemester}`
           );
           updateUnifiedAvailableCourses(
@@ -100,7 +101,7 @@ export const useCourseInfoData = (params) => {
       try {
         const response = await fetchTerm(selectedSemester.cisId);
         const count = response.data?.length || 0;
-        console.log(
+        log.debug(
           `✅ Fetched ${count} course sheets for ${selectedSemester.shortName}`
         );
 

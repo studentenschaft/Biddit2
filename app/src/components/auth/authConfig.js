@@ -4,6 +4,7 @@
  */
 
 import { LogLevel, PublicClientApplication } from "@azure/msal-browser";
+import { log } from "../helpers/log";
 
 /**
  * Configuration object to be passed to MSAL instance on creation.
@@ -42,10 +43,10 @@ export const msalConfig = {
             console.error(message);
             return;
           case LogLevel.Info:
-            console.info(message);
+            log.info(message);
             return;
           case LogLevel.Verbose:
-            console.debug(message);
+            log.debug(message);
             return;
           case LogLevel.Warning:
             console.warn(message);

@@ -29,6 +29,7 @@ import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
 import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
 import { getMainProgramKey } from '../helpers/getMainProgram';
+import { log } from '../helpers/log';
 
 const Transcript = () => {
   // Use same data approach as StudyOverview (which works)
@@ -108,13 +109,13 @@ const Transcript = () => {
     }
     
     const mainProgramKey = getMainProgramKey(academicData);
-    console.log('🔍 [Transcript] Program selection and data:', {
+    log.debug('🔍 [Transcript] Program selection and data:', {
       mainProgramKey,
       availablePrograms: Object.keys(academicData.programs || {}),
       hasStudyOverviewView: !!academicData.studyOverviewView?.[mainProgramKey]
     });
     
-    console.log('🔍 [Transcript] Full academic data structure:', {
+    log.debug('🔍 [Transcript] Full academic data structure:', {
       isLoaded: academicData.isLoaded,
       hasPrograms: !!academicData.programs,
       hasTranscriptView: !!academicData.transcriptView,
@@ -123,7 +124,7 @@ const Transcript = () => {
     });
     
     if (!mainProgramKey || !academicData.studyOverviewView?.[mainProgramKey]) {
-      console.log('❌ [Transcript] No study overview data for main program');
+      log.debug('❌ [Transcript] No study overview data for main program');
       return [];
     }
     
@@ -143,7 +144,7 @@ const Transcript = () => {
       }
     });
     
-    console.log('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
+    log.debug('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
     return allWishlistCourses;
     // Depending on the whole academicData object would recompute on every
     // selector identity change; the fields actually read are listed explicitly.

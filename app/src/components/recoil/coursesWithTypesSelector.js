@@ -1,5 +1,6 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
+import { log } from "../helpers/log";
 
 const getCategoryTypeMap = (items) => {
   const categoryMap = new Map();
@@ -55,7 +56,7 @@ export const coursesWithTypesSelector = selector({
       }
     });
 
-    console.log("categoryTypeMap:", categoryTypeMap);
+    log.debug("categoryTypeMap:", categoryTypeMap);
 
     return categoryTypeMap;
   },

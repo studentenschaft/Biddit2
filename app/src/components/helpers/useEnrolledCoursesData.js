@@ -24,6 +24,7 @@ import { apiClient } from "./axiosClient";
 import { myCoursesUrl } from "./apiEndpoints";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 /**
  * Custom hook for managing enrolled courses data
@@ -55,7 +56,7 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
       setIsEnrolledCoursesLoading(true);
 
       try {
-        console.log(
+        log.debug(
           `🔄 [SIMPLIFIED] Fetching enrolled courses for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
@@ -65,14 +66,14 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
           { headers: { "X-RequestedLanguage": "EN" } }
         );
 
-        console.log(
+        log.debug(
           `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} enrolled courses`
         );
-        console.log("🔍 [DEBUG] Enrolled courses structure:", response.data);
+        log.debug("🔍 [DEBUG] Enrolled courses structure:", response.data);
 
         // Log a sample course if available
         if (response.data.length > 0) {
-          console.log("🔍 [DEBUG] Sample enrolled course:", response.data[0]);
+          log.debug("🔍 [DEBUG] Sample enrolled course:", response.data[0]);
         }
 
         // Update ONLY unified enrolled courses state (no more legacy atoms)

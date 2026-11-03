@@ -6,6 +6,7 @@ import PropTypes from "prop-types";
 import { cisIdList as cisIdListAtom } from "../recoil/cisIdListAtom";
 import { selectedSemesterSelector } from "../recoil/unifiedCourseDataSelectors";
 import { useMemo, useCallback } from "react";
+import { log } from "../helpers/log";
 
 // Helper to get date from calendar week
 // Helper to get date from calendar week
@@ -86,7 +87,7 @@ function getSemesterDates(cisTermData, selectedIndex, selectedSemShortName) {
   // Check if spring semester
   const isSpring = cleanShortName.includes("FS");
 
-  console.log(
+  log.debug(
     `DEBUG Heatmap: Processing semester ${shortName} for year ${year}, isSpring: ${isSpring}`
   );
 

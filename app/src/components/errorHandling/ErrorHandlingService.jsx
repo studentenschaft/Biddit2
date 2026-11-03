@@ -3,6 +3,7 @@
 import { toast } from "react-toastify";
 import ErrorToast from "./ErrorToast";
 import { sanitizeHeaders } from "../helpers/sanitizeHeaders";
+import { log } from "../helpers/log";
 
 /**
  * Error classification types
@@ -111,6 +112,8 @@ const classifyError = (error) => {
   };
 };
 
+const REDACTED = "[redacted]";
+
 export const errorHandlingService = {
   handleError: (error, user = null) => {
     const errorId = crypto.randomUUID();
@@ -134,8 +137,10 @@ export const errorHandlingService = {
       url: error.config?.url,
       method: error.config?.method,
       headers: safeHeaders,
-      params: error.config?.params,
-      data: error.config?.data,
+      // Request bodies can hold personal data (e.g. a custom grade); they end
+      // up in the console and in the emailed report, so production drops them.
+      params: import.meta.env.DEV ? error.config?.params : REDACTED,
+      data: import.meta.env.DEV ? error.config?.data : REDACTED,
       user,
       timestamp,
       stack: error.stack || null,
@@ -147,9 +152,10 @@ export const errorHandlingService = {
 
     // Log for debugging. Degraded-mode short-circuits are expected traffic
     // (the kill switch flipped on with a request in flight) rather than a
-    // real failure, so they go to console.debug instead of console.error.
+    // real failure, so they go to the development-only log.debug instead of
+    // console.error.
     if (classification.type === ErrorType.DEGRADED_MODE) {
-      console.debug("Caught error:", errorDetails);
+      log.debug("Caught error:", errorDetails);
     } else {
       console.error("Caught error:", errorDetails);
     }
@@ -167,7 +173,7 @@ export const errorHandlingService = {
       });
     } else if (classification.isRecoverable) {
       // Log recoverable errors silently
-      console.log(
+      log.debug(
         `Recoverable error (${classification.type}): ${errorMessage}`,
       );
     }
