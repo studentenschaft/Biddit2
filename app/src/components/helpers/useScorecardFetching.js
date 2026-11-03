@@ -13,13 +13,15 @@ import { fetchCurrentEnrollments } from "../recoil/ApiCurrentEnrollments";
 import { fetchScoreCardDetails } from "../recoil/ApiScorecardDetails";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import {
-  findMainProgram,
   buildMainStudyLookup,
   resolveProgramId,
-  buildTranscriptView,
-  buildStudyOverviewView,
-  calculateProgramStats
 } from "./academicDataTransformers";
+import { buildAcademicPrograms } from "./buildAcademicPrograms";
+
+// Shared by every hook instance: consumers that mount in the same commit all
+// read `loading: false` from their render snapshot, so Recoil state alone
+// cannot stop them from starting parallel fetches.
+let inFlightFetch = null;
 
 /**
  * Hook that exposes a single `fetchAll` method to populate scorecard data.
@@ -33,24 +35,8 @@ export const useScorecardFetching = () => {
   const currentEnrollments = useRecoilValue(currentEnrollmentsState);
   const setCurrentEnrollments = useSetRecoilState(currentEnrollmentsState);
 
-  const fetchAll = useCallback(
-    async (authToken, { force = false } = {}) => {
-      if (!authToken) {
-        throw new Error("Cannot fetch scorecard data without an auth token.");
-      }
-
-      if (scorecardState.loading && !force) {
-        return {
-          success: true,
-          data: scorecardState.rawScorecards,
-          loading: true,
-        };
-      }
-
-      if (scorecardState.isLoaded && !force) {
-        return { success: true, data: scorecardState.rawScorecards };
-      }
-
+  const loadScorecards = useCallback(
+    async (authToken, force) => {
       setScorecardState((prev) => ({
         ...prev,
         loading: true,
@@ -123,60 +109,15 @@ export const useScorecardFetching = () => {
 
         // NEW: Transform and store in unified academic data state
         if (Object.keys(rawScorecards).length > 0) {
-          const mainProgramId = findMainProgram(rawScorecards, mainStudyLookup);
-          const programs = {};
-
-          Object.entries(rawScorecards).forEach(([programId, rawData]) => {
-            const isMainProgram = programId === mainProgramId;
-            const transcriptView = buildTranscriptView(rawData);
-            const studyOverviewView = buildStudyOverviewView(
-              rawData,
-              unifiedCourseData,
-              programId,
-              isMainProgram
-            );
-
-            const programStats = calculateProgramStats(
-              transcriptView.completedCourses,
-              Object.values(studyOverviewView).flatMap(s => s.selectedCourses || []),
-              rawData
-            );
-
-            programs[programId] = {
-              transcript: {
-                rawScorecard: rawData,
-                processedTranscript: transcriptView,
-                mergedTranscript: null,
-                lastFetched: Date.now()
-              },
-              studyPlan: {
-                semesterMap: studyOverviewView,
-                progress: {
-                  totalCreditsRequired: programStats.creditsRequired,
-                  totalCreditsCompleted: programStats.creditsEarned,
-                  totalCreditsPlanned: 0,
-                  completionPercentage: programStats.completionPercentage,
-                  estimatedCompletion: null
-                },
-                lastUpdated: Date.now()
-              },
-              metadata: {
-                programId,
-                isMainStudy: isMainProgram,
-                programType: programId.toLowerCase().includes('master') ? 'master' :
-                             programId.toLowerCase().includes('bachelor') ? 'bachelor' : 'other',
-                requirementsFulfilled: {
-                  creditsDE: rawData.creditsFulfilledDe === true,
-                  creditsEN: rawData.creditsFulfilledEn === true,
-                  overall: rawData.creditsFulfilledDe === true && rawData.creditsFulfilledEn === true
-                }
-              }
-            };
+          const { programs, currentProgram } = buildAcademicPrograms({
+            rawScorecards,
+            mainStudyLookup,
+            unifiedCourseData,
           });
 
           setUnifiedAcademicData({
             programs,
-            currentProgram: mainProgramId,
+            currentProgram,
             initialization: {
               isLoading: false,
               isInitialized: true,
@@ -204,13 +145,47 @@ export const useScorecardFetching = () => {
     },
     [
       currentEnrollments,
-      scorecardState.isLoaded,
-      scorecardState.loading,
-      scorecardState.rawScorecards,
       setCurrentEnrollments,
       setScorecardState,
       setUnifiedAcademicData,
       unifiedCourseData,
+    ]
+  );
+
+  const fetchAll = useCallback(
+    async (authToken, { force = false } = {}) => {
+      if (!authToken) {
+        throw new Error("Cannot fetch scorecard data without an auth token.");
+      }
+
+      if (inFlightFetch && !force) {
+        return inFlightFetch;
+      }
+
+      if (scorecardState.loading && !force) {
+        return {
+          success: true,
+          data: scorecardState.rawScorecards,
+          loading: true,
+        };
+      }
+
+      if (scorecardState.isLoaded && !force) {
+        return { success: true, data: scorecardState.rawScorecards };
+      }
+
+      const request = loadScorecards(authToken, force);
+      inFlightFetch = request;
+      request.finally(() => {
+        if (inFlightFetch === request) inFlightFetch = null;
+      });
+      return request;
+    },
+    [
+      loadScorecards,
+      scorecardState.isLoaded,
+      scorecardState.loading,
+      scorecardState.rawScorecards,
     ]
   );
 

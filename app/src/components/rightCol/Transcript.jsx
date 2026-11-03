@@ -10,7 +10,6 @@
 import { useRecoilValue, useRecoilState } from 'recoil';
 import { legacyAcademicDataSelector } from '../recoil/unifiedAcademicDataSelectors';
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
-import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
@@ -36,8 +35,6 @@ const Transcript = () => {
   const academicData = useRecoilValue(legacyAcademicDataSelector);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
-  const scorecardFetching = useScorecardFetching();
-  const [fetchAttempted, setFetchAttempted] = useState(false);
   const [scorecardError] = useState(false);
 
   // Course data loading infrastructure (shared with StudyOverview)
@@ -330,19 +327,6 @@ const Transcript = () => {
       window.location.reload();
     }
   };
-
-  // Auto-fetch scorecard data if not loaded and haven't tried yet
-  const handleFetchIfNeeded = useCallback(async () => {
-    if (!academicData.isLoaded && !fetchAttempted && authToken) {
-      setFetchAttempted(true);
-      await scorecardFetching.fetchAll(authToken);
-    }
-  }, [academicData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
-
-  // Trigger fetch if needed
-  if (!academicData.isLoaded && !fetchAttempted && authToken) {
-    handleFetchIfNeeded();
-  }
 
   // Check if data is loaded and transcript has valid structure
   const hasValidTranscript = useMemo(() => {
