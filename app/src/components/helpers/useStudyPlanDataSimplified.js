@@ -47,6 +47,9 @@ export const useStudyPlanDataSimplified = (params = {}) => {
   const [{ loaded, version }, setLoadState] =
     useRecoilState(studyPlanLoadState);
   const hasSemester = Boolean(selectedSemester?.id && selectedSemester?.shortName);
+  // Until a fetch has succeeded, a semester switch retries it; afterwards the
+  // key stays null so switching semesters causes no request.
+  const retryKey = loaded ? null : selectedSemester?.id;
 
   // Local loading state
   const [isStudyPlanLoading, setIsStudyPlanLoading] = useState(true);
@@ -204,7 +207,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
     };
     // selectedSemester is only read for the error fallback and logging.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, hasSemester, isDegradedMode, loaded, version]);
+  }, [authToken, hasSemester, isDegradedMode, loaded, version, retryKey]);
 
   return {
     isStudyPlanLoading,

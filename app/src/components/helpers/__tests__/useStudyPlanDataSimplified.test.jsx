@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
-import { RecoilRoot } from "recoil";
+import { RecoilRoot, useRecoilValue } from "recoil";
 import {
   server,
   setErrorMode,
@@ -153,6 +153,49 @@ describe("useStudyPlanDataSimplified - once per session", () => {
     await new Promise((r) => setTimeout(r, 50));
 
     expect(counter.hits).toBe(1);
+  });
+
+  it("retries on a semester switch while nothing has loaded", async () => {
+    let hits = 0;
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () => {
+        hits++;
+        return hits === 1
+          ? HttpResponse.json({ message: "boom" }, { status: 500 })
+          : HttpResponse.json({ HS25: ["7,035,1.00"], FS26: [] });
+      })
+    );
+    // A 500 is retried with a multi-second backoff; fail the retry at once.
+    vi.spyOn(apiClient, "retryWithBackoff").mockImplementation((error) =>
+      Promise.reject(error)
+    );
+    vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result, rerender } = renderHook(
+      ({ sem }) => {
+        const { isStudyPlanLoading } = useStudyPlanDataSimplified({
+          authToken: "t",
+          selectedSemester: sem,
+        });
+        return {
+          isStudyPlanLoading,
+          state: useRecoilValue(unifiedCourseDataState),
+        };
+      },
+      { wrapper, initialProps: { sem: HS25 } }
+    );
+    await waitFor(() => expect(result.current.isStudyPlanLoading).toBe(false));
+    expect(hits).toBe(1);
+
+    rerender({ sem: FS26 });
+
+    await waitFor(() =>
+      expect(result.current.state.semesters.HS25?.selectedIds).toEqual([
+        "7,035,1.00",
+      ])
+    );
+    expect(hits).toBe(2);
   });
 
   it("refetches after the study plan is invalidated", async () => {
