@@ -843,7 +843,9 @@ git commit -m "refactor(domain): one semester module replaces eight local copies
 - Test: `src/components/helpers/__tests__/useCourseSelection.remove.test.jsx`
 
 - [ ] **Step 1: Failing test**: with MSW counting DELETEs, removing a course whose `id === courseNumber` issues exactly 1 DELETE; one whose legacy `id` differs issues 2, in parallel (both requests observed before either resolves, use a deferred handler). Per the decision table, `courseId` is no longer tried unless it differs from both.
-- [ ] **Step 2: Run, implement with `Promise.all`, re-run; full suite; commit** `perf(wishlist): parallel delete under at most two ids`
+- [ ] **Step 2: Run, implement with `Promise.all`, re-run**
+- [ ] **Step 3: Remove the local entry under every id that was deleted.** Phase 1 review: `removeSelectedCourse` removes by course number only, so a `selectedIds` entry stored under a legacy catalog id survived a successful server delete (and the `CoursePicker` exclusion list used the same lookup). After the deletes settle, remove both ids from `selectedIds`. Test: seed `selectedIds: ["evt-123"]` for a course whose `courseNumber` is `7,035,1.00` and `id` is `evt-123`; after removal `selectedIds` is `[]`.
+- [ ] **Step 4: Full suite; commit** `perf(wishlist): parallel delete under at most two ids`
 
 **Phase 2 gate** and PR "Phase 2: domain model (E1)". Update `CLAUDE.md` with a "Domain modules" section naming the three files and the rule: normalize at ingestion, never in components.
 
@@ -867,14 +869,18 @@ Branch `perf/arch-fix-phase-3`.
 
 Record the before and after sizes of every chunk in the PR body.
 
-### Task 3.2: Per-session cache for course sheets and per-course ratings
+### Task 3.2: Per-session cache for course sheets, per-course ratings and term catalogs
+
+Phase 1 browser verification (2026-11-03): `catalogLoader` dedupes only concurrent loads, so a term's catalog is downloaded again on every revisit and whenever the map re-enriches (HS27 borrowing HS26, FS27 borrowing FS26). The ratings prompt (`recoil/coursesTakenForRatings.js`) fetched the term list five times and `MyCourses/byTerm` for seven terms in three rounds on one cold start; the third round starts when a Recoil promise is caught as an error ("Error fetching courses for rating: Promise").
 
 **Files:**
+- Modify: `src/components/helpers/catalogLoader.js` (keep settled results in the module `Map` keyed by `cisId` for the session; a failed load is not cached; `_resetCatalogLoaderForTests` clears it), `src/components/recoil/coursesTakenForRatings.js` (one term-list read and one `MyCourses` request per term per session; stop catching the Recoil promise as an error)
 - Create: `src/components/helpers/courseSheetCache.js` (`getCourseSheet({ course, authToken }) -> Promise<sheet|null>` and `getCourseRatings({ courseNumber, authToken })`, each with a module `Map` keyed by course number and `_resetForTests`)
 - Modify: `src/components/rightCol/CourseInfo.jsx:49-92,133-175`
 - Test: `src/components/helpers/__tests__/courseSheetCache.test.js`
 
-- [ ] **Step 1: Failing test**: two `getCourseSheet` calls for the same course → one request (MSW counter); a failed fetch is not cached.
+- [ ] **Step 1: Failing tests**: two `getCourseSheet` calls for the same course → one request (MSW counter); a failed fetch is not cached. In `catalogLoader.test.js`: two sequential `loadCatalogForTerm` calls for one `cisId` → one request; after a 500 the next call requests again. In a new `coursesTakenForRatings.test.js`: one cold start → `termsUrl()` hit once and `myCoursesUrl` hit once per term.
+- [ ] **Step 1b: Record the cold-start request count** in the browser against a production build (`npm run build && npm run preview`), before and after; the dev build doubles effects under StrictMode. Phase 1 measured 34 requests in dev at af4d0d8.
 - [ ] **Step 2: Run, implement, switch `CourseInfo` to the cache, re-run; run the `CourseInfo*` tests; full suite; commit** `perf(course-info): cache course sheets and ratings per session`
 
 **Phase 3 gate** and PR "Phase 3: bundle and request hygiene (P4, P3)".
@@ -937,7 +943,9 @@ Branch `refactor/arch-fix-phase-5`. Tasks 5.1 to 5.3 are independent.
 - [ ] **Step 2: Move code, one module per commit, running the selector test after each**
 - [ ] **Step 3: Full suite, lint; final commit** `refactor(curriculum-map): split selector into categories, placement and credits modules; patterns as data`
 
-### Task 5.2: `withActivePlan` helper in `usePlanManager`
+### Task 5.2: `withActivePlan` helper in `usePlanManager`, and one toast per plan failure
+
+Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failures (`curriculumPlansApi.js` reports, then `usePlanManager` calls `toast.error`) and `fetchCurrentEnrollments` (its own report, then `useScorecardFetching`). Decide the owner in each (the hook that knows the user action), remove the other call, and pin with one test per path.
 
 **Files:**
 - Modify: `src/components/helpers/usePlanManager.js` (add `const withActivePlan = (label, fn) => useRecoilCallback(({ snapshot, set }) => async (...args) => { const registry = await snapshot.getPromise(curriculumPlansRegistryState); try { const data = await fn({ planId: registry.activePlanId, token, set, snapshot }, ...args); applyServerState(set, data); return true; } catch (e) { if (e?.isDegradedModeError) return false; toast.error(label, { toastId }); return false; } })`; rewrite `addCourseById`, `removeCourseById`, `updatePlacementById`, `addPlaceholderById`, `removePlaceholderById`, `setSemesterNoteById`, `updateWishlistOverridesById` on it)
@@ -970,6 +978,10 @@ Branch `refactor/arch-fix-phase-5`. Tasks 5.1 to 5.3 are independent.
 
 ## Out of scope for this plan
 
+- Stale server wishlist entries: the real HS26 study plan holds full course numbers (`11,902,1.00`, `3,553,1.00`, `3,550,1.00`) that exist in no current catalog, probably saved while HS26 still showed the HS25 preview. Phase 1 hides unresolved ids in the map and Study Overview; removing them is a backend or data-cleanup task.
+- `unifiedStudyPlanSelector` and `useAcademicProgress` have no runtime consumer (Phase 1 report). Delete them in Phase 5 with the StudyOverview retirement, or earlier if the overhaul branch does not need them.
+- `SendErrorButton` still uses `defaultProps` (React dev warning on every error toast); a two-line change outside any finding.
+
 - Retiring `StudyOverview`, `GradeTranscript`, `selectedCourseIdsAtom` and `scorecardDataState`: blocked on `feature/transcript-overhaul` landing; plan it with that merge.
 - Backend changes (single-id delete, per-semester study-plan read, category mapping per regulation): raised as open questions in the review.
 - TypeScript adoption: a candidate follow-up after Phase 2 once the domain modules exist.
@@ -986,14 +998,14 @@ Branch `refactor/arch-fix-phase-5`. Tasks 5.1 to 5.3 are independent.
 | 0.5 | done | 6806475 | +bbfc650 (per-mount retry, fix round 1); in-flight dedupe added |
 | 0.6 | done | dd55b6d | also removed `semesterIndex` prop |
 | 0.7 | done | 1f6079b | +debef66 (review simplifications) |
-| 1.1 | | | |
-| 1.2 | | | |
-| 1.3 | | | |
-| 1.4 | | | |
-| 1.5 | | | |
-| 1.6 | | | |
-| 1.7 | | | |
-| 1.8 | | | |
+| 1.1 | done | 0af2161 | hook projects 2 terms beyond latest valid (brief said 5 terms; brief was wrong) |
+| 1.2 | done | 097b397 | in-flight dedupe only; per-session cache moved to 3.2 |
+| 1.3 | done | 9cc5476 | `useEventListDataManager` lost unused `selectionOptions` param |
+| 1.4 | done | 3b74096 | +e5ca314 retry on switch while nothing loaded; +c1f1f1a toast opt-out sweep (8 SHSG files) |
+| 1.5 | done | c3e53da | `updateSelectedCourseInfo` keeps top-level keys (spread) |
+| 1.6 | done | c3fec02 | +d3be9f0, af4d0d8: unresolved wishlist ids hidden in map, study plan and Study Overview; dedupe vs enrolled/placed |
+| 1.7 | done | df572e7 + c420f74 | cancel guard; lint fix in second commit |
+| 1.8 | done | dc22a4b | +c58b59c simplifications; Transcript error only when nothing loaded |
 | 2.1 | | | |
 | 2.2 | | | |
 | 2.3 | | | |
