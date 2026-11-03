@@ -5,7 +5,7 @@ import { coursesWithTypesSelector } from "../recoil/coursesWithTypesSelector";
 import { saveCourse, deleteCourse } from "./api";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { normalizeSemesterName } from "./courseSelection";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { trackWishlistChange } from "./analytics";
 
 // Helper function to normalize credits from API format to display format
@@ -35,7 +35,7 @@ export function useCourseSelection({
   authToken,
 }) {
   // Unified course data hook for managing selected courses
-  const { addSelectedCourse, removeSelectedCourse } = useUnifiedCourseData();
+  const { addSelectedCourse, removeSelectedCourse } = useUnifiedCourseDataWriters();
 
   // Recoil: local course selections keyed by semester shortName
   const [, setLocalSelectedCoursesSemKey] = useRecoilState(

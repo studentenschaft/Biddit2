@@ -22,7 +22,7 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "./axiosClient";
 import { catalogUrl } from "./apiEndpoints";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 // A term shows its previous-year same-season catalog as a preview until it has
@@ -42,7 +42,7 @@ export const REFERENCE_FALLBACK_MIN_COURSES = 10;
 export const useCourseInfoData = (params) => {
   // ALWAYS call hooks first - never put hooks after conditional returns
   const { updateAvailableCourses: updateUnifiedAvailableCourses } =
-    useUnifiedCourseData();
+    useUnifiedCourseDataWriters();
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
 
   const { authToken, selectedSemester } = params || {};

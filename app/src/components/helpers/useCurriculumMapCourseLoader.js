@@ -18,7 +18,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useRecoilValue } from "recoil";
 import { termListState } from "../recoil/termListState";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { REFERENCE_FALLBACK_MIN_COURSES } from "./useCourseInfoData";
 import { apiClient } from "./axiosClient";
 import { catalogUrl } from "./apiEndpoints";
@@ -34,7 +34,7 @@ const normalizeKey = (key) => (key ? key.replace(/\s+/g, "") : "");
 export function useCurriculumMapCourseLoader(authToken, semesterKeys) {
   const termListObject = useRecoilValue(termListState);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
-  const { updateAvailableCourses } = useUnifiedCourseData();
+  const { updateAvailableCourses } = useUnifiedCourseDataWriters();
 
   // Semesters already attempted this session — avoids refetch loops since each
   // successful load mutates unifiedCourseData and re-runs the effect.

@@ -6,7 +6,7 @@ import { authTokenState } from "../recoil/authAtom";
 import { cisIdList } from "../recoil/cisIdListAtom";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 import { termListState } from "../recoil/termListState";
 import { getCurrentSemesterInfo } from "../recoil/curriculumPlanAtom";
@@ -39,7 +39,7 @@ export function useTermSelection() {
   const {
     updateEnrolledCourses: updateUnifiedEnrolledCourses,
     initializeSemester: initializeUnifiedSemester,
-  } = useUnifiedCourseData();
+  } = useUnifiedCourseDataWriters();
 
   // Unified semester state hook
   const {

@@ -20,7 +20,7 @@
 
 import { useState, useEffect } from "react";
 import { apiClient } from "./axiosClient";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -39,7 +39,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
   const {
     updateSelectedCourses: updateUnifiedSelectedCourses,
     updateStudyPlan,
-  } = useUnifiedCourseData();
+  } = useUnifiedCourseDataWriters();
   const { isDegradedMode } = useDegradedMode();
 
   // Local loading state

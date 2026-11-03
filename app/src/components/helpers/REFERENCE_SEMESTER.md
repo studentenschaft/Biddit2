@@ -31,7 +31,7 @@ belong to it**. That distinction is the whole point of this document.
 ### Why `referenceSemester` is computed for every term
 
 `referenceSemester` is deterministic (`computeExpectedReference` in
-`useUnifiedCourseData.js`: strip the season, subtract one year). It is computed
+`useUnifiedCourseDataWriters.js`: strip the season, subtract one year). It is computed
 for *all* terms in `useTermSelection.js` — not only future/projected ones — so
 the preview can kick in for the current term too. Because it is deterministic,
 **routing must never depend on `usingReferenceData` alone**: if a code path knows

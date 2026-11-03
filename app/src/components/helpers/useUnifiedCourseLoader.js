@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { useUnifiedCourseData } from './useUnifiedCourseData';
+import { useUnifiedCourseDataWriters } from './useUnifiedCourseDataWriters';
 import { useRecoilValue } from 'recoil';
 import { termListState } from '../recoil/termListState';
 import { apiClient } from './axiosClient';
@@ -78,7 +78,7 @@ const identifySemestersNeedingData = (unifiedCourseData, termListObject) => {
  */
 export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
   const termListObject = useRecoilValue(termListState);
-  const { updateAvailableCourses } = useUnifiedCourseData();
+  const { updateAvailableCourses } = useUnifiedCourseDataWriters();
   const [loadedSemesters, setLoadedSemesters] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
 

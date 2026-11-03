@@ -18,7 +18,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useEnrolledCoursesData } from "./useEnrolledCoursesData";
 import { useCourseInfoData } from "./useCourseInfoData";
 import { useCourseRatingsData } from "./useCourseRatingsData";
@@ -48,7 +48,7 @@ export function useEventListDataManager(
   const {
     initializeSemester: initializeUnifiedSemester,
     updateFilteredCourses: updateUnifiedFilteredCourses,
-  } = useUnifiedCourseData();
+  } = useUnifiedCourseDataWriters();
 
   // Individual data hooks - these now update unified data directly
   const { isEnrolledCoursesLoading } = useEnrolledCoursesData({

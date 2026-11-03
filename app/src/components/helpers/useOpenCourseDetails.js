@@ -3,7 +3,7 @@ import { trackCourseDetailsOpened } from "./analytics";
 import { selectedTabAtom } from "../recoil/selectedTabAtom";
 import { courseDetailsSemesterAtom } from "../recoil/courseDetailsSemesterAtom";
 import { TAB } from "../../constants/tabs";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 
 /**
  * Single entry point for "show this course's details".
@@ -16,7 +16,7 @@ import { useUnifiedCourseData } from "./useUnifiedCourseData";
 export function useOpenCourseDetails() {
   const setSelectedTab = useSetRecoilState(selectedTabAtom);
   const setOpenedForSemester = useSetRecoilState(courseDetailsSemesterAtom);
-  const { updateSelectedCourseInfo } = useUnifiedCourseData();
+  const { updateSelectedCourseInfo } = useUnifiedCourseDataWriters();
 
   return (course, { source = "unknown", semester = null } = {}) => {
     if (!course) return;

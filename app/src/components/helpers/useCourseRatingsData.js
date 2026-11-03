@@ -26,7 +26,7 @@ import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
 import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
@@ -45,7 +45,7 @@ export const useCourseRatingsData = ({ authToken }) => {
   const {
     updateCourseRatingsForAllSemesters:
       updateUnifiedCourseRatingsForAllSemesters,
-  } = useUnifiedCourseData();
+  } = useUnifiedCourseDataWriters();
   const { isDegradedMode } = useDegradedMode();
 
   // Local loading state

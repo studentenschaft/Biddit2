@@ -22,7 +22,7 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "./axiosClient";
 import { myCoursesUrl } from "./apiEndpoints";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 /**
@@ -37,7 +37,7 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
   // Unified course data hook - no more legacy atoms
   const { updateEnrolledCourses: updateUnifiedEnrolledCourses } =
-    useUnifiedCourseData();
+    useUnifiedCourseDataWriters();
 
   // Local loading state
   const [isEnrolledCoursesLoading, setIsEnrolledCoursesLoading] =
