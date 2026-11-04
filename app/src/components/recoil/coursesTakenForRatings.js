@@ -3,7 +3,27 @@ import { authTokenState } from "./authAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { compareSemesterKeys, parseSemesterKey } from "../../domain/semester";
 import { apiClient } from "../helpers/axiosClient";
+import { myCoursesUrl, termsUrl } from "../helpers/apiEndpoints";
+import { forgetCourseRatings } from "../helpers/courseSheetCache";
+import { cachedRequest } from "../helpers/sessionCache";
 import { log } from "../helpers/log";
+
+// The selector below re-runs whenever the token, the term list or the rated
+// courses change (several times on a cold start), so its university requests
+// are memoised per session: one term-list read, one MyCourses read per term.
+const ratingRequests = new Map();
+
+const fetchTermList = (token) =>
+  cachedRequest(ratingRequests, "terms", () =>
+    apiClient.get(termsUrl(), token).then((res) => res.data)
+  );
+
+const fetchMyCourses = (timeSegmentId, token) =>
+  cachedRequest(ratingRequests, `myCourses:${timeSegmentId}`, () =>
+    apiClient.get(myCoursesUrl(timeSegmentId), token).then((res) => res.data)
+  );
+
+export const _resetRatingRequestsForTests = () => ratingRequests.clear();
 
 export const coursesRatedState = atom({
   key: "coursesRated",
@@ -34,8 +54,12 @@ export const coursesTakenForRatingState = atom({
   default: selector({
     key: "coursesTakenForRatings/Default",
     get: async ({ get }) => {
+      // Every Recoil dependency is read before the first await and outside the
+      // try: a pending dependency throws a promise, which Recoil must see to
+      // suspend and re-run this selector, not the catch below as an error.
       const token = get(authTokenState);
       const cisIdList = get(cisIdListSelector);
+      const coursesRated = get(coursesRatedState) || [];
       const currentSemester = cisIdList.find(
         (term) => term.isCurrent
       )?.shortName;
@@ -46,13 +70,10 @@ export const coursesTakenForRatingState = atom({
 
       try {
         // First get all available semesters and their TimeSegmentIds
-        const semesterInfo = await apiClient.get(
-          `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
-          token
-        );
+        const termList = await fetchTermList(token);
 
         // replace any data.shortname entries semester name formatting (e.g., SpSXX -> FSXX, AuSXX -> HSXX)
-        semesterInfo.data = semesterInfo.data.map((semester) => {
+        const semesterInfo = termList.map((semester) => {
           const oldShortName = semester.shortName;
           const normalizedShortName = semester.shortName
             .replace(/SpS(\d{2})/, "FS$1")
@@ -65,7 +86,7 @@ export const coursesTakenForRatingState = atom({
         });
 
         // Filter for ratable semesters and map to TimeSegmentIds
-        const ratableSemesters = semesterInfo.data
+        const ratableSemesters = semesterInfo
           .filter((semester) =>
             isSemesterRatable(semester.shortName, currentSemester)
           )
@@ -79,11 +100,8 @@ export const coursesTakenForRatingState = atom({
 
         const loadRatingCourses = async (semesterName, timeSegmentId) => {
           try {
-            const res = await apiClient.get(
-              `https://integration.unisg.ch/eventapi/MyCourses/byTerm/${timeSegmentId}`,
-              token
-            );
-            return { id: semesterName, data: res.data || [] };
+            const data = await fetchMyCourses(timeSegmentId, token);
+            return { id: semesterName, data: data || [] };
           } catch (err) {
             console.error(
               `Error loading courses for semester ${semesterName}:`,
@@ -99,8 +117,6 @@ export const coursesTakenForRatingState = atom({
               loadRatingCourses(semesterName, timeSegmentId)
           )
         );
-
-        const coursesRated = get(coursesRatedState) || [];
 
         const newData = data
           .map((semester) => {
@@ -158,6 +174,8 @@ export async function SubmitCourseRatingById(token, courseRating) {
       token
     );
     log.debug("Rating submitted successfully:", res.data);
+    // Course Details caches ratings per session; show the new one next visit.
+    forgetCourseRatings(courseRating.courseNumber);
     return res.data;
   } catch (err) {
     console.error("Error submitting course rating:", err);

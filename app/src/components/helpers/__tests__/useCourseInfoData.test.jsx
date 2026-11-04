@@ -10,6 +10,7 @@ import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { apiClient } from "../axiosClient";
 import { catalogUrl } from "../apiEndpoints";
+import { _resetCatalogLoaderForTests } from "../catalogLoader";
 import { useCourseInfoData } from "../useCourseInfoData";
 
 const SEMESTER = {
@@ -48,6 +49,8 @@ const renderCourseInfo = (selectedSemester) =>
 let handleErrorSpy;
 
 beforeEach(() => {
+  // Catalogs are cached for the session; every test starts cold.
+  _resetCatalogLoaderForTests();
   handleErrorSpy = vi
     .spyOn(errorHandlingService, "handleError")
     .mockImplementation(() => {});

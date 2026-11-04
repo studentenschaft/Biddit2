@@ -1,5 +1,6 @@
-// One catalog request per cisId at a time, and one reference-fallback rule for
-// every caller (course list, curriculum map, academic enrichment).
+// One catalog request per cisId per session (concurrent loads share it, a
+// failure is retried), and one reference-fallback rule for every caller
+// (course list, curriculum map, academic enrichment).
 
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,7 +61,7 @@ describe("loadCatalogForTerm", () => {
     expect(second.courses).toHaveLength(12);
   });
 
-  it("requests again once the earlier load has settled", async () => {
+  it("serves a settled load from the session cache", async () => {
     let hits = 0;
     server.use(
       http.get(catalogUrl("cis-1"), () => {
@@ -70,8 +71,30 @@ describe("loadCatalogForTerm", () => {
     );
 
     await loadCatalogForTerm({ term, authToken: "t" });
-    await loadCatalogForTerm({ term, authToken: "t" });
+    const second = await loadCatalogForTerm({ term, authToken: "t" });
 
+    expect(hits).toBe(1);
+    expect(second.courses).toHaveLength(12);
+  });
+
+  it("does not cache a failed load: the next call requests again", async () => {
+    const ownTerm = { cisId: "cis-1", shortName: "HS26" };
+    let hits = 0;
+    server.use(
+      http.get(catalogUrl("cis-1"), () => {
+        hits++;
+        return hits === 1
+          ? HttpResponse.json({ message: "boom" }, { status: 500 })
+          : HttpResponse.json(twelveCourses);
+      })
+    );
+
+    const failed = await loadCatalogForTerm({ term: ownTerm, authToken: "t" });
+    const retried = await loadCatalogForTerm({ term: ownTerm, authToken: "t" });
+
+    expect(failed.source).toBe("none");
+    expect(retried.source).toBe("primary");
+    expect(retried.courses).toHaveLength(12);
     expect(hits).toBe(2);
   });
 

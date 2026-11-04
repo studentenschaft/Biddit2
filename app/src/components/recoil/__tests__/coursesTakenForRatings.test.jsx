@@ -7,14 +7,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
-import { RecoilRoot } from "recoil";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { Suspense } from "react";
+import { RecoilRoot, useSetRecoilState } from "recoil";
 import { useRecoilValue } from "recoil";
+import { delay, http, HttpResponse } from "msw";
+import { server } from "../../../test/mocks/server";
+import { myCoursesUrl, termsUrl } from "../../helpers/apiEndpoints";
 import {
   _fetchStatusOnce,
   _resetForTests,
 } from "../../helpers/degradedModeService";
-import { coursesRatedState } from "../coursesTakenForRatings";
+import { authTokenState } from "../authAtom";
+import { cisIdList } from "../cisIdListAtom";
+import { latestValidTermProjectionState } from "../latestValidTermProjection";
+import {
+  _resetRatingRequestsForTests,
+  coursesRatedState,
+  coursesTakenForRatingState,
+} from "../coursesTakenForRatings";
 
 const wrapper = ({ children }) => <RecoilRoot>{children}</RecoilRoot>;
 
@@ -57,6 +68,101 @@ describe("coursesRatedState (degraded mode)", () => {
     // console.error in this test harness and isn't what's under test here.
     expect(consoleErrorSpy).not.toHaveBeenCalledWith(
       "Error fetching rated courses:",
+      expect.anything(),
+    );
+  });
+});
+
+/**
+ * One cold start: the term list arrives (cisIdList), the rated-courses request
+ * is still pending when the selector first runs, and the projection term lands
+ * afterwards. Each of those used to re-run the selector and re-download the
+ * term list and every term's MyCourses; the target is one and one per term.
+ */
+describe("coursesTakenForRatingState (requests per session)", () => {
+  // HS26 is current; FS23 to FS26 are ratable (seven terms), HS22 is too old.
+  const RATABLE = ["FS26", "HS25", "FS25", "HS24", "FS24", "HS23", "FS23"];
+  const TERMS = ["HS26", ...RATABLE, "HS22"].map((shortName) => ({
+    shortName,
+    timeSegmentId: `ts-${shortName}`,
+  }));
+  const CIS_ID_LIST = TERMS.map(({ shortName, timeSegmentId }) => ({
+    shortName,
+    timeSegmentId,
+    id: `cis-${shortName}`,
+    isCurrent: shortName === "HS26",
+  }));
+
+  beforeEach(() => {
+    _resetRatingRequestsForTests();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("reads the term list once and each term's MyCourses once", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    let termHits = 0;
+    const myCoursesHits = new Map();
+    server.use(
+      http.get(termsUrl(), () => {
+        termHits++;
+        return HttpResponse.json(TERMS);
+      }),
+      http.get(myCoursesUrl(":termId"), ({ params }) => {
+        myCoursesHits.set(
+          params.termId,
+          (myCoursesHits.get(params.termId) || 0) + 1,
+        );
+        return HttpResponse.json([
+          {
+            eventCourseNumber: `course-${params.termId}`,
+            eventDescription: `Course of ${params.termId}`,
+          },
+        ]);
+      }),
+      http.get("https://api.shsg.ch/course-ratings/of-user", async () => {
+        await delay(30);
+        return HttpResponse.json(["course-ts-FS26"]);
+      }),
+    );
+
+    const wrapper = ({ children }) => (
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(authTokenState, "ratings-cold-start-token");
+          set(cisIdList, CIS_ID_LIST);
+        }}
+      >
+        <Suspense fallback={null}>{children}</Suspense>
+      </RecoilRoot>
+    );
+
+    const { result } = renderHook(
+      () => ({
+        courses: useRecoilValue(coursesTakenForRatingState),
+        setProjection: useSetRecoilState(latestValidTermProjectionState),
+      }),
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current?.courses).toHaveLength(6));
+
+    // The projection term arrives later in the real start-up sequence.
+    act(() => result.current.setProjection("HS26"));
+    await waitFor(() => expect(result.current?.courses).toHaveLength(6));
+
+    expect(termHits).toBe(1);
+    expect([...myCoursesHits.keys()].sort()).toEqual(
+      RATABLE.map((term) => `ts-${term}`).sort(),
+    );
+    expect([...myCoursesHits.values()].every((hits) => hits === 1)).toBe(true);
+    expect(result.current.courses.map((course) => course.courseId)).not.toContain(
+      "course-ts-FS26",
+    );
+    expect(errorSpy).not.toHaveBeenCalledWith(
+      "Error fetching courses for rating:",
       expect.anything(),
     );
   });

@@ -9,6 +9,7 @@ import { authTokenState } from "../../recoil/authAtom";
 import { termListState } from "../../recoil/termListState";
 import { apiClient } from "../axiosClient";
 import { catalogUrl, myCoursesUrl, termsUrl } from "../apiEndpoints";
+import { _resetCatalogLoaderForTests } from "../catalogLoader";
 import { useCourseInfoData } from "../useCourseInfoData";
 import { useCurriculumMapCourseLoader } from "../useCurriculumMapCourseLoader";
 import { useEnrolledCoursesData } from "../useEnrolledCoursesData";
@@ -39,6 +40,8 @@ const withLanguage = (language) =>
 let getSpy;
 
 beforeEach(() => {
+  // Catalogs are cached for the session; every test starts cold.
+  _resetCatalogLoaderForTests();
   getSpy = vi.spyOn(apiClient, "get").mockResolvedValue({ data: [] });
 });
 

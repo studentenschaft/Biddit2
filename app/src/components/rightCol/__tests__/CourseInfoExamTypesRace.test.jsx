@@ -6,11 +6,12 @@
  * lookup table that is still null.
  */
 
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import { Suspense } from "react";
-import { RecoilRoot } from "recoil";
+import { RecoilRoot, useSetRecoilState } from "recoil";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiClient } from "../../helpers/axiosClient";
+import { _resetForTests as resetCourseSheetCache } from "../../helpers/courseSheetCache";
 import { authTokenState } from "../../recoil/authAtom";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import CourseInfo from "../CourseInfo";
@@ -75,7 +76,10 @@ const renderWithSelectedCourse = () =>
   );
 
 describe("CourseInfo with a selected course", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetCourseSheetCache();
+  });
 
   it("renders exam parts without crashing while ExaminationTypes is still loading", async () => {
     mockApiWithPendingExaminationTypes();
@@ -108,5 +112,79 @@ describe("CourseInfo with a selected course", () => {
     await waitFor(() =>
       expect(screen.getByText(COURSE.shortName)).toBeInTheDocument(),
     );
+  });
+});
+
+/**
+ * Switching courses while the first course's sheet is still loading: the late
+ * answer for the first course must not replace the second course's sheet.
+ */
+describe("CourseInfo course switch during a sheet fetch", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    resetCourseSheetCache();
+  });
+
+  const SECOND = {
+    ...COURSE,
+    shortName: "Second Course",
+    hsgEntityId: "67890",
+    courseNumber: "8,456,1.00",
+  };
+
+  it("ignores the superseded course's sheet", async () => {
+    let resolveFirstSheet;
+    vi.spyOn(apiClient, "get").mockImplementation((url) => {
+      const target = String(url);
+      if (target.endsWith(`/${COURSE.hsgEntityId}`))
+        return new Promise((resolve) => {
+          resolveFirstSheet = resolve;
+        });
+      if (target.endsWith(`/${SECOND.hsgEntityId}`))
+        return Promise.resolve({
+          data: {
+            examinationParts: [
+              { examinationTypeId: 1, remark: "Second exam", weightage: 10000 },
+            ],
+          },
+        });
+      return Promise.resolve({ data: [] });
+    });
+
+    let selectCourse;
+    const CourseSelector = () => {
+      const setCourseData = useSetRecoilState(unifiedCourseDataState);
+      selectCourse = (course) =>
+        setCourseData((data) => ({ ...data, selectedCourseInfo: course }));
+      return null;
+    };
+
+    render(
+      <RecoilRoot
+        initializeState={({ set }) => {
+          set(authTokenState, "token");
+          set(unifiedCourseDataState, {
+            semesters: {},
+            selectedSemester: null,
+            latestValidTerm: null,
+            selectedCourseInfo: COURSE,
+          });
+        }}
+      >
+        <CourseSelector />
+        <Suspense fallback={null}>
+          <CourseInfo />
+        </Suspense>
+      </RecoilRoot>,
+    );
+
+    await waitFor(() => expect(resolveFirstSheet).toBeTypeOf("function"));
+    act(() => selectCourse(SECOND));
+    expect(await screen.findByText("Second exam")).toBeInTheDocument();
+
+    await act(async () => resolveFirstSheet({ data: EXAM_SHEET }));
+
+    expect(screen.getByText("Second exam")).toBeInTheDocument();
+    expect(screen.queryByText("Written exam")).not.toBeInTheDocument();
   });
 });

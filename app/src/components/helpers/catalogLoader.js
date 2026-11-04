@@ -1,30 +1,27 @@
 // Loads a term's course catalog with the reference-semester fallback described
-// in REFERENCE_SEMESTER.md. Concurrent loads of the same cisId share one request.
+// in REFERENCE_SEMESTER.md. Each cisId is downloaded once per session:
+// concurrent loads share the request and a failed load is retried next time.
 import { apiClient } from "./axiosClient";
 import { catalogUrl } from "./apiEndpoints";
 import { log } from "./log";
+import { cachedRequest } from "./sessionCache";
 
 // A term shows its previous-year same-season catalog as a preview until it has
 // published at least this many courses (or if its own catalog errors). Counts
 // parent courses as returned by the API (before exercise-group flattening).
 export const REFERENCE_FALLBACK_MIN_COURSES = 10;
 
-const inFlight = new Map();
+const catalogs = new Map();
 
-const fetchCatalog = (cisId, authToken) => {
-  const pending = inFlight.get(cisId);
-  if (pending) return pending;
-
-  const request = apiClient
-    .get(catalogUrl(cisId), authToken, {
-      headers: { "X-RequestedLanguage": "EN" },
-      suppressErrorToast: true,
-    })
-    .then((response) => response.data || [])
-    .finally(() => inFlight.delete(cisId));
-  inFlight.set(cisId, request);
-  return request;
-};
+const fetchCatalog = (cisId, authToken) =>
+  cachedRequest(catalogs, cisId, () =>
+    apiClient
+      .get(catalogUrl(cisId), authToken, {
+        headers: { "X-RequestedLanguage": "EN" },
+        suppressErrorToast: true,
+      })
+      .then((response) => response.data || [])
+  );
 
 /**
  * @param {{ term: { cisId: string, shortName: string, referenceCisId?: string, referenceSemester?: string }, authToken: string }} params
@@ -85,4 +82,4 @@ export async function loadCatalogForTerm({ term, authToken }) {
   }
 }
 
-export const _resetCatalogLoaderForTests = () => inFlight.clear();
+export const _resetCatalogLoaderForTests = () => catalogs.clear();
