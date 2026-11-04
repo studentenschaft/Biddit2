@@ -11,6 +11,18 @@ import { useDegradedMode } from "../common/useDegradedMode";
 import { log } from "../helpers/log";
 
 /**
+ * Column template shared by every transcript row. On phones the shrinkable
+ * fr tracks wrapped "120 ECTS" onto two lines and, because each row is its
+ * own grid, drifted out of line with the header. Below sm the figures get
+ * fixed tracks instead, so their right edges line up across indented rows,
+ * the figures never wrap, and the table scrolls sideways inside
+ * TRANSCRIPT_TABLE_MIN_WIDTH. From sm up the original proportions apply.
+ */
+const TRANSCRIPT_GRID =
+  "grid grid-cols-[minmax(7rem,1fr)_repeat(3,4.5rem)_repeat(2,3.5rem)] sm:grid-cols-[3fr,repeat(5,1fr)]";
+const TRANSCRIPT_TABLE_MIN_WIDTH = "min-w-[34rem] sm:min-w-0";
+
+/**
  * Helper to format numbers to two decimal places.
  * Returns "N/A" if the value is null or not a number.
  */
@@ -262,10 +274,10 @@ const GradeTranscript = ({
       <div className={`mb-1 ${bgColor}`}>
         {/* Category header */}
         <div
-          className={`grid grid-cols-[3fr,repeat(5,1fr)] gap-2 items-center p-2 
+          className={`${TRANSCRIPT_GRID} gap-2 items-center p-2 
               ${
                 level === 1
-                  ? "font-bold text-lg"
+                  ? "font-bold text-base sm:text-lg"
                   : level === 2
                   ? "font-semibold ml-4"
                   : "font-bold text-sm ml-8"
@@ -276,13 +288,13 @@ const GradeTranscript = ({
               ? item.description
               : item.shortName}
           </div>
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">
             {formatNumber(parseFloat(item.minCredits))} ECTS
           </div>
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">
             {formatNumber(parseFloat(item.maxCredits))} ECTS
           </div>
-          <div className="text-right">{formatNumber(totalCredits)} ECTS</div>
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">{formatNumber(totalCredits)} ECTS</div>
           <div className="text-right">{formatNumber(avgGrade, true)}</div>
           <div className="text-right">{formatNumber(customAvgGrade, true)}</div>
         </div>
@@ -301,7 +313,7 @@ const GradeTranscript = ({
                   )}
                 >
                   <div
-                    className={`grid grid-cols-[3fr,repeat(5,1fr)] gap-2 items-center p-2 text-sm ml-12 
+                    className={`${TRANSCRIPT_GRID} gap-2 items-center p-2 text-sm ml-12 
                       ${subItem.isWishlist ? "italic text-gray-600" : ""}`}
                   >
                     <div className="flex items-center">
@@ -362,7 +374,7 @@ const GradeTranscript = ({
                     </div>
                     <div className="text-right"></div>
                     <div className="text-right"></div>
-                    <div className="text-right">
+                    <div className="text-right whitespace-nowrap sm:whitespace-normal">
                       {formatNumber(parseFloat(subItem.sumOfCredits))} ECTS
                     </div>
                     <div className="text-right">{subItem.mark || subItem.gradeText || "-"}</div>
@@ -433,14 +445,14 @@ const GradeTranscript = ({
   const { overallCustomAvg } = overallCalculations;
 
   return (
-    <div className="p-4 bg-white">
+    <div className="py-4 sm:p-4 bg-white overflow-x-auto">
       {scorecardDetails && scorecardDetails.items ? (
         <>
           {/* Main category header */}
           <h3 className="text-xl font-semibold mb-4 text-gray-700">
             {scorecardDetails.items[0]?.description || 'Academic Transcript'}
           </h3>
-          <div className="grid grid-cols-[3fr,repeat(5,1fr)] gap-2 text-lg font-bold mb-4 text-green-700">
+          <div className={`${TRANSCRIPT_GRID} ${TRANSCRIPT_TABLE_MIN_WIDTH} gap-2 px-2 text-base sm:text-lg font-bold mb-4 text-green-700 [&>div]:whitespace-nowrap sm:[&>div]:whitespace-normal`}>
             <div className="text-right"></div>
             <div className="text-right">
               {formatNumber(parseFloat(scorecardDetails.items[0]?.minCredits || 0))}{" "}
@@ -461,9 +473,9 @@ const GradeTranscript = ({
               {formatNumber(overallCustomAvg, true)}
             </div>
           </div>
-          <div className="space-y-2">
+          <div className={`space-y-2 ${TRANSCRIPT_TABLE_MIN_WIDTH}`}>
             {/* Table headers */}
-            <div className="grid grid-cols-[3fr,repeat(5,1fr)] gap-2 font-bold text-sm text-gray-600 mb-2 p-2 bg-gray-200">
+            <div className={`${TRANSCRIPT_GRID} gap-2 font-bold text-sm text-gray-600 mb-2 p-2 bg-gray-200`}>
               <div></div>
               <div className="text-right">Min.</div>
               <div className="text-right">Max.</div>

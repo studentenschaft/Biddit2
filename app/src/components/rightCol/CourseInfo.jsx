@@ -368,7 +368,10 @@ export default function CourseInfo() {
                 examInformationState.examinationParts.map((part, index) => {
                   return (
                     <div key={index} className="w-full text-sm">
-                      <div className="grid grid-cols-3">
+                      {/* Below lg three equal columns left the remark a
+                          sliver beside a mostly empty weight column, so the
+                          weight shrinks to its content there. */}
+                      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] gap-x-3 lg:grid-cols-3 lg:gap-x-0">
                         <div className="font-semibold">
                           {examinationIdState?.[part.examinationTypeId]
                             ?.shortName ?? UNKNOWN_EXAM_TYPE}
