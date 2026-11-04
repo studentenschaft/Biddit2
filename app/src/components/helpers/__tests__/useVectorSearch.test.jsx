@@ -154,6 +154,31 @@ describe("useVectorSearch", () => {
     expect(hits).toEqual({ ids: [], distances: [], metadatas: [] });
   });
 
+  it("never upserts when the response carries no ids list", async () => {
+    const calls = mockVectorDb({ message: "no embeddings" });
+    const { result } = renderVectorSearch();
+
+    const hits = await runQuery(result);
+
+    expect(calls.queries).toHaveLength(1);
+    expect(calls.upserts).toHaveLength(0);
+    expect(hits).toEqual({ ids: [], distances: [], metadatas: [] });
+  });
+
+  it("does not query the selected semester when borrowed data has no reference semester", async () => {
+    const calls = mockVectorDb(HITS);
+    const { result } = renderVectorSearch({
+      selected: "HS26",
+      semesterOverrides: { usingReferenceData: true, referenceSemester: null },
+    });
+
+    const hits = await runQuery(result);
+
+    expect(calls.queries).toHaveLength(0);
+    expect(calls.upserts).toHaveLength(0);
+    expect(hits).toEqual({ ids: [], distances: [], metadatas: [] });
+  });
+
   it("queries the reference semester and never upserts borrowed courses", async () => {
     const calls = mockVectorDb(EMPTY, EMPTY);
     const { result } = renderVectorSearch({

@@ -56,18 +56,11 @@ async function queryOnce(params) {
 }
 
 function toUpsertPayload(courses) {
-  return (courses || [])
-    .filter((course) => {
-      if (course.courseNumber) return true;
-      console.warn("Missing course number for course:", course);
-      return false;
-    })
-    .map((course) => ({
-      courseNumber: course.courseNumber,
-      shortName: course.shortName,
-      classification: course.classification,
-      courseContent: course.courseContent,
-    }));
+  return (courses || []).filter((course) => {
+    if (course.courseNumber) return true;
+    console.warn("Missing course number for course:", course);
+    return false;
+  });
 }
 
 export function useVectorSearch() {
@@ -125,8 +118,13 @@ export function useVectorSearch() {
         log.debug("No programme known; vector search skipped");
         return noHits();
       }
-      const semester =
-        (isReferenceData && referenceSemester) || selectedSemester || null;
+      if (isReferenceData && !referenceSemester) {
+        log.debug(
+          `${selectedSemester} shows borrowed data without a reference semester; vector search skipped`
+        );
+        return noHits();
+      }
+      const semester = isReferenceData ? referenceSemester : selectedSemester;
       if (!semester) {
         console.warn("No semester is selected or available for vector search");
         return noHits();
@@ -156,6 +154,7 @@ export function useVectorSearch() {
       setIsUpserting(false);
       return (await queryOnce(params)).hits;
     } finally {
+      setIsUpserting(false);
       setIsLoading(false);
     }
   }
