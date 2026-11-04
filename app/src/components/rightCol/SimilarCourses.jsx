@@ -26,6 +26,7 @@ import { useScorecardFetching } from "../helpers/useScorecardFetching";
 import { useDegradedMode } from "../common/useDegradedMode";
 import DegradedPlaceholder from "../common/DegradedPlaceholder";
 import { log } from "../helpers/log";
+import { formatEcts, toEcts } from "../../domain/credits";
 
 export default function SimilarCourses({ selectedCourse }) {
   const authToken = useRecoilValue(authTokenState);
@@ -269,7 +270,7 @@ export default function SimilarCourses({ selectedCourse }) {
 
         const creditsMatch =
           creditsFilter === "all" ||
-          creditsFilter === (course.credits / 100).toFixed(2);
+          creditsFilter === formatEcts(toEcts(course.credits));
 
         return categoryMatch && creditsMatch;
       })
@@ -435,7 +436,7 @@ export default function SimilarCourses({ selectedCourse }) {
                       (course) =>
                         course.courseNumber === id.replace(/[A-Z]+\d+/g, "")
                     );
-                    return course ? (course.credits / 100).toFixed(2) : null;
+                    return course ? formatEcts(toEcts(course.credits)) : null;
                   })
                   .filter((credits) => credits !== null)
               ),
@@ -573,15 +574,15 @@ export default function SimilarCourses({ selectedCourse }) {
                       ).classification || "N/A"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {(
-                        (
+                      {formatEcts(
+                        toEcts(
                           coursesCurrentSemester.find(
                             (course) =>
                               course.courseNumber ===
                               id.replace(/[A-Z]+\d+/g, "")
-                          ) || {}
-                        ).credits / 100
-                      ).toFixed(2) || "N/A"}
+                          )?.credits
+                        )
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {similarCourses.ids[0].indexOf(id) + 1}

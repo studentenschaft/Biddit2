@@ -26,6 +26,7 @@ import {
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { log } from "../helpers/log";
+import { formatEcts, toEcts } from "../../domain/credits";
 
 // The course sheet and the ExaminationTypes lookup are fetched independently, so
 // the sheet can arrive first. Until the lookup lands — or if it has no entry for
@@ -246,7 +247,7 @@ export default function CourseInfo() {
         <div className="overflow-auto scrollbar-hide overscroll-auto">
           <div className="text-xs font-semibold text-gray-700 lg:text-base">
             <div className="" label="credits and exam info">
-              {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
+              {formatEcts(toEcts(selectedCourse.credits))} ECTS |{" "}
               {selectedCourse.classification}{" "}
               {achievementFormStatus.isCentral &&
               achievementFormStatus.isDeCentral

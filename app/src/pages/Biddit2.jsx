@@ -21,16 +21,6 @@ import {
 import { useCurriculumPlan } from "../components/helpers/useCurriculumPlan";
 import { log } from "../components/helpers/log";
 
-/**
- * Format credits for display, handling both "cents" format (300 = 3 ECTS)
- * and already-normalized format (3 = 3 ECTS)
- */
-const formatCredits = (credits, isNormalized = false) => {
-  if (!credits) return "?";
-  const value = isNormalized ? credits : credits / 100;
-  return value.toFixed(Number.isInteger(value) ? 0 : 1);
-};
-
 // Styles
 import "./react-tabs.css";
 import LoadingText from "../components/common/LoadingText";
@@ -42,24 +32,21 @@ import { TabComponent } from "./TabComponent";
 
 //mobile view
 import { isLeftViewVisible } from "../components/recoil/isLeftViewVisible";
+import { formatEcts, toEcts } from "../domain/credits";
 
 /**
  * DragPreviewCard - Visual preview during drag operations
  */
-const DragPreviewCard = ({ item, type }) => {
+const DragPreviewCard = ({ item }) => {
   if (!item) return null;
 
-  const isGridCourse = type === "grid-course" || type === "placeholder-creator";
-
-  // Grid courses have already-normalized credits (in ECTS)
-  // EventList and Picker courses have credits in "cents" format (300 = 3 ECTS)
   const name =
     item.shortName ||
     item.courseNumber ||
     item.name ||
     item.courseId ||
     item.id;
-  const credits = formatCredits(item.credits, isGridCourse);
+  const credits = formatEcts(toEcts(item.credits));
   const displayName = name?.length > 30 ? name.substring(0, 28) + "..." : name;
 
   return (
@@ -72,7 +59,6 @@ const DragPreviewCard = ({ item, type }) => {
 
 DragPreviewCard.propTypes = {
   item: PropTypes.object,
-  type: PropTypes.string,
 };
 
 /** Enrolled (bid) grid cards may change category, but never semester or plan membership. */
@@ -89,7 +75,6 @@ export default function Biddit2() {
 
   // Drag-and-drop state for cross-component dragging
   const [activeDragItem, setActiveDragItem] = useState(null);
-  const [activeDragType, setActiveDragType] = useState(null);
   const {
     addCourse,
     addPlaceholder,
@@ -117,17 +102,14 @@ export default function Biddit2() {
 
     if (dragData?.type === "eventlist-course") {
       setActiveDragItem(dragData.course);
-      setActiveDragType("eventlist-course");
     } else if (dragData?.type === "grid-course") {
       setActiveDragItem(dragData.item);
-      setActiveDragType("grid-course");
     } else if (dragData?.type === "placeholder-creator") {
       setActiveDragItem({
         name: dragData.label,
         credits: dragData.credits,
         isPlaceholder: true,
       });
-      setActiveDragType("placeholder-creator");
     }
   }, []);
 
@@ -140,7 +122,6 @@ export default function Biddit2() {
 
       // Reset drag state
       setActiveDragItem(null);
-      setActiveDragType(null);
 
       const dragData = active.data.current;
 
@@ -260,7 +241,6 @@ export default function Biddit2() {
    */
   const handleDragCancel = useCallback(() => {
     setActiveDragItem(null);
-    setActiveDragType(null);
   }, []);
 
   return (
@@ -361,7 +341,7 @@ export default function Biddit2() {
       {/* Drag overlay - follows cursor during drag */}
       <DragOverlay>
         {activeDragItem && (
-          <DragPreviewCard item={activeDragItem} type={activeDragType} />
+          <DragPreviewCard item={activeDragItem} />
         )}
       </DragOverlay>
     </DndContext>

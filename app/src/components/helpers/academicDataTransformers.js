@@ -7,6 +7,7 @@
  */
 
 import { transformScorecard } from './transformScorecard';
+import { toEcts } from '../../domain/credits';
 
 /**
  * Resolve the program key for an enrollment from the University enrollments API.
@@ -183,7 +184,7 @@ export const enrichCourseFromAvailable = (courseId, availableCourses, semesterDa
       id: courseId,
       courseId: courseId,
       name: fullCourse.shortName || fullCourse.name || courseId,
-      credits: fullCourse.credits != null ? parseFloat(fullCourse.credits) / 100 : 3,
+      credits: toEcts(fullCourse.credits, 3),
       type: fullCourse.classification || 'elective',
       classification: fullCourse.classification,
       avgRating: fullCourse.avgRating,

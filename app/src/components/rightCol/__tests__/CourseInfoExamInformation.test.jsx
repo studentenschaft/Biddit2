@@ -145,7 +145,7 @@ describe("CourseInfo exam information", () => {
     renderCourseInfo({ ...MICRO, achievementFormStatus: undefined });
 
     const header = await screen.findByText(/ECTS/);
-    expect(header).toHaveTextContent("4.00 ECTS | Core");
+    expect(header).toHaveTextContent("4 ECTS | Core");
     expect(header).not.toHaveTextContent(/Central|Decentral/);
     expect(screen.getByText("Mon 18.01.2027")).toBeInTheDocument();
   });

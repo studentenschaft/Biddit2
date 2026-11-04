@@ -27,12 +27,12 @@ import {
   examsForCourse,
   formatExamClashLead,
 } from "../helpers/examScheduleUtils";
-import { formatEcts } from "../helpers/formatEcts";
 import { getCourseRootKey } from "../helpers/courseUtils";
 import { toZurichWallClock } from "../helpers/zurichWallClock";
 
 import { Heatmap } from "./Heatmap";
 import ExamTable from "./ExamTable";
+import { formatEcts, toEcts } from "../../domain/credits";
 
 //TODO: fix missing reactivity of course list when selected courses change + found bug where fake overlap is shown (also on current prod)
 
@@ -132,7 +132,7 @@ export default function SemesterSummary() {
   );
 
   const totalCredits = currCourses.reduce((acc, curr) => {
-    return acc + curr.credits / 100;
+    return acc + toEcts(curr.credits, 0);
   }, 0);
 
   const totalEvents = currCourses.reduce((acc, curr) => {
@@ -427,7 +427,7 @@ export default function SemesterSummary() {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="">{formatEcts(course.credits / 100)}</div>
+                      <div className="">{formatEcts(toEcts(course.credits))}</div>
                     </div>
                   </div>
                 );

@@ -63,6 +63,7 @@ import { LockOpen } from "./LockOpen";
 
 // Recoil state
 import { isLeftViewVisible } from "../../recoil/isLeftViewVisible";
+import { formatEcts, toEcts } from "../../../domain/credits";
 
 // Stable fallback so an empty selector result does not invalidate itemData.
 const NO_ITEMS = [];
@@ -183,7 +184,7 @@ const Row = memo(function Row({ index, style, data }) {
             </p>
           )}
           <p className="hidden col-span-2 truncate md:block">
-            {event ? `${event.credits / 100} ECTS` : "NA"}
+            {event ? `${formatEcts(toEcts(event.credits))} ECTS` : "NA"}
           </p>
           <p className="col-span-8 truncate">
             {event ? `${event.classification}` : "NA"}

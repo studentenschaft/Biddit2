@@ -11,23 +11,18 @@ import {
 import { findMainProgram } from "../helpers/academicDataTransformers";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 import { log } from "../helpers/log";
+import { toEcts } from "../../domain/credits";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pure helper functions
 // ────────────────────────────────────────────────────────────────────────────
 
 /**
- * Idempotent credit normalization.
- * API returns raw values (e.g., 600 for 6 ECTS). Some paths pre-normalize.
- * This handles both: values > 99 are divided by 100, others pass through.
- * When credits are unknown (raw == null), returns `fallback`. The curriculum
- * map passes `null` so unresolved credits render as "?" rather than a
- * fabricated number.
+ * toEcts with the map's historical default. The curriculum map passes `null`
+ * so unresolved credits render as "?" rather than a fabricated number.
  */
-export const normalizeCourseCredits = (raw, fallback = 3) => {
-  if (raw == null) return fallback;
-  return raw > 99 ? raw / 100 : raw;
-};
+export const normalizeCourseCredits = (raw, fallback = 3) =>
+  toEcts(raw, fallback);
 
 /**
  * Resolve a course's raw credits from ANY loaded semester catalog.

@@ -104,7 +104,7 @@ vi.mock("../ExamTable", () => ({
 }));
 
 import SemesterSummary from "../SemesterSummary";
-import { formatEcts } from "../../helpers/formatEcts";
+import { formatEcts } from "../../../domain/credits";
 import {
   myCoursesSelector,
   selectedSemesterSelector,
@@ -145,9 +145,9 @@ describe("semester summary ECTS formatting", () => {
     expect(formatEcts(1.1 + 2.2)).toBe("3.3");
   });
 
-  it("falls back to 0 rather than rendering NaN", () => {
-    expect(formatEcts(undefined)).toBe("0");
-    expect(formatEcts("n/a")).toBe("0");
+  it("renders unknown credits as ? rather than NaN", () => {
+    expect(formatEcts(undefined)).toBe("?");
+    expect(formatEcts("n/a")).toBe("?");
   });
 
   it("renders whole credits without trailing zeros, per row and in the total", () => {

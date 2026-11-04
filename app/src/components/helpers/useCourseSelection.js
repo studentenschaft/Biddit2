@@ -7,15 +7,7 @@ import { normalizeSemesterName } from "./courseSelection";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { trackWishlistChange } from "./analytics";
 import { log } from "./log";
-
-// Helper function to normalize credits from API format to display format
-const normalizeCredits = (credits) => {
-  if (credits === null || credits === undefined) return 4; // Default to 4 ECTS only for null/undefined
-  if (typeof credits === "number" && credits > 99) {
-    return credits / 100; // Convert 400 -> 4, 200 -> 2, etc.
-  }
-  return credits; // Return 0 for exercise groups, other values as-is
-};
+import { toEcts } from "../../domain/credits";
 
 /**
  * Shared hook for adding or removing a course in local and backend states.
@@ -71,7 +63,7 @@ export function useCourseSelection({
       trackWishlistChange({
         action: isCourseSelected ? "remove" : "add",
         courseNumber,
-        credits: normalizeCredits(course.credits),
+        credits: toEcts(course.credits, 4),
         classification: course.classification,
         semester: normalizedCourseSemester,
       });

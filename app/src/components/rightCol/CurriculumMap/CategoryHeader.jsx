@@ -14,7 +14,7 @@ import {
   formatCreditRange,
   getFillPercentage,
 } from "../../recoil/curriculumMapSelector";
-import { formatEcts } from "../../helpers/formatEcts";
+import { formatEcts } from "../../../domain/credits";
 
 const CategoryHeader = ({
   category,

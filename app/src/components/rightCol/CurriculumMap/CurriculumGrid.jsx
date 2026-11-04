@@ -29,7 +29,7 @@ import {
   getFillPercentage,
   formatCreditRange,
 } from "../../recoil/curriculumMapSelector";
-import { formatEcts } from "../../helpers/formatEcts";
+import { formatEcts } from "../../../domain/credits";
 
 
 /**

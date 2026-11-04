@@ -12,6 +12,7 @@ import {
   deriveMainProgramEraStart,
   isSemesterInProgramEra
 } from "../helpers/programEraScope";
+import { toEcts } from "../../domain/credits";
 
 /**
  * Selector to get the current program data
@@ -117,7 +118,7 @@ export const unifiedStudyPlanSelector = selector({
           const classification = fullCourse.classification;
           processedCourses.push({
             name: fullCourse.shortName || courseId,
-            credits: fullCourse.credits ? fullCourse.credits / 100 : 0,
+            credits: toEcts(fullCourse.credits, 0),
             type: `${classification}-wishlist`,
             grade: null,
             id: courseId,
