@@ -109,11 +109,13 @@ describe("callers that report their own failures", () => {
     expect(handleErrorSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("fetchCurrentEnrollments reports a failed load once", async () => {
+  it("fetchCurrentEnrollments leaves a failure to its caller", async () => {
     server.use(
       http.get(`${UNISG_API}/StudyApi/MyEnrollments/currentEnrollments`, notFound)
     );
-    expect(await fetchCurrentEnrollments("t")).toBeUndefined();
-    expect(handleErrorSpy).toHaveBeenCalledTimes(1);
+    await expect(fetchCurrentEnrollments("t")).rejects.toMatchObject({
+      response: { status: 404 },
+    });
+    expect(handleErrorSpy).not.toHaveBeenCalled();
   });
 });

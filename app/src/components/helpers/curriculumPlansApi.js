@@ -1,10 +1,9 @@
 import { apiClient } from "./axiosClient";
 import { SHSG_API } from "./apiEndpoints";
-import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
 const BASE_URL = `${SHSG_API}/curriculum-plans`;
-// Every function reports its own failure, so apiClient must not toast as well.
-const OWN_ERROR_REPORT = { suppressErrorToast: true };
+// usePlanManager reports every failure, so apiClient must not toast as well.
+const CALLER_REPORTS_ERRORS = { suppressErrorToast: true };
 
 /**
  * Curriculum Plans API Client
@@ -18,14 +17,8 @@ const OWN_ERROR_REPORT = { suppressErrorToast: true };
  * @returns {Promise<Object>} - { activePlanId, plans }
  */
 export const getCurriculumPlans = async (token) => {
-  try {
-    const res = await apiClient.get(BASE_URL, token, OWN_ERROR_REPORT);
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error fetching plans:", err);
-    throw err;
-  }
+  const res = await apiClient.get(BASE_URL, token, CALLER_REPORTS_ERRORS);
+  return res.data;
 };
 
 /**
@@ -35,19 +28,13 @@ export const getCurriculumPlans = async (token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const setActivePlanApi = async (planId, token) => {
-  try {
-    const res = await apiClient.post(
-      `${BASE_URL}/active/${planId}`,
-      {},
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error setting active plan:", err);
-    throw err;
-  }
+  const res = await apiClient.post(
+    `${BASE_URL}/active/${planId}`,
+    {},
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -58,19 +45,13 @@ export const setActivePlanApi = async (planId, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const upsertPlan = async (planId, data, token) => {
-  try {
-    const res = await apiClient.post(
-      `${BASE_URL}/${planId}`,
-      data,
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error upserting plan:", err);
-    throw err;
-  }
+  const res = await apiClient.post(
+    `${BASE_URL}/${planId}`,
+    data,
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -80,18 +61,12 @@ export const upsertPlan = async (planId, data, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const deletePlanApi = async (planId, token) => {
-  try {
-    const res = await apiClient.delete(
-      `${BASE_URL}/${planId}`,
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error deleting plan:", err);
-    throw err;
-  }
+  const res = await apiClient.delete(
+    `${BASE_URL}/${planId}`,
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -102,19 +77,13 @@ export const deletePlanApi = async (planId, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const duplicatePlanApi = async (planId, name, token) => {
-  try {
-    const res = await apiClient.post(
-      `${BASE_URL}/${planId}/duplicate`,
-      { name },
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error duplicating plan:", err);
-    throw err;
-  }
+  const res = await apiClient.post(
+    `${BASE_URL}/${planId}/duplicate`,
+    { name },
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -126,19 +95,13 @@ export const duplicatePlanApi = async (planId, name, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const upsertPlacement = async (planId, placementId, data, token) => {
-  try {
-    const res = await apiClient.post(
-      `${BASE_URL}/${planId}/${placementId}`,
-      data,
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error upserting placement:", err);
-    throw err;
-  }
+  const res = await apiClient.post(
+    `${BASE_URL}/${planId}/${placementId}`,
+    data,
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -149,18 +112,12 @@ export const upsertPlacement = async (planId, placementId, data, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const removePlacement = async (planId, placementId, token) => {
-  try {
-    const res = await apiClient.delete(
-      `${BASE_URL}/${planId}/${placementId}`,
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error removing placement:", err);
-    throw err;
-  }
+  const res = await apiClient.delete(
+    `${BASE_URL}/${planId}/${placementId}`,
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
 
 /**
@@ -172,17 +129,11 @@ export const removePlacement = async (planId, placementId, token) => {
  * @returns {Promise<Object>} - Updated state
  */
 export const setSemesterNoteApi = async (planId, semesterKey, note, token) => {
-  try {
-    const res = await apiClient.post(
-      `${BASE_URL}/${planId}/semester-notes/${semesterKey}`,
-      { note },
-      token,
-      OWN_ERROR_REPORT,
-    );
-    return res.data;
-  } catch (err) {
-    errorHandlingService.handleError(err);
-    console.error("[CurriculumPlansAPI] Error setting semester note:", err);
-    throw err;
-  }
+  const res = await apiClient.post(
+    `${BASE_URL}/${planId}/semester-notes/${semesterKey}`,
+    { note },
+    token,
+    CALLER_REPORTS_ERRORS,
+  );
+  return res.data;
 };
