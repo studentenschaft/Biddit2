@@ -55,15 +55,8 @@ describe("config", () => {
       "https://unisg.staging.example/EventApi/CisTermAndPhaseInformations",
     );
   });
-});
 
-describe("msalConfig", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.resetModules();
-  });
-
-  it("redirects back to the current origin and uses the configured tenant", async () => {
+  it("redirects MSAL back to the current origin and uses the configured tenant", async () => {
     vi.stubEnv("VITE_ENTRA_TENANT_ID", "tenant-under-test");
     vi.stubEnv("VITE_ENTRA_CLIENT_ID", "client-under-test");
     const { msalConfig } = await importFresh("../components/auth/authConfig");
