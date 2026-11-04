@@ -1,12 +1,21 @@
 import axios from "axios";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import {
+  getAccessToken,
   getRefreshToken,
   handleAuthFailure,
 } from "../auth/tokenService";
 import { getDegradedMode, DegradedModeError } from "./degradedModeService";
 import { log } from "./log";
 import { config as appConfig } from "../../config";
+
+const hostnameOf = (url) => {
+  try {
+    return new URL(url, window.location.origin).hostname;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Whether a request URL targets the SHSG API host. Relative URLs (e.g. the
@@ -15,16 +24,27 @@ import { config as appConfig } from "../../config";
  * @param {string} url
  * @returns {boolean}
  */
-export const isShsgHost = (url) => {
-  try {
-    return (
-      new URL(url, window.location.origin).hostname ===
-      new URL(appConfig.shsgApiBase).hostname
-    );
-  } catch {
-    return false;
-  }
+export const isShsgHost = (url) =>
+  hostnameOf(url) === new URL(appConfig.shsgApiBase).hostname;
+
+/**
+ * Whether a request URL targets one of the two token-protected APIs (the
+ * university API or the SHSG API). Other hosts never receive the token.
+ * @param {string} url
+ * @returns {boolean}
+ */
+const isTokenHost = (url) => {
+  const hostname = hostnameOf(url);
+  return (
+    hostname === new URL(appConfig.unisgApiBase).hostname ||
+    hostname === new URL(appConfig.shsgApiBase).hostname
+  );
 };
+
+const withBearer = (token, headers = {}) =>
+  typeof token === "string" && token !== ""
+    ? { Authorization: `Bearer ${token}`, ...headers }
+    : headers;
 
 // Configuration constants
 const MAX_RETRIES = 3;
@@ -97,7 +117,7 @@ class ApiClient {
 
     // Request interceptor to add auth headers
     this.client.interceptors.request.use(
-      (config) => {
+      async (config) => {
         // Check if offline before making request
         if (!isOnline()) {
           emitNetworkEvent("OFFLINE");
@@ -123,6 +143,14 @@ class ApiClient {
         };
 
         config.headers = { ...defaultHeaders, ...config.headers };
+
+        // Callers that pass no token get one acquired here. An explicit
+        // header always wins; a null token sends the request without one and
+        // its 401 runs the refresh path below.
+        if (!config.headers.Authorization && isTokenHost(config.url)) {
+          const token = await getAccessToken();
+          if (token) config.headers.Authorization = `Bearer ${token}`;
+        }
 
         // Initialize retry count
         config._retryCount = config._retryCount || 0;
@@ -302,17 +330,14 @@ class ApiClient {
   /**
    * Make a GET request with automatic token handling
    * @param {string} url - The URL to request
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async get(url, token, config = {}) {
     return this.client.get(url, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
@@ -320,17 +345,14 @@ class ApiClient {
    * Make a POST request with automatic token handling
    * @param {string} url - The URL to request
    * @param {Object} data - Request body data
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async post(url, data, token, config = {}) {
     return this.client.post(url, data, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
@@ -338,34 +360,28 @@ class ApiClient {
    * Make a PUT request with automatic token handling
    * @param {string} url - The URL to request
    * @param {Object} data - Request body data
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async put(url, data, token, config = {}) {
     return this.client.put(url, data, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
   /**
    * Make a DELETE request with automatic token handling
    * @param {string} url - The URL to request
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async delete(url, token, config = {}) {
     return this.client.delete(url, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 

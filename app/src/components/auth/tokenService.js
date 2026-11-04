@@ -36,6 +36,31 @@ const emitSessionEvent = (eventType, data = {}) => {
 };
 
 /**
+ * Silently acquire an API access token for the active account, for requests
+ * whose caller passed none. Quiet by design: no session events, no popup, never
+ * throws. A null result sends the request without a token; its 401 then runs
+ * the refresh path (`getRefreshToken`), which owns recovery and session events.
+ * @returns {Promise<string|null>} Access token, or null if none is available
+ */
+export const getAccessToken = async () => {
+  try {
+    await initializeMsalInstance();
+    const account =
+      msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0];
+    if (!account) return null;
+
+    const response = await msalInstance.acquireTokenSilent({
+      account,
+      scopes: apiScopes,
+    });
+    return response.accessToken;
+  } catch (error) {
+    log.debug("Silent token acquisition failed:", error);
+    return null;
+  }
+};
+
+/**
  * Global function to get a fresh token for the axios interceptor.
  * Uses the shared MSAL instance from authConfig and is the single source of
  * truth for session events: callers should simply react to a null return and
