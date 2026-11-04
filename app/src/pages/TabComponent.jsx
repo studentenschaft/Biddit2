@@ -1,12 +1,13 @@
 // TabComponent.jsx //
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
 import LoadingText from "../components/common/LoadingText";
 import ErrorBoundary from "../components/errorHandling/ErrorBoundary";
 import { useHorizontalScrollAffordance } from "../components/helpers/useHorizontalScrollAffordance";
+import { lazyWithReload } from "../components/helpers/lazyWithReload";
 import {
   TAB,
   TAB_GROUPS,
@@ -18,13 +19,13 @@ import {
 // Tab content components. Summary is the default tab and ships in the main
 // chunk; the other panels load on their first visit.
 import SemesterSummary from "../components/rightCol/SemesterSummary";
-const CourseInfo = lazy(() => import("../components/rightCol/CourseInfo"));
-const Calendar = lazy(() => import("../components/rightCol/Calendar"));
-const Transcript = lazy(() => import("../components/rightCol/Transcript"));
-const CurriculumMap = lazy(
+const CourseInfo = lazyWithReload(() => import("../components/rightCol/CourseInfo"));
+const Calendar = lazyWithReload(() => import("../components/rightCol/Calendar"));
+const Transcript = lazyWithReload(() => import("../components/rightCol/Transcript"));
+const CurriculumMap = lazyWithReload(
   () => import("../components/rightCol/CurriculumMap/CurriculumMap"),
 );
-const StudyOverview = lazy(() => import("../components/rightCol/StudyOverview"));
+const StudyOverview = lazyWithReload(() => import("../components/rightCol/StudyOverview"));
 
 // For dynamic tab text
 import { selectedSemesterSelector } from "../components/recoil/unifiedCourseDataSelectors";

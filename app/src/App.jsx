@@ -8,7 +8,7 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
-import { lazy, Suspense, useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -26,10 +26,11 @@ import StudyondBanner from "./components/common/StudyondBanner.jsx";
 import AnalyticsNotice from "./components/common/AnalyticsNotice.jsx";
 import { AppStateProvider } from "./components/common/AppStateProvider.jsx";
 import { initAnalytics, trackPageView } from "./components/helpers/analytics";
+import { lazyWithReload } from "./components/helpers/lazyWithReload";
 import { selectedTabAtom } from "./components/recoil/selectedTabAtom";
 
 // Logged-in users never see the login page, so it stays out of the main chunk.
-const Login = lazy(() => import("./pages/Login.jsx"));
+const Login = lazyWithReload(() => import("./pages/Login.jsx"));
 
 /**
  * Pageview tracking plus GA4 startup. Init waits until MSAL has finished
