@@ -1013,8 +1013,8 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 | 2.4 | done | 1b77f7a | ids = {courseNumber, course.id}; `courseId` never differs; one toast only when all deletes fail |
 | 3.1 | done | 0740e0c | +94e779f lazyWithReload (deploy-safe lazy chunks), +2e53824 barrel/warning; main chunk 1,474,567 → 648,698 B; Summary eager (user decision) |
 | 3.2 | done | 0488f4e | +e351adc sheet cache keyed by hsgEntityId, +d0ff9f4 term list from cisIdList; cold start 22 → 13 requests, reopen/revisit 0 |
-| 4.1 | | | |
-| 4.2 | | | |
+| 4.1 | done | 102cb2c | +26ab45b `.env.example` → `.env.development.local`; redirectUri = origin + "/" (same on the three registered hosts) |
+| 4.2 | done | 435f4cf | +5c7cbbf token only for exact API origins, lowercase `authorization` honoured, 401 path of a token-less request pinned; no call sites migrated yet |
 | 5.1 | | | |
 | 5.2 | | | |
 | 5.3 | | | |
