@@ -8,7 +8,7 @@ import {
   useLocation,
   Navigate,
 } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
@@ -21,13 +21,15 @@ import { useRecoilValue } from "recoil";
 
 // Components
 import { Biddit2 } from "./pages/Biddit2.jsx";
-import { Login } from "./pages/Login.jsx";
 import ErrorBoundary from "./components/errorHandling/ErrorBoundary";
 import StudyondBanner from "./components/common/StudyondBanner.jsx";
 import AnalyticsNotice from "./components/common/AnalyticsNotice.jsx";
 import { AppStateProvider } from "./components/common/AppStateProvider.jsx";
 import { initAnalytics, trackPageView } from "./components/helpers/analytics";
 import { selectedTabAtom } from "./components/recoil/selectedTabAtom";
+
+// Logged-in users never see the login page, so it stays out of the main chunk.
+const Login = lazy(() => import("./pages/Login.jsx"));
 
 /**
  * Pageview tracking plus GA4 startup. Init waits until MSAL has finished
@@ -101,7 +103,9 @@ const App = () => {
                   path="/login"
                   element={
                     <ErrorBoundary>
-                      <Login />
+                      <Suspense fallback={null}>
+                        <Login />
+                      </Suspense>
                     </ErrorBoundary>
                   }
                 />

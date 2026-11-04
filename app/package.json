@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "check-bundle": "node scripts/check-bundle-size.mjs",
     "lint": "eslint . --ext js,jsx,mjs --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "vitest",

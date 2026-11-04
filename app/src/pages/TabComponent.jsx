@@ -1,6 +1,6 @@
 // TabComponent.jsx //
 
-import { Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import PropTypes from "prop-types";
 import { Tab, Tabs, TabList, TabPanel } from "react-tabs";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/solid";
@@ -15,14 +15,16 @@ import {
   tabIdAt,
 } from "../constants/tabs";
 
-// Tab content components
-import CourseInfo from "../components/rightCol/CourseInfo";
-import Calendar from "../components/rightCol/Calendar";
+// Tab content components. Summary is the default tab and ships in the main
+// chunk; the other panels load on their first visit.
 import SemesterSummary from "../components/rightCol/SemesterSummary";
-import Transcript from "../components/rightCol/Transcript";
-import CurriculumMap from "../components/rightCol/CurriculumMap";
-import StudyOverview from "../components/rightCol/StudyOverview";
-
+const CourseInfo = lazy(() => import("../components/rightCol/CourseInfo"));
+const Calendar = lazy(() => import("../components/rightCol/Calendar"));
+const Transcript = lazy(() => import("../components/rightCol/Transcript"));
+const CurriculumMap = lazy(
+  () => import("../components/rightCol/CurriculumMap/CurriculumMap"),
+);
+const StudyOverview = lazy(() => import("../components/rightCol/StudyOverview"));
 
 // For dynamic tab text
 import { selectedSemesterSelector } from "../components/recoil/unifiedCourseDataSelectors";
@@ -74,7 +76,11 @@ const TAB_PANEL_CONTENT = {
       <StudyOverview />
     </Suspense>
   ),
-  [TAB.TRANSCRIPT]: <Transcript />,
+  [TAB.TRANSCRIPT]: (
+    <Suspense fallback={<LoadingText>Loading Transcript...</LoadingText>}>
+      <Transcript />
+    </Suspense>
+  ),
 };
 
 /**

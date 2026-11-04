@@ -1,7 +1,8 @@
 /**
  * Alignment guard for the tab row AND the tab panels: both are rendered from
  * TAB_ORDER, and both are asserted against it here. Panel children are stubbed
- * so the assertions cannot be broken by panel data fetching.
+ * so the assertions cannot be broken by panel data fetching. Every panel but
+ * Summary is React.lazy, so panel assertions wait with findBy*.
  */
 
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -23,7 +24,7 @@ vi.mock("../../components/rightCol/SemesterSummary", () => ({
 vi.mock("../../components/rightCol/Transcript", () => ({
   default: () => <div>transcript-stub</div>,
 }));
-vi.mock("../../components/rightCol/CurriculumMap", () => ({
+vi.mock("../../components/rightCol/CurriculumMap/CurriculumMap", () => ({
   default: () => <div>curriculum-map-stub</div>,
 }));
 vi.mock("../../components/rightCol/StudyOverview", () => ({
@@ -421,10 +422,10 @@ describe("TabComponent selection follow", () => {
 describe("TabComponent panels", () => {
   it.each(TAB_ORDER.map((tabId, index) => [index, tabId]))(
     "renders the %i-th panel (%s) for the tab at that index",
-    (index, tabId) => {
+    async (index, tabId) => {
       const { unmount } = renderTabs({ selectedTab: index });
 
-      expect(screen.getByText(PANEL_STUB[tabId])).toBeInTheDocument();
+      expect(await screen.findByText(PANEL_STUB[tabId])).toBeInTheDocument();
       TAB_ORDER.filter((otherId) => otherId !== tabId).forEach((otherId) => {
         expect(screen.queryByText(PANEL_STUB[otherId])).not.toBeInTheDocument();
       });
@@ -447,7 +448,7 @@ describe("TabComponent sticky panels", () => {
   // Must walk the real flow — land on Summary (the default), open the map,
   // leave again. Starting *at* the map index would pass on the useState
   // initializer alone, leaving the visit-tracking effect untested.
-  it("keeps the Curriculum Map mounted after it has been visited", () => {
+  it("keeps the Curriculum Map mounted after it has been visited", async () => {
     const { rerender } = renderTabs({ selectedTab: summaryIndex });
     const selectTab = (index) =>
       rerender(
@@ -459,7 +460,7 @@ describe("TabComponent sticky panels", () => {
     expect(screen.queryByText(stub)).not.toBeInTheDocument();
 
     selectTab(curriculumIndex);
-    expect(screen.getByText(stub)).toBeInTheDocument();
+    expect(await screen.findByText(stub)).toBeInTheDocument();
 
     selectTab(summaryIndex);
     expect(screen.getByText(PANEL_STUB[TAB.SUMMARY])).toBeInTheDocument();
@@ -480,7 +481,7 @@ describe("TabComponent sticky panels", () => {
    */
   it.each(TAB_ORDER.filter((tabId) => tabId !== TAB.CURRICULUM_MAP))(
     "tears the %s panel down again once its tab is left",
-    (tabId) => {
+    async (tabId) => {
       const tabIndex = TAB_ORDER.indexOf(tabId);
       const elsewhere = TAB_ORDER.findIndex((otherId) => otherId !== tabId);
 
@@ -493,7 +494,7 @@ describe("TabComponent sticky panels", () => {
         );
 
       selectTab(tabIndex);
-      expect(screen.getByText(PANEL_STUB[tabId])).toBeInTheDocument();
+      expect(await screen.findByText(PANEL_STUB[tabId])).toBeInTheDocument();
 
       selectTab(elsewhere);
       expect(screen.queryByText(PANEL_STUB[tabId])).not.toBeInTheDocument();
