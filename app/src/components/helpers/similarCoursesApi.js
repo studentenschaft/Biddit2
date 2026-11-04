@@ -13,9 +13,10 @@
  */
 
 import { apiClient } from "./axiosClient";
+import { SHSG_API } from "./apiEndpoints";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const SIMILAR_COURSES_BASE = "https://api.shsg.ch/similar-courses";
+const SIMILAR_COURSES_BASE = `${SHSG_API}/similar-courses`;
 
 /**
  * Query similar courses from the vector DB.

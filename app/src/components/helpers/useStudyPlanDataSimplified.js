@@ -21,6 +21,7 @@
 import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
+import { SHSG_API } from "./apiEndpoints";
 import { studyPlanLoadState } from "../recoil/studyPlanLoadState";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
@@ -69,7 +70,7 @@ export const useStudyPlanDataSimplified = (params = {}) => {
 
         // The catch below reports failures, so apiClient must not toast too.
         const response = await apiClient.get(
-          "https://api.shsg.ch/study-plans",
+          `${SHSG_API}/study-plans`,
           authToken,
           { suppressErrorToast: true }
         );

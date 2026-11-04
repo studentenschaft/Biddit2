@@ -1,4 +1,5 @@
 import { apiClient } from "../helpers/axiosClient";
+import { UNISG_API } from "../helpers/apiEndpoints";
 import { log } from "../helpers/log";
 
 /**
@@ -16,7 +17,7 @@ export const fetchScoreCardDetails = async (
   attempt
 ) => {
   const response = await apiClient.get(
-    `https://integration.unisg.ch/AchievementApi/MyScoreCards/detail/byStudyRegulationId/${studyRegulationId}/byAttempt/${attempt}`,
+    `${UNISG_API}/AchievementApi/MyScoreCards/detail/byStudyRegulationId/${studyRegulationId}/byAttempt/${attempt}`,
     authToken,
     { suppressErrorToast: true }
   );

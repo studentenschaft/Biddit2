@@ -4,7 +4,7 @@ import { cisIdList } from "./cisIdListAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { compareSemesterKeys, parseSemesterKey } from "../../domain/semester";
 import { apiClient } from "../helpers/axiosClient";
-import { myCoursesUrl } from "../helpers/apiEndpoints";
+import { SHSG_API, myCoursesUrl } from "../helpers/apiEndpoints";
 import { forgetCourseRatings } from "../helpers/courseSheetCache";
 import { cachedRequest } from "../helpers/sessionCache";
 import { log } from "../helpers/log";
@@ -29,7 +29,7 @@ export const coursesRatedState = atom({
       const token = get(authTokenState);
       try {
         const res = await apiClient.get(
-          `https://api.shsg.ch/course-ratings/of-user`,
+          `${SHSG_API}/course-ratings/of-user`,
           token
         );
         return res.data;
@@ -165,7 +165,7 @@ export const coursesTakenForRatingState = atom({
 export async function SubmitCourseRatingById(token, courseRating) {
   try {
     const res = await apiClient.post(
-      `https://api.shsg.ch/course-ratings/`,
+      `${SHSG_API}/course-ratings/`,
       courseRating,
       token
     );

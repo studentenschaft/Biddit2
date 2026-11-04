@@ -6,8 +6,7 @@ import {
 } from "../auth/tokenService";
 import { getDegradedMode, DegradedModeError } from "./degradedModeService";
 import { log } from "./log";
-
-const SHSG_HOST = "api.shsg.ch";
+import { config as appConfig } from "../../config";
 
 /**
  * Whether a request URL targets the SHSG API host. Relative URLs (e.g. the
@@ -18,7 +17,10 @@ const SHSG_HOST = "api.shsg.ch";
  */
 export const isShsgHost = (url) => {
   try {
-    return new URL(url, window.location.origin).hostname === SHSG_HOST;
+    return (
+      new URL(url, window.location.origin).hostname ===
+      new URL(appConfig.shsgApiBase).hostname
+    );
   } catch {
     return false;
   }
@@ -114,7 +116,7 @@ class ApiClient {
 
         // Add default headers for SHSG API
         const defaultHeaders = {
-          "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+          "X-ApplicationId": appConfig.unisgApplicationId,
           "X-RequestedLanguage": "EN",
           "API-Version": "1",
           "Content-Type": "application/json",

@@ -1,10 +1,11 @@
 import { apiClient } from "./axiosClient";
+import { SHSG_API } from "./apiEndpoints";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { log } from "./log";
 
 export const getStudyPlan = async (token) => {
   try {
-    const res = await apiClient.get("https://api.shsg.ch/study-plans", token);
+    const res = await apiClient.get(`${SHSG_API}/study-plans`, token);
 
     const studyPlansData = res.data;
 
@@ -33,7 +34,7 @@ export const saveCourse = async (studyPlanId, eventId, token) => {
     );
     // The catch below reports failures, so apiClient must not toast too.
     await apiClient.post(
-      `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
+      `${SHSG_API}/study-plans/${studyPlanId}/${eventId}`,
       {},
       token,
       { suppressErrorToast: true }
@@ -62,7 +63,7 @@ export const deleteCourse = async (
     // Failures are reported below (or counted by bulk callers), never by
     // apiClient: a bulk wipe must not stack one toast per course.
     const res = await apiClient.delete(
-      `https://api.shsg.ch/study-plans/${studyPlanId}/${eventId}`,
+      `${SHSG_API}/study-plans/${studyPlanId}/${eventId}`,
       token,
       { suppressErrorToast: true }
     );

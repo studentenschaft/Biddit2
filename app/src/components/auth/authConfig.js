@@ -5,6 +5,7 @@
 
 import { LogLevel, PublicClientApplication } from "@azure/msal-browser";
 import { log } from "../helpers/log";
+import { config } from "../../config";
 
 /**
  * Configuration object to be passed to MSAL instance on creation.
@@ -13,15 +14,13 @@ import { log } from "../helpers/log";
  */
 export const msalConfig = {
   auth: {
-    clientId: "67a86d1c-e99b-4b9b-968f-5ac10a21bc5e", // This is the ONLY mandatory field that you need to supply.
-    authority:
-      "https://login.microsoftonline.com/a7262e59-1b56-4f5a-a412-6f07181f48ee", // Defaults to "https://login.microsoftonline.com/common"
-    redirectUri:
-      window.location.hostname === "localhost"
-        ? "http://localhost:3000/"
-        : window.location.hostname === "dev-biddit.netlify.app"
-          ? "https://dev-biddit.netlify.app/"
-          : "https://biddit.app/",
+    clientId: config.entraClientId,
+    authority: `https://login.microsoftonline.com/${config.entraTenantId}`,
+    // On the registered deployments this yields exactly the URIs the former
+    // hostname switch produced (http://localhost:3000/,
+    // https://dev-biddit.netlify.app/, https://biddit.app/). Any other origin
+    // must be added as a redirect URI in the Entra app registration.
+    redirectUri: window.location.origin + "/",
   },
   cache: {
     cacheLocation: "localStorage", // Configures cache location. "sessionStorage" is more secure, but "localStorage" gives you SSO between tabs.

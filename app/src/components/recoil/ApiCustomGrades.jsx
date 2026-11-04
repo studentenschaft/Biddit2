@@ -1,10 +1,11 @@
 import { apiClient } from "../helpers/axiosClient";
+import { SHSG_API } from "../helpers/apiEndpoints";
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { log } from "../helpers/log";
 
-const API_URL = "https://api.shsg.ch/course-grades";
+const API_URL = `${SHSG_API}/course-grades`;
 // Each function reports its own failure, so apiClient must not toast as well.
 const OWN_ERROR_REPORT = { suppressErrorToast: true };
 

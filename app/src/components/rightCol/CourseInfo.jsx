@@ -2,6 +2,7 @@ import { useRecoilValue, useRecoilState } from "recoil";
 import { ExternalLinkIcon } from "@heroicons/react/outline";
 import { authTokenState } from "../recoil/authAtom";
 import { apiClient } from "../helpers/axiosClient";
+import { UNISG_API } from "../helpers/apiEndpoints";
 import { useEffect, useState } from "react";
 import { examinationTypesState } from "../recoil/examinationTypesAtom";
 import Collapsible from "./Collapsible";
@@ -74,7 +75,7 @@ export default function CourseInfo() {
   async function fetchExaminationIds() {
     try {
       const res = await apiClient.get(
-        `https://integration.unisg.ch/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
+        `${UNISG_API}/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
         authToken,
         { suppressErrorToast: true }
       );
