@@ -306,9 +306,10 @@ export default function Biddit2() {
             Tabs
           </button>
         </div>
-        {/* Content */}
+        {/* Content. Below md, pb-28 keeps the end of each column clear of
+            the fixed view toggle and the floating menu button above it. */}
         <div
-          className={`w-full h-full md:w-1/3 p-4 bg-gray-100 overflow-hidden min-w-0 flex flex-col ${
+          className={`w-full h-full md:w-1/3 p-4 pb-28 md:pb-4 bg-gray-100 overflow-hidden min-w-0 flex flex-col ${
             !isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
@@ -319,7 +320,7 @@ export default function Biddit2() {
           </Suspense>
         </div>
         <div
-          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
+          className={`w-full h-full md:w-2/3 p-4 pb-28 md:pb-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
             isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
