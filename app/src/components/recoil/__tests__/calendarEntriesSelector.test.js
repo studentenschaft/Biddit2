@@ -177,4 +177,25 @@ describe("calendarEntriesSelector", () => {
         .map((e) => e.title),
     ).toEqual(["Statistics"]);
   });
+
+  it("skips entries without a usable eventDate instead of throwing", () => {
+    // The Event API sends some entries with an empty eventDate; formatting
+    // one threw "Invalid time value" and took down the whole calendar.
+    const patchy = {
+      ...BIG,
+      calendarEntry: [
+        { eventDate: null, durationInMinutes: 90 },
+        { eventDate: "", durationInMinutes: 90 },
+        ...BIG.calendarEntry,
+      ],
+    };
+    const entries = readEntries({
+      available: [patchy],
+      enrolledIds: [patchy.courseNumber],
+      selectedIds: [],
+    });
+
+    expect(entries).toHaveLength(1);
+    expect(entries[0].start).toBe("2026-09-21T10:15:00");
+  });
 });

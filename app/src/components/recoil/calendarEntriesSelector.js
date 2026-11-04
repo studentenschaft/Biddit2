@@ -165,7 +165,16 @@ export const calendarEntriesSelector = selector({
 
     // The schedule is domain state: enrolled ∪ selected, never the search
     // panel's `filtered` view state (docs/BUG-calendar-entries-filter-leak.md).
-    const relevantCourses = get(myCoursesSelector(semShortName));
+    // The Event API sends some entries with an empty eventDate, which would
+    // make toZurichWallClock throw; drop them before collisions and events.
+    const relevantCourses = get(myCoursesSelector(semShortName)).map(
+      (course) => ({
+        ...course,
+        calendarEntry: course.calendarEntry?.filter(
+          (entry) => entry.eventDate && moment(entry.eventDate).isValid(),
+        ),
+      }),
+    );
 
     // Build collision groups using Union-Find algorithm
     const { entryMetadata } = buildCollisionGroups(relevantCourses);
