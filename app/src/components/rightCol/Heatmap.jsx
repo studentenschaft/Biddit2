@@ -368,7 +368,10 @@ export const Heatmap = ({
           </div>
         </div>
         <div className="flex flex-col flex-1 border-0 outline-none scrollbar-hide">
-          <div className="grid justify-between h-4 grid-flow-col gap-1 p-2 mb-2 outline-none scrollbar-hide">
+          {/* Narrower column gaps and side padding below sm keep all
+              fourteen weeks inside a 360px panel; the row gap stays at
+              gap-y-1 so the cells line up with the day labels. */}
+          <div className="grid justify-between h-4 grid-flow-col gap-x-0.5 gap-y-1 sm:gap-1 px-1 py-2 sm:p-2 mb-2 outline-none scrollbar-hide">
             {/* show every calendar week looping through dates, only show every new week */}
             {dates.map((date) => {
               return date.getDay() === 1 ? (
@@ -381,7 +384,7 @@ export const Heatmap = ({
               ) : null;
             })}
           </div>
-          <div className="grid justify-between grid-flow-col grid-rows-6 gap-1 p-2 overflow-scroll bg-white border-0 outline-none scrollbar-hide">
+          <div className="grid justify-between grid-flow-col grid-rows-6 gap-x-0.5 gap-y-1 sm:gap-1 px-1 py-2 sm:p-2 overflow-scroll bg-white border-0 outline-none scrollbar-hide">
             {dates.map((date) => (
               <div
                 key={date.toISOString()}
@@ -436,28 +439,28 @@ export const Heatmap = ({
           </div>
         </div>
       </div>
-      <div className="flex justify-center flex-1 w-full h-full px-2 text-xxs">
-        <div className="flex items-center px-2">
+      <div className="flex flex-wrap justify-center flex-1 w-full h-full px-2 gap-y-1 text-xxs">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className={`flex mr-2 rounded-sm bg-main w-2 h-2`} />
           {">"} 8h
         </div>
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className="flex w-2 h-2 mr-2 rounded-sm bg-main bg-opacity-90" />
           {">"} 6h
         </div>
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className="flex w-2 h-2 mr-2 bg-opacity-75 rounded-sm bg-main" />
           {">"} 4h
         </div>
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className="flex w-2 h-2 mr-2 bg-opacity-50 rounded-sm bg-main" />
           {">"} 2h
         </div>
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className="flex w-2 h-2 mr-2 rounded-sm bg-opacity-30 bg-main" />
           {">"} 0h
         </div>
-        <div className="flex items-center px-2">
+        <div className="flex items-center px-2 whitespace-nowrap">
           <div className="flex w-2 h-2 mr-2 rounded-sm bg-warning" />
           courses overlap
         </div>

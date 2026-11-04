@@ -43,13 +43,15 @@ import { formatEcts, toEcts } from "../../domain/credits";
  * 16px gaps ate 176 of the ~342 available pixels, leaving twelve tracks of
  * ~14px. "Events" and "ECTS" each occupy one of those tracks and had nothing
  * clipping them, so both labels overflowed their track and painted on top of
- * each other — the reported "EvenBCTS". Below md the numeric columns therefore
+ * each other — the reported "EvenBCTS". Below xl the numeric columns therefore
  * get fixed tracks wide enough for their own headers, the text columns get
  * `minmax(0, …fr)` so they truncate instead of pushing, and the gap shrinks.
- * From md up the original twelve-column layout is restored untouched.
+ * The twelve-column layout only returns at xl: between md and xl the panel
+ * is still too narrow for one-twelfth tracks, and "Events"/"ECTS" collided
+ * there as well while the footer's "Total" shrank to "T...".
  */
 const ROW_GRID_CLASSES =
-  "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 md:grid-cols-12 md:gap-4";
+  "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 xl:grid-cols-12 xl:gap-4";
 
 /**
  * The "Exam check" line, which makes no red marker read as "checked, no
@@ -320,9 +322,9 @@ export default function SemesterSummary() {
             className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
           >
             <div className="text-center"></div>
-            <div className="min-w-0 truncate md:col-span-6">Course</div>
+            <div className="min-w-0 truncate xl:col-span-6">Course</div>
 
-            <div className="min-w-0 truncate md:col-span-3">Classification</div>
+            <div className="min-w-0 truncate xl:col-span-3">Classification</div>
             {/* whitespace-nowrap: these two must never wrap or spill into one
                 another, so their tracks are sized for the labels as one line. */}
             <div className="text-center whitespace-nowrap">Events</div>
@@ -401,7 +403,8 @@ export default function SemesterSummary() {
                       </div>
                     </div>
                     <div
-                      className="min-w-0 font-semibold truncate cursor-pointer md:col-span-6"
+                      className="min-w-0 font-semibold truncate cursor-pointer xl:col-span-6"
+                      title={course.shortName}
                       onClick={() => courseSelector(course)}
                     >
                       {course.shortName}
@@ -418,8 +421,10 @@ export default function SemesterSummary() {
                       )}
                     </div>
 
-                    <div className="min-w-0 md:col-span-3">
-                      <div className="truncate ">{course.classification}</div>
+                    <div className="min-w-0 xl:col-span-3">
+                      <div className="truncate " title={course.classification}>
+                        {course.classification}
+                      </div>
                     </div>
                     <div className="text-center">
                       <div className="">
@@ -437,12 +442,14 @@ export default function SemesterSummary() {
           <div
             className={`${ROW_GRID_CLASSES} px-2 py-1 pb-2 text-sm font-semibold text-gray-900 rounded`}
           >
-            <div className="text-center truncate">Total</div>
+            <div className="text-center whitespace-nowrap">Total</div>
 
-            <div className="min-w-0 truncate md:col-span-6">
+            {/* Not truncated: the classification cell beside it is empty,
+                so the count may run into it on a phone. */}
+            <div className="min-w-0 whitespace-nowrap xl:col-span-6">
               {currCourses.length} Courses
             </div>
-            <div className="min-w-0 text-center md:col-span-3"></div>
+            <div className="min-w-0 text-center xl:col-span-3"></div>
             <div className="text-center">{totalEvents}</div>
             {/* Five cells, matching the header and the rows. A sixth, empty one
                 used to sit here and wrap onto a phantom second grid row. */}

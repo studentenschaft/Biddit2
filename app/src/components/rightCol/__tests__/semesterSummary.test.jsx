@@ -182,16 +182,16 @@ describe("semester summary column layout", () => {
     expect(header.className).toContain("gap-2");
   });
 
-  it("leaves the desktop layout on the original twelve columns", () => {
+  it("keeps the original twelve columns for xl screens", () => {
     renderSummary();
     const header = rowOf(screen.getByText("Events"));
-    expect(header.className).toContain("md:grid-cols-12");
-    expect(header.className).toContain("md:gap-4");
+    expect(header.className).toContain("xl:grid-cols-12");
+    expect(header.className).toContain("xl:gap-4");
     expect(within(header).getByText("Course").className).toContain(
-      "md:col-span-6",
+      "xl:col-span-6",
     );
     expect(within(header).getByText("Classification").className).toContain(
-      "md:col-span-3",
+      "xl:col-span-3",
     );
   });
 
