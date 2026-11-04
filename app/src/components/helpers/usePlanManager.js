@@ -103,8 +103,9 @@ const applyPlannedItems = (set, data) => {
 };
 
 /**
- * Build a callback that runs `action({ planId, token, set }, ...args)` against
- * the active plan and resolves to its result. On failure it shows one toast
+ * Build a callback that runs `action({ planId, set }, ...args)` against the
+ * active plan and resolves to its result. `token` keys the memo, so the
+ * callback is rebuilt with a fresh `action` whenever the token changes. On failure it shows one toast
  * (none for a DegradedModeError: the degraded-mode banner covers that) and
  * resolves to `failureValue`.
  */
@@ -122,7 +123,7 @@ const useActivePlanAction = (
         if (requiresActivePlan && !activePlanId) return failureValue;
 
         try {
-          return await action({ planId: activePlanId, token, set }, ...args);
+          return await action({ planId: activePlanId, set }, ...args);
         } catch (error) {
           if (error?.isDegradedModeError) return failureValue;
           console.error(`[usePlanManager] ${errorMessage}`, error);
@@ -266,6 +267,7 @@ const usePlanManager = () => {
             activePlanId: targetPlanId,
           }));
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error switching plan:", error);
           toast.error("Could not switch plans.", {
             toastId: "plan-switch-error",
@@ -324,6 +326,7 @@ const usePlanManager = () => {
 
           return newPlanId;
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error creating plan:", error);
           toast.error("Could not create plan.", {
             toastId: "plan-create-error",
@@ -397,6 +400,7 @@ const usePlanManager = () => {
 
           return newPlanId;
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error duplicating plan:", error);
           toast.error("Could not duplicate plan.", {
             toastId: "plan-duplicate-error",
@@ -444,6 +448,7 @@ const usePlanManager = () => {
             plans: remainingPlans,
           });
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error deleting plan:", error);
           toast.error("Could not delete plan.", {
             toastId: "plan-delete-error",
@@ -479,6 +484,7 @@ const usePlanManager = () => {
             },
           });
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error renaming plan:", error);
           toast.error("Could not rename plan.", {
             toastId: "plan-rename-error",
@@ -501,7 +507,7 @@ const usePlanManager = () => {
   const addCourseById = useActivePlanAction(
     token,
     async (
-      { planId, token, set },
+      { planId, set },
       courseId,
       semesterKey,
       categoryPath,
@@ -537,7 +543,7 @@ const usePlanManager = () => {
    */
   const removeCourseById = useActivePlanAction(
     token,
-    async ({ planId, token, set }, courseId) => {
+    async ({ planId, set }, courseId) => {
       const data = await removePlacement(planId, `course-${courseId}`, token);
       applyPlannedItems(set, data);
       return true;
@@ -559,7 +565,7 @@ const usePlanManager = () => {
   const updatePlacementById = useActivePlanAction(
     token,
     async (
-      { planId, token, set },
+      { planId, set },
       placementId,
       toSemester,
       toCategoryPath,
@@ -591,7 +597,7 @@ const usePlanManager = () => {
   const addPlaceholderById = useActivePlanAction(
     token,
     async (
-      { planId, token, set },
+      { planId, set },
       semesterKey,
       categoryPath,
       credits,
@@ -631,7 +637,7 @@ const usePlanManager = () => {
    */
   const removePlaceholderById = useActivePlanAction(
     token,
-    async ({ planId, token, set }, placeholderId) => {
+    async ({ planId, set }, placeholderId) => {
       const data = await removePlacement(planId, placeholderId, token);
       applyPlannedItems(set, data);
       return true;
@@ -763,6 +769,10 @@ const usePlanManager = () => {
 
           return { imported, skipped };
         } catch (error) {
+          if (error?.isDegradedModeError) {
+            toast.dismiss(toastId);
+            return { imported: 0, skipped };
+          }
           console.error("[usePlanManager] Error importing courses:", error);
           toast.update(toastId, {
             render: "Failed to import courses.",
@@ -784,7 +794,7 @@ const usePlanManager = () => {
    */
   const setSemesterNoteById = useActivePlanAction(
     token,
-    async ({ planId, token, set }, semesterKey, note) => {
+    async ({ planId, set }, semesterKey, note) => {
       const trimmedNote = (note || "").trim().slice(0, 200);
       const data = await setSemesterNoteApi(
         planId,
@@ -812,7 +822,7 @@ const usePlanManager = () => {
 
   const updateWishlistOverridesById = useActivePlanAction(
     token,
-    async ({ planId, token, set }, wishlistOverrides) => {
+    async ({ planId, set }, wishlistOverrides) => {
       await upsertPlan(planId, { wishlistOverrides }, token);
       set(curriculumPlanState, (prev) => ({ ...prev, wishlistOverrides }));
       return true;
@@ -831,38 +841,25 @@ const usePlanManager = () => {
    * @param {Object} [semesterNotes] - Optional semester notes to sync
    * @returns {Promise<boolean>} - Whether the sync was successful
    */
-  const syncActivePlan = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (plannedItems, semesterNotes) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-
-        if (!registry.activePlanId) return false;
-
-        try {
-          const placements = convertPlannedItemsToPlacements(plannedItems);
-          const data = await upsertPlan(
-            registry.activePlanId,
-            {
-              placements,
-              ...(semesterNotes !== undefined && { semesterNotes }),
-            },
-            token,
-          );
-
-          applyPlannedItems(set, data);
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error syncing plan:", error);
-          toast.error("Could not save changes.", {
-            toastId: "plan-sync-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const syncActivePlan = useActivePlanAction(
+    token,
+    async ({ planId, set }, plannedItems, semesterNotes) => {
+      const data = await upsertPlan(
+        planId,
+        {
+          placements: convertPlannedItemsToPlacements(plannedItems),
+          ...(semesterNotes !== undefined && { semesterNotes }),
+        },
+        token,
+      );
+      applyPlannedItems(set, data);
+      return true;
+    },
+    {
+      errorMessage: "Could not save changes.",
+      toastId: "plan-sync-error",
+      requiresActivePlan: true,
+    },
   );
 
   return {
