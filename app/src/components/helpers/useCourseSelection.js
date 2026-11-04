@@ -82,8 +82,12 @@ export function useCourseSelection({
         });
 
         if (isCourseSelected) {
-          // Remove course from unified state using the course's actual semester
-          removeSelectedCourse(normalizedCourseSemester, courseNumber);
+          // The backend may still hold the entry under a legacy catalog id, so
+          // the course is deleted, and cleared locally, under both ids.
+          const deleteIds = [...new Set([courseNumber, course.id].filter(Boolean))];
+          deleteIds.forEach((id) =>
+            removeSelectedCourse(normalizedCourseSemester, id)
+          );
 
           // Update legacy selectedCourseIds if setter is provided
           if (setSelectedCourseIds) {
@@ -92,23 +96,22 @@ export function useCourseSelection({
             );
           }
 
-          // Delete from backend using the course's actual semester
-          const deleted = await deleteCourse(studyPlanId, courseNumber, authToken);
-          if (!deleted) invalidateStudyPlan();
-          log.debug(
-            `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
+          // Only one id normally exists on the server; the other one's 404 is
+          // expected, so the removal succeeded if any delete did.
+          const results = await Promise.all(
+            deleteIds.map((id) =>
+              deleteCourse(studyPlanId, id, authToken, { reportErrors: false })
+            )
           );
-
-          // Übergangslösung: To ensure old id-based courses get removed as well
-          if (course.id && course.id !== courseNumber) {
-            await deleteCourse(studyPlanId, course.id, authToken);
-            log.debug(`Course ${course.id} deleted from backend (legacy)`);
-          }
-
-          // Also try deletion with course.courseId if different
-          if (course.courseId && course.courseId !== courseNumber && course.courseId !== course.id) {
-            await deleteCourse(studyPlanId, course.courseId, authToken);
-            log.debug(`✅ Course ${course.courseId} deleted from backend (courseId)`);
+          if (results.some(Boolean)) {
+            log.debug(
+              `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
+            );
+          } else {
+            errorHandlingService.handleError(
+              new Error("The course could not be removed from your wishlist.")
+            );
+            invalidateStudyPlan();
           }
         } else {
           // Add course to unified state using the course's actual semester
