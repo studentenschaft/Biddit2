@@ -987,6 +987,7 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 - Vector search races that predate Task 5.3: two overlapping `runQuery` calls share one pair of loading flags, and a course switch during a long upsert writes the previous course's results; a per-request token in `useVectorSearch` would fix both.
 - `importSelectedCourses`' degraded-mode branch (dismiss the loading toast, return `{ imported: 0, skipped }`) has no unit test.
 - Responsive leftovers from the UI pass: FullCalendar event text is unreadable below 834 px (needs a list or agenda view on phones, not a class change); the Transcript body still scrolls horizontally on phones with no scroll affordance and wraps "120 / ECTS" at 768; Summary course names at 768 truncate earlier than the original 1:1 split (they carry a `title`).
+- P3 bullet 6 of the review (switch/create/duplicate plan first upsert the whole current plan, `usePlanManager.js` switchPlan/createPlan/duplicatePlan): not planned in Phases 0-5; it is one extra round trip per plan-level action and needs a backend answer on whether the server state can be trusted without the upsert. C4 ADR numbering gap and an E6 coverage floor in CI: also not planned; small follow-ups.
 
 - Retiring `StudyOverview`, `GradeTranscript`, `selectedCourseIdsAtom` and `scorecardDataState`: blocked on `feature/transcript-overhaul` landing; plan it with that merge.
 - Backend changes (single-id delete, per-semester study-plan read, category mapping per regulation): raised as open questions in the review.
