@@ -1011,8 +1011,8 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 | 2.2 | done | d9b6ab5 | absorbs helpers/formatEcts.js; +fabdeda CoursePicker/PlanItem via formatEcts; "4.00"→"4", unknown credits "?" |
 | 2.3 | done | cd16e8e | `isCourseSelected` via `sameCourse` (keeps legacy-id entries); sameCourse on the five catalog lookups |
 | 2.4 | done | 1b77f7a | ids = {courseNumber, course.id}; `courseId` never differs; one toast only when all deletes fail |
-| 3.1 | | | |
-| 3.2 | | | |
+| 3.1 | done | 0740e0c | +94e779f lazyWithReload (deploy-safe lazy chunks), +2e53824 barrel/warning; main chunk 1,474,567 → 648,698 B; Summary eager (user decision) |
+| 3.2 | done | 0488f4e | +e351adc sheet cache keyed by hsgEntityId, +d0ff9f4 term list from cisIdList; cold start 22 → 13 requests, reopen/revisit 0 |
 | 4.1 | | | |
 | 4.2 | | | |
 | 5.1 | | | |
