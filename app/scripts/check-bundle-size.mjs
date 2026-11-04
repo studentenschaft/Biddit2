@@ -9,15 +9,7 @@ const BUDGET_BYTES = 700_000;
 
 const assetsDir = resolve(dirname(fileURLToPath(import.meta.url)), "..", "dist", "assets");
 
-let fileNames;
-try {
-  fileNames = readdirSync(assetsDir);
-} catch {
-  console.error(`No build output at ${assetsDir}; run \`npm run build\` first.`);
-  process.exit(1);
-}
-
-const chunks = fileNames
+const chunks = readdirSync(assetsDir)
   .filter((name) => name.endsWith(".js"))
   .map((name) => ({ name, bytes: statSync(resolve(assetsDir, name)).size }))
   .sort((a, b) => b.bytes - a.bytes);

@@ -25,6 +25,7 @@ export default defineConfig({
   },
   build: {
     sourcemap: true, // Enable source maps, very important for error tracing / effective error messages in prod
+    chunkSizeWarningLimit: 700, // kB; matches BUDGET_BYTES in scripts/check-bundle-size.mjs
     rollupOptions: {
       output: {
         manualChunks: vendorChunkFor,
