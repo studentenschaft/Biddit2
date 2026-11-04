@@ -77,7 +77,8 @@ describe("coursesRatedState (degraded mode)", () => {
  * One cold start: the term list arrives (cisIdList), the rated-courses request
  * is still pending when the selector first runs, and the projection term lands
  * afterwards. Each of those used to re-run the selector and re-download the
- * term list and every term's MyCourses; the target is one and one per term.
+ * term list and every term's MyCourses. The prompt now reads the term list
+ * from cisIdList (no request of its own) and MyCourses once per term.
  */
 describe("coursesTakenForRatingState (requests per session)", () => {
   // HS26 is current; FS23 to FS26 are ratable (seven terms), HS22 is too old.
@@ -101,7 +102,7 @@ describe("coursesTakenForRatingState (requests per session)", () => {
     vi.restoreAllMocks();
   });
 
-  it("reads the term list once and each term's MyCourses once", async () => {
+  it("reads the term list from cisIdList and each term's MyCourses once", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     let termHits = 0;
     const myCoursesHits = new Map();
@@ -153,7 +154,7 @@ describe("coursesTakenForRatingState (requests per session)", () => {
     act(() => result.current.setProjection("HS26"));
     await waitFor(() => expect(result.current?.courses).toHaveLength(6));
 
-    expect(termHits).toBe(1);
+    expect(termHits).toBe(0);
     expect([...myCoursesHits.keys()].sort()).toEqual(
       RATABLE.map((term) => `ts-${term}`).sort(),
     );

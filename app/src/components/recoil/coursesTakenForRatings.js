@@ -1,22 +1,18 @@
 import { atom, selector } from "recoil";
 import { authTokenState } from "./authAtom";
+import { cisIdList } from "./cisIdListAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
 import { compareSemesterKeys, parseSemesterKey } from "../../domain/semester";
 import { apiClient } from "../helpers/axiosClient";
-import { myCoursesUrl, termsUrl } from "../helpers/apiEndpoints";
+import { myCoursesUrl } from "../helpers/apiEndpoints";
 import { forgetCourseRatings } from "../helpers/courseSheetCache";
 import { cachedRequest } from "../helpers/sessionCache";
 import { log } from "../helpers/log";
 
 // The selector below re-runs whenever the token, the term list or the rated
-// courses change (several times on a cold start), so its university requests
-// are memoised per session: one term-list read, one MyCourses read per term.
+// courses change (several times on a cold start), so its MyCourses requests
+// are memoised per session: one read per term.
 const ratingRequests = new Map();
-
-const fetchTermList = (token) =>
-  cachedRequest(ratingRequests, "terms", () =>
-    apiClient.get(termsUrl(), token).then((res) => res.data)
-  );
 
 const fetchMyCourses = (timeSegmentId, token) =>
   cachedRequest(ratingRequests, `myCourses:${timeSegmentId}`, () =>
@@ -58,9 +54,12 @@ export const coursesTakenForRatingState = atom({
       // try: a pending dependency throws a promise, which Recoil must see to
       // suspend and re-run this selector, not the catch below as an error.
       const token = get(authTokenState);
-      const cisIdList = get(cisIdListSelector);
+      // The raw term list useTermSelection stored; populated whenever a
+      // current semester exists, which the early return below requires.
+      const termList = get(cisIdList) || [];
+      const termIdList = get(cisIdListSelector);
       const coursesRated = get(coursesRatedState) || [];
-      const currentSemester = cisIdList.find(
+      const currentSemester = termIdList.find(
         (term) => term.isCurrent
       )?.shortName;
       if (!currentSemester) {
@@ -69,9 +68,6 @@ export const coursesTakenForRatingState = atom({
       }
 
       try {
-        // First get all available semesters and their TimeSegmentIds
-        const termList = await fetchTermList(token);
-
         // replace any data.shortname entries semester name formatting (e.g., SpSXX -> FSXX, AuSXX -> HSXX)
         const semesterInfo = termList.map((semester) => {
           const oldShortName = semester.shortName;
