@@ -9,7 +9,12 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useUnifiedSemesterState } from "./useUnifiedSemesterState";
 import { termListState } from "../recoil/termListState";
-import { getCurrentSemesterInfo } from "../recoil/curriculumPlanAtom";
+import {
+  currentSemesterKey,
+  nextSemesterKey,
+  previousYearSameSeason,
+  sortSemesterKeys,
+} from "../../domain/semester";
 import { log } from "./log";
 
 /**
@@ -47,50 +52,19 @@ export function useTermSelection() {
     setLatestValidTerm: setUnifiedLatestValidTerm,
   } = useUnifiedSemesterState();
 
-  // Sort terms helper function
-  const sortTerms = (terms) => {
-    return [...terms].sort((a, b) => {
-      const [seasonA, yearA] = [a.slice(0, 2), parseInt(a.slice(2), 10)];
-      const [seasonB, yearB] = [b.slice(0, 2), parseInt(b.slice(2), 10)];
-      return yearA !== yearB
-        ? yearA - yearB
-        : seasonA === "FS" && seasonB === "HS"
-        ? -1
-        : seasonA === "HS" && seasonB === "FS"
-        ? 1
-        : 0;
-    });
-  };
-
   // Generate future semesters helper function
   const generateFutureSemesters = (latestSemester, allApiTerms, count = 2) => {
     if (!latestSemester || !allApiTerms) return [];
 
     const futureSemesters = [];
-    const [season, yearStr] = [
-      latestSemester.slice(0, 2),
-      latestSemester.slice(2),
-    ];
-    let currentYear = parseInt(yearStr, 10);
-    let currentSeason = season;
+    let futureShortName = latestSemester;
 
     for (let i = 0; i < count; i++) {
-      // Calculate next semester
-      if (currentSeason === "FS") {
-        currentSeason = "HS";
-      } else {
-        currentSeason = "FS";
-        currentYear += 1;
-      }
-
-      const futureShortName = `${currentSeason}${currentYear
-        .toString()
-        .slice(-2)}`;
+      futureShortName = nextSemesterKey(futureShortName);
+      const season = futureShortName.slice(0, 2);
 
       // SAME-SEASON PREVIOUS-YEAR RULE for reference
-      const referenceSemesterName = `${currentSeason}${(currentYear - 1)
-        .toString()
-        .slice(-2)}`;
+      const referenceSemesterName = previousYearSameSeason(futureShortName);
 
       // Look for the same-season previous-year in API data
       const referenceTerm = allApiTerms.find(
@@ -100,9 +74,9 @@ export function useTermSelection() {
       // If we don't have the same-season previous year, attempt fallback: year-1 opposite season, else last API term
       let referenceCisId = referenceTerm?.cisId;
       if (!referenceCisId) {
-        const fallbackOppositeSeason = `${
-          currentSeason === "FS" ? "HS" : "FS"
-        }${(currentYear - 1).toString().slice(-2)}`;
+        const fallbackOppositeSeason = previousYearSameSeason(
+          `${season === "FS" ? "HS" : "FS"}${futureShortName.slice(2)}`
+        );
         const fallbackTerm = allApiTerms.find(
           (t) => t.shortName === fallbackOppositeSeason
         );
@@ -169,7 +143,7 @@ export function useTermSelection() {
           let primaryTermShortName = null;
 
           // Prefer calendar-based semester, fall back to API's isCurrent flag
-          const { currentSemKey } = getCurrentSemesterInfo();
+          const currentSemKey = currentSemesterKey();
           const calendarTerm = termIdList.find(
             (t) => t.shortName === currentSemKey
           );
@@ -197,7 +171,7 @@ export function useTermSelection() {
           }
 
           // Build the final termListObject with proper ordering and metadata
-          const sortedTerms = sortTerms(termIdList.map((t) => t.shortName));
+          const sortedTerms = sortSemesterKeys(termIdList.map((t) => t.shortName));
 
           // Calculate how many artificial future semesters we need to generate
           // We want to ensure we always have at least 2 future semesters beyond the latest valid term
@@ -237,7 +211,7 @@ export function useTermSelection() {
 
           // Combine API terms with artificial future semesters and sort again
           const allTerms = [...termIdList, ...artificialFutureSemesters];
-          const allSortedTerms = sortTerms(allTerms.map((t) => t.shortName));
+          const allSortedTerms = sortSemesterKeys(allTerms.map((t) => t.shortName));
 
           // Resolve a reference term's cisId. The dropdown only keeps the 3 most
           // recent terms (allTerms), but a reference like FS25 for FS26 can be
@@ -271,15 +245,11 @@ export function useTermSelection() {
               let referenceSemester = termData.referenceSemester || null;
               let referenceCisId = null;
               if (!referenceSemester) {
-                const season = shortName.slice(0, 2);
-                const year = parseInt(shortName.slice(2), 10);
-                if (!isNaN(year) && year > 0) {
-                  const refName = `${season}${(year - 1).toString().padStart(2, "0")}`;
-                  const cisId = resolveReferenceCisId(refName);
-                  if (cisId) {
-                    referenceSemester = refName;
-                    referenceCisId = cisId;
-                  }
+                const refName = previousYearSameSeason(shortName);
+                const cisId = refName && resolveReferenceCisId(refName);
+                if (cisId) {
+                  referenceSemester = refName;
+                  referenceCisId = cisId;
                 }
               } else {
                 referenceCisId = resolveReferenceCisId(referenceSemester);

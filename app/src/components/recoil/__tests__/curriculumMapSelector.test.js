@@ -433,6 +433,12 @@ describe('estimateCompletion', () => {
     expect(result).toBe('HS26');
   });
 
+  it('projects past the last semester one semester at a time', () => {
+    const semesters = [{ key: 'FS26', status: 'current', totalCredits: 30 }];
+    // 30 credits left at 30 per semester: one semester after FS26
+    expect(estimateCompletion(180, 150, semesters)).toBe('HS26');
+  });
+
   it('returns "TBD" when no semesters available', () => {
     expect(estimateCompletion(180, 0, [])).toBe('TBD');
   });

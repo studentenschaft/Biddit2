@@ -3,12 +3,11 @@ import { toast } from "react-toastify";
 import { useRecoilValue, useSetRecoilState } from "recoil";
 import {
   curriculumPlanState,
-  getNextSemesterKey,
-  getCurrentSemesterInfo,
   isSemesterSyncable as checkSemesterSyncable,
   isSemesterCompleted as checkSemesterCompleted,
 } from "../recoil/curriculumPlanAtom";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+import { currentSemesterKey, nextSemesterKey } from "../../domain/semester";
 import usePlanManager from "./usePlanManager";
 
 /**
@@ -48,7 +47,7 @@ export const useCurriculumPlan = () => {
    * Get the current semester key
    */
   const getCurrentSemesterKey = useCallback(() => {
-    return getCurrentSemesterInfo().currentSemKey;
+    return currentSemesterKey();
   }, []);
 
   /**
@@ -207,7 +206,7 @@ export const useCurriculumPlan = () => {
    * @returns {string} - The newly added semester key
    */
   const addSemester = useCallback((lastSemesterKey) => {
-    const newSemesterKey = getNextSemesterKey(lastSemesterKey);
+    const newSemesterKey = nextSemesterKey(lastSemesterKey);
 
     // Add empty entry to plannedItems so the selector includes this semester in the grid
     setCurriculumPlan((prev) => {

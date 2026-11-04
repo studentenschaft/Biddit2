@@ -20,8 +20,7 @@ import { termListState } from "../recoil/termListState";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
 import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { loadCatalogForTerm } from "./catalogLoader";
-
-const normalizeKey = (key) => (key ? key.replace(/\s+/g, "") : "");
+import { normalizeSemesterKey } from "../../domain/semester";
 
 /**
  * Lazily load course catalogs for all semesters shown in the curriculum map.
@@ -42,7 +41,7 @@ export function useCurriculumMapCourseLoader(authToken, semesterKeys) {
   // of semesters actually changes (not on every render's new array identity).
   const keysSignature = useMemo(() => {
     const unique = Array.from(
-      new Set((semesterKeys || []).map(normalizeKey).filter(Boolean)),
+      new Set((semesterKeys || []).map(normalizeSemesterKey).filter(Boolean)),
     );
     unique.sort();
     return unique.join("|");
@@ -58,7 +57,7 @@ export function useCurriculumMapCourseLoader(authToken, semesterKeys) {
       if (semesterData?.available?.length > 0) return; // already resolvable
 
       const term = termListObject.find(
-        (t) => normalizeKey(t.shortName) === key,
+        (t) => normalizeSemesterKey(t.shortName) === key,
       );
       if (!term?.cisId) return; // no catalog reachable → leave credits unknown
 

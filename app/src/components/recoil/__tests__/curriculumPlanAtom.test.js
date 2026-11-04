@@ -24,12 +24,12 @@ import {
 describe('parseSemesterKey', () => {
   it('parses HS key correctly', () => {
     const result = parseSemesterKey('HS24');
-    expect(result).toEqual({ type: 'HS', year: 24, fullYear: 2024 });
+    expect(result).toEqual({ season: 'HS', year: 24, fullYear: 2024 });
   });
 
   it('parses FS key correctly', () => {
     const result = parseSemesterKey('FS25');
-    expect(result).toEqual({ type: 'FS', year: 25, fullYear: 2025 });
+    expect(result).toEqual({ season: 'FS', year: 25, fullYear: 2025 });
   });
 
   it('handles two-digit years < 50 as 2000s', () => {
@@ -146,11 +146,16 @@ describe('getCurrentSemesterInfo', () => {
     expect(info.isCurrentlyHS).toBe(true);
   });
 
-  it('returns HS during July', () => {
+  it('returns FS during July (FS runs February to July)', () => {
     vi.setSystemTime(new Date('2025-07-15'));
     const info = getCurrentSemesterInfo();
-    expect(info.currentSemKey).toBe('HS25');
-    expect(info.isCurrentlyHS).toBe(true);
+    expect(info.currentSemKey).toBe('FS25');
+    expect(info.isCurrentlyHS).toBe(false);
+  });
+
+  it('returns FS during June (same rule as the map and term selection)', () => {
+    vi.setSystemTime(new Date('2026-06-15'));
+    expect(getCurrentSemesterInfo().currentSemKey).toBe('FS26');
   });
 });
 
@@ -312,13 +317,8 @@ describe('generateFutureSemesters', () => {
     vi.useRealTimers();
   });
 
-  // NOTE: generateFutureSemesters uses currentMonth >= 7 for HS detection,
-  // which differs from getCurrentSemesterInfo (>= 8). It also has a year
-  // increment pattern that produces sequences like HS25, FS25 instead of
-  // HS25, FS26. These are pre-existing behaviors tracked for future cleanup.
-
   it('generates correct count starting from fall', () => {
-    vi.setSystemTime(new Date('2025-10-15')); // October = HS (month >= 7)
+    vi.setSystemTime(new Date('2025-10-15')); // October = HS
     const semesters = generateFutureSemesters(4);
     expect(semesters).toHaveLength(4);
     expect(semesters[0]).toBe('HS25');
@@ -335,6 +335,11 @@ describe('generateFutureSemesters', () => {
     vi.setSystemTime(new Date('2025-10-15'));
     const semesters = generateFutureSemesters();
     expect(semesters).toHaveLength(6);
+  });
+
+  it('steps through consecutive semesters', () => {
+    vi.setSystemTime(new Date('2025-10-15'));
+    expect(generateFutureSemesters(4)).toEqual(['HS25', 'FS26', 'HS26', 'FS27']);
   });
 
   it('alternates between HS and FS', () => {

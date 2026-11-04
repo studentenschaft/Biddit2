@@ -30,15 +30,15 @@ belong to it**. That distinction is the whole point of this document.
 
 ### Why `referenceSemester` is computed for every term
 
-`referenceSemester` is deterministic (`computeExpectedReference` in
-`useUnifiedCourseDataWriters.js`: strip the season, subtract one year). It is computed
+`referenceSemester` is deterministic (`previousYearSameSeason` in
+`src/domain/semester.js`: same season, one year earlier). It is computed
 for *all* terms in `useTermSelection.js` — not only future/projected ones — so
 the preview can kick in for the current term too. Because it is deterministic,
 **routing must never depend on `usingReferenceData` alone**: if a code path knows
 it is showing borrowed data, a valid `referenceSemester` must already be present.
 `updateAvailableCourses` enforces this — when a preview loads it resolves
 `referenceSemester` from the caller's value, falling back to
-`computeExpectedReference`, so a current sparse term is never left with
+`previousYearSameSeason`, so a current sparse term is never left with
 `referenceSemester = null`.
 
 ## Two kinds of "borrowed" terms

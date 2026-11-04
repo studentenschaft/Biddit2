@@ -1,4 +1,12 @@
 import { atom } from "recoil";
+import {
+  parseSemesterKey,
+  compareSemesterKeys,
+  sortSemesterKeys,
+  nextSemesterKey,
+  currentSemesterKey,
+  semesterStatus,
+} from "../../domain/semester";
 
 /**
  * Curriculum Plan Atom
@@ -91,186 +99,71 @@ export const createPlaceholderItem = (
   addedAt: new Date().toISOString(),
 });
 
+// Semester helpers. The calendar rule and key arithmetic live in
+// src/domain/semester.js; these names stay exported for existing importers.
+export {
+  parseSemesterKey,
+  compareSemesterKeys as compareSemesters,
+  sortSemesterKeys as sortSemesters,
+  nextSemesterKey as getNextSemesterKey,
+};
+
 /**
- * Helper: Generate future semester keys from current date
- * @param {number} count - Number of future semesters to generate
- * @returns {string[]} - Array of semester keys like ["FS25", "HS25", "FS26"]
+ * Semester keys from the current calendar semester onwards.
+ * @param {number} count - Number of semesters to generate
+ * @returns {string[]} - e.g. ["HS25", "FS26", "HS26"]
  */
 export const generateFutureSemesters = (count = 6) => {
-  const now = new Date();
-  const currentYear = now.getFullYear() % 100;
-  const currentMonth = now.getMonth();
-
-  // HSG semesters: HS = September-February, FS = February-July
-  // Consider HS current if we're in Aug-Jan, FS current if Feb-Jul
-  const isHerbstsemester = currentMonth >= 7 || currentMonth <= 1;
-
   const semesters = [];
-  let year = currentYear;
-  let isFall = isHerbstsemester;
-
+  let key = currentSemesterKey();
   for (let i = 0; i < count; i++) {
-    semesters.push(`${isFall ? "HS" : "FS"}${year}`);
-    if (!isFall) year++;
-    isFall = !isFall;
+    semesters.push(key);
+    key = nextSemesterKey(key);
   }
-
   return semesters;
 };
 
 /**
- * Helper: Parse semester key into components
- * @param {string} semesterKey - e.g., "HS24"
- * @returns {{ type: 'HS'|'FS', year: number, fullYear: number }}
- */
-export const parseSemesterKey = (semesterKey) => {
-  const type = semesterKey.substring(0, 2);
-  const year = parseInt(semesterKey.substring(2), 10);
-  const fullYear = year < 50 ? 2000 + year : 1900 + year;
-  return { type, year, fullYear };
-};
-
-/**
- * Helper: Compare two semester keys chronologically
- * @returns {number} - Negative if a < b, positive if a > b, 0 if equal
- */
-export const compareSemesters = (a, b) => {
-  const parsedA = parseSemesterKey(a);
-  const parsedB = parseSemesterKey(b);
-
-  // Compare years first
-  if (parsedA.fullYear !== parsedB.fullYear) {
-    return parsedA.fullYear - parsedB.fullYear;
-  }
-
-  // Same year: FS comes before HS within the same calendar year
-  // Actually HS23 starts Sept 2023, FS24 starts Feb 2024
-  // So HS23 < FS24 but within "year 24": FS24 < HS24
-  if (parsedA.type !== parsedB.type) {
-    return parsedA.type === "FS" ? -1 : 1;
-  }
-
-  return 0;
-};
-
-/**
- * Helper: Sort semester keys chronologically
- */
-export const sortSemesters = (semesterKeys) => {
-  return [...semesterKeys].sort(compareSemesters);
-};
-
-/**
- * Helper: Get the next semester key in sequence
- * @param {string} semesterKey - Current semester key (e.g., "FS27")
- * @returns {string} - Next semester key (e.g., "HS27")
- */
-export const getNextSemesterKey = (semesterKey) => {
-  const { type, year } = parseSemesterKey(semesterKey);
-
-  if (type === "FS") {
-    // FS -> HS of same year
-    return `HS${year}`;
-  } else {
-    // HS -> FS of next year
-    return `FS${year + 1}`;
-  }
-};
-
-/**
- * Helper: Get current semester info based on current date
- * HSG academic calendar: FS = Feb–May (months 1-4), HS = Jun–Jan (months 0, 5-11)
- *
  * @returns {{ currentSemKey: string, isCurrentlyHS: boolean, currentSemYear: number, nextSemKey: string }}
  */
 export const getCurrentSemesterInfo = () => {
-  const now = new Date();
-  const currentYear = now.getFullYear() % 100;
-  const currentMonth = now.getMonth();
-
-  // FS = Feb–May (months 1-4), everything else is HS
-  const isCurrentlyHS = currentMonth === 0 || currentMonth >= 5;
-
-  // Jan (month 0) belongs to previous year's HS (e.g., Jan 2026 = HS25)
-  const currentSemYear =
-    isCurrentlyHS && currentMonth === 0 ? currentYear - 1 : currentYear;
-
-  const currentSemKey = `${isCurrentlyHS ? "HS" : "FS"}${currentSemYear}`;
-  const nextSemKey = getNextSemesterKey(currentSemKey);
-
+  const currentSemKey = currentSemesterKey();
+  const { season, year } = parseSemesterKey(currentSemKey);
   return {
     currentSemKey,
-    isCurrentlyHS,
-    currentSemYear,
-    nextSemKey,
+    isCurrentlyHS: season === "HS",
+    currentSemYear: year,
+    nextSemKey: nextSemesterKey(currentSemKey),
   };
 };
 
-/**
- * Helper: Check if a semester is the current one
- * @param {string} semesterKey - Semester key to check (e.g., "FS25")
- * @returns {boolean}
- */
-export const isSemesterCurrent = (semesterKey) => {
-  const { currentSemKey } = getCurrentSemesterInfo();
-  return semesterKey === currentSemKey;
-};
+export const isSemesterCurrent = (semesterKey) =>
+  semesterStatus(semesterKey) === "current";
+
+export const isSemesterInFuture = (semesterKey) =>
+  semesterStatus(semesterKey) === "future";
+
+export const isSemesterCompleted = (semesterKey) =>
+  semesterStatus(semesterKey) === "completed";
 
 /**
- * Helper: Check if a semester is in the future
- * @param {string} semesterKey - Semester key to check (e.g., "FS25")
- * @returns {boolean}
- */
-export const isSemesterInFuture = (semesterKey) => {
-  const { currentSemKey } = getCurrentSemesterInfo();
-  return compareSemesters(semesterKey, currentSemKey) > 0;
-};
-
-/**
- * Helper: Check if a semester is in the past (completed)
- * @param {string} semesterKey - Semester key to check (e.g., "FS25")
- * @returns {boolean}
- */
-export const isSemesterCompleted = (semesterKey) => {
-  const { currentSemKey } = getCurrentSemesterInfo();
-  return compareSemesters(semesterKey, currentSemKey) < 0;
-};
-
-/**
- * Helper: Check if a semester is "syncable" (current or next semester)
- * These semesters sync to the backend wishlist, while future ones are local-only
- * @param {string} semesterKey - Semester key to check (e.g., "FS25")
- * @returns {boolean}
+ * Current and next semester sync to the backend wishlist; later ones are local-only.
  */
 export const isSemesterSyncable = (semesterKey) => {
-  const { currentSemKey, nextSemKey } = getCurrentSemesterInfo();
-  return semesterKey === currentSemKey || semesterKey === nextSemKey;
+  const currentSemKey = currentSemesterKey();
+  return (
+    semesterKey === currentSemKey ||
+    semesterKey === nextSemesterKey(currentSemKey)
+  );
 };
+
+/** @returns {"completed" | "current" | "future"} */
+export const getSemesterStatus = (semesterKey) => semesterStatus(semesterKey);
 
 /**
- * Helper: Get semester status for display purposes
- * @param {string} semesterKey - Semester key to check (e.g., "FS25")
- * @returns {"completed" | "current" | "future"}
+ * Current and future semesters, sorted (CoursePicker and friends).
  */
-export const getSemesterStatus = (semesterKey) => {
-  if (isSemesterCurrent(semesterKey)) return "current";
-  if (isSemesterInFuture(semesterKey)) return "future";
-  return "completed";
-};
-
-/**
- * Helper: Filter and sort semesters to current and future only
- * Used by CoursePicker and other components that need available semesters
- *
- * @param {string[]} semesterKeys - Array of semester keys to filter
- * @returns {string[]} - Sorted array of current and future semester keys
- */
-export const filterCurrentAndFutureSemesters = (semesterKeys) => {
-  const { currentSemKey } = getCurrentSemesterInfo();
-
-  return sortSemesters(semesterKeys).filter((semKey) => {
-    // Include current and future semesters
-    const comparison = compareSemesters(semKey, currentSemKey);
-    return comparison >= 0; // Current (0) or future (positive)
-  });
-};
+export const filterCurrentAndFutureSemesters = (semesterKeys) =>
+  sortSemesterKeys(semesterKeys).filter(
+    (semKey) => semesterStatus(semKey) !== "completed",
+  );

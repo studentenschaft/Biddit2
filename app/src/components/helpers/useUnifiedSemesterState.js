@@ -1,5 +1,6 @@
 import { useRecoilState } from "recoil";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+import { previousYearSameSeason } from "../../domain/semester";
 
 /**
  * Hook to manage unified semester state
@@ -7,17 +8,6 @@ import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
  */
 export function useUnifiedSemesterState() {
   const [courseData, setCourseData] = useRecoilState(unifiedCourseDataState);
-
-  // Compute same-season previous-year semester shortName (FS26 -> FS25, HS26 -> HS25)
-  const computeSameSeasonPrevYear = (shortName) => {
-    if (!shortName || shortName.length < 4) return null;
-    const season = shortName.slice(0, 2); // FS / HS
-    const yearPart = shortName.slice(2);
-    const yearNum = parseInt(yearPart, 10);
-    if (isNaN(yearNum)) return null;
-    const prevYear = yearNum - 1;
-    return `${season}${prevYear.toString().padStart(2, "0")}`;
-  };
 
   /**
    * Update the selected semester and determine if it's a future semester
@@ -57,7 +47,7 @@ export function useUnifiedSemesterState() {
       let referenceSemesterName = null;
       if (isFuture && termIdList?.length) {
         // SAME-SEASON PREVIOUS-YEAR RULE
-        const candidate = computeSameSeasonPrevYear(semesterShortName);
+        const candidate = previousYearSameSeason(semesterShortName);
         const existsInList = termIdList.some(
           (t) => t && t.shortName === candidate
         );

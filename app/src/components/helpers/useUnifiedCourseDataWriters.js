@@ -6,6 +6,7 @@ import {
 } from "../recoil/unifiedCourseDataAtom";
 import { processCatalogSubEventECTS } from "./smartExerciseGroupHandler";
 import { getCourseIdentifier } from "./courseUtils";
+import { previousYearSameSeason } from "../../domain/semester";
 import { log } from "./log";
 
 /**
@@ -65,16 +66,6 @@ function mergeSemester(existing, patch) {
     next[k] = val;
   });
   return next;
-}
-
-function computeExpectedReference(shortName) {
-  if (!shortName || shortName.length < 4) return null;
-  const season = shortName.slice(0, 2); // FS / HS
-  const yearPart = shortName.slice(2);
-  const yearNum = parseInt(yearPart, 10);
-  if (isNaN(yearNum)) return null;
-  const prevYear = yearNum - 1;
-  return `${season}${prevYear.toString().padStart(2, "0")}`;
 }
 
 /**
@@ -268,7 +259,7 @@ export function useUnifiedCourseDataWriters() {
     // updateSemesterMetadata, not the plain patch above.)
     if (meta.usingReferenceData) {
       const resolvedReference =
-        meta.referenceSemester || computeExpectedReference(semesterShortName);
+        meta.referenceSemester || previousYearSameSeason(semesterShortName);
       if (resolvedReference) {
         updateSemesterMetadata(semesterShortName, {
           referenceSemester: resolvedReference,

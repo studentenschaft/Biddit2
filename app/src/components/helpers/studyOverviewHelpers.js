@@ -7,12 +7,23 @@
 import { useRecoilValue } from "recoil";
 import { cisIdListSelector } from "../recoil/cisIdListSelector";
 import { calculateSmartSemesterCredits } from "./smartExerciseGroupHandler";
+import {
+  compareSemesterKeys,
+  currentSemesterKey,
+  normalizeSemesterKey,
+  parseSemesterKey,
+} from "../../domain/semester";
+
 /**
- * Custom hook that provides the current semester (shortName) by looking up
- * the Recoil cisIdListSelector. If no current semester is found, returns null.
+ * The current semester shortName: the calendar semester when the term list
+ * has it, else the term the university API marks as current, else null.
  */
 export const useCurrentSemester = () => {
   const termIdList = useRecoilValue(cisIdListSelector);
+  const calendarKey = currentSemesterKey();
+  if (termIdList.some((t) => normalizeSemesterKey(t.shortName) === calendarKey)) {
+    return calendarKey;
+  }
   return termIdList.find((term) => term.isCurrent)?.shortName || null;
 };
 
@@ -53,13 +64,11 @@ export const getTypeColor = (course) => {
 };
 
 /**
- * Removes all whitespace from a semester name.
- * @param {string} semester - The semester string (e.g., 'HS 23')
- * @returns {string} - Whitespace-removed semester string (e.g., 'HS23')
+ * Canonical semester key ('HS 23' -> 'HS23'). Labels that hold no key
+ * (e.g. 'Unassigned') keep their text, without whitespace, for display.
  */
-export const removeSpacesFromSemesterName = (semester) => {
-  return semester ? semester.replace(/\s+/g, "") : "";
-};
+export const removeSpacesFromSemesterName = (semester) =>
+  normalizeSemesterKey(semester) || (semester ? semester.replace(/\s+/g, "") : "");
 
 /**
  * Checks if a given semester is in the past relative to the current semester.
@@ -68,29 +77,10 @@ export const removeSpacesFromSemesterName = (semester) => {
  * @returns {boolean} - True if semesterToCheck is strictly before currentSemester, false otherwise.
  */
 export const isSemesterInPast = (semesterToCheck, currentSemester) => {
-  if (!semesterToCheck || !currentSemester) return false;
-
-  const normalizedCheck = removeSpacesFromSemesterName(semesterToCheck);
-  const normalizedCurrent = removeSpacesFromSemesterName(currentSemester);
-
-  const [typeTo, yearTo] = [
-    normalizedCheck.slice(0, 2),
-    normalizedCheck.slice(2),
-  ];
-  const [typeCurrent, yearCurrent] = [
-    normalizedCurrent.slice(0, 2),
-    normalizedCurrent.slice(2),
-  ];
-
-  const yearDiff = parseInt(yearTo) - parseInt(yearCurrent);
-
-  if (yearDiff < 0) return true;
-  if (yearDiff > 0) return false;
-
-  // Same year - check semester type
-  if (typeTo === typeCurrent) return false;
-  // If we're in the same year, FS is considered "in the past" relative to HS
-  return typeTo === "FS" && typeCurrent === "HS";
+  if (!parseSemesterKey(semesterToCheck) || !parseSemesterKey(currentSemester)) {
+    return false;
+  }
+  return compareSemesterKeys(semesterToCheck, currentSemester) < 0;
 };
 
 /**

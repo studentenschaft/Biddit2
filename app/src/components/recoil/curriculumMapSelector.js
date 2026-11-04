@@ -1,12 +1,13 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
+import { curriculumPlanState } from "./curriculumPlanAtom";
 import {
-  curriculumPlanState,
-  sortSemesters,
-  parseSemesterKey,
-  getSemesterStatus,
-} from "./curriculumPlanAtom";
+  normalizeSemesterKey,
+  sortSemesterKeys,
+  nextSemesterKey,
+  semesterStatus,
+} from "../../domain/semester";
 import { findMainProgram } from "../helpers/academicDataTransformers";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 import { log } from "../helpers/log";
@@ -14,14 +15,6 @@ import { log } from "../helpers/log";
 // ────────────────────────────────────────────────────────────────────────────
 // Pure helper functions
 // ────────────────────────────────────────────────────────────────────────────
-
-/**
- * Normalize semester key by removing spaces (e.g., "FS 25" -> "FS25")
- * Handles inconsistency between scorecard API (with spaces) and internal state (without)
- */
-const normalizeSemesterKey = (semester) => {
-  return semester ? semester.replace(/\s+/g, "") : "";
-};
 
 /**
  * Idempotent credit normalization.
@@ -670,16 +663,11 @@ const estimateCompletion = (required, earned, semesters) => {
   const lastSemester = semesters[semesters.length - 1];
   if (!lastSemester) return "TBD";
 
-  const parsed = parseSemesterKey(lastSemester.key);
-  let projectedYear = parsed.year;
-  let isHS = parsed.type === "HS";
-
+  let projected = lastSemester.key;
   for (let i = 0; i < semestersNeeded - futureSems.length; i++) {
-    if (!isHS) projectedYear++;
-    isHS = !isHS;
+    projected = nextSemesterKey(projected);
   }
-
-  return `${isHS ? "HS" : "FS"}${projectedYear}`;
+  return projected;
 };
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -831,7 +819,7 @@ export const curriculumMapSelector = selector({
       allSemesterKeys.add(normalizeSemesterKey(k)),
     );
 
-    const sortedSemesters = sortSemesters(Array.from(allSemesterKeys));
+    const sortedSemesters = sortSemesterKeys(Array.from(allSemesterKeys));
 
     // ── Initialize grid ───────────────────────────────────────────────────
     const coursesBySemesterAndCategory = {};
@@ -1212,7 +1200,7 @@ export const curriculumMapSelector = selector({
       ).flat();
       return {
         key: semKey,
-        status: getSemesterStatus(semKey),
+        status: semesterStatus(semKey),
         ...computeSemesterCreditStats(semesterCourses),
         courseCount: semesterCourses.length,
         note: curriculumPlan.semesterNotes?.[semKey] || "",
