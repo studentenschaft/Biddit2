@@ -104,14 +104,15 @@ const STICKY_TAB_IDS = new Set([TAB.CURRICULUM_MAP]);
 
 export default function TabComponent({ selectedTab, onTabSelect }) {
   // Below md the tabs keep their natural width and the row scrolls; from
-  // md up they share the row equally. Labels never wrap (whitespace-nowrap),
-  // so md:min-w-0 lets a tab shrink below its min-content width and clip its
-  // label rather than push the last tab out of the hidden overflow.
+  // md up they share the row equally. Between md and xl a shared slot is
+  // narrower than a one-line label, so labels wrap onto two lines there
+  // (leading-tight keeps both inside h-10); md:min-w-0 still stops a tab
+  // from pushing the last one out of the hidden overflow.
   // The focus ring must be a Tailwind utility: react-tabs' default `react-tabs__tab`
   // class is a defaultProp that this className replaces, so a stylesheet rule on
   // it would never match.
   const tabStyle =
-    "flex-none min-w-max md:min-w-0 whitespace-nowrap px-3 md:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
+    "flex-none min-w-max md:min-w-0 whitespace-nowrap md:whitespace-normal xl:whitespace-nowrap leading-tight px-3 md:px-1 xl:px-0 md:flex-1 h-10 text-center justify-center items-center flex font-medium lg:font-semibold text-xs lg:text-sm rounded-md text-white bg-neutral mx-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gray-800";
 
   // Group divider: a hairline rule between the scope groups, at every width.
   // It is an <li> because TabList renders a <ul>, and aria-hidden because
@@ -157,7 +158,9 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
   }, [selectedTab]);
 
   // Below md the row scrolls, so the selected tab can sit off-screen after a
-  // swipe-free selection (deep link, keyboard, restored state).
+  // swipe-free selection (deep link, keyboard, restored state). The row's
+  // scroll padding (scroll-px-10) makes scrollIntoView stop clear of the
+  // edge chevrons instead of parking the label under them.
   const { scrollContainerRef, canScrollLeft, canScrollRight } =
     useHorizontalScrollAffordance();
 
@@ -215,7 +218,7 @@ export default function TabComponent({ selectedTab, onTabSelect }) {
       <div className="relative">
         <div
           ref={scrollContainerRef}
-          className="overflow-x-auto scrollbar-hide md:overflow-visible"
+          className="overflow-x-auto scrollbar-hide scroll-px-10 md:overflow-visible"
         >
           {/* min-w-max lets the row grow past the viewport and scroll; at md+
               md:min-w-0 hands the width back so the tabs share it equally. */}
