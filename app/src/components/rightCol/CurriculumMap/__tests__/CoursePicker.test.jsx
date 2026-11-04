@@ -120,6 +120,31 @@ describe('CoursePicker', () => {
       expect(sixEctsElements.length).toBe(2); // Two courses with 6 ECTS
       expect(screen.getByText('3 ECTS')).toBeInTheDocument();
     });
+
+    it('formats credits with the shared ECTS formatter', () => {
+      render(
+        <TestWrapper
+          initialState={{
+            unifiedCourseData: {
+              semesters: {
+                FS26: {
+                  selectedIds: [],
+                  available: [
+                    { courseNumber: 'Q1', shortName: 'Quarter Course', credits: 225, classification: 'core' },
+                    { courseNumber: 'U1', shortName: 'Unknown Credits', classification: 'core' },
+                  ],
+                },
+              },
+            },
+          }}
+        >
+          <CoursePicker futureSemesters={['FS26']} />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('2.25 ECTS')).toBeInTheDocument();
+      expect(screen.getByText('? ECTS')).toBeInTheDocument();
+    });
   });
 
   describe('semester selection', () => {

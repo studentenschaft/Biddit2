@@ -17,6 +17,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { XIcon } from "@heroicons/react/solid";
 import { AnnotationIcon } from "@heroicons/react/outline";
 import { useCurriculumPlanContext } from "./CurriculumPlanContext";
+import { formatEcts } from "../../../domain/credits";
 
 // Note border colors — HSG-conform palette (subset of the official brand colors,
 // chosen for distinct, legible borders). Tokens defined in tailwind.config.js.
@@ -163,13 +164,7 @@ const PlanItem = ({ item, semesterKey, onCourseClick, gradesHidden }) => {
     ? `border-2 ${customBorderClass}`
     : statusStyle.border || "";
 
-  // Format credits for display
-  const creditsDisplay =
-    credits != null
-      ? Number.isInteger(credits)
-        ? credits
-        : credits.toFixed(1)
-      : "?";
+  const creditsDisplay = formatEcts(credits);
 
   // Full name for tooltip (never truncated)
   const fullName = isPlaceholder

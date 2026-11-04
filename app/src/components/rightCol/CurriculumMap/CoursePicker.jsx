@@ -17,7 +17,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { curriculumPlanState, filterCurrentAndFutureSemesters } from "../../recoil/curriculumPlanAtom";
-import { normalizeCourseCredits } from "../../recoil/curriculumMapSelector";
+import { formatEcts, toEcts } from "../../../domain/credits";
 
 /**
  * PickerCourseCard - A draggable course card in the picker
@@ -42,10 +42,7 @@ const PickerCourseCard = ({ course, semesterKey }) => {
       }
     : undefined;
 
-  const normalized = normalizeCourseCredits(course.credits, null);
-  const creditsDisplay = normalized != null
-    ? (Number.isInteger(normalized) ? normalized : normalized.toFixed(1))
-    : "?";
+  const creditsDisplay = formatEcts(toEcts(course.credits));
 
   const displayName =
     course.shortName?.length > 35
