@@ -1,6 +1,6 @@
 # ADR 0013: State management after Recoil
 
-- **Status:** Proposed (the user decides; see "Open question" below)
+- **Status:** Accepted on 2026-11-04 (the React 19 question was answered "yes, within a year"; scheduling of the migration plan is a separate decision)
 - **Date:** 2026-11-04
 - **Finding:** E2 of `docs/architecture-review-2026-11-03.md`, recommendation 15
 - **Migration plan:** `docs/superpowers/plans/2026-11-04-state-migration.md`
@@ -175,13 +175,15 @@ chunk; the baseline suite is 114 files and 1135 tests.
 | Server-request behaviour | unchanged (Phase 1/3 loaders stay) | unchanged in count; adds invalidation, background refetch and devtools as options | unchanged |
 | Maintenance outlook | Active (3.0.1 on 2026-09-29; the 2.x line still patched, 2.20.3 on 2026-08-24) | Active (5.105.3) plus the store's outlook | Archived upstream; no further releases |
 
-## Decision (recommendation)
+## Decision
 
-**Assumption:** a React 19 upgrade is wanted within the next twelve months.
-The review's open question "is upgrading desired within the next year?" has
-not been answered.
+**Input:** a React 19 upgrade is wanted within the next twelve months. The
+review's open question "is upgrading desired within the next year?" was
+answered yes by the maintainer on 2026-11-04, on maintenance grounds: React
+18.3 receives no patch releases, and new library versions increasingly require
+React 19. No current security advisory affects this client-only app.
 
-Under that assumption, **option 1: move all client state to Jotai**, bottom-up
+On that basis, **option 1: move all client state to Jotai**, bottom-up
 through the dependency graph as laid out in the migration plan, and keep the
 Phase 1/3 loaders for server reads. Spike B shows that TanStack Query would
 not reduce requests in this codebase today, adds 38.6 kB to the main chunk
@@ -195,15 +197,15 @@ client state is in Jotai, a server source can move to a query without a
 projection step (`jotai-tanstack-query` exposes queries as atoms), if a future
 need such as background refetch or optimistic mutations justifies it.
 
-**What would flip the recommendation:** if React 19 is *not* wanted within the
-next year, choose **option 3** and stay on Recoil, because option 1 is then a
-large change without a user-visible effect. Re-decide when a dependency
-requires React 19 or at the latest on 2027-11-01, and do not add new Recoil
-atoms or selectors in the meantime beyond what features require.
+**What would have flipped the decision:** had React 19 *not* been wanted within
+the next year, the choice would have been **option 3** and stay on Recoil, because option 1 is then a
+large change without a user-visible effect. Until the migration plan is
+scheduled, do not add new Recoil atoms or selectors beyond what features
+require.
 
 ## Consequences
 
-If option 1 is accepted:
+With option 1 accepted:
 
 - The migration plan runs as its own sequence of branches and PRs. While it
   runs, both libraries ship (+8.4 kB on the main chunk at the start, then

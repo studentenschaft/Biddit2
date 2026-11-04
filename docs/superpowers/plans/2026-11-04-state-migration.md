@@ -32,7 +32,7 @@ The plan proceeds with the defaults below. Change them here before Phase 0 start
 
 | Decision | Default used by this plan | Where it matters |
 |---|---|---|
-| Is a React 19 upgrade wanted within the next year? | Yes. ADR 0013 recommends this plan only under that assumption; if the answer is no, do not run it. | Whole plan |
+| Is a React 19 upgrade wanted within the next year? | Yes, answered by the maintainer on 2026-11-04 (ADR 0013 is Accepted on that basis). | Whole plan |
 | Jotai major version | 3.x. It requires Node 22.12 or later, so `engines.node` becomes `>=22.12`; CI already runs Node 22. | Task 0.1 |
 | Provider | An explicit Jotai `<Provider>` inside `RecoilRoot` in `main.jsx`; every test gets its own store. | Task 0.1 |
 | How the connected graph moves | One switch on a sub-branch (Task 2.1). The alternative, a Recoil atom effect that mirrors each source atom into Jotai so selectors can move in slices, was not tested in the spikes and adds temporary sync code. This is an open design question for the user: choosing the mirror means re-planning Phase 2 (no task here implements it) before Phase 2 starts. | Task 2.1 |
