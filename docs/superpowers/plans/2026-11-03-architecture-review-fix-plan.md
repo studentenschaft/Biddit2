@@ -1007,10 +1007,10 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 | 1.6 | done | c3fec02 | +d3be9f0, af4d0d8: unresolved wishlist ids hidden in map, study plan and Study Overview; dedupe vs enrolled/placed |
 | 1.7 | done | df572e7 + c420f74 | cancel guard; lint fix in second commit |
 | 1.8 | done | dc22a4b | +c58b59c simplifications; Transcript error only when nothing loaded |
-| 2.1 | | | |
-| 2.2 | | | |
-| 2.3 | | | |
-| 2.4 | | | |
+| 2.1 | done | 0923bd9 + 7cc6ec1 | +654ee85 drops wrappers without production importers; generator/projection year bug fixed and pinned |
+| 2.2 | done | d9b6ab5 | absorbs helpers/formatEcts.js; +fabdeda CoursePicker/PlanItem via formatEcts; "4.00"→"4", unknown credits "?" |
+| 2.3 | done | cd16e8e | `isCourseSelected` via `sameCourse` (keeps legacy-id entries); sameCourse on the five catalog lookups |
+| 2.4 | done | 1b77f7a | ids = {courseNumber, course.id}; `courseId` never differs; one toast only when all deletes fail |
 | 3.1 | | | |
 | 3.2 | | | |
 | 4.1 | | | |
