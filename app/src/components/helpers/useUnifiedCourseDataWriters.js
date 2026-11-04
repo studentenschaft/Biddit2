@@ -5,7 +5,7 @@ import {
   initializedSemestersState,
 } from "../recoil/unifiedCourseDataAtom";
 import { processCatalogSubEventECTS } from "./smartExerciseGroupHandler";
-import { getCourseIdentifier } from "./courseUtils";
+import { courseKey, normalizeCourse } from "../../domain/course";
 import { previousYearSameSeason } from "../../domain/semester";
 import { log } from "./log";
 
@@ -180,7 +180,7 @@ export function useUnifiedCourseDataWriters() {
    */
   const updateEnrolledCourses = useCallback((semesterShortName, courses) => {
     const enrolledIds = (courses || [])
-      .map((course) => getCourseIdentifier(course))
+      .map(courseKey)
       .filter(Boolean);
     patchSemester(
       semesterShortName,
@@ -231,7 +231,7 @@ export function useUnifiedCourseDataWriters() {
     // Needs the whole flattened catalog to see whether a sub-numbered event has
     // a main event, so it runs after the loop rather than per course inside it.
     const coursesWithResolvedCredits =
-      processCatalogSubEventECTS(flattenedCourses);
+      processCatalogSubEventECTS(flattenedCourses).map(normalizeCourse);
 
     patchSemester(
       semesterShortName,
@@ -298,7 +298,7 @@ export function useUnifiedCourseDataWriters() {
     setCourseData((prev) => {
       const semester = prev.semesters?.[semesterShortName];
       if (!semester) return prev; // Should be initialized beforehand
-      const courseId = getCourseIdentifier(course);
+      const courseId = courseKey(course);
       if (!courseId) {
         console.warn("No valid course ID for", course);
         return prev;

@@ -8,6 +8,7 @@ import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { trackWishlistChange } from "./analytics";
 import { log } from "./log";
 import { toEcts } from "../../domain/credits";
+import { sameCourse } from "../../domain/course";
 
 /**
  * Shared hook for adding or removing a course in local and backend states.
@@ -51,11 +52,10 @@ export function useCourseSelection({
       // ── Single authoritative decision: add or remove? ─────────────────────
       // Computed ONCE and used consistently for ALL state atoms to prevent
       // flip-flop bugs when atoms get out of sync.
-      const isCourseSelected =
-        selectedCourseIds.includes(course.id) ||
-        selectedCourseIds.includes(course.courseNumber) ||
-        selectedCourseIds.includes(course.courseId) ||
-        selectedCourseIds.includes(course.courses?.[0]?.courseNumber);
+      // Matches entries stored under the course number or a legacy catalog id.
+      const isCourseSelected = selectedCourseIds.some((id) =>
+        sameCourse(course, { id }),
+      );
 
       const courseNumber =
         course.courses?.[0]?.courseNumber || course.courseNumber || course.courseId || course.id;

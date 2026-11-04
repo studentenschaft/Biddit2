@@ -3,61 +3,12 @@
  * Extracted from useUnifiedCourseData.js to eliminate duplication and improve testability.
  */
 
-/**
- * Extracts a unique identifier from a course object.
- * Handles various course data structures from different API responses.
- *
- * Priority order:
- * 1. Nested courseNumber from courses array (courses[0].courseNumber)
- * 2. eventCourseNumber (from enrollment data)
- * 3. Direct courseNumber property
- * 4. id property
- * 5. number property
- * 6. _id property (MongoDB style)
- *
- * @param {Object|null|undefined} course - The course object to extract identifier from
- * @returns {string|null} The course identifier or null if not found
- */
-export function getCourseIdentifier(course) {
-  if (!course) return null;
-
-  // Priority 1: Nested courseNumber from courses array
-  const nestedCourseNumber = course.courses?.[0]?.courseNumber;
-  if (nestedCourseNumber) return nestedCourseNumber;
-
-  // Priority 2: eventCourseNumber (from enrollment API)
-  if (course.eventCourseNumber) return course.eventCourseNumber;
-
-  // Priority 3: Direct courseNumber
-  if (course.courseNumber) return course.courseNumber;
-
-  // Priority 4: id property
-  if (course.id) return course.id;
-
-  // Priority 5: number property
-  if (course.number) return course.number;
-
-  // Priority 6: _id (MongoDB style)
-  if (course._id) return course._id;
-
-  return null;
-}
-
-/**
- * Normalizes a course to its two-segment root key.
- * "3,135,1.00" and "3,135,2.04" both yield "3,135", so an exercise group shares
- * its parent lecture's key — which is also the key the central exam plan prints.
- *
- * @param {Object|null|undefined} course - The course object
- * @returns {string|null} The root key, or null when no numeric course number exists
- */
-export function getCourseRootKey(course) {
-  const raw = getCourseIdentifier(course) || course?.courseId;
-  if (typeof raw !== "string") return null;
-
-  const match = raw.match(/^(\d+),(\d+),/);
-  return match ? `${match[1]},${match[2]}` : null;
-}
+// Course identity lives in the domain module; the old names stay for importers.
+// The .js extension is required: scripts/ingest-exam-plan imports this file under plain Node.
+export {
+  courseKey as getCourseIdentifier,
+  courseRootKey as getCourseRootKey,
+} from "../../domain/course.js";
 
 /**
  * Sorts courses by enrollment and selection status.

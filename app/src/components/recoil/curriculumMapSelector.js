@@ -12,6 +12,7 @@ import { findMainProgram } from "../helpers/academicDataTransformers";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 import { log } from "../helpers/log";
 import { toEcts } from "../../domain/credits";
+import { sameCourse } from "../../domain/course";
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pure helper functions
@@ -37,7 +38,7 @@ export const findCreditsInAnySemester = (courseId, semesters) => {
   if (!courseId) return null;
   for (const semData of Object.values(semesters || {})) {
     const hit = (semData?.available || []).find(
-      (c) => c.courseNumber === courseId || c.id === courseId,
+      (c) => sameCourse(c, { id: courseId }),
     );
     if (hit && hit.credits != null) return hit.credits;
   }
@@ -872,7 +873,7 @@ export const curriculumMapSelector = selector({
 
         (semData.selectedIds || []).forEach((courseId) => {
           const fullCourse = availableCourses.find(
-            (c) => c.courseNumber === courseId || c.id === courseId,
+            (c) => sameCourse(c, { id: courseId }),
           );
           if (!fullCourse) return;
           // Overrides and placements written before ids were unified may
@@ -958,7 +959,7 @@ export const curriculumMapSelector = selector({
           if (alreadyExists) return;
 
           const fullCourse = availableCourses.find(
-            (c) => c.courseNumber === enrolledId || c.id === enrolledId,
+            (c) => sameCourse(c, { id: enrolledId }),
           );
 
           if (!fullCourse) return;
@@ -1077,8 +1078,7 @@ export const curriculumMapSelector = selector({
                 const availableCourses =
                   unifiedCourseData.semesters?.[semKey]?.available || [];
                 const fullCourse = availableCourses.find(
-                  (c) =>
-                    c.courseNumber === item.courseId || c.id === item.courseId,
+                  (c) => sameCourse(c, { id: item.courseId }),
                 );
                 const classification =
                   fullCourse?.classification || item.categoryPath || "elective";
@@ -1124,8 +1124,7 @@ export const curriculumMapSelector = selector({
               const availableCourses =
                 unifiedCourseData.semesters?.[semKey]?.available || [];
               const fullCourse = availableCourses.find(
-                (c) =>
-                  c.courseNumber === item.courseId || c.id === item.courseId,
+                (c) => sameCourse(c, { id: item.courseId }),
               );
 
               coursesBySemesterAndCategory[semKey][targetCatPath].push({
