@@ -66,6 +66,39 @@ describe("getCourseSheet", () => {
     expect(hits).toBe(1);
   });
 
+  it("caches two offerings of one course number separately", async () => {
+    const requested = [];
+    server.use(
+      http.get(`${SHEETS}/:id`, ({ params }) => {
+        requested.push(params.id);
+        return HttpResponse.json({ sheetOf: params.id });
+      })
+    );
+    const otherOffering = { ...COURSE, hsgEntityId: "67890" };
+
+    const first = await getCourseSheet({ course: COURSE, authToken: "t" });
+    const second = await getCourseSheet({ course: otherOffering, authToken: "t" });
+
+    expect(requested).toEqual(["12345", "67890"]);
+    expect(first).toEqual({ sheetOf: "12345" });
+    expect(second).toEqual({ sheetOf: "67890" });
+  });
+
+  it("does not cache a course without any identifier", async () => {
+    let hits = 0;
+    server.use(
+      http.get(`${SHEETS}/:id`, () => {
+        hits++;
+        return HttpResponse.json(SHEET);
+      })
+    );
+
+    await getCourseSheet({ course: { shortName: "A" }, authToken: "t" });
+    await getCourseSheet({ course: { shortName: "B" }, authToken: "t" });
+
+    expect(hits).toBe(2);
+  });
+
   it("falls back to the course-number lookup when the entity lookup fails", async () => {
     const requested = [];
     server.use(

@@ -1,4 +1,4 @@
-// Course sheets and per-course SHSG ratings, fetched once per course per
+// Course sheets (per offering) and per-course SHSG ratings, fetched once per
 // session. Course Details remounts on every tab visit; without this cache each
 // visit and each re-selection downloaded the same sheet and ratings again.
 // Failures reject (and are not cached) so the caller owns the one error toast.
@@ -32,12 +32,15 @@ const requestSheet = async (id, authToken) => {
  * @param {{ course: object, authToken: string }} params
  * @returns {Promise<object|null>}
  */
-export const getCourseSheet = ({ course, authToken }) =>
-  cachedRequest(sheets, courseKey(course), () =>
+export const getCourseSheet = ({ course, authToken }) => {
+  const load = () =>
     requestSheet(course.hsgEntityId, authToken).catch(() =>
       requestSheet(courseKey(course), authToken)
-    )
-  );
+    );
+  // Keyed by the id the primary lookup sends; a course with no id is not cached.
+  const key = course.hsgEntityId || courseKey(course);
+  return key ? cachedRequest(sheets, key, load) : load();
+};
 
 /**
  * @param {{ courseNumber: string, authToken: string }} params
