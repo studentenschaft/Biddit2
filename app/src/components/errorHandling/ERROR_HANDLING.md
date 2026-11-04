@@ -143,7 +143,7 @@ MSAL, and auth errors, those never generate report emails.
 
 > **Scope note:** generic `404`s are still classified as `CLIENT` → toast. Some
 > endpoints (the `/similar-courses` vector DB's "no similar courses" — used by
-> `helpers/useSmartSearch.js` and `SimilarCourses` — and ratings) use 404 as normal control
+> `helpers/useVectorSearch.js` for smart search and `SimilarCourses` — and ratings) use 404 as normal control
 > flow; silencing those is intentionally **out of scope** for this change.
 
 ## 4a. Degraded mode (manual SHSG kill switch)

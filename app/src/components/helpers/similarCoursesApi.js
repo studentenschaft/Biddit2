@@ -1,9 +1,9 @@
 /**
  * similarCoursesApi
  *
- * Single source of truth for the similar-courses vector DB (query + upsert),
- * shared by the left-column smart search (`useSmartSearch`) and SimilarCourses
- * so the two never drift apart.
+ * Single source of truth for the similar-courses vector DB (query + upsert).
+ * Its only caller is `useVectorSearch`, which smart search (`useSmartSearch`)
+ * and SimilarCourses share so the two never drift apart.
  *
  * The upsert here owns the borrowed-data guardrail: it MUST refuse to write
  * courses that don't belong to the selected term (future projections or

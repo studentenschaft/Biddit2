@@ -1,258 +1,47 @@
 import { useRecoilValue } from "recoil";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
-// Updated imports to use unified course data selectors
 import {
   availableCoursesSelector,
   selectedSemesterSelector,
-  semesterMetadataSelector,
 } from "../recoil/unifiedCourseDataSelectors";
-import { mainProgramSelector } from "../recoil/unifiedAcademicDataSelectors";
-import { currentEnrollmentsState } from "../recoil/currentEnrollmentsAtom";
-import {
-  querySimilarCourses,
-  upsertSimilarCourses,
-} from "../helpers/similarCoursesApi";
-import { authTokenState } from "../recoil/authAtom";
-import { unifiedAcademicDataState } from "../recoil/unifiedAcademicDataAtom";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { LockClosed } from "../leftCol/bottomRow/LockClosed";
 import LoadingText from "../common/LoadingText";
-
-// Import error handling service
-import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import { useOpenCourseDetails } from "../helpers/useOpenCourseDetails";
-import { useScorecardFetching } from "../helpers/useScorecardFetching";
+import { useVectorSearch } from "../helpers/useVectorSearch";
 import { useDegradedMode } from "../common/useDegradedMode";
 import DegradedPlaceholder from "../common/DegradedPlaceholder";
 import { log } from "../helpers/log";
 import { formatEcts, toEcts } from "../../domain/credits";
 
 export default function SimilarCourses({ selectedCourse }) {
-  const authToken = useRecoilValue(authTokenState);
-  const scorecardFetching = useScorecardFetching();
   const { isDegradedMode } = useDegradedMode();
-
-  // Use unified course data selectors instead of old atoms
-  const currentEnrollments = useRecoilValue(currentEnrollmentsState);
-  const mainProgram = useRecoilValue(mainProgramSelector);
-  const academicData = useRecoilValue(unifiedAcademicDataState);
+  const { runQuery, isLoading, isUpserting } = useVectorSearch();
   const selectedSemesterShortName = useRecoilValue(selectedSemesterSelector);
-
-  // Get metadata for the selected semester
-  const semesterMetadata = useRecoilValue(
-    semesterMetadataSelector(selectedSemesterShortName)
-  );
-
-  const [relevantCourseInfoForUpsert, setRelevantCourseInfoForUpsert] =
-    useState([]);
-  const [similarCourses, setSimilarCourses] = useState([]);
-
-  // Use metadata from unified system instead of separate atoms
-  const isFutureSemesterSelectedState =
-    semesterMetadata?.isFutureSemester || false;
-  const referenceSemesterState = semesterMetadata?.referenceSemester;
-  // True when the displayed courses are borrowed from referenceSemester: a
-  // projected future term OR a current-but-sparse term showing a previous-year
-  // preview. In both cases queries must target referenceSemester, not the
-  // selected term. Checking usingReferenceData (not just isFutureSemester) is
-  // what prevents querying the wrong semester key. See REFERENCE_SEMESTER.md.
-  const usingReferenceData = semesterMetadata?.usingReferenceData || false;
-  const isReferenceData = isFutureSemesterSelectedState || usingReferenceData;
-  const [referenceSemesterLocalState, setReferenceSemesterLocalState] =
-    useState(null);
-
-  // Compute effective semester for API calls: use reference semester when the
-  // displayed courses are borrowed, otherwise the selected term.
-  const effectiveSemesterShortName =
-    referenceSemesterLocalState || selectedSemesterShortName || null;
 
   // For course lookups and display, always use the real selected semester (not reference)
   const coursesCurrentSemester = useRecoilValue(
     availableCoursesSelector(selectedSemesterShortName)
   );
 
-  const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingLong, setIsLoadingLong] = useState(false);
+  const [similarCourses, setSimilarCourses] = useState([]);
   // Allow showing course details when user clicks a similar course title
   const openCourseDetails = useOpenCourseDetails();
 
-  // Derive program from unified data with robust fallbacks
-  const derivedProgram =
-    mainProgram?.metadata?.programDescription ||
-    mainProgram?.programName ||
-    currentEnrollments?.enrollmentInfos?.find((e) => e.isMainStudy)
-      ?.studyProgramDescription ||
-    (academicData?.programs
-      ? Object.keys(academicData.programs)[0]
-      : null) ||
-    null;
-
-  // Keep latest program value available inside async handlers
-  const programRef = useRef(derivedProgram);
-  useEffect(() => {
-    programRef.current = derivedProgram;
-  }, [derivedProgram]);
-
-  // Resolve the semester to use for API calls. When the displayed courses are
-  // borrowed (future projection OR current-but-sparse preview) they belong to
-  // referenceSemester, so queries/upserts must target it — not the selected term.
-  useEffect(() => {
-    try {
-      if (isReferenceData) {
-        // referenceSemester is already a shortName string in unified state
-        setReferenceSemesterLocalState(referenceSemesterState || null);
-      } else {
-        setReferenceSemesterLocalState(null);
-      }
-    } catch (error) {
-      console.error(
-        "Error setting reference semester local state in similarCourses:",
-        error
-      );
-      errorHandlingService.handleError(error);
+  async function fetchSimilarCourses() {
+    if (!selectedCourse.courseContent) {
+      console.error("Course content is missing");
+      return;
     }
-  }, [isReferenceData, referenceSemesterState]);
-
-  // set courses of current semester based on selected semester (always use real semester, not reference)
-  // Note: coursesCurrentSemester is now directly loaded from unified selector using selectedSemesterShortName
-  // This ensures we display courses from the actual selected semester, even if it's a future semester
-
-  useEffect(() => {
-    try {
-      if (!coursesCurrentSemester) return;
-      const relevantData = coursesCurrentSemester
-        .map((course) => {
-          if (!course.courseNumber) {
-            console.warn("Missing course number for course:", course); // filter out missing courseNumbers, this was the case FS25 before bidding start
-            return null;
-          }
-          return {
-            courseNumber: course.courseNumber,
-            shortName: course.shortName,
-            classification: course.classification,
-            courseContent: course.courseContent,
-          };
-        })
-        .filter((course) => course !== null); // filter out missing courseNumbers, this was the case FS25 before bidding start
-      setRelevantCourseInfoForUpsert(relevantData);
-    } catch (error) {
-      console.error(
-        "Error setting relevant course info for upsert in similarCourses:",
-        error
-      );
-      errorHandlingService.handleError(error);
-    }
-  }, [coursesCurrentSemester]);
-  // Upsert the selected term's courses when a query returns nothing, so the
-  // vector DB lazily fills in for newly published catalogs. Guardrail + payload
-  // live in the shared helper so smart search and SimilarCourses can never
-  // drift apart. See REFERENCE_SEMESTER.md.
-  async function upsertRelevantCourseInfo(relevantCourseInfoForUpsert) {
-    await upsertSimilarCourses({
-      authToken,
-      courses: relevantCourseInfoForUpsert,
-      program: programRef.current,
-      selectedSemester: selectedSemesterShortName,
-      referenceSemester: referenceSemesterState,
-      isReferenceData,
-      source: "SimilarCourses",
+    const { ids, distances, metadatas } = await runQuery({
+      courseDescription: selectedCourse.courseContent,
     });
-  }
-
-  // if button is clicked, fetch similar courses
-  async function fetchSimilarCourses(
-    selectedCourse,
-    category = null,
-    attemptedUpsert = false
-  ) {
-    setIsLoading(true);
-    // Make sure program/scorecard data is available
-    if (programRef.current === null && authToken) {
-      try {
-        const result = await scorecardFetching.fetchAll(authToken);
-        const keys = result?.data ? Object.keys(result.data) : [];
-        if (keys.length > 0) {
-          programRef.current = keys[0];
-        }
-      } catch (e) {
-        console.error("Failed to prefetch scorecard data:", e);
-      }
-    }
-
-    if (programRef.current !== null) {
-      try {
-        if (!selectedCourse.courseContent) {
-          console.error("Course content is missing");
-          setIsLoading(false);
-          return;
-        }
-
-        // Always use selected semester, or its reference when projected
-        const semesterToUse = effectiveSemesterShortName;
-        if (!semesterToUse) {
-          console.warn(
-            "No semester is selected or available for SimilarCourses query"
-          );
-          setIsLoading(false);
-          return;
-        }
-
-        // // might be better to clean up the course descriptions before upsert, database reset advised when applied
-        // // Clean up the course description
-        // const cleanedCourseDescription = selectedCourse.courseContent
-        //   .replace(/<[^>]+>/g, "") // Remove HTML tags
-        //   .replace(/\s+/g, " ") // Replace multiple spaces with a single space
-        //   .trim(); // Trim leading and trailing spaces
-
-        const response = await querySimilarCourses({
-          authToken,
-          courseDescription: selectedCourse.courseContent,
-          category,
-          program: programRef.current,
-          semester: semesterToUse,
-        });
-
-        setSimilarCourses(response.data);
-        log.debug("Similar courses:", response.data);
-        setIsLoading(false);
-
-        // Only attempt upsert once to prevent infinite recursion
-        if (
-          response.data.ids &&
-          response.data.ids[0] &&
-          response.data.ids[0].length === 0 &&
-          !attemptedUpsert
-        ) {
-          setIsLoadingLong(true);
-          await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-          setIsLoadingLong(false);
-          // Pass true to indicate we've already attempted an upsert
-          fetchSimilarCourses(selectedCourse, category, true);
-        }
-      } catch (error) {
-        console.error("Error querying database:", error);
-        if (error.response && error.response.status === 404) {
-          log.debug("No courses found, attempting upsert");
-          if (!attemptedUpsert) {
-            setIsLoadingLong(true);
-            await upsertRelevantCourseInfo(relevantCourseInfoForUpsert);
-            setIsLoadingLong(false);
-            fetchSimilarCourses(selectedCourse, category, true);
-          } else {
-            setSimilarCourses({ ids: [[]], distances: [[]], metadatas: [[]] });
-          }
-        } else {
-          errorHandlingService.handleError(error);
-        }
-        setIsLoading(false);
-      }
-    } else {
-      log.debug("Program not yet loaded; will retry shortly");
-      setTimeout(() => {
-        fetchSimilarCourses(selectedCourse, category, attemptedUpsert);
-      }, 800);
-    }
+    setSimilarCourses({
+      ids: [ids],
+      distances: [distances],
+      metadatas: [metadatas],
+    });
   }
 
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -373,7 +162,7 @@ export default function SimilarCourses({ selectedCourse }) {
       <div className="flex items-end gap-4">
         <button
           className="w-fit h-fit  bg-green-800 hover:bg-gray-400 text-white lg:font-semibold lg:text-md md:text-sm py-2 px-4 rounded mt-4"
-          onClick={() => fetchSimilarCourses(selectedCourse)}
+          onClick={fetchSimilarCourses}
         >
           Search for similar courses
         </button>
@@ -451,12 +240,12 @@ export default function SimilarCourses({ selectedCourse }) {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && !isUpserting ? (
         <div className="text-center">
           <br />
           <LoadingText>Loading similar courses...</LoadingText>
         </div>
-      ) : isLoadingLong ? (
+      ) : isUpserting ? (
         <div className="text-center">
           <br />
           <LoadingText>

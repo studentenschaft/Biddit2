@@ -61,8 +61,9 @@ Both display reference courses, but they reach that state differently:
 ## Why this matters: the vector DB
 
 The left-column smart-search mode (`helpers/useSmartSearch.js`) and
-`SimilarCourses` query and upsert an embeddings DB keyed by `semester`. They
-must use the semester the courses **actually belong to**:
+`SimilarCourses` query and upsert an embeddings DB keyed by `semester`, both
+through `helpers/useVectorSearch.js`. They must use the semester the courses
+**actually belong to**:
 
 - **Query**: use `referenceSemester` when borrowed, else the selected term. (A
   user viewing the `HS26` preview expects `HS25` matches, because that is the
