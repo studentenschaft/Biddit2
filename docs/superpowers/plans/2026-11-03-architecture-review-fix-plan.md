@@ -982,6 +982,10 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 - Stale server wishlist entries: the real HS26 study plan holds full course numbers (`11,902,1.00`, `3,553,1.00`, `3,550,1.00`) that exist in no current catalog, probably saved while HS26 still showed the HS25 preview. Phase 1 hides unresolved ids in the map and Study Overview; removing them is a backend or data-cleanup task.
 - `unifiedStudyPlanSelector` and `useAcademicProgress` have no runtime consumer (Phase 1 report). Delete them in Phase 5 with the StudyOverview retirement, or earlier if the overhaul branch does not need them.
 - `SendErrorButton` still uses `defaultProps` (React dev warning on every error toast); a two-line change outside any finding.
+- Three dev-only PropTypes warnings on the Curriculum Map (`PlanCell` `isCategoryComplete` undefined, `CategoryHeader` `defaultProps`, `PlanItem` numeric `item.courseId`): pre-existing, untouched by Phases 2-5.
+- Order of planned/enrolled items inside a Curriculum Map cell follows data-arrival order (seen once in the Phase 5 browser pass); a stable sort in `placement.js` would fix it.
+- Vector search races that predate Task 5.3: two overlapping `runQuery` calls share one pair of loading flags, and a course switch during a long upsert writes the previous course's results; a per-request token in `useVectorSearch` would fix both.
+- `importSelectedCourses`' degraded-mode branch (dismiss the loading toast, return `{ imported: 0, skipped }`) has no unit test.
 
 - Retiring `StudyOverview`, `GradeTranscript`, `selectedCourseIdsAtom` and `scorecardDataState`: blocked on `feature/transcript-overhaul` landing; plan it with that merge.
 - Backend changes (single-id delete, per-semester study-plan read, category mapping per regulation): raised as open questions in the review.
@@ -1015,7 +1019,7 @@ Phase 1 fix round 2 left two paths that still toast twice: curriculum-plan failu
 | 3.2 | done | 0488f4e | +e351adc sheet cache keyed by hsgEntityId, +d0ff9f4 term list from cisIdList; cold start 22 → 13 requests, reopen/revisit 0 |
 | 4.1 | done | 102cb2c | +26ab45b `.env.example` → `.env.development.local`; redirectUri = origin + "/" (same on the three registered hosts) |
 | 4.2 | done | 435f4cf | +5c7cbbf token only for exact API origins, lowercase `authorization` honoured, 401 path of a token-less request pinned; no call sites migrated yet |
-| 5.1 | | | |
-| 5.2 | | | |
-| 5.3 | | | |
-| 5.4 | | | |
+| 5.1 | done | 898be7b..488cd5a | selector → `recoil/curriculumMap/{categories,placement,credits,index}.js`, keyword table as `categoryPatterns.json` (accumulates every matching pattern in table order, as before); `buildCategoryHierarchy` lives in `credits.js`; `FOCUS_AREA_KEYWORDS` stays in code (different matching rule); 100-test selector suite byte-identical |
+| 5.2 | done | 36b1d45 | +4ad4f32 one toast per curriculum-plan and enrolment failure (hooks own the toast; API modules only rethrow), +3cb0139 degraded mode silent in every plan action, `syncActivePlan` on the helper; helper is `useActivePlanAction` (rules-of-hooks); `usePlanManager.js` 1016 → 884 lines |
+| 5.3 | done | 5842a8c | +93341ed strict borrowed-term query (null `referenceSemester` → no query), flags reset in `finally`; `useSmartSearch.js` 248 → 56, `SimilarCourses.jsx` 609 → 398, new `useVectorSearch.js`; 800 ms retry timers gone; no programme → empty result once instead of an endless retry |
+| 5.4 | done | 9da8d78 | +fdb7e5d (review round 1); ADR 0013 (Proposed) recommends Jotai for all client state if React 19 is wanted within a year, otherwise stay on Recoil and re-decide by 2027-11-01; spikes on local branches `spike/jotai` b071e36 and `spike/tanstack-query` f064c1a (not on this branch); migration plan `docs/superpowers/plans/2026-11-04-state-migration.md` awaits the user's decision |
