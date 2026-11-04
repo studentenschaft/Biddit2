@@ -49,9 +49,13 @@ import { formatEcts, toEcts } from "../../domain/credits";
  * The twelve-column layout only returns at xl: between md and xl the panel
  * is still too narrow for one-twelfth tracks, and "Events"/"ECTS" collided
  * there as well while the footer's "Total" shrank to "T...".
+ * The icon track is fixed (not `auto`) because each row is its own grid: a
+ * row with a lock and a warning icon would otherwise push its text cells out
+ * of line. Course names get two thirds of the text width, as the 6:3 split
+ * of the twelve-column layout does.
  */
 const ROW_GRID_CLASSES =
-  "grid grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem] gap-2 xl:grid-cols-12 xl:gap-4";
+  "grid grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,1fr)_3.5rem_3rem] gap-2 xl:grid-cols-12 xl:gap-4";
 
 /**
  * The "Exam check" line, which makes no red marker read as "checked, no

@@ -177,7 +177,7 @@ describe("semester summary column layout", () => {
     expect(rowOf(ects)).toBe(header);
     // Content-sized tracks for the numbers, shrinkable ones for the text.
     expect(header.className).toContain(
-      "grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem]",
+      "grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,1fr)_3.5rem_3rem]",
     );
     expect(header.className).toContain("gap-2");
   });
@@ -211,7 +211,7 @@ describe("semester summary column layout", () => {
     const courseRow = rowOf(screen.getByText("Fractional"));
     [total, courseRow].forEach((row) => {
       expect(row.className).toContain(
-        "grid-cols-[auto_minmax(0,1fr)_minmax(0,0.9fr)_3.5rem_3rem]",
+        "grid-cols-[2.5rem_minmax(0,2fr)_minmax(0,1fr)_3.5rem_3rem]",
       );
       // A sixth cell in the total row used to wrap onto a phantom grid row.
       expect(row.childElementCount).toBe(header.childElementCount);
