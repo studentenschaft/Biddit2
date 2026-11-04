@@ -27,12 +27,17 @@ The Recoil surface on `architecture-fixes-nov26` at 93341ed:
 | Measure | Count |
 |---|---|
 | Exported state nodes | 92 (40 `atom`, 1 `atomFamily`, 36 `selector`, 15 `selectorFamily`) |
-| Production files importing `recoil` | 98 |
-| Test files importing `recoil` | 58 (39 of them seed state with `initializeState`) |
-| Hook calls in production files | 149 (126 `useRecoilValue`-family reads and writes, 8 `useRecoilCallback`, all in `usePlanManager.js`) |
+| Production files importing `recoil` | 97 |
+| Test files importing `recoil` | 59 (39 of them seed state with `initializeState`) |
+| Hook calls in production files | 149 (141 `useRecoilValue`, `useRecoilState` and `useSetRecoilState` calls, 8 `useRecoilCallback`, all in `usePlanManager.js`) |
 | `snapshot.getPromise` calls | 13 (all in `usePlanManager.js`) |
 | Atom effects | 3 (two telemetry effects, one lazy loader in `examScheduleAtom.js` that uses `getInfo_UNSTABLE`) |
 | Async selectors | 3 (`cisIdListSelector`, two in `coursesTakenForRatings.js`) |
+
+File split used here and in the migration plan's import ratchet: a file is a
+test file when its path contains `__tests__/` or starts with `src/test/`
+(`git grep -lE "from ['\"]recoil['\"]" 93341ed -- app/src`, 156 files;
+`src/test/resilience/degradedMode.test.jsx` counts as a test).
 
 Phases 1 and 3 of the architecture-review fix plan already gave the server
 reads what a query library would add first: `catalogLoader.js` downloads each
@@ -44,7 +49,8 @@ ratings have a per-session cache (`sessionCache.js`, `courseSheetCache.js`).
 
 1. **Jotai for all client state.** Atoms, derived atoms and `atomFamily` map
    one to one onto atoms, selectors and selector families. Recoil and Jotai
-   can run side by side, so the move can be incremental.
+   can run side by side, so the move can be incremental, one connected part of
+   the selector graph at a time.
 2. **TanStack Query for server state, plus a small client store (Jotai or
    Zustand) for the rest.** Catalogs, study plans, enrolments, scorecards,
    curriculum plans and ratings become keyed queries; the remaining client
@@ -103,7 +109,8 @@ chunk; the baseline suite is 114 files and 1135 tests.
   (`useSmartSearchResults`) that joins `useAtomValue(smartSearchState)` with
   three Recoil selector reads. Each such bridge is temporary code. An
   incremental Jotai migration therefore moves whole connected parts of the
-  selector graph. Computed from the `get(...)` calls on 93341ed, 55 of the 92
+  selector graph. Computed from the `get(...)` calls on 93341ed (script and
+  node list in the appendix), 55 of the 92
   nodes form one connected graph around `unifiedCourseDataState`,
   `unifiedAcademicDataState` and `curriculumPlanState` (18 defining files,
   including the curriculum-map, academic, exam-schedule and filter-list
@@ -120,10 +127,13 @@ chunk; the baseline suite is 114 files and 1135 tests.
   async (get, set, ...args) => ..., deps))` replaces it line for line, and
   `await snapshot.getPromise(atom)` becomes `get(atom)`. One semantic
   difference: a Recoil snapshot is frozen at call time, while Jotai's `get`
-  returns the live value, also after an `await`. The eight
-  `useActivePlanAction` call sites read once, before their request, so they
-  behave the same; `switchPlan`, `createPlan`, `duplicatePlan` and
-  `importSelectedCourses` read more than once and need review.
+  returns the live value, also after an `await`. Every `usePlanManager`
+  callback reads all of its state before its first network call, so a
+  line-for-line conversion keeps the behaviour. The failure mode that can
+  occur is a different one: `useAtomCallback` rebuilds its function whenever
+  the callback reference changes, so without stable `useCallback`
+  dependencies the 15 functions `usePlanManager` returns change identity on
+  every render (Recoil's `[token]` dependency kept them stable).
 - **Selector families have a clean equivalent, with one exception.** Of the
   12 `selectorFamily` definitions in `unifiedCourseDataSelectors.js`, 11 take
   a semester string and become `atomFamily((semester) => atom((get) => ...))`
@@ -158,8 +168,8 @@ chunk; the baseline suite is 114 files and 1135 tests.
 
 | | 1. Jotai | 2. TanStack Query + client store | 3. Stay on Recoil |
 |---|---|---|---|
-| Migration size | All 92 nodes, 149 hook calls, 58 test files. Spike A moved 4 nodes and 12 hook calls with +210 / −180 changed lines in source and tests; extrapolated, 2,000 to 5,000 changed lines over about 100 production and 58 test files, in 4 to 5 phases | Option 1's client-store migration for everything that is not server state, plus about 9 server-state sources (2 done in Spike B, at about 150 changed source lines each when whitespace is ignored). Larger than option 1 in total | None |
-| Risk | Medium: mechanical per call site, but one large step: the 55-node connected graph (about 75 production and 45 test files) switches at once; the exam-plan effect and four `usePlanManager` callbacks need care | Higher: two libraries to introduce, the projection pattern (query cache copied into the store) until consumers switch, invalidation and `act` subtleties | Low now, rising: no fixes, and the first dependency that requires React 19 forces an unplanned migration |
+| Migration size | All 92 nodes, 149 hook calls, 59 test files. Spike A moved 4 nodes and 12 hook calls with +210 / −180 changed lines in source and tests; extrapolated, 2,000 to 5,000 changed lines over about 100 production and 59 test files, in 4 to 5 phases | Option 1's client-store migration for everything that is not server state, plus about 9 server-state sources (2 done in Spike B, at about 150 changed source lines each when whitespace is ignored). Larger than option 1 in total | None |
+| Risk | Medium: mechanical per call site, but one large step: the 55-node connected graph (about 75 production and 45 test files) switches at once; the exam-plan effect and the identity of the `usePlanManager` callbacks need care | Higher: two libraries to introduce, the projection pattern (query cache copied into the store) until consumers switch, invalidation and `act` subtleties | Low now, rising: no fixes, and the first dependency that requires React 19 forces an unplanned migration |
 | React 19 and concurrent rendering | Unblocks both once Recoil is removed; Jotai 3 declares `react >= 18` | Unblocks both once Recoil is removed; TanStack Query 5 declares `react ^18 \|\| ^19` | Blocked: Recoil throws on React 19; router transitions stay off |
 | Bundle at the end | about −62 kB minified (−70.6 kB Recoil, +8.5 kB Jotai) | about −24 kB with Jotai as the store (−70.6, +38.2, +8.5); Zustand not measured | unchanged |
 | Server-request behaviour | unchanged (Phase 1/3 loaders stay) | unchanged in count; adds invalidation, background refetch and devtools as options | unchanged |
@@ -203,6 +213,9 @@ If option 1 is accepted:
   deletes it.
 - Tests seed state through a Jotai store instead of `initializeState`; a
   shared helper keeps that to one line per test.
+- The main risk is one large step: the 55-node graph (about 75 production and
+  45 test files) switches on a sub-branch, with the suite red between the
+  steps of that task.
 - `package.json` `engines` moves to `node >= 22.12` (Jotai 3).
 - Removing `useTransitions={false}` from the router becomes possible after
   the last Recoil import is gone. It changes navigation timing, so it is a
@@ -212,3 +225,64 @@ If option 1 is accepted:
 If option 3 is chosen instead: no code changes now. Recoil remains an
 unmaintained dependency with a hard React 18 ceiling, and the exit grows with
 every new atom.
+
+## Appendix: how the connected graph was computed
+
+Run from `app/` on a checkout of 93341ed (`python3 graph.py`). It treats every
+`export const X = atom|atomFamily|selector|selectorFamily(` in a non-test file
+as a node, takes the text up to the next such definition in the same file as
+its body, and adds an undirected edge for each `get(Y)` in that body where `Y`
+is another node. Helper functions that call `get` indirectly are not followed.
+
+```python
+import os, re
+src = {}
+for root, _, names in os.walk("src"):
+    if "__tests__" in root or root.startswith("src/test"):
+        continue
+    for n in names:
+        if n.endswith((".js", ".jsx")):
+            src[os.path.join(root, n)] = open(os.path.join(root, n)).read()
+defs = {}
+for path, text in src.items():
+    ms = list(re.finditer(r"export const (\w+) = (atom|atomFamily|selector|selectorFamily)\(", text))
+    for i, m in enumerate(ms):
+        end = ms[i + 1].start() if i + 1 < len(ms) else len(text)
+        defs[m.group(1)] = (path, text[m.start():end])
+adj = {n: set() for n in defs}
+for n, (_, body) in defs.items():
+    for d in set(re.findall(r"\bget\(\s*(\w+)", body)) & set(defs):
+        adj[n].add(d); adj[d].add(n)
+seen, stack = set(), ["unifiedCourseDataState"]
+while stack:
+    x = stack.pop()
+    if x not in seen:
+        seen.add(x); stack.extend(adj[x])
+print(len(defs), "nodes;", len(seen), "in the component of unifiedCourseDataState;",
+      len({defs[n][0] for n in seen}), "defining files")
+print(", ".join(sorted(seen)))
+```
+
+Output on 93341ed: `92 nodes; 55 in the component of unifiedCourseDataState; 18 defining files`:
+academicDataInitializationSelector, academicDataLoadedSelector,
+academicProgressSelector, allSemesterCoursesSelector, availableCoursesSelector,
+calendarEntriesSelector, classificationsListSelector, courseInfoState,
+coursesWithTypesSelector, currentProgramDataSelector,
+currentProgramTranscriptSelector, currentSemesterSelector,
+curriculumCategoriesSelector, curriculumCategoryStructureSelector,
+curriculumMapSelector, curriculumPlanState, curriculumProgramSelector,
+curriculumSemestersSelector, ectsListSelector, enrolledCoursesSelector,
+examCalendarEventsSelector, examPlanSelector, examPlanState,
+filteredCoursesSelector, isFutureSemesterSelected, languageListSelector,
+latestValidTermSelector, lecturersListSelector, legacyAcademicDataSelector,
+mainProgramSelector, mainProgramStudyPlanSelector, myCoursesSelector,
+overallProgressSelector, plannedExamsSelector, referenceSemester,
+selectedCourseInfoSelector, selectedCourseSemesterSelector,
+selectedCoursesSelector, selectedSemesterSelector, selectionOptionsState,
+semesterCisIdSelector, semesterCourseDataSelector, semesterCoursesSelector,
+semesterIsCurrentSelector, semesterIsProjectedSelector,
+semesterMetadataSelector, semesterRatingsSelector, smartSearchActiveSelector,
+smartSearchResultsSelector, smartSearchState, studyOverviewViewSelector,
+transcriptViewSelector, unifiedAcademicDataState, unifiedCourseDataState,
+unifiedStudyPlanSelector. (`smartSearchState` and the two smart-search
+selectors leave the graph in plan Task 0.2 through the bridge hook.)

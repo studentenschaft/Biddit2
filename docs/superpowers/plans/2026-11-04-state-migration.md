@@ -35,7 +35,7 @@ The plan proceeds with the defaults below. Change them here before Phase 0 start
 | Is a React 19 upgrade wanted within the next year? | Yes. ADR 0013 recommends this plan only under that assumption; if the answer is no, do not run it. | Whole plan |
 | Jotai major version | 3.x. It requires Node 22.12 or later, so `engines.node` becomes `>=22.12`; CI already runs Node 22. | Task 0.1 |
 | Provider | An explicit Jotai `<Provider>` inside `RecoilRoot` in `main.jsx`; every test gets its own store. | Task 0.1 |
-| How the connected graph moves | One switch on a sub-branch (Task 2.1). The alternative, a Recoil atom effect that mirrors each source atom into Jotai so selectors can move in slices, was not tested in the spikes and adds temporary sync code. | Task 2.1 |
+| How the connected graph moves | One switch on a sub-branch (Task 2.1). The alternative, a Recoil atom effect that mirrors each source atom into Jotai so selectors can move in slices, was not tested in the spikes and adds temporary sync code. This is an open design question for the user: choosing the mirror means re-planning Phase 2 (no task here implements it) before Phase 2 starts. | Task 2.1 |
 | Directory name | Keep `src/components/recoil/` during the migration; Task 3.2 renames it to `src/components/state/`. | Task 3.2 |
 
 ## Review Focus
@@ -46,7 +46,7 @@ Input classes the migration could break that no existing test pins. Each line na
 2. Two renders with the test helper must not share state. Task 0.1 (`renderWithState.test.jsx` "two renders get independent stores").
 3. `semesterCoursesSelector({ semester, type })` takes an object: the same parameters must return the same atom, or every render subscribes to a new one. Task 2.1 (`expect(semesterCoursesSelector({ semester: "HS25", type: "enrolled" })).toBe(semesterCoursesSelector({ semester: "HS25", type: "enrolled" }))`).
 4. A seeded exam plan must not trigger a load, and an unseeded one loads once per semester per store. Task 2.1 (`examPlanState.test.jsx` keeps its assertions on a store-based harness).
-5. Jotai's `get` returns live state, a Recoil snapshot did not: a plan action whose state changes while its request is in flight must still post to the plan that was active when it was called. Task 2.1 (`usePlanManager.test.jsx` "importSelectedCourses posts to the plan active at call time": change `activePlanId` in the store while the MSW handler is pending; assert the request path carries the original id).
+5. `useAtomCallback` rebuilds its function whenever the callback reference changes, while `useRecoilCallback(..., [token])` kept the plan-manager functions stable. Unstable identities re-run every effect that lists them (for example the plan load in `CurriculumMap`) and refetch. Task 2.1 (`usePlanManager.test.jsx` "returns stable functions across re-renders": `renderHook` with a fixed token, `rerender()`, then each of the 15 returned functions is `toBe` the one from the first render; green on Recoil before the switch, fails if a converted callback lacks stable `useCallback` dependencies).
 6. Smart search results must still fall back to the keyword pool when the semester changes under them, after the bridge hook becomes derived atoms. Task 2.1 (`smartSearchList.test.jsx`, unchanged assertions).
 
 ---
@@ -66,7 +66,7 @@ Record the main-chunk size at each gate in the PR body (baseline 647,148 B at 93
 | Phase | Parallel groups (run left to right; items in one group may run concurrently) |
 |---|---|
 | 0 | {0.1} then {0.2} |
-| 1 | {1.1} then {1.2, 1.3} then {1.4} |
+| 1 | {1.1} then {1.2} then {1.3} then {1.4} (sequential: each lowers the limits in `check-recoil-imports.mjs`) |
 | 2 | {2.1} |
 | 3 | {3.1} then {3.2} |
 
@@ -95,13 +95,14 @@ Branch `refactor/state-jotai-phase-0`.
     // recoil: (recoilInterface) => void, forwarded to RecoilRoot initializeState (option removed in Task 3.1)
     // atoms: Array<[atom, value]>, set on a fresh createStore() before the first render
     // -> { wrapper, store }  (for renderHook)
-  export function renderWithState(ui, options) // -> RTL render result plus { store }
+  export function renderWithState(ui, { recoil, atoms = [] } = {}) // -> RTL render result plus { store }
+  // Components: renderWithState(<X />, { atoms: [[someAtom, value]] }); hooks: renderHook(fn, { wrapper: stateWrapper({ atoms }).wrapper })
   ```
-  `check-recoil-imports.mjs` counts files under `src/` that import from `"recoil"`, separately for production and test files (`__tests__/`, `src/test/`), prints both, and exits 1 when either exceeds `MAX_PRODUCTION_FILES` / `MAX_TEST_FILES` (initially 98 and 58).
+  `check-recoil-imports.mjs` counts files under `src/` that import from `"recoil"`, separately for production and test files, prints both, and exits 1 when either exceeds `MAX_PRODUCTION_FILES` / `MAX_TEST_FILES`. Split rule (the same as ADR 0013's table): a file is a test file when its path contains `__tests__/` or starts with `src/test/`. Initial limits: the counts on the branch point. On 93341ed they are 97 production and 59 test files (`src/test/resilience/degradedMode.test.jsx` counts as a test); re-count on `dev` when the task starts and use those numbers.
 
 - [ ] **Step 1: Write the failing helper tests**: "two renders get independent stores" (set an atom through the first render's store; the second render reads the default); "seeds atoms before the first render" (a probe component reads the seeded value on its first render); "forwards the recoil seed" (a Recoil atom seeded through `recoil` is visible).
 - [ ] **Step 2: Run to verify failure, implement the helper, re-run**: `npx vitest run --testTimeout=10000 src/test/__tests__/renderWithState.test.jsx` → FAIL, then PASS.
-- [ ] **Step 3: Install, wire the provider, add the script and the CI step**; `npm run check-recoil` prints 98 and 58 and exits 0.
+- [ ] **Step 3: Install, wire the provider, add the script and the CI step**; `npm run check-recoil` prints the two counts (97 and 59 if `dev` still matches 93341ed) and exits 0.
 - [ ] **Step 4: Full suite, lint, build; commit** `chore(state): add Jotai beside Recoil, per-test store helper and a Recoil import ratchet`
 
 ### Task 0.2: Navigation and smart-search state on Jotai (port of Spike A)
@@ -125,7 +126,7 @@ Branch `refactor/state-jotai-phase-0`.
   ```
   `smartSearchResultsSelector` and `smartSearchActiveSelector` are deleted.
 
-- [ ] **Step 1: Port the spike**: `git cherry-pick -n b071e36`, delete `src/spike/`, keep the package changes from Task 0.1. Replace the spike's write-through atom in `selectedTabAtom.js` with `atomWithOnChange`.
+- [ ] **Step 1: Port the spike**: `git cherry-pick -n b071e36`. It conflicts in `app/src/main.jsx`, `app/package.json` and `app/package-lock.json`, because Task 0.1 already added the provider and the dependency: keep Task 0.1's versions (`git checkout HEAD -- app/src/main.jsx app/package.json app/package-lock.json`). Delete `src/spike/`. Replace the spike's write-through atom in `selectedTabAtom.js` with `atomWithOnChange`.
 - [ ] **Step 2: Move `isLeftViewVisible` and `courseDetailsSemesterAtom`** and their readers; add the StrictMode case for `isLeftViewVisible` to `analyticsAtomEffects.test.jsx`.
 - [ ] **Step 3: Move the touched tests onto `renderWithState`**; assertions stay as they are.
 - [ ] **Step 4: Run** `npx vitest run --testTimeout=10000 src/components/recoil src/components/leftCol src/components/helpers/__tests__/useOpenCourseDetails.test.jsx src/components/rightCol src/pages` → PASS. Full suite, lint, lower the `check-recoil` limits, build.
@@ -179,7 +180,7 @@ A hook that writes both a moved atom and a Phase 2 atom (for example `useUnified
 
 **Files:**
 - Modify: `recoil/authAtom.js`, `recoil/cisIdListAtom.js`, `recoil/cisIdListSelector.js` (async selector), `recoil/latestValidTermProjection.js`, `recoil/coursesTakenForRatings.js` (two atoms, two async selectors), readers found by `grep` (expected: `auth/AuthProvider.jsx`, `useInitializeScorecards.js`, `usePlanManager.js` (its `useRecoilValue(authTokenState)` only), `useTermSelection.js`, `useVectorSearch.js`, `useCustomGrades.js`, `EventListContainer.jsx`, `LockOpen.jsx`, `ReviewButton.jsx`, `ReviewCourse.jsx`, `CourseInfo.jsx`, `CurriculumMap.jsx`, `Heatmap.jsx`, `StudyOverview.jsx`, `Transcript.jsx`, `studyOverviewHelpers.js`)
-- Test: `recoil/__tests__/coursesTakenForRatings.test.jsx` is the acceptance test (one term-list read and one `MyCourses` request per term on a cold start); the 21 tests that seed `authTokenState` move the seed to `renderWithState({ atoms: [[authTokenState, "t"]] })`
+- Test: `recoil/__tests__/coursesTakenForRatings.test.jsx` is the acceptance test (one term-list read and one `MyCourses` request per term on a cold start); the 21 tests that seed `authTokenState` move the seed to `renderWithState(ui, { atoms: [[authTokenState, "t"]] })` (components) or `stateWrapper({ atoms: [[authTokenState, "t"]] })` (`renderHook`)
 
 **Interfaces:**
 - Produces: `authTokenState`, `cisIdList`, `latestValidTermProjectionState`, `coursesRatedState`, `coursesTakenForRatingState` as Jotai atoms; `cisIdListSelector` and the ratings-prompt selectors as async derived atoms (`atom(async (get) => ...)`), read with `useAtomValue` under the existing `Suspense` boundaries.
@@ -205,7 +206,7 @@ Work on a sub-branch `refactor/state-jotai-graph` cut from the phase branch. Com
 - Modify (definitions): `unifiedCourseDataAtom.js`, `unifiedCourseDataSelectors.js`, `selectionOptionsAtom.js`, `courseInfoAtom.js`, `classificationsListSelector.js`, `ectsListSelector.js`, `languageListSelector.js`, `lecturersListSelector.js`, `isFutureSemesterSelected.js`, `calendarEntriesSelector.js`, `examScheduleAtom.js`, `examScheduleSelectors.js`, `unifiedAcademicDataAtom.js`, `unifiedAcademicDataSelectors.js`, `coursesWithTypesSelector.js`, `curriculumPlanAtom.js`, `curriculumPlansRegistryAtom.js`, `curriculumPlansSelectors.js`, `curriculumMap/index.js`, `smartSearchAtom.js`
 - Modify (writers and readers): every production file `grep -rlE "useRecoil|useSetRecoilState" src` still lists after Phase 1 (expected about 55, among them `useUnifiedCourseDataWriters.js`, `useUnifiedCourseData.js`, `useUnifiedAcademicData.js`, `usePlanManager.js`, `useCurriculumPlan.js`, `EventListContainer.jsx`, the `leftCol/topRow/Select*.jsx` filters, `Calendar.jsx`, `Heatmap.jsx`, `SemesterSummary.jsx`, `CourseInfo.jsx`, `ExamSchedule.jsx`, `ExamTable.jsx`, the `CurriculumMap/` components, `StudyOverview.jsx`, `Transcript.jsx`, `TabComponent.jsx`)
 - Delete: `src/components/helpers/useSmartSearchResults.js` (BRIDGE-1)
-- Test: every test that seeds or reads these nodes (expected about 45, listed by `grep -rlE "initializeState|snapshot_UNSTABLE|RecoilRoot" src`), including the 8 `snapshot_UNSTABLE` selector tests and `src/test/resilience/degradedMode.test.jsx`
+- Test: every test that seeds or reads these nodes (expected about 45, listed by `grep -rlE "initializeState|snapshot_UNSTABLE|RecoilRoot" src`), including the 8 `snapshot_UNSTABLE` selector tests and `src/test/resilience/degradedMode.test.jsx`; plus `rightCol/__tests__/calendarEventSheetGating.test.jsx` and `rightCol/__tests__/calendarExamEvents.test.jsx`, which the grep misses: they stub `Calendar.jsx`'s reads with `vi.mock("recoil", ...)`, and that mock stops intercepting after Step 4, so they need a Jotai seed instead
 
 **Interfaces:**
 - Consumes: `renderWithState` (Task 0.1), `isSmartSearchActive`, `smartSearchResults` (Task 0.2), the `useActivePlanAction` proof in `spike/jotai:app/src/spike/jotaiPlanActionProof.js`.
@@ -223,14 +224,14 @@ Work on a sub-branch `refactor/state-jotai-graph` cut from the phase branch. Com
     // a value set on it wins; otherwise the first read in a store starts loadExamPlan(semester)
     // through unwrap() and returns { status: "loading", plan: null } until it settles
   ```
-  `usePlanManager` keeps its return value. `useActivePlanAction(token, action, options)` becomes `useAtomCallback(useCallback(async (get, set, ...args) => ..., [token, ...]))`; each `await snapshot.getPromise(x)` becomes `get(x)`, read once at the start of the callback (as before) so in-flight changes do not leak in.
+  `usePlanManager` keeps its return value. `useActivePlanAction(token, action, options)` becomes `useAtomCallback(useCallback(async (get, set, ...args) => ..., deps))` with the same dependencies as today (`[token]`; `[token, isDegradedMode]` for `loadPlans`). The inline `action` closure must not be a dependency (the spike proof lists it, which is fine for a proof but unstable in the hook): keep it in a ref or build it inside the `useCallback`. Each `await snapshot.getPromise(x)` becomes `get(x)`, read once at the start of the callback as before.
 
 - [ ] **Step 1: Pin before switching (green on Recoil)**: add the Review Focus 5 test to `usePlanManager.test.jsx`. Run `npx vitest run --testTimeout=10000 src/components/helpers/__tests__/usePlanManager.test.jsx` → PASS. Commit. (The Review Focus 3 identity test only applies to `atomFamily`; it is added in Step 5.)
 - [ ] **Step 2: Convert the definitions**, file by file in the order of the Files list (atoms first, then selectors that read them). `selector({ key, get: ({ get }) => B })` becomes `atom((get) => B)`; families as above; the exam-plan loader as above. Commit.
 - [ ] **Step 3: Convert the writers** (`useUnifiedCourseDataWriters`, `useUnifiedAcademicData`, `useCurriculumPlan`) and `usePlanManager` (8 `useRecoilCallback`, 13 `snapshot.getPromise`). Commit.
 - [ ] **Step 4: Convert the readers**: `useRecoilValue` → `useAtomValue`, `useRecoilState` → `useAtom`, `useSetRecoilState` → `useSetAtom` for the moved nodes. Delete BRIDGE-1 and read the two smart-search atoms in `EventListContainer.jsx`. Commit.
 - [ ] **Step 5: Convert the selector tests**: `snapshot_UNSTABLE(({ set }) => ...)` → `const store = createStore(); store.set(...)`; `snapshot.getLoadable(x).getValue()` → `store.get(x)`. Add the Review Focus 3 identity test to `filteredCoursesSelector.test.js`. Run `npx vitest run --testTimeout=10000 src/components/recoil` → PASS. Commit.
-- [ ] **Step 6: Convert the component and hook tests** to `renderWithState({ atoms: [...] })`. Commit.
+- [ ] **Step 6: Convert the component and hook tests** to `renderWithState(ui, { atoms: [...] })` or `stateWrapper({ atoms: [...] })`, including the two `vi.mock("recoil")` tests. Commit.
 - [ ] **Step 7: Verify**: `grep -rnE "from ['\"]recoil['\"]" src` lists no file that mentions a node of this task; `npx vitest run --testTimeout=10000` → all pass; the Review Focus 3 to 6 tests pass; lint; `check-recoil` with lowered limits; build and `check-bundle`. Merge the sub-branch: `git merge --no-ff refactor/state-jotai-graph -m "refactor(state): course, academic and curriculum-plan state on Jotai"`.
 
 **Phase 2 gate**, a browser smoke test by the user on a production build (`npm run build && npm run preview`: course list with filters, smart search, wishlist toggle, Calendar, Curriculum Map drag and drop, Transcript), and PR "State migration phase 2: selector graph (ADR 0013)".
