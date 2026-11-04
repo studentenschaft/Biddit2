@@ -78,7 +78,7 @@ export default function SelectSemester() {
         <div className="w-full h-10 bg-gray-200 rounded animate-pulse" />
         <div className="w-full h-10 bg-gray-200 rounded animate-pulse" />
         <div className="w-full h-10 bg-gray-200 rounded animate-pulse" />
-        <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 xl:grid-cols-3">
           <div className="h-10 bg-gray-200 rounded animate-pulse" />
           <div className="h-10 bg-gray-200 rounded animate-pulse" />
           <div className="h-10 bg-gray-200 rounded animate-pulse" />
@@ -130,8 +130,10 @@ export default function SelectSemester() {
         <div className="text-sm">
           <SelectClassification className="w-full" />
           <SelectLecturer className="w-full" />
+          {/* One row only from xl: between md and xl the left column is too
+              narrow for three placeholders side by side. */}
           <div
-            className="grid grid-cols-1 md:grid-cols-3"
+            className="grid grid-cols-1 xl:grid-cols-3"
             style={{ marginBottom: "10px" }}
           >
             <SelectEcts />

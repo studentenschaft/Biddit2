@@ -169,13 +169,16 @@ const Row = memo(function Row({ index, style, data }) {
             />
           )}
         </div>
+        {/* Below xl the twelfth-columns are narrower than the rating and the
+            ECTS figure, so the line becomes a flex row: both keep their
+            width and only the classification truncates. */}
         <div
-          className={`text-xs grid grid-cols-12 ${
+          className={`text-xs flex gap-x-2 xl:grid xl:grid-cols-12 xl:gap-x-0 ${
             wasPreviouslyEnrolled ? "text-gray-400" : "text-gray-700"
           }`}
         >
           {event && event.avgRating && (
-            <p className="flex col-span-2 ">
+            <p className="flex shrink-0 whitespace-nowrap col-span-2">
               <StarIcon
                 width={12}
                 color={wasPreviouslyEnrolled ? "#9CA3AF" : "#006625"}
@@ -183,10 +186,10 @@ const Row = memo(function Row({ index, style, data }) {
               {event.avgRating}
             </p>
           )}
-          <p className="hidden col-span-2 truncate md:block">
+          <p className="hidden shrink-0 whitespace-nowrap col-span-2 xl:truncate md:block">
             {event ? `${formatEcts(toEcts(event.credits))} ECTS` : "NA"}
           </p>
-          <p className="col-span-8 truncate">
+          <p className="min-w-0 col-span-8 truncate">
             {event ? `${event.classification}` : "NA"}
           </p>
         </div>
@@ -199,7 +202,7 @@ const Row = memo(function Row({ index, style, data }) {
         disabled={isEnrolled}
         data-tooltip-id={isEnrolled ? "course-list-tooltip" : undefined}
         data-tooltip-content={isEnrolled ? "You are already enrolled in this course" : undefined}
-        className={`flex justify-center items-center h-full w-custom64 shadow-sm rounded-lg ml-3 transition duration-500 ease-in-out ${
+        className={`flex justify-center items-center h-full w-custom64 md:w-12 xl:w-custom64 shadow-sm rounded-lg ml-3 md:ml-2 xl:ml-3 transition duration-500 ease-in-out ${
           wasPreviouslyEnrolled
             ? "bg-gray-100 border-gray-300 text-gray-400"
             : "bg-white"
