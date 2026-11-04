@@ -51,7 +51,7 @@ export const deleteCourse = async (
   studyPlanId,
   eventId,
   token,
-  { reportErrors = true } = {}
+  { reportErrors = true, throwOnError = false } = {}
 ) => {
   try {
     log.debug(
@@ -70,11 +70,13 @@ export const deleteCourse = async (
     log.debug("SHSG API Call succesful; deleteCourse res.data", res.data);
     return true;
   } catch (err) {
-    // Never rethrows: callers delete speculatively under several id formats, so
-    // a 404 on the wrong one is expected. Bulk callers pass reportErrors: false
-    // and report once from the returned count.
-    if (reportErrors) errorHandlingService.handleError(err);
+    // Callers delete speculatively under several id formats, so a 404 on the
+    // wrong one is expected. Bulk callers pass reportErrors: false and report
+    // once from the returned count; throwOnError: true rethrows the error
+    // unreported, so the caller can report the real cause once.
     console.error("SHSG API Call: Error deleting course:", err);
+    if (throwOnError) throw err;
+    if (reportErrors) errorHandlingService.handleError(err);
     return false;
   }
 };

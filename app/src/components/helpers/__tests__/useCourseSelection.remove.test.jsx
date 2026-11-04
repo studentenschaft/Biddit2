@@ -2,14 +2,19 @@
  * Wishlist removal deletes under at most two ids (course number and a legacy
  * catalog id) in parallel, clears the local entry under both, and reports an
  * error only when no delete succeeded. Runs against MSW, not a mocked api.js.
+ * The toast tests stub apiClient.delete instead: a real 500 would wait through
+ * the client's retry backoff.
  */
 
 import { act, renderHook } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
+import { toast } from "react-toastify";
 import { RecoilRoot, useRecoilValue } from "recoil";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "../../../test/mocks/server";
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
+import { apiClient } from "../axiosClient";
+import { DegradedModeError } from "../degradedModeService";
 import { studyPlanLoadState } from "../../recoil/studyPlanLoadState";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { useCourseSelection } from "../useCourseSelection";
@@ -148,6 +153,70 @@ describe("useCourseSelection wishlist removal", () => {
 
     expect(handleError).toHaveBeenCalledTimes(1);
     expect(result.current.loadState.version).toBe(versionBefore + 1);
+  });
+
+  describe("reports the real delete error, so its classification decides on a toast", () => {
+    let toastError;
+
+    beforeEach(() => {
+      handleError.mockRestore();
+      handleError = vi.spyOn(errorHandlingService, "handleError");
+      toastError = vi.spyOn(toast, "error").mockImplementation(() => {});
+    });
+
+    /** Every delete rejects with the error `makeError()` returns. */
+    const failAllDeletes = (makeError) =>
+      vi.spyOn(apiClient, "delete").mockImplementation(async () => {
+        throw makeError();
+      });
+
+    it("shows no toast when the kill switch rejects every delete", async () => {
+      failAllDeletes(() => new DegradedModeError("SHSG API disabled"));
+      const { result } = renderRemoval([COURSE_NUMBER]);
+      const versionBefore = result.current.loadState.version;
+
+      await remove(result, { id: LEGACY_ID, courseNumber: COURSE_NUMBER });
+
+      expect(handleError).toHaveBeenCalledTimes(1);
+      expect(handleError.mock.calls[0][0].isDegradedModeError).toBe(true);
+      expect(toastError).not.toHaveBeenCalled();
+      expect(result.current.loadState.version).toBe(versionBefore + 1);
+    });
+
+    it("shows no toast when every delete fails offline", async () => {
+      failAllDeletes(() =>
+        Object.assign(new Error("Network Error"), {
+          code: "ERR_NETWORK",
+          _isNetworkError: true,
+        }),
+      );
+      const { result } = renderRemoval([COURSE_NUMBER]);
+      const versionBefore = result.current.loadState.version;
+
+      await remove(result, { id: LEGACY_ID, courseNumber: COURSE_NUMBER });
+
+      expect(handleError).toHaveBeenCalledTimes(1);
+      expect(toastError).not.toHaveBeenCalled();
+      expect(result.current.loadState.version).toBe(versionBefore + 1);
+    });
+
+    it("shows exactly one toast when every delete fails with a 500 after retries", async () => {
+      failAllDeletes(() =>
+        Object.assign(new Error("Request failed with status code 500"), {
+          response: { status: 500, data: {} },
+          _isMaxRetriesExceeded: true,
+        }),
+      );
+      const { result } = renderRemoval([COURSE_NUMBER]);
+      const versionBefore = result.current.loadState.version;
+
+      await remove(result, { id: LEGACY_ID, courseNumber: COURSE_NUMBER });
+
+      expect(handleError).toHaveBeenCalledTimes(1);
+      expect(handleError.mock.calls[0][0].response.status).toBe(500);
+      expect(toastError).toHaveBeenCalledTimes(1);
+      expect(result.current.loadState.version).toBe(versionBefore + 1);
+    });
   });
 
   it("clears a local entry stored under the legacy catalog id", async () => {

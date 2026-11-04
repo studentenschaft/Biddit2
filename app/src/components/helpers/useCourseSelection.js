@@ -98,19 +98,19 @@ export function useCourseSelection({
 
           // Only one id normally exists on the server; the other one's 404 is
           // expected, so the removal succeeded if any delete did.
-          const results = await Promise.all(
+          const results = await Promise.allSettled(
             deleteIds.map((id) =>
-              deleteCourse(studyPlanId, id, authToken, { reportErrors: false })
+              deleteCourse(studyPlanId, id, authToken, { throwOnError: true })
             )
           );
-          if (results.some(Boolean)) {
+          if (results.some((r) => r.status === "fulfilled")) {
             log.debug(
               `✅ Course ${courseNumber} deleted from backend (studyPlan: ${studyPlanId})`
             );
           } else {
-            errorHandlingService.handleError(
-              new Error("The course could not be removed from your wishlist.")
-            );
+            // Report the real error so its classification decides: offline,
+            // degraded mode and session expiry already have their own UI.
+            errorHandlingService.handleError(results[0].reason);
             invalidateStudyPlan();
           }
         } else {
