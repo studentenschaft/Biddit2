@@ -9,9 +9,9 @@ import { getDegradedMode, DegradedModeError } from "./degradedModeService";
 import { log } from "./log";
 import { config as appConfig } from "../../config";
 
-const hostnameOf = (url) => {
+const parseUrl = (url) => {
   try {
-    return new URL(url, window.location.origin).hostname;
+    return new URL(url, window.location.origin);
   } catch {
     return null;
   }
@@ -25,21 +25,13 @@ const hostnameOf = (url) => {
  * @returns {boolean}
  */
 export const isShsgHost = (url) =>
-  hostnameOf(url) === new URL(appConfig.shsgApiBase).hostname;
+  parseUrl(url)?.hostname === new URL(appConfig.shsgApiBase).hostname;
 
-/**
- * Whether a request URL targets one of the two token-protected APIs (the
- * university API or the SHSG API). Other hosts never receive the token.
- * @param {string} url
- * @returns {boolean}
- */
-const isTokenHost = (url) => {
-  const hostname = hostnameOf(url);
-  return (
-    hostname === new URL(appConfig.unisgApiBase).hostname ||
-    hostname === new URL(appConfig.shsgApiBase).hostname
+// Exact origin (scheme, host, port), so the token never travels over http.
+const isTokenHost = (url) =>
+  [appConfig.shsgApiBase, appConfig.unisgApiBase].some(
+    (base) => parseUrl(url)?.origin === new URL(base).origin,
   );
-};
 
 const withBearer = (token, headers = {}) =>
   typeof token === "string" && token !== ""
@@ -147,7 +139,9 @@ class ApiClient {
         // Callers that pass no token get one acquired here. An explicit
         // header always wins; a null token sends the request without one and
         // its 401 runs the refresh path below.
-        if (!config.headers.Authorization && isTokenHost(config.url)) {
+        const hasAuthorization =
+          config.headers.Authorization || config.headers.authorization;
+        if (!hasAuthorization && isTokenHost(config.url)) {
           const token = await getAccessToken();
           if (token) config.headers.Authorization = `Bearer ${token}`;
         }

@@ -492,6 +492,13 @@ describe("Token acquisition", () => {
     Object.defineProperty(navigator, "onLine", { value: true, writable: true });
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+    // mockReset restores the file-level default (resolves null).
+    vi.mocked(tokenService.getAccessToken).mockReset();
+    degradedModeService._resetForTests();
+  });
+
   it("sends the acquired token when the caller passes none", async () => {
     recordAuthorization(`${SHSG_API}/study-plans`);
 
@@ -533,6 +540,48 @@ describe("Token acquisition", () => {
 
     expect(seenAuthorization).toBeNull();
     expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("never acquires a token for a plain-http URL to an API host", async () => {
+    recordAuthorization("http://api.shsg.ch/x");
+
+    await apiClient.get("http://api.shsg.ch/x");
+
+    expect(seenAuthorization).toBeNull();
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("keeps an explicit lowercase authorization header", async () => {
+    recordAuthorization(`${SHSG_API}/study-plans`);
+
+    await apiClient.get(`${SHSG_API}/study-plans`, undefined, {
+      headers: { authorization: "Bearer explicit" },
+    });
+
+    expect(seenAuthorization).toBe("Bearer explicit");
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("refreshes once on 401 and retries without acquiring again", async () => {
+    vi.mocked(tokenService.getAccessToken).mockResolvedValue("stale");
+    vi.spyOn(tokenService, "getRefreshToken").mockResolvedValue("refreshed");
+    const seen = [];
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, ({ request }) => {
+        const authorization = request.headers.get("Authorization");
+        seen.push(authorization);
+        return authorization === "Bearer stale"
+          ? HttpResponse.json({ message: "Token expired" }, { status: 401 })
+          : HttpResponse.json({ plans: [] });
+      }),
+    );
+
+    const response = await apiClient.get(`${SHSG_API}/study-plans`);
+
+    expect(response.status).toBe(200);
+    expect(seen).toEqual(["Bearer stale", "Bearer refreshed"]);
+    expect(tokenService.getAccessToken).toHaveBeenCalledTimes(1);
+    expect(tokenService.getRefreshToken).toHaveBeenCalledTimes(1);
   });
 
   it("does not acquire a token for an SHSG request rejected by degraded mode", async () => {
