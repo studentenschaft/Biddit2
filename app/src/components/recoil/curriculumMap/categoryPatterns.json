@@ -1,0 +1,74 @@
+[
+  {
+    "keywords": ["compulsory", "pflicht", "mandatory"],
+    "values": [
+      "compulsory",
+      "pflicht",
+      "Pflichtbereich",
+      "mandatory",
+      "Pflicht"
+    ]
+  },
+  {
+    "keywords": ["context", "kontext"],
+    "values": ["context", "kontext", "Contextual Studies", "Kontextstudium"]
+  },
+  {
+    "keywords": ["focus", "schwerpunkt", "major", "concentration"],
+    "values": [
+      "focus",
+      "schwerpunkt",
+      "Focus Area",
+      "Major",
+      "Concentration",
+      "Schwerpunktfächer"
+    ]
+  },
+  {
+    "keywords": ["method", "forschung", "research"],
+    "values": ["method", "forschung", "Research Methods", "Forschungsmethoden"]
+  },
+  {
+    "keywords": ["thesis", "arbeit", "dissertation"],
+    "values": [
+      "thesis",
+      "masterarbeit",
+      "bachelorarbeit",
+      "Thesis",
+      "Master Thesis",
+      "Bachelor Thesis"
+    ]
+  },
+  {
+    "keywords": ["project", "projekt"],
+    "values": ["project", "projekt", "Projects", "Projekte"]
+  },
+  {
+    "keywords": ["core", "kern", "foundation"],
+    "values": ["core", "kern", "Core", "Foundation", "Kernbereich"]
+  },
+  {
+    "keywords": ["skill", "kompetenz", "competence"],
+    "values": [
+      "skills",
+      "Skills",
+      "kompetenz",
+      "Kompetenz",
+      "Handlungskompetenz",
+      "Competences"
+    ]
+  },
+  {
+    "keywords": ["seminar"],
+    "values": ["seminar", "Seminar", "Seminare"]
+  },
+  {
+    "keywords": ["integration", "capstone"],
+    "values": ["integration", "capstone", "Integrationsfächer", "Capstone"]
+  },
+  {
+    "keywords": ["elective", "wahl"],
+    "excludeKeywords": ["pflicht"],
+    "values": ["elective", "wahl", "Wahlbereich", "Elective", "Wahl"]
+  }
+]

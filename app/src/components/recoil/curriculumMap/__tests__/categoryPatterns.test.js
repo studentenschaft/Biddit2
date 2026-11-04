@@ -1,11 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { _testHelpers } from '../../curriculumMapSelector';
+import { extractClassifications } from '../categories.js';
+import categoryPatterns from '../categoryPatterns.json';
 import MBI from '../../../testing/mockData/Scorecard_MBI.json';
 import BBWL from '../../../testing/mockData/Scorecard_BBWL.json';
 import BIA from '../../../testing/mockData/Scorecard_BIA.json';
 import BSC from '../../../testing/mockData/Scorecard_BSC.json';
-
-const { extractClassifications } = _testHelpers;
 
 const collectTitleNames = (items, names) => {
   (items || []).forEach((item) => {
@@ -109,6 +108,13 @@ describe('category patterns', () => {
         "Wahlpflicht": "compulsory, pflicht, Pflichtbereich, mandatory, Pflicht",
       }
     `);
+  });
+
+  it('holds only lowercase keywords, since names are lowercased before matching', () => {
+    const keywords = categoryPatterns.flatMap(
+      ({ keywords, excludeKeywords = [] }) => [...keywords, ...excludeKeywords],
+    );
+    expect(keywords.filter((kw) => kw !== kw.toLowerCase())).toEqual([]);
   });
 
   it('reads the shortName when a category has no description', () => {
