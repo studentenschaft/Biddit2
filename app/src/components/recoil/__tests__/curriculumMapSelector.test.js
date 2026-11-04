@@ -439,6 +439,10 @@ describe('estimateCompletion', () => {
     expect(estimateCompletion(180, 150, semesters)).toBe('HS26');
   });
 
+  it('projects from HS into the next year', () => {
+    expect(estimateCompletion(180, 150, [{ key: 'HS26', status: 'current', totalCredits: 30 }])).toBe('FS27');
+  });
+
   it('returns "TBD" when no semesters available', () => {
     expect(estimateCompletion(180, 0, [])).toBe('TBD');
   });

@@ -44,13 +44,6 @@ export const useCurriculumPlan = () => {
   }, []);
 
   /**
-   * Get the current semester key
-   */
-  const getCurrentSemesterKey = useCallback(() => {
-    return currentSemesterKey();
-  }, []);
-
-  /**
    * Check if a semester is in the past (completed)
    */
   const isSemesterCompleted = useCallback((semesterKey) => {
@@ -392,7 +385,7 @@ export const useCurriculumPlan = () => {
     updatePlacementAttributes,
     isSemesterSyncable,
     isSemesterCompleted,
-    getCurrentSemesterKey,
+    getCurrentSemesterKey: currentSemesterKey,
   };
 };
 

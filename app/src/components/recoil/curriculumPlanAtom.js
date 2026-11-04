@@ -1,6 +1,5 @@
 import { atom } from "recoil";
 import {
-  parseSemesterKey,
   compareSemesterKeys,
   sortSemesterKeys,
   nextSemesterKey,
@@ -100,48 +99,11 @@ export const createPlaceholderItem = (
 });
 
 // Semester helpers. The calendar rule and key arithmetic live in
-// src/domain/semester.js; these names stay exported for existing importers.
+// src/domain/semester.js; programEraScope still imports these two names.
 export {
-  parseSemesterKey,
   compareSemesterKeys as compareSemesters,
-  sortSemesterKeys as sortSemesters,
   nextSemesterKey as getNextSemesterKey,
 };
-
-/**
- * Semester keys from the current calendar semester onwards.
- * @param {number} count - Number of semesters to generate
- * @returns {string[]} - e.g. ["HS25", "FS26", "HS26"]
- */
-export const generateFutureSemesters = (count = 6) => {
-  const semesters = [];
-  let key = currentSemesterKey();
-  for (let i = 0; i < count; i++) {
-    semesters.push(key);
-    key = nextSemesterKey(key);
-  }
-  return semesters;
-};
-
-/**
- * @returns {{ currentSemKey: string, isCurrentlyHS: boolean, currentSemYear: number, nextSemKey: string }}
- */
-export const getCurrentSemesterInfo = () => {
-  const currentSemKey = currentSemesterKey();
-  const { season, year } = parseSemesterKey(currentSemKey);
-  return {
-    currentSemKey,
-    isCurrentlyHS: season === "HS",
-    currentSemYear: year,
-    nextSemKey: nextSemesterKey(currentSemKey),
-  };
-};
-
-export const isSemesterCurrent = (semesterKey) =>
-  semesterStatus(semesterKey) === "current";
-
-export const isSemesterInFuture = (semesterKey) =>
-  semesterStatus(semesterKey) === "future";
 
 export const isSemesterCompleted = (semesterKey) =>
   semesterStatus(semesterKey) === "completed";
@@ -157,11 +119,8 @@ export const isSemesterSyncable = (semesterKey) => {
   );
 };
 
-/** @returns {"completed" | "current" | "future"} */
-export const getSemesterStatus = (semesterKey) => semesterStatus(semesterKey);
-
 /**
- * Current and future semesters, sorted (CoursePicker and friends).
+ * Current and future semesters, sorted (CoursePicker).
  */
 export const filterCurrentAndFutureSemesters = (semesterKeys) =>
   sortSemesterKeys(semesterKeys).filter(

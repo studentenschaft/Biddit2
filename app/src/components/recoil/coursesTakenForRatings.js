@@ -1,7 +1,7 @@
 import { atom, selector } from "recoil";
 import { authTokenState } from "./authAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
-import { parseSemester } from "../helpers/transformScorecard";
+import { compareSemesterKeys, parseSemesterKey } from "../../domain/semester";
 import { apiClient } from "../helpers/axiosClient";
 import { log } from "../helpers/log";
 
@@ -179,20 +179,14 @@ export const isSemesterRatable = (
     return false;
   }
 
-  const targetSem = parseSemester(semesterShortName);
-  const currentSem = parseSemester(currentSemesterShortName);
+  const targetSem = parseSemesterKey(semesterShortName);
+  const currentSem = parseSemesterKey(currentSemesterShortName);
 
   if (!targetSem || !currentSem) {
     log.debug("RATINGSV2: Failed to parse semester names.");
     return false;
   }
-  // A semester is ratable if:
-  // 1. It's from a previous year (but not more than 3 years ago), or
-  // 2. It's from the current year but is a spring semester and we're in fall
-  if (currentSem.year - targetSem.year > 3) return false;
-  if (targetSem.year < currentSem.year) return true;
-  if (targetSem.year === currentSem.year && targetSem.sem < currentSem.sem)
-    return true;
-
-  return false;
+  // Ratable: before the current semester, and at most three years back.
+  if (currentSem.fullYear - targetSem.fullYear > 3) return false;
+  return compareSemesterKeys(semesterShortName, currentSemesterShortName) < 0;
 };

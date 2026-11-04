@@ -13,16 +13,6 @@ import {
 } from "../../domain/semester";
 
 /**
- * Parses a semester string into year and semester components
- * ({ year: 2025, sem: 1 } for FS25, sem 2 for HS); null when unparseable.
- */
-export const parseSemester = (semesterStr) => {
-  const parsed = parseSemesterKey(semesterStr);
-  if (!parsed) return null;
-  return { year: parsed.fullYear, sem: parsed.season === "FS" ? 1 : 2 };
-};
-
-/**
  * Fills in missing semesters between earliest and latest in the data, in
  * chronological order. Keys that are not semesters (e.g. "Unassigned") are dropped.
  */

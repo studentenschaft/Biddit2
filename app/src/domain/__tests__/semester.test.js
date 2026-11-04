@@ -18,10 +18,13 @@ describe("currentSemesterKey", () => {
   it.each([
     ["2026-01-15", "HS25"],
     ["2026-02-01", "FS26"],
+    ["2026-03-15", "FS26"],
     ["2026-06-15", "FS26"],
     ["2026-07-31", "FS26"],
     ["2026-08-01", "HS26"],
     ["2026-12-31", "HS26"],
+    ["2025-09-15", "HS25"],
+    ["2025-10-15", "HS25"],
   ])("currentSemesterKey(%s) is %s", (d, k) =>
     expect(currentSemesterKey(localDate(d))).toBe(k),
   );
@@ -60,6 +63,11 @@ describe("parseSemesterKey", () => {
     });
   });
 
+  it("reads two-digit years below 50 as 2000s and the rest as 1900s", () => {
+    expect(parseSemesterKey("HS49").fullYear).toBe(2049);
+    expect(parseSemesterKey("HS50").fullYear).toBe(1950);
+  });
+
   it("returns null for anything that is not a semester key", () => {
     expect(parseSemesterKey("")).toBeNull();
     expect(parseSemesterKey(null)).toBeNull();
@@ -74,6 +82,9 @@ describe("ordering", () => {
       "FS26",
       "HS26",
     ]);
+    expect(sortSemesterKeys(["HS25", "FS24", "HS24", "FS25", "FS26"])).toEqual(
+      ["FS24", "HS24", "FS25", "HS25", "FS26"],
+    );
   });
 
   it("does not mutate the input", () => {
@@ -85,6 +96,7 @@ describe("ordering", () => {
   it("compares keys", () => {
     expect(compareSemesterKeys("FS25", "HS25")).toBeLessThan(0);
     expect(compareSemesterKeys("HS24", "FS25")).toBeLessThan(0);
+    expect(compareSemesterKeys("FS26", "HS25")).toBeGreaterThan(0);
     expect(compareSemesterKeys("HS 25", "HS25")).toBe(0);
   });
 
@@ -98,6 +110,12 @@ describe("neighbours", () => {
     expect(nextSemesterKey("FS25")).toBe("HS25");
     expect(nextSemesterKey("HS25")).toBe("FS26");
     expect(nextSemesterKey("HS99")).toBe("FS00");
+  });
+
+  it("steps through consecutive semesters from an FS start", () => {
+    const keys = ["FS26"];
+    for (let i = 0; i < 3; i++) keys.push(nextSemesterKey(keys[i]));
+    expect(keys).toEqual(["FS26", "HS26", "FS27", "HS27"]);
   });
 
   it("finds the same season one year earlier", () => {
@@ -115,5 +133,13 @@ describe("semesterStatus", () => {
     expect(semesterStatus("FS26", june)).toBe("current");
     expect(semesterStatus("HS25", june)).toBe("completed");
     expect(semesterStatus("HS26", june)).toBe("future");
+  });
+
+  it("classifies across the year boundary in the autumn", () => {
+    const october = localDate("2025-10-15");
+    expect(semesterStatus("HS25", october)).toBe("current");
+    expect(semesterStatus("FS26", october)).toBe("future");
+    expect(semesterStatus("FS25", october)).toBe("completed");
+    expect(semesterStatus("HS24", october)).toBe("completed");
   });
 });
