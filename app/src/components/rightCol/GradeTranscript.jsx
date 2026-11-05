@@ -8,6 +8,34 @@ import { calculateCreditsAndGrades } from "../helpers/calculateGrades";
 import { LockOpen } from "../leftCol/bottomRow/LockOpen";
 import { useCourseSelection } from "../helpers/useCourseSelection";
 import { useDegradedMode } from "../common/useDegradedMode";
+import { log } from "../helpers/log";
+
+/**
+ * Column template shared by the table header and every transcript row. On
+ * phones the shrinkable fr tracks wrapped "120 ECTS" onto two lines and,
+ * because each row is its own grid, drifted out of line with the header.
+ * Below sm the figures get fixed tracks instead, so their right edges line up
+ * across indented rows and never wrap. From sm up the original proportions
+ * apply.
+ */
+const TRANSCRIPT_GRID =
+  "grid grid-cols-[minmax(7rem,1fr)_repeat(3,4.5rem)_repeat(2,3.5rem)] sm:grid-cols-[3fr,repeat(5,1fr)]";
+
+/**
+ * Below sm the table body (header and rows) is wider than a phone, so it
+ * scrolls sideways on its own; the headline figures above it stay outside the
+ * scroller and always fit.
+ */
+const TRANSCRIPT_BODY_SCROLL =
+  "overflow-x-auto sm:overflow-x-visible [&>*]:min-w-[34rem] sm:[&>*]:min-w-0";
+
+/**
+ * Headline figures: below sm five content-sized columns spread across the
+ * width in smaller type, so all five fit a 360px phone without scrolling;
+ * from sm up they sit on the table's own column template.
+ */
+const TRANSCRIPT_HEADLINE_GRID =
+  "grid grid-cols-[repeat(5,auto)] justify-between gap-x-1 text-sm sm:grid-cols-[3fr,repeat(5,1fr)] sm:justify-normal sm:gap-2 sm:text-lg";
 
 /**
  * Helper to format numbers to two decimal places.
@@ -158,12 +186,11 @@ CustomGradeInput.displayName = "CustomGradeInput";
 /**
  * GradeTranscript component displays the transcript of grades and allows users to input custom grades.
  *  * NOTE: To enable removal of saved (wishlisted) courses, we  require additional props:
- * semesterShortName, semesterIndex, authToken, selectedCourseIds, and setSelectedCourseIds.
+ * semesterShortName, authToken, selectedCourseIds, and setSelectedCourseIds.
  */
 const GradeTranscript = ({
   scorecardDetails,
   semesterShortName,
-  semesterIndex,
   authToken,
   selectedCourseIds,
   setSelectedCourseIds,
@@ -177,7 +204,6 @@ const GradeTranscript = ({
     selectedCourseIds,
     setSelectedCourseIds,
     selectedSemesterShortName: semesterShortName,
-    index: semesterIndex,
     authToken,
   });
 
@@ -263,10 +289,10 @@ const GradeTranscript = ({
       <div className={`mb-1 ${bgColor}`}>
         {/* Category header */}
         <div
-          className={`grid grid-cols-[3fr,repeat(5,1fr)] gap-2 items-center p-2 
+          className={`${TRANSCRIPT_GRID} gap-2 items-center p-2 
               ${
                 level === 1
-                  ? "font-bold text-lg"
+                  ? "font-bold text-base sm:text-lg"
                   : level === 2
                   ? "font-semibold ml-4"
                   : "font-bold text-sm ml-8"
@@ -277,13 +303,13 @@ const GradeTranscript = ({
               ? item.description
               : item.shortName}
           </div>
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">
             {formatNumber(parseFloat(item.minCredits))} ECTS
           </div>
-          <div className="text-right">
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">
             {formatNumber(parseFloat(item.maxCredits))} ECTS
           </div>
-          <div className="text-right">{formatNumber(totalCredits)} ECTS</div>
+          <div className="text-right whitespace-nowrap sm:whitespace-normal">{formatNumber(totalCredits)} ECTS</div>
           <div className="text-right">{formatNumber(avgGrade, true)}</div>
           <div className="text-right">{formatNumber(customAvgGrade, true)}</div>
         </div>
@@ -302,7 +328,7 @@ const GradeTranscript = ({
                   )}
                 >
                   <div
-                    className={`grid grid-cols-[3fr,repeat(5,1fr)] gap-2 items-center p-2 text-sm ml-12 
+                    className={`${TRANSCRIPT_GRID} gap-2 items-center p-2 text-sm ml-12 
                       ${subItem.isWishlist ? "italic text-gray-600" : ""}`}
                   >
                     <div className="flex items-center">
@@ -332,7 +358,7 @@ const GradeTranscript = ({
                         ) : (
                           <button
                             onClick={() => {
-                              console.log('🔍 [GradeTranscript] Remove button clicked:', {
+                              log.debug('🔍 [GradeTranscript] Remove button clicked:', {
                                 courseId: subItem.id || subItem.courseId,
                                 courseNumber: subItem.courseNumber,
                                 courseName: subItem.shortName || subItem.description,
@@ -363,7 +389,7 @@ const GradeTranscript = ({
                     </div>
                     <div className="text-right"></div>
                     <div className="text-right"></div>
-                    <div className="text-right">
+                    <div className="text-right whitespace-nowrap sm:whitespace-normal">
                       {formatNumber(parseFloat(subItem.sumOfCredits))} ECTS
                     </div>
                     <div className="text-right">{subItem.mark || subItem.gradeText || "-"}</div>
@@ -434,15 +460,15 @@ const GradeTranscript = ({
   const { overallCustomAvg } = overallCalculations;
 
   return (
-    <div className="p-4 bg-white">
+    <div className="py-4 sm:p-4 bg-white">
       {scorecardDetails && scorecardDetails.items ? (
         <>
           {/* Main category header */}
           <h3 className="text-xl font-semibold mb-4 text-gray-700">
             {scorecardDetails.items[0]?.description || 'Academic Transcript'}
           </h3>
-          <div className="grid grid-cols-[3fr,repeat(5,1fr)] gap-2 text-lg font-bold mb-4 text-green-700">
-            <div className="text-right"></div>
+          <div className={`${TRANSCRIPT_HEADLINE_GRID} px-2 font-bold mb-4 text-green-700 [&>div]:whitespace-nowrap sm:[&>div]:whitespace-normal`}>
+            <div className="hidden text-right sm:block"></div>
             <div className="text-right">
               {formatNumber(parseFloat(scorecardDetails.items[0]?.minCredits || 0))}{" "}
               ECTS
@@ -462,9 +488,9 @@ const GradeTranscript = ({
               {formatNumber(overallCustomAvg, true)}
             </div>
           </div>
-          <div className="space-y-2">
+          <div className={`space-y-2 ${TRANSCRIPT_BODY_SCROLL}`}>
             {/* Table headers */}
-            <div className="grid grid-cols-[3fr,repeat(5,1fr)] gap-2 font-bold text-sm text-gray-600 mb-2 p-2 bg-gray-200">
+            <div className={`${TRANSCRIPT_GRID} gap-2 font-bold text-sm text-gray-600 mb-2 p-2 bg-gray-200`}>
               <div></div>
               <div className="text-right">Min.</div>
               <div className="text-right">Max.</div>
@@ -487,7 +513,6 @@ const GradeTranscript = ({
 GradeTranscript.propTypes = {
   scorecardDetails: PropTypes.object.isRequired,
   semesterShortName: PropTypes.string.isRequired,
-  semesterIndex: PropTypes.number.isRequired,
   authToken: PropTypes.string.isRequired,
   selectedCourseIds: PropTypes.array.isRequired,
   setSelectedCourseIds: PropTypes.func.isRequired,

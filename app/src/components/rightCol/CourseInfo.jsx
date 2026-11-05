@@ -2,6 +2,7 @@ import { useRecoilValue, useRecoilState } from "recoil";
 import { ExternalLinkIcon } from "@heroicons/react/outline";
 import { authTokenState } from "../recoil/authAtom";
 import { apiClient } from "../helpers/axiosClient";
+import { UNISG_API } from "../helpers/apiEndpoints";
 import { useEffect, useState } from "react";
 import { examinationTypesState } from "../recoil/examinationTypesAtom";
 import Collapsible from "./Collapsible";
@@ -25,6 +26,10 @@ import {
 
 // error handling
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "../helpers/log";
+import { formatEcts, toEcts } from "../../domain/credits";
+import { courseKey } from "../../domain/course";
+import { getCourseRatings, getCourseSheet } from "../helpers/courseSheetCache";
 
 // The course sheet and the ExaminationTypes lookup are fetched independently, so
 // the sheet can arrive first. Until the lookup lands — or if it has no entry for
@@ -45,50 +50,24 @@ export default function CourseInfo() {
   const [examInformationState, setExamInformation] = useState(null);
   const [containsCourseRatings, setContainsCourseRatings] = useState(false);
 
-  // fetch achievement parts information (will be done every time a course is selected)
-  async function fetchCourseInformation(selectedCourse, authToken) {
-    try {
-      const res = await apiClient.get(
-        `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${selectedCourse.hsgEntityId}`,
-        authToken,
-        {
-          headers: {
-            "API-Version": "3",
-          },
-        }
-      );
-
-      return res.data;
-    } catch (err) {
-      try {
-        const res = await apiClient.get(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/latestPublishedByHsgEntityId/${
-            selectedCourse.courses?.[0]?.courseNumber ||
-            selectedCourse.courseNumber
-          }`,
-          authToken,
-          {
-            headers: {
-              "API-Version": "3",
-            },
-          }
-        );
-
-        return res.data;
-      } catch (err) {
-        console.log(err);
-        errorHandlingService.handleError(err);
-        return null;
-      }
-    }
-  }
-
+  // The course sheet is cached per course for the session (courseSheetCache).
   useEffect(() => {
-    if (selectedCourse && authToken) {
-      fetchCourseInformation(selectedCourse, authToken).then((data) => {
-        setExamInformation(data);
+    if (!selectedCourse || !authToken) return undefined;
+    // A newer selection supersedes this fetch: it must not set state or toast.
+    let cancelled = false;
+    getCourseSheet({ course: selectedCourse, authToken })
+      .then((sheet) => {
+        if (!cancelled) setExamInformation(sheet);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        log.debug(err);
+        setExamInformation(null);
+        errorHandlingService.handleError(err);
       });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCourse, authToken]);
 
   // fetch exam types (will be done only once)
@@ -96,8 +75,9 @@ export default function CourseInfo() {
   async function fetchExaminationIds() {
     try {
       const res = await apiClient.get(
-        `https://integration.unisg.ch/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
-        authToken
+        `${UNISG_API}/AcametaApi/ExaminationTypes?fields=id,shortName,description`,
+        authToken,
+        { suppressErrorToast: true }
       );
 
       const examinationIdObject = {};
@@ -110,7 +90,7 @@ export default function CourseInfo() {
 
       setExaminationIdState(examinationIdObject);
     } catch (err) {
-      console.log(err);
+      log.debug(err);
       errorHandlingService.handleError(err);
     }
   }
@@ -127,51 +107,39 @@ export default function CourseInfo() {
     // eslint-disable-next-line
   }, [authToken]);
 
-  // fetch ratings (will be done every time a course is selected)
+  // Ratings are cached per course for the session (courseSheetCache).
   const [courseWithRatings, setCourseWithRatings] = useState(null);
-
-  async function fetchCourseRatings(selectedCourse, authToken) {
-    try {
-      const res = await apiClient.get(
-        `https://api.shsg.ch/course-ratings/by-course/${
-          selectedCourse.courses?.[0]?.courseNumber ||
-          selectedCourse.courseNumber
-        }`,
-        authToken
-      );
-      res.data = res.data.filter(
-        (course) => course.courseNumber !== "7,721,1.00" // this has been requested to be removed
-      );
-
-      if (res.data.length > 0) {
-        const ratingData = res.data[0];
-        const updatedCourse = {
-          ...selectedCourse,
-          avgRatings: ratingData.avgRatings,
-          nbOfRatings: ratingData.nbOfRatings,
-          comments: ratingData.comments,
-        };
-
-        setCourseWithRatings(updatedCourse);
-      }
-    } catch (err) {
-      console.log(err);
-      errorHandlingService.handleError(err);
-    }
-  }
 
   useEffect(() => {
     // Ratings are SHSG-backed; skip the fetch while degraded (isDegradedMode
     // is a dep so recovery re-fetches automatically).
     if (isDegradedMode) {
       setCourseWithRatings(null);
-      return;
+      return undefined;
     }
-    if (selectedCourse && authToken) {
-      // Reset courseWithRatings before fetching new ratings
-      setCourseWithRatings(null);
-      fetchCourseRatings(selectedCourse, authToken);
-    }
+    if (!selectedCourse || !authToken) return undefined;
+
+    setCourseWithRatings(null);
+    let cancelled = false;
+    getCourseRatings({ courseNumber: courseKey(selectedCourse), authToken })
+      .then((ratings) => {
+        if (cancelled || ratings.length === 0) return;
+        const [ratingData] = ratings;
+        setCourseWithRatings({
+          ...selectedCourse,
+          avgRatings: ratingData.avgRatings,
+          nbOfRatings: ratingData.nbOfRatings,
+          comments: ratingData.comments,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        log.debug(err);
+        errorHandlingService.handleError(err);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [selectedCourse, authToken, isDegradedMode]);
 
   useEffect(() => {
@@ -240,7 +208,7 @@ export default function CourseInfo() {
         <div className="overflow-auto scrollbar-hide overscroll-auto">
           <div className="text-xs font-semibold text-gray-700 lg:text-base">
             <div className="" label="credits and exam info">
-              {(selectedCourse.credits / 100).toFixed(2)} ECTS |{" "}
+              {formatEcts(toEcts(selectedCourse.credits))} ECTS |{" "}
               {selectedCourse.classification}{" "}
               {achievementFormStatus.isCentral &&
               achievementFormStatus.isDeCentral
@@ -400,7 +368,10 @@ export default function CourseInfo() {
                 examInformationState.examinationParts.map((part, index) => {
                   return (
                     <div key={index} className="w-full text-sm">
-                      <div className="grid grid-cols-3">
+                      {/* Below lg three equal columns left the remark a
+                          sliver beside a mostly empty weight column, so the
+                          weight shrinks to its content there. */}
+                      <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,3fr)_auto] gap-x-3 lg:grid-cols-3 lg:gap-x-0">
                         <div className="font-semibold">
                           {examinationIdState?.[part.examinationTypeId]
                             ?.shortName ?? UNKNOWN_EXAM_TYPE}

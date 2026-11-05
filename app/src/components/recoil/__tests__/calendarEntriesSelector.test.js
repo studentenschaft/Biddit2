@@ -3,13 +3,15 @@
  *
  * The personal schedule (calendar, heatmap, conflict warnings) must be derived
  * from the user's enrolments and wishlist — never from the search panel's
- * `filtered` view state. See docs/BUG-calendar-entries-filter-leak.md.
+ * filtered view state. See docs/BUG-calendar-entries-filter-leak.md.
  */
 
 import { describe, expect, it } from "vitest";
 import { snapshot_UNSTABLE } from "recoil";
 
+import { selectionOptionsState } from "../selectionOptionsAtom";
 import { unifiedCourseDataState } from "../unifiedCourseDataAtom";
+import { filteredCoursesSelector } from "../unifiedCourseDataSelectors";
 import {
   calendarEntriesSelector,
   COLLISION_COLOR,
@@ -56,31 +58,27 @@ const SMALL = course({
   duration: 90,
 });
 
-/** Mimics updateFilteredCourses: flags are attached after filtering. */
-const withFlags = (c, { enrolledIds = [], selectedIds = [] }) => ({
-  ...c,
-  enrolled: enrolledIds.includes(c.courseNumber),
-  selected: selectedIds.includes(c.courseNumber),
-});
+const ECTS_4_ONLY = { ects: [4] };
 
-const readEntries = ({ available, enrolledIds, selectedIds, filtered }) => {
-  const snapshot = snapshot_UNSTABLE(({ set }) =>
+const snapshotOf = ({ available, enrolledIds, selectedIds, filters = {} }) =>
+  snapshot_UNSTABLE(({ set }) => {
     set(unifiedCourseDataState, {
       semesters: {
         [SEMESTER]: {
           available,
           enrolledIds,
           selectedIds,
-          filtered,
         },
       },
       selectedSemester: SEMESTER,
       latestValidTerm: SEMESTER,
       selectedCourseInfo: null,
-    }),
-  );
-  return snapshot.getLoadable(calendarEntriesSelector).getValue();
-};
+    });
+    set(selectionOptionsState, (prev) => ({ ...prev, ...filters }));
+  });
+
+const readEntries = (state) =>
+  snapshotOf(state).getLoadable(calendarEntriesSelector).getValue();
 
 describe("calendarEntriesSelector", () => {
   it("keeps an enrolled course in the calendar when a filter excludes it", () => {
@@ -89,7 +87,7 @@ describe("calendarEntriesSelector", () => {
       enrolledIds: [BIG.courseNumber],
       selectedIds: [],
       // ECTS=4 filter active: the enrolled 6-ECTS course is not in the pool.
-      filtered: [withFlags(SMALL, { enrolledIds: [BIG.courseNumber] })],
+      filters: ECTS_4_ONLY,
     });
 
     expect(entries.map((e) => e.title)).toEqual(["Big Data"]);
@@ -100,7 +98,6 @@ describe("calendarEntriesSelector", () => {
       available: [BIG],
       enrolledIds: [BIG.courseNumber],
       selectedIds: [],
-      filtered: [],
     });
 
     // 08:15 UTC is 10:15 in Zurich in September; no offset, so FullCalendar
@@ -115,11 +112,9 @@ describe("calendarEntriesSelector", () => {
       available: [BIG, OVERLAP, SMALL],
       enrolledIds,
       selectedIds: [],
-      // Filter leaves only SMALL and OVERLAP visible; BIG is hidden.
-      filtered: [
-        withFlags(OVERLAP, { enrolledIds }),
-        withFlags(SMALL, { enrolledIds }),
-      ],
+      // A search for "Stat" leaves only SMALL visible; both 6-ECTS courses
+      // are hidden.
+      filters: { searchTerm: "Stat" },
     });
 
     const big = entries.find((e) => e.title === "Big Data");
@@ -140,7 +135,6 @@ describe("calendarEntriesSelector", () => {
       available: [BIG],
       enrolledIds: [BIG.courseNumber],
       selectedIds: [BIG.courseNumber],
-      filtered: [],
     });
 
     expect(entries.filter((e) => e.title === "Big Data")).toHaveLength(1);
@@ -155,10 +149,6 @@ describe("calendarEntriesSelector", () => {
       available: [BIG, SMALL],
       enrolledIds,
       selectedIds,
-      // No filter distortion: everything visible, flags attached.
-      filtered: [BIG, SMALL].map((c) =>
-        withFlags(c, { enrolledIds, selectedIds }),
-      ),
     });
 
     const big = entries.find((e) => e.title === "Big Data");
@@ -166,6 +156,26 @@ describe("calendarEntriesSelector", () => {
 
     expect(big.color).toBe(ENROLLED_GREEN);
     expect(small.color).toBe(SELECTED_GRAY);
+  });
+
+  it("keeps a selected course in the calendar when the keyword filter hides every course", () => {
+    const state = {
+      available: [BIG, SMALL],
+      enrolledIds: [],
+      selectedIds: [SMALL.courseNumber],
+      filters: { searchTerm: "zzz" },
+    };
+    const snapshot = snapshotOf(state);
+
+    expect(
+      snapshot.getLoadable(filteredCoursesSelector(SEMESTER)).getValue(),
+    ).toEqual([]);
+    expect(
+      snapshot
+        .getLoadable(calendarEntriesSelector)
+        .getValue()
+        .map((e) => e.title),
+    ).toEqual(["Statistics"]);
   });
 
   it("skips entries without a usable eventDate instead of throwing", () => {
@@ -183,7 +193,6 @@ describe("calendarEntriesSelector", () => {
       available: [patchy],
       enrolledIds: [patchy.courseNumber],
       selectedIds: [],
-      filtered: [],
     });
 
     expect(entries).toHaveLength(1);

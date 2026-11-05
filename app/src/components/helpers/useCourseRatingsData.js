@@ -15,7 +15,7 @@
  * 1. Check if course ratings already exist (global data)
  * 2. If not, fetch from SHSG API
  * 3. Update legacy course ratings state
- * 4. Update unified course ratings for all semesters (since ratings are global)
+ * 4. Update the unified course ratings (stored once, shared by all semesters)
  * 5. Manage loading state throughout the process
  *
  * Note: Course ratings are global data that applies to all semesters,
@@ -25,10 +25,12 @@
 import { useState, useEffect } from "react";
 import { useRecoilState } from "recoil";
 import { apiClient } from "./axiosClient";
+import { SHSG_API } from "./apiEndpoints";
 import { shsgCourseRatingsState } from "../recoil/shsgCourseRatingsAtom";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { useDegradedMode } from "../common/useDegradedMode";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 /**
  * Custom hook for managing course ratings data
@@ -42,10 +44,8 @@ export const useCourseRatingsData = ({ authToken }) => {
   const [shsgCourseRatings, setShsgCourseRatings] = useRecoilState(
     shsgCourseRatingsState
   );
-  const {
-    updateCourseRatingsForAllSemesters:
-      updateUnifiedCourseRatingsForAllSemesters,
-  } = useUnifiedCourseData();
+  const { updateCourseRatings: updateUnifiedCourseRatings } =
+    useUnifiedCourseDataWriters();
   const { isDegradedMode } = useDegradedMode();
 
   // Local loading state
@@ -59,28 +59,29 @@ export const useCourseRatingsData = ({ authToken }) => {
         setIsCourseRatingsLoading(true);
 
         try {
-          console.log("🔄 Fetching course ratings from SHSG API...");
+          log.debug("🔄 Fetching course ratings from SHSG API...");
 
           const response = await apiClient.get(
-            "https://api.shsg.ch/course-ratings",
+            `${SHSG_API}/course-ratings`,
             authToken,
             {
               headers: {
                 "X-RequestedLanguage": "DE",
               },
+              // The catch below reports failures, so apiClient must not toast too.
+              suppressErrorToast: true,
             }
           );
 
-          console.log(
+          log.debug(
             `✅ Successfully fetched ${response.data.length} course ratings`
           );
 
           // Update legacy course ratings state
           setShsgCourseRatings(response.data);
 
-          // Update unified course ratings for ALL semesters
-          // Since ratings are global data that applies to all semesters
-          updateUnifiedCourseRatingsForAllSemesters(response.data);
+          // Ratings apply to every semester and are stored once.
+          updateUnifiedCourseRatings(response.data);
         } catch (error) {
           console.error("❌ Error fetching course ratings:", error);
           errorHandlingService.handleError(error);

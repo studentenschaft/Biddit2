@@ -10,12 +10,10 @@
 import { useRecoilValue, useRecoilState } from 'recoil';
 import { legacyAcademicDataSelector } from '../recoil/unifiedAcademicDataSelectors';
 import { unifiedCourseDataState } from '../recoil/unifiedCourseDataAtom';
-import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useUnifiedCourseLoader } from '../helpers/useUnifiedCourseLoader';
 import { authTokenState } from '../recoil/authAtom';
 import LoadingText from '../common/LoadingText';
 import { LoadingSkeletonTranscript } from './LoadingSkeletons';
-import { useState } from 'react';
 import GradeTranscript from './GradeTranscript';
 import React, { useMemo, useCallback } from 'react';
 import { selectedCourseIdsAtom } from '../recoil/selectedCourseIdsAtom';
@@ -28,17 +26,21 @@ import { trackWishlistCleared } from '../helpers/analytics';
 import { useErrorHandler } from '../errorHandling/useErrorHandler';
 import { ScorecardErrorMessage } from '../errorHandling/ScorecardErrorMessage';
 import { useInitializeScoreCards } from '../helpers/useInitializeScorecards';
+import { useScorecardFetching } from '../helpers/useScorecardFetching';
 import { useCurrentSemester } from '../helpers/studyOverviewHelpers';
 import { getMainProgramKey } from '../helpers/getMainProgram';
+import { log } from '../helpers/log';
 
 const Transcript = () => {
   // Use same data approach as StudyOverview (which works)
   const academicData = useRecoilValue(legacyAcademicDataSelector);
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
   const authToken = useRecoilValue(authTokenState);
-  const scorecardFetching = useScorecardFetching();
-  const [fetchAttempted, setFetchAttempted] = useState(false);
-  const [scorecardError] = useState(false);
+  // A failed load with nothing to show replaces the loading state; a partial
+  // failure (one of several programmes) still renders what did load.
+  const { error: scorecardFetchError, isLoaded: scorecardsLoaded } =
+    useScorecardFetching();
+  const scorecardError = Boolean(scorecardFetchError) && !scorecardsLoaded;
 
   // Course data loading infrastructure (shared with StudyOverview)
   const { totalSemestersNeeded } = useUnifiedCourseLoader(
@@ -53,7 +55,6 @@ const Transcript = () => {
   
   // Get current semester for UI
   const currentSemester = useCurrentSemester();
-  const currentSemesterIndex = 0;
 
   // Initialize scorecard data (needed for unified system)
   useInitializeScoreCards(handleError);
@@ -112,13 +113,13 @@ const Transcript = () => {
     }
     
     const mainProgramKey = getMainProgramKey(academicData);
-    console.log('🔍 [Transcript] Program selection and data:', {
+    log.debug('🔍 [Transcript] Program selection and data:', {
       mainProgramKey,
       availablePrograms: Object.keys(academicData.programs || {}),
       hasStudyOverviewView: !!academicData.studyOverviewView?.[mainProgramKey]
     });
     
-    console.log('🔍 [Transcript] Full academic data structure:', {
+    log.debug('🔍 [Transcript] Full academic data structure:', {
       isLoaded: academicData.isLoaded,
       hasPrograms: !!academicData.programs,
       hasTranscriptView: !!academicData.transcriptView,
@@ -127,7 +128,7 @@ const Transcript = () => {
     });
     
     if (!mainProgramKey || !academicData.studyOverviewView?.[mainProgramKey]) {
-      console.log('❌ [Transcript] No study overview data for main program');
+      log.debug('❌ [Transcript] No study overview data for main program');
       return [];
     }
     
@@ -147,7 +148,7 @@ const Transcript = () => {
       }
     });
     
-    console.log('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
+    log.debug('✅ [Transcript] Found', allWishlistCourses.length, 'wishlist courses for', mainProgramKey);
     return allWishlistCourses;
     // Depending on the whole academicData object would recompute on every
     // selector identity change; the fields actually read are listed explicitly.
@@ -332,19 +333,6 @@ const Transcript = () => {
     }
   };
 
-  // Auto-fetch scorecard data if not loaded and haven't tried yet
-  const handleFetchIfNeeded = useCallback(async () => {
-    if (!academicData.isLoaded && !fetchAttempted && authToken) {
-      setFetchAttempted(true);
-      await scorecardFetching.fetchAll(authToken);
-    }
-  }, [academicData.isLoaded, fetchAttempted, authToken, scorecardFetching]);
-
-  // Trigger fetch if needed
-  if (!academicData.isLoaded && !fetchAttempted && authToken) {
-    handleFetchIfNeeded();
-  }
-
   // Check if data is loaded and transcript has valid structure
   const hasValidTranscript = useMemo(() => {
     return finalTranscript && 
@@ -381,7 +369,6 @@ const Transcript = () => {
       <GradeTranscript
         scorecardDetails={finalTranscript}
         semesterShortName={currentSemester}
-        semesterIndex={currentSemesterIndex}
         authToken={authToken}
         selectedCourseIds={selectedCourseIds}
         setSelectedCourseIds={setSelectedCourseIds}

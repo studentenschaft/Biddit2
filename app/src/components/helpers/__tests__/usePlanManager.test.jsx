@@ -599,6 +599,22 @@ describe("course placements", () => {
     expect(mockToast.error).toHaveBeenCalled();
   });
 
+  it("addCourseById returns false without a toast on a DegradedModeError", async () => {
+    api.upsertPlacement.mockRejectedValueOnce(
+      new DegradedModeError("SHSG degraded"),
+    );
+
+    const { result } = renderManager();
+
+    let ok;
+    await act(async () => {
+      ok = await result.current.manager.addCourseById("ABC", "FS26", "Core");
+    });
+
+    expect(ok).toBe(false);
+    expect(mockToast.error).not.toHaveBeenCalled();
+  });
+
   it("removeCourseById calls removePlacement with course-{id}", async () => {
     api.removePlacement.mockResolvedValueOnce(planResponse());
 

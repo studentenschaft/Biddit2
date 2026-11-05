@@ -19,16 +19,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { useCurriculumPlan } from "../components/helpers/useCurriculumPlan";
-
-/**
- * Format credits for display, handling both "cents" format (300 = 3 ECTS)
- * and already-normalized format (3 = 3 ECTS)
- */
-const formatCredits = (credits, isNormalized = false) => {
-  if (!credits) return "?";
-  const value = isNormalized ? credits : credits / 100;
-  return value.toFixed(Number.isInteger(value) ? 0 : 1);
-};
+import { log } from "../components/helpers/log";
 
 // Styles
 import "./react-tabs.css";
@@ -41,24 +32,21 @@ import { TabComponent } from "./TabComponent";
 
 //mobile view
 import { isLeftViewVisible } from "../components/recoil/isLeftViewVisible";
+import { formatEcts, toEcts } from "../domain/credits";
 
 /**
  * DragPreviewCard - Visual preview during drag operations
  */
-const DragPreviewCard = ({ item, type }) => {
+const DragPreviewCard = ({ item }) => {
   if (!item) return null;
 
-  const isGridCourse = type === "grid-course" || type === "placeholder-creator";
-
-  // Grid courses have already-normalized credits (in ECTS)
-  // EventList and Picker courses have credits in "cents" format (300 = 3 ECTS)
   const name =
     item.shortName ||
     item.courseNumber ||
     item.name ||
     item.courseId ||
     item.id;
-  const credits = formatCredits(item.credits, isGridCourse);
+  const credits = formatEcts(toEcts(item.credits));
   const displayName = name?.length > 30 ? name.substring(0, 28) + "..." : name;
 
   return (
@@ -71,7 +59,6 @@ const DragPreviewCard = ({ item, type }) => {
 
 DragPreviewCard.propTypes = {
   item: PropTypes.object,
-  type: PropTypes.string,
 };
 
 /** Enrolled (bid) grid cards may change category, but never semester or plan membership. */
@@ -88,7 +75,6 @@ export default function Biddit2() {
 
   // Drag-and-drop state for cross-component dragging
   const [activeDragItem, setActiveDragItem] = useState(null);
-  const [activeDragType, setActiveDragType] = useState(null);
   const {
     addCourse,
     addPlaceholder,
@@ -116,17 +102,14 @@ export default function Biddit2() {
 
     if (dragData?.type === "eventlist-course") {
       setActiveDragItem(dragData.course);
-      setActiveDragType("eventlist-course");
     } else if (dragData?.type === "grid-course") {
       setActiveDragItem(dragData.item);
-      setActiveDragType("grid-course");
     } else if (dragData?.type === "placeholder-creator") {
       setActiveDragItem({
         name: dragData.label,
         credits: dragData.credits,
         isPlaceholder: true,
       });
-      setActiveDragType("placeholder-creator");
     }
   }, []);
 
@@ -139,7 +122,6 @@ export default function Biddit2() {
 
       // Reset drag state
       setActiveDragItem(null);
-      setActiveDragType(null);
 
       const dragData = active.data.current;
 
@@ -186,7 +168,7 @@ export default function Biddit2() {
         dropData.semesterStatus === "completed"
       ) {
         if (import.meta.env.DEV) {
-          console.log("[Biddit2] Drop rejected: completed semester");
+          log.debug("[Biddit2] Drop rejected: completed semester");
         }
         return;
       }
@@ -259,7 +241,6 @@ export default function Biddit2() {
    */
   const handleDragCancel = useCallback(() => {
     setActiveDragItem(null);
-    setActiveDragType(null);
   }, []);
 
   return (
@@ -325,9 +306,10 @@ export default function Biddit2() {
             Tabs
           </button>
         </div>
-        {/* Content */}
+        {/* Content. Below md, pb-28 keeps the end of each column clear of
+            the fixed view toggle and the floating menu button above it. */}
         <div
-          className={`w-full h-full md:w-1/3 p-4 bg-gray-100 overflow-hidden min-w-0 flex flex-col ${
+          className={`w-full h-full md:w-1/3 p-4 pb-28 md:pb-4 bg-gray-100 overflow-hidden min-w-0 flex flex-col ${
             !isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
@@ -338,7 +320,7 @@ export default function Biddit2() {
           </Suspense>
         </div>
         <div
-          className={`w-full h-full md:w-2/3 p-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
+          className={`w-full h-full md:w-2/3 p-4 pb-28 md:pb-4 bg-white overflow-y-auto md:overflow-y-auto min-w-0 flex flex-col ${
             isLeftViewVisibleState ? "hidden md:flex" : ""
           }`}
         >
@@ -360,7 +342,7 @@ export default function Biddit2() {
       {/* Drag overlay - follows cursor during drag */}
       <DragOverlay>
         {activeDragItem && (
-          <DragPreviewCard item={activeDragItem} type={activeDragType} />
+          <DragPreviewCard item={activeDragItem} />
         )}
       </DragOverlay>
     </DndContext>

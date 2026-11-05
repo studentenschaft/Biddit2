@@ -12,7 +12,7 @@ The UniSG EventApi creates a term shell (e.g. `HS26`) and may even mark it
 the user would see an empty or near-empty course list during the bidding window.
 
 To avoid that, a term whose own catalog is empty/sparse (fewer than
-`REFERENCE_FALLBACK_MIN_COURSES`, see `useCourseInfoData.js`) or whose catalog
+`REFERENCE_FALLBACK_MIN_COURSES`, see `catalogLoader.js`) or whose catalog
 errors is shown with a **preview**: the same-season previous-year catalog
 (`HS26 → HS25`, `FS27 → FS26`). This is the "reference semester."
 
@@ -24,21 +24,21 @@ belong to it**. That distinction is the whole point of this document.
 | Field | Meaning | Set where |
 |-------|---------|-----------|
 | `referenceSemester` | The same-season previous-year term these courses really come from (a `shortName` like `"HS25"`). A stable, deterministic property of *any* term. | `useTermSelection.js` (computed for every term) → stored via `useEventListDataManager.js` → `initializeUnifiedSemester`. Re-asserted in `updateAvailableCourses` when a preview loads. |
-| `usingReferenceData` | Transient: is the `available` array **right now** holding the reference preview rather than the term's own catalog? | `useCourseInfoData.js` passes it to `updateAvailableCourses`; persisted on the semester (it is NOT a guarded metadata key). |
+| `usingReferenceData` | Transient: is the `available` array **right now** holding the reference preview rather than the term's own catalog? | `catalogLoader.js` returns it; its callers (`useCourseInfoData.js` and the map/enrichment loaders) pass it to `updateAvailableCourses`; persisted on the semester (it is NOT a guarded metadata key). |
 
 `referenceSemester` is the **value**; `usingReferenceData` is the **state**.
 
 ### Why `referenceSemester` is computed for every term
 
-`referenceSemester` is deterministic (`computeExpectedReference` in
-`useUnifiedCourseData.js`: strip the season, subtract one year). It is computed
+`referenceSemester` is deterministic (`previousYearSameSeason` in
+`src/domain/semester.js`: same season, one year earlier). It is computed
 for *all* terms in `useTermSelection.js` — not only future/projected ones — so
 the preview can kick in for the current term too. Because it is deterministic,
 **routing must never depend on `usingReferenceData` alone**: if a code path knows
 it is showing borrowed data, a valid `referenceSemester` must already be present.
 `updateAvailableCourses` enforces this — when a preview loads it resolves
 `referenceSemester` from the caller's value, falling back to
-`computeExpectedReference`, so a current sparse term is never left with
+`previousYearSameSeason`, so a current sparse term is never left with
 `referenceSemester = null`.
 
 ## Two kinds of "borrowed" terms
@@ -50,7 +50,7 @@ Both display reference courses, but they reach that state differently:
    reference term's `cisId`, so the catalog is fetched directly — `usingReferenceData`
    is typically **false** even though the data is the reference catalog.
 2. **Current-but-sparse terms** (`isCurrent` true, `isFutureSemester` false): a
-   real API term whose own catalog is empty/sparse, so `useCourseInfoData.js`
+   real API term whose own catalog is empty/sparse, so `catalogLoader.js`
    falls back to the reference catalog — `usingReferenceData` is **true**.
 
 > The single correct predicate for "are the displayed courses borrowed?" is
@@ -61,8 +61,9 @@ Both display reference courses, but they reach that state differently:
 ## Why this matters: the vector DB
 
 The left-column smart-search mode (`helpers/useSmartSearch.js`) and
-`SimilarCourses` query and upsert an embeddings DB keyed by `semester`. They
-must use the semester the courses **actually belong to**:
+`SimilarCourses` query and upsert an embeddings DB keyed by `semester`, both
+through `helpers/useVectorSearch.js`. They must use the semester the courses
+**actually belong to**:
 
 - **Query**: use `referenceSemester` when borrowed, else the selected term. (A
   user viewing the `HS26` preview expects `HS25` matches, because that is the

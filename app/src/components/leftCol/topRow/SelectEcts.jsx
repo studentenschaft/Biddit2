@@ -2,6 +2,7 @@ import { useRecoilState, useRecoilValue } from "recoil";
 import { ectsListSelector } from "../../recoil/ectsListSelector";
 import { selectionOptionsState } from "../../recoil/selectionOptionsAtom";
 import Select from "react-select";
+import { formatEcts, toEcts } from "../../../domain/credits";
 
 export default function SelectEcts() {
   const ectsList = useRecoilValue(ectsListSelector);
@@ -14,7 +15,7 @@ export default function SelectEcts() {
 
   const sortedEctsList = [...ectsList]
     .sort((a, b) => a - b)
-    .map((ects) => ({ value: ects, label: (ects / 100).toFixed(2) }));
+    .map((ects) => ({ value: ects, label: formatEcts(toEcts(ects)) }));
 
   return (
     <Select

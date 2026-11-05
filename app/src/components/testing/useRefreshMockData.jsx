@@ -1,9 +1,9 @@
 import { useSetRecoilState } from 'recoil';
-//import { scorecardEnrollmentsState } from '../recoil/scorecardEnrollmentsAtom';
 //import { currentEnrollmentsState } from '../recoil/currentEnrollmentsAtom';
 import { scorecardDetailsState } from '../recoil/scorecardDetailsAtom';
 import { getMockScorecard } from '../testing/mockAPIService';
 import { useCallback } from 'react';
+import { log } from '../helpers/log';
 
 export const useRefreshMockData = () => {
   const setScoreCardDetails = useSetRecoilState(scorecardDetailsState);
@@ -17,7 +17,7 @@ export const useRefreshMockData = () => {
       // Update scorecard details
       setScoreCardDetails(mockData);
 
-      console.log('Mock data refreshed for degree:', selectedDegree);
+      log.debug('Mock data refreshed for degree:', selectedDegree);
     },
     [setScoreCardDetails] // Dependency array
   );

@@ -20,9 +20,11 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { apiClient } from "./axiosClient";
+import { myCoursesUrl } from "./apiEndpoints";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { log } from "./log";
 
 /**
  * Custom hook for managing enrolled courses data
@@ -36,14 +38,17 @@ import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
   // Unified course data hook - no more legacy atoms
   const { updateEnrolledCourses: updateUnifiedEnrolledCourses } =
-    useUnifiedCourseData();
+    useUnifiedCourseDataWriters();
 
   // Local loading state
   const [isEnrolledCoursesLoading, setIsEnrolledCoursesLoading] =
     useState(true);
 
-  // Fetch enrolled courses effect
+  // Fetch enrolled courses effect. A superseded run (semester switch, or
+  // StrictMode's double effect in dev) must not write state or report errors.
   useEffect(() => {
+    let cancelled = false;
+
     const fetchEnrolledCourses = async () => {
       // Only fetch if we have required data
       if (!selectedSemester?.id || !selectedSemester?.shortName) {
@@ -54,39 +59,35 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
       setIsEnrolledCoursesLoading(true);
 
       try {
-        console.log(
+        log.debug(
           `🔄 [SIMPLIFIED] Fetching enrolled courses for semester: ${selectedSemester.shortName} (ID: ${selectedSemester.id})`
         );
 
-        const response = await axios.get(
-          `https://integration.unisg.ch/EventApi/MyCourses/byTerm/${selectedSemester.id}`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
+        const response = await apiClient.get(
+          myCoursesUrl(selectedSemester.id),
+          authToken,
+          { headers: { "X-RequestedLanguage": "EN" }, suppressErrorToast: true }
         );
+        if (cancelled) return;
 
-        console.log(
+        log.debug(
           `✅ [SIMPLIFIED] Successfully fetched ${response.data.length} enrolled courses`
         );
-        console.log("🔍 [DEBUG] Enrolled courses structure:", response.data);
+        log.debug("🔍 [DEBUG] Enrolled courses structure:", response.data);
 
         // Log a sample course if available
         if (response.data.length > 0) {
-          console.log("🔍 [DEBUG] Sample enrolled course:", response.data[0]);
+          log.debug("🔍 [DEBUG] Sample enrolled course:", response.data[0]);
         }
 
         // Update ONLY unified enrolled courses state (no more legacy atoms)
         updateUnifiedEnrolledCourses(selectedSemester.shortName, response.data);
       } catch (error) {
+        if (cancelled) return;
         console.error("❌ Error fetching enrolled courses:", error);
         errorHandlingService.handleError(error);
       } finally {
-        setIsEnrolledCoursesLoading(false);
+        if (!cancelled) setIsEnrolledCoursesLoading(false);
       }
     };
 
@@ -96,8 +97,16 @@ export const useEnrolledCoursesData = ({ authToken, selectedSemester }) => {
     } else {
       setIsEnrolledCoursesLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authToken, selectedSemester?.id, selectedSemester?.shortName]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    authToken,
+    selectedSemester?.id,
+    selectedSemester?.shortName,
+    updateUnifiedEnrolledCourses,
+  ]);
 
   return {
     isEnrolledCoursesLoading,

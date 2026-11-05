@@ -143,7 +143,7 @@ MSAL, and auth errors, those never generate report emails.
 
 > **Scope note:** generic `404`s are still classified as `CLIENT` → toast. Some
 > endpoints (the `/similar-courses` vector DB's "no similar courses" — used by
-> `helpers/useSmartSearch.js` and `SimilarCourses` — and ratings) use 404 as normal control
+> `helpers/useVectorSearch.js` for smart search and `SimilarCourses` — and ratings) use 404 as normal control
 > flow; silencing those is intentionally **out of scope** for this change.
 
 ## 4a. Degraded mode (manual SHSG kill switch)
@@ -175,6 +175,16 @@ API (`integration.unisg.ch`) is never affected.
   `DegradedModeBanner` and `DegradedPlaceholder` (`common/`) consume it to
   show a non-blocking banner and per-feature placeholders respectively.
 
+## 4b. Stale lazy chunks after a deploy
+
+The tab panels and `Login` are code-split. A tab opened before a deploy can
+ask for a chunk hash that no longer exists. `lazyWithReload` (`helpers/`)
+wraps `React.lazy`: on the first failed import it sets the `sessionStorage`
+flag `chunk-reload` and reloads the page (the Suspense fallback stays until
+then); if the flag is already set, the error goes to the panel's
+`ErrorBoundary`. A successful import clears the flag. While the browser is
+offline it does not reload, so the `OfflineModal` handles the failure.
+
 ## 5. Configuration knobs
 
 | Constant | File | Value |
@@ -196,6 +206,7 @@ Run with `npx vitest run` (Vitest + Testing Library + MSW).
 - `common/__tests__/OfflineModal.test.jsx` — render + Try again.
 - `common/__tests__/SessionRenewModal.test.jsx` — refresh-first, recurrence escalation.
 - `common/__tests__/AppStateProvider.test.jsx` — event → modal wiring + precedence.
+- `helpers/__tests__/lazyWithReload.test.jsx` — reload once on a failed chunk, boundary on the second failure.
 
 MSW mocks live in `src/test/mocks/` and support per-test error simulation via
 `setErrorMode(ErrorSimulation.*, endpointPattern?)`.

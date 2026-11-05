@@ -13,7 +13,7 @@ export default function LogoutButton({ showLabel = false }) {
   const navigate = useNavigate();
 
   const handleLogoutRedirect = () => {
-    instance.logoutRedirect(navigate("/login")).catch((e) => console.log(e));
+    instance.logoutRedirect(navigate("/login")).catch((e) => console.warn(e));
   };
 
   return (
@@ -28,8 +28,6 @@ export default function LogoutButton({ showLabel = false }) {
           {showLabel && <span>{NAV_LABELS.logout}</span>}
         </button>
       )}
-      {console.log("Active Account:", activeAccount)}
-      {console.log("Accounts:", accounts)}
     </AuthenticatedTemplate>
   );
 }

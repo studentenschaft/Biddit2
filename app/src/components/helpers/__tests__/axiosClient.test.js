@@ -22,6 +22,13 @@ import * as tokenService from "../../auth/tokenService";
 import * as degradedModeService from "../degradedModeService";
 import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
 
+// getAccessToken would otherwise reach the real MSAL instance whenever a
+// request carries no token; default it to "no token available".
+vi.mock("../../auth/tokenService", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getAccessToken: vi.fn(async () => null),
+}));
+
 // Mock the toast library
 vi.mock("react-toastify", () => ({
   toast: {
@@ -461,6 +468,132 @@ describe("Degraded Mode", () => {
 
     const response = await apiClient.get(`${SHSG_API}/study-plans`, TEST_TOKEN);
     expect(response.status).toBe(200);
+  });
+});
+
+describe("Token acquisition", () => {
+  const UNISG_URL = "https://integration.unisg.ch/EventApi/Events/test";
+  const OTHER_URL = "https://example.org/data.json";
+  let seenAuthorization;
+
+  const recordAuthorization = (url) =>
+    server.use(
+      http.get(url, ({ request }) => {
+        seenAuthorization = request.headers.get("Authorization");
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+
+  beforeEach(() => {
+    apiClient.reset();
+    seenAuthorization = undefined;
+    vi.mocked(tokenService.getAccessToken).mockReset();
+    vi.mocked(tokenService.getAccessToken).mockResolvedValue("fresh");
+    Object.defineProperty(navigator, "onLine", { value: true, writable: true });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    // mockReset restores the file-level default (resolves null).
+    vi.mocked(tokenService.getAccessToken).mockReset();
+    degradedModeService._resetForTests();
+  });
+
+  it("sends the acquired token when the caller passes none", async () => {
+    recordAuthorization(`${SHSG_API}/study-plans`);
+
+    await apiClient.get(`${SHSG_API}/study-plans`);
+
+    expect(seenAuthorization).toBe("Bearer fresh");
+  });
+
+  it("acquires the token for the university API too, with a config but no token", async () => {
+    recordAuthorization(UNISG_URL);
+
+    await apiClient.get(UNISG_URL, undefined, { suppressErrorToast: true });
+
+    expect(seenAuthorization).toBe("Bearer fresh");
+  });
+
+  it("lets an explicit token win over the acquired one", async () => {
+    recordAuthorization(`${SHSG_API}/study-plans`);
+
+    await apiClient.get(`${SHSG_API}/study-plans`, TEST_TOKEN);
+
+    expect(seenAuthorization).toBe(`Bearer ${TEST_TOKEN}`);
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("sends no Authorization header when no token can be acquired", async () => {
+    vi.mocked(tokenService.getAccessToken).mockResolvedValue(null);
+    recordAuthorization(`${SHSG_API}/study-plans`);
+
+    await apiClient.get(`${SHSG_API}/study-plans`);
+
+    expect(seenAuthorization).toBeNull();
+  });
+
+  it("never acquires a token for a third-party host", async () => {
+    recordAuthorization(OTHER_URL);
+
+    await apiClient.get(OTHER_URL);
+
+    expect(seenAuthorization).toBeNull();
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("never acquires a token for a plain-http URL to an API host", async () => {
+    recordAuthorization("http://api.shsg.ch/x");
+
+    await apiClient.get("http://api.shsg.ch/x");
+
+    expect(seenAuthorization).toBeNull();
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("keeps an explicit lowercase authorization header", async () => {
+    recordAuthorization(`${SHSG_API}/study-plans`);
+
+    await apiClient.get(`${SHSG_API}/study-plans`, undefined, {
+      headers: { authorization: "Bearer explicit" },
+    });
+
+    expect(seenAuthorization).toBe("Bearer explicit");
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
+  });
+
+  it("refreshes once on 401 and retries without acquiring again", async () => {
+    vi.mocked(tokenService.getAccessToken).mockResolvedValue("stale");
+    vi.spyOn(tokenService, "getRefreshToken").mockResolvedValue("refreshed");
+    const seen = [];
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, ({ request }) => {
+        const authorization = request.headers.get("Authorization");
+        seen.push(authorization);
+        return authorization === "Bearer stale"
+          ? HttpResponse.json({ message: "Token expired" }, { status: 401 })
+          : HttpResponse.json({ plans: [] });
+      }),
+    );
+
+    const response = await apiClient.get(`${SHSG_API}/study-plans`);
+
+    expect(response.status).toBe(200);
+    expect(seen).toEqual(["Bearer stale", "Bearer refreshed"]);
+    expect(tokenService.getAccessToken).toHaveBeenCalledTimes(1);
+    expect(tokenService.getRefreshToken).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not acquire a token for an SHSG request rejected by degraded mode", async () => {
+    vi.spyOn(degradedModeService, "getDegradedMode").mockReturnValue({
+      isDegradedMode: true,
+      message: null,
+    });
+
+    await expect(apiClient.get(`${SHSG_API}/study-plans`)).rejects.toMatchObject({
+      code: "DEGRADED_MODE",
+    });
+    expect(tokenService.getAccessToken).not.toHaveBeenCalled();
   });
 });
 

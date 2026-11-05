@@ -1,23 +1,13 @@
 import { useRecoilState } from "recoil";
 import { unifiedCourseDataState } from "../recoil/unifiedCourseDataAtom";
+import { previousYearSameSeason } from "../../domain/semester";
 
 /**
  * Hook to manage unified semester state
- * Provides functions to update semester selection, future status, and reference semester
+ * Provides functions to update semester selection, future status, reference semester and latest valid term
  */
 export function useUnifiedSemesterState() {
   const [courseData, setCourseData] = useRecoilState(unifiedCourseDataState);
-
-  // Compute same-season previous-year semester shortName (FS26 -> FS25, HS26 -> HS25)
-  const computeSameSeasonPrevYear = (shortName) => {
-    if (!shortName || shortName.length < 4) return null;
-    const season = shortName.slice(0, 2); // FS / HS
-    const yearPart = shortName.slice(2);
-    const yearNum = parseInt(yearPart, 10);
-    if (isNaN(yearNum)) return null;
-    const prevYear = yearNum - 1;
-    return `${season}${prevYear.toString().padStart(2, "0")}`;
-  };
 
   /**
    * Update the selected semester and determine if it's a future semester
@@ -57,7 +47,7 @@ export function useUnifiedSemesterState() {
       let referenceSemesterName = null;
       if (isFuture && termIdList?.length) {
         // SAME-SEASON PREVIOUS-YEAR RULE
-        const candidate = computeSameSeasonPrevYear(semesterShortName);
+        const candidate = previousYearSameSeason(semesterShortName);
         const existsInList = termIdList.some(
           (t) => t && t.shortName === candidate
         );
@@ -76,11 +66,9 @@ export function useUnifiedSemesterState() {
           ...prevSemesters,
           [semesterShortName]: {
             ...semesterData,
-            enrolled: semesterData.enrolled || [],
+            enrolledIds: semesterData.enrolledIds || [],
             available: semesterData.available || [],
-            selected: semesterData.selected || [],
-            filtered: semesterData.filtered || [],
-            ratings: semesterData.ratings || {},
+            selectedIds: semesterData.selectedIds || [],
             lastFetched: semesterData.lastFetched || null,
             cisId: semesterData.cisId || null,
             isFutureSemester: isFuture,
@@ -101,114 +89,9 @@ export function useUnifiedSemesterState() {
     }));
   };
 
-  /**
-   * Manually set future semester status and reference for the currently selected semester
-   */
-  const setFutureSemesterStatus = (isFuture, referenceSemester = null) => {
-    setCourseData((prev) => {
-      const selectedSem = prev.selectedSemester;
-      if (!selectedSem) return prev;
-
-      const prevSemesters = prev.semesters || {};
-      const semesterData = prevSemesters[selectedSem] || {};
-
-      return {
-        ...prev,
-        semesters: {
-          ...prevSemesters,
-          [selectedSem]: {
-            ...semesterData,
-            enrolled: semesterData.enrolled || [],
-            available: semesterData.available || [],
-            selected: semesterData.selected || [],
-            filtered: semesterData.filtered || [],
-            ratings: semesterData.ratings || {},
-            lastFetched: semesterData.lastFetched || null,
-            cisId: semesterData.cisId || null,
-            isFutureSemester: isFuture,
-            referenceSemester: isFuture
-              ? referenceSemester || computeSameSeasonPrevYear(selectedSem)
-              : null,
-          },
-        },
-      };
-    });
-  };
-
-  /**
-   * Initialize a semester in the unified structure
-   */
-  const initializeSemester = (semesterShortName) => {
-    setCourseData((prev) => {
-      if (prev.semesters[semesterShortName]) {
-        return prev; // Already initialized
-      }
-
-      return {
-        ...prev,
-        semesters: {
-          ...(prev.semesters || {}),
-          [semesterShortName]: {
-            enrolled: [],
-            available: [],
-            selected: [],
-            filtered: [],
-            ratings: {},
-            lastFetched: null,
-            isFutureSemester: false,
-            referenceSemester: null,
-            cisId: null,
-          },
-        },
-      };
-    });
-  };
-
-  /**
-   * Update course data for a specific semester and type
-   */
-  const updateSemesterCourses = (semesterShortName, type, courses) => {
-    setCourseData((prev) => {
-      // Make sure the semester exists
-      const existingSemester = prev.semesters[semesterShortName] || {
-        enrolled: [],
-        available: [],
-        selected: [],
-        filtered: [],
-        ratings: {},
-        lastFetched: null,
-        isFutureSemester: false,
-        referenceSemester: null,
-        cisId: null,
-      };
-
-      // Create a clean copy that only includes the properties we want
-      const cleanPrev = {
-        semesters: prev.semesters,
-        selectedSemester: prev.selectedSemester,
-        latestValidTerm: prev.latestValidTerm,
-      };
-
-      return {
-        ...cleanPrev,
-        semesters: {
-          ...cleanPrev.semesters,
-          [semesterShortName]: {
-            ...existingSemester,
-            [type]: courses,
-            lastFetched: new Date().toISOString(),
-          },
-        },
-      };
-    });
-  };
-
   return {
     courseData,
     setSelectedSemester,
     setLatestValidTerm,
-    setFutureSemesterStatus,
-    initializeSemester,
-    updateSemesterCourses,
   };
 }

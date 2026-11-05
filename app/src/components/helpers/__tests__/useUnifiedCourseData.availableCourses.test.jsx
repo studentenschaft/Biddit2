@@ -171,3 +171,39 @@ describe("updateAvailableCourses ECTS ingestion", () => {
     expect(creditsOf(available, "3,105,3.00")).toBe(0);
   });
 });
+
+describe("updateAvailableCourses normalization", () => {
+  it("every available course carries key and ects", () => {
+    const { result } = renderUnifiedData();
+
+    act(() => {
+      result.current.api.updateAvailableCourses("HS26", [
+        parentWith({
+          id: "main",
+          courseNumber: "4,135,1.00",
+          shortName: "Linear Algebra",
+          credits: 400,
+        }),
+        parentWith({
+          id: "ex",
+          courseNumber: "4,135,2.01",
+          shortName: "Linear Algebra: Exercises, Group 1",
+          credits: 400,
+        }),
+        { id: "flat", courseNumber: "5,001,1.00", shortName: "Flat", credits: 300 },
+      ]);
+    });
+
+    const available = availableOf(result, "HS26");
+    expect(available).toHaveLength(3);
+    available.forEach((course) => {
+      expect(course.key).toBe(course.courseNumber);
+      expect(course.ects).toBe(course.credits / 100);
+    });
+    expect(available.find((c) => c.key === "4,135,2.01")).toMatchObject({
+      credits: 0,
+      ects: 0,
+      rootKey: "4,135",
+    });
+  });
+});

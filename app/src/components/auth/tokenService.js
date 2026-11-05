@@ -3,6 +3,7 @@ import {
   BrowserAuthError,
 } from "@azure/msal-browser";
 import { msalInstance, initializeMsalInstance, apiScopes } from "./authConfig";
+import { log } from "../helpers/log";
 
 /**
  * Session event types emitted to listeners (consumed by AppStateProvider).
@@ -32,6 +33,31 @@ const emitSessionEvent = (eventType, data = {}) => {
   sessionEventListeners.forEach((callback) =>
     callback({ type: eventType, ...data }),
   );
+};
+
+/**
+ * Silently acquire an API access token for the active account, for requests
+ * whose caller passed none. Quiet by design: no session events, no popup, never
+ * throws. A null result sends the request without a token; its 401 then runs
+ * the refresh path (`getRefreshToken`), which owns recovery and session events.
+ * @returns {Promise<string|null>} Access token, or null if none is available
+ */
+export const getAccessToken = async () => {
+  try {
+    await initializeMsalInstance();
+    const account =
+      msalInstance.getActiveAccount() ?? msalInstance.getAllAccounts()[0];
+    if (!account) return null;
+
+    const response = await msalInstance.acquireTokenSilent({
+      account,
+      scopes: apiScopes,
+    });
+    return response.accessToken;
+  } catch (error) {
+    log.debug("Silent token acquisition failed:", error);
+    return null;
+  }
 };
 
 /**
@@ -67,7 +93,7 @@ export const getRefreshToken = async () => {
     } catch (silentError) {
       // InteractionRequiredAuthError → session expired, full re-login needed.
       if (silentError instanceof InteractionRequiredAuthError) {
-        console.log("Interaction required - session expired");
+        log.debug("Interaction required - session expired");
         emitSessionEvent(SessionEvent.EXPIRED);
         return null;
       }

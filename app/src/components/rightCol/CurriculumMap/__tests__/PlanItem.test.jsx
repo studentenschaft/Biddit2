@@ -96,6 +96,16 @@ describe('PlanItem', () => {
 
       expect(screen.getByText('4.5 ECTS')).toBeInTheDocument();
     });
+
+    it('keeps two-decimal credits instead of rounding them', () => {
+      render(
+        <TestWrapper>
+          <PlanItem item={{ ...defaultItem, credits: 2.25 }} semesterKey="FS26" />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText('2.25 ECTS')).toBeInTheDocument();
+    });
   });
 
   describe('status styling', () => {

@@ -1,8 +1,25 @@
 import { atom, selector } from "recoil";
 import { authTokenState } from "./authAtom";
+import { cisIdList } from "./cisIdListAtom";
 import { cisIdListSelector } from "./cisIdListSelector";
-import { parseSemester } from "../helpers/transformScorecard";
+import { compareSemesterKeys, parseSemesterKey } from "../../domain/semester";
 import { apiClient } from "../helpers/axiosClient";
+import { SHSG_API, myCoursesUrl } from "../helpers/apiEndpoints";
+import { forgetCourseRatings } from "../helpers/courseSheetCache";
+import { cachedRequest } from "../helpers/sessionCache";
+import { log } from "../helpers/log";
+
+// The selector below re-runs whenever the token, the term list or the rated
+// courses change (several times on a cold start), so its MyCourses requests
+// are memoised per session: one read per term.
+const ratingRequests = new Map();
+
+const fetchMyCourses = (timeSegmentId, token) =>
+  cachedRequest(ratingRequests, `myCourses:${timeSegmentId}`, () =>
+    apiClient.get(myCoursesUrl(timeSegmentId), token).then((res) => res.data)
+  );
+
+export const _resetRatingRequestsForTests = () => ratingRequests.clear();
 
 export const coursesRatedState = atom({
   key: "coursesRated",
@@ -12,7 +29,7 @@ export const coursesRatedState = atom({
       const token = get(authTokenState);
       try {
         const res = await apiClient.get(
-          `https://api.shsg.ch/course-ratings/of-user`,
+          `${SHSG_API}/course-ratings/of-user`,
           token
         );
         return res.data;
@@ -33,9 +50,16 @@ export const coursesTakenForRatingState = atom({
   default: selector({
     key: "coursesTakenForRatings/Default",
     get: async ({ get }) => {
+      // Every Recoil dependency is read before the first await and outside the
+      // try: a pending dependency throws a promise, which Recoil must see to
+      // suspend and re-run this selector, not the catch below as an error.
       const token = get(authTokenState);
-      const cisIdList = get(cisIdListSelector);
-      const currentSemester = cisIdList.find(
+      // The raw term list useTermSelection stored; populated whenever a
+      // current semester exists, which the early return below requires.
+      const termList = get(cisIdList) || [];
+      const termIdList = get(cisIdListSelector);
+      const coursesRated = get(coursesRatedState) || [];
+      const currentSemester = termIdList.find(
         (term) => term.isCurrent
       )?.shortName;
       if (!currentSemester) {
@@ -44,14 +68,8 @@ export const coursesTakenForRatingState = atom({
       }
 
       try {
-        // First get all available semesters and their TimeSegmentIds
-        const semesterInfo = await apiClient.get(
-          `https://integration.unisg.ch/EventApi/CisTermAndPhaseInformations`,
-          token
-        );
-
         // replace any data.shortname entries semester name formatting (e.g., SpSXX -> FSXX, AuSXX -> HSXX)
-        semesterInfo.data = semesterInfo.data.map((semester) => {
+        const semesterInfo = termList.map((semester) => {
           const oldShortName = semester.shortName;
           const normalizedShortName = semester.shortName
             .replace(/SpS(\d{2})/, "FS$1")
@@ -64,7 +82,7 @@ export const coursesTakenForRatingState = atom({
         });
 
         // Filter for ratable semesters and map to TimeSegmentIds
-        const ratableSemesters = semesterInfo.data
+        const ratableSemesters = semesterInfo
           .filter((semester) =>
             isSemesterRatable(semester.shortName, currentSemester)
           )
@@ -78,11 +96,8 @@ export const coursesTakenForRatingState = atom({
 
         const loadRatingCourses = async (semesterName, timeSegmentId) => {
           try {
-            const res = await apiClient.get(
-              `https://integration.unisg.ch/eventapi/MyCourses/byTerm/${timeSegmentId}`,
-              token
-            );
-            return { id: semesterName, data: res.data || [] };
+            const data = await fetchMyCourses(timeSegmentId, token);
+            return { id: semesterName, data: data || [] };
           } catch (err) {
             console.error(
               `Error loading courses for semester ${semesterName}:`,
@@ -98,8 +113,6 @@ export const coursesTakenForRatingState = atom({
               loadRatingCourses(semesterName, timeSegmentId)
           )
         );
-
-        const coursesRated = get(coursesRatedState) || [];
 
         const newData = data
           .map((semester) => {
@@ -152,11 +165,13 @@ export const coursesTakenForRatingState = atom({
 export async function SubmitCourseRatingById(token, courseRating) {
   try {
     const res = await apiClient.post(
-      `https://api.shsg.ch/course-ratings/`,
+      `${SHSG_API}/course-ratings/`,
       courseRating,
       token
     );
-    console.log("Rating submitted successfully:", res.data);
+    log.debug("Rating submitted successfully:", res.data);
+    // Course Details caches ratings per session; show the new one next visit.
+    forgetCourseRatings(courseRating.courseNumber);
     return res.data;
   } catch (err) {
     console.error("Error submitting course rating:", err);
@@ -178,20 +193,14 @@ export const isSemesterRatable = (
     return false;
   }
 
-  const targetSem = parseSemester(semesterShortName);
-  const currentSem = parseSemester(currentSemesterShortName);
+  const targetSem = parseSemesterKey(semesterShortName);
+  const currentSem = parseSemesterKey(currentSemesterShortName);
 
   if (!targetSem || !currentSem) {
-    console.log("RATINGSV2: Failed to parse semester names.");
+    log.debug("RATINGSV2: Failed to parse semester names.");
     return false;
   }
-  // A semester is ratable if:
-  // 1. It's from a previous year (but not more than 3 years ago), or
-  // 2. It's from the current year but is a spring semester and we're in fall
-  if (currentSem.year - targetSem.year > 3) return false;
-  if (targetSem.year < currentSem.year) return true;
-  if (targetSem.year === currentSem.year && targetSem.sem < currentSem.sem)
-    return true;
-
-  return false;
+  // Ratable: before the current semester, and at most three years back.
+  if (currentSem.fullYear - targetSem.fullYear > 3) return false;
+  return compareSemesterKeys(semesterShortName, currentSemesterShortName) < 0;
 };

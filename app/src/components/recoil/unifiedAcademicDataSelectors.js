@@ -1,7 +1,7 @@
 import { selector } from "recoil";
 import { unifiedAcademicDataState } from "./unifiedAcademicDataAtom";
 import { unifiedCourseDataState } from "./unifiedCourseDataAtom";
-import { localSelectedCoursesSemKeyState } from "./localSelectedCoursesSemKeyAtom";
+import { coursesWithTypesSelector } from "./coursesWithTypesSelector";
 import { processExerciseGroupECTS } from "../helpers/smartExerciseGroupHandler";
 import {
   enrichCourseFromAvailable,
@@ -12,6 +12,7 @@ import {
   deriveMainProgramEraStart,
   isSemesterInProgramEra
 } from "../helpers/programEraScope";
+import { toEcts } from "../../domain/credits";
 
 /**
  * Selector to get the current program data
@@ -37,16 +38,34 @@ export const unifiedStudyPlanSelector = selector({
   key: "unifiedStudyPlanSelector",
   get: ({ get }) => {
     const academicData = get(unifiedAcademicDataState);
-    const localSelectedBySemester = get(localSelectedCoursesSemKeyState);
+    const unifiedCourseData = get(unifiedCourseDataState);
+    const categoryTypeMap = get(coursesWithTypesSelector);
 
     if (!academicData.programs || Object.keys(academicData.programs).length === 0) {
       return {};
     }
 
-    // Build optimized lookup maps for local selections (O(1) lookups)
-    const localSelectedMaps = {};
-    for (const [semesterKey, courses] of Object.entries(localSelectedBySemester)) {
-      localSelectedMaps[semesterKey] = new Set(courses.map(course => course.id));
+    // The wishlist per semester: selectedIds resolved against that semester's
+    // catalog with myCoursesSelector's rule. Ids that match no course (or a
+    // catalog not loaded yet) are left out. The lookup set holds both the
+    // course number and the catalog id.
+    const wishlistBySemester = {};
+    const wishlistIdSets = {};
+    for (const [semesterKey, semData] of Object.entries(unifiedCourseData.semesters || {})) {
+      const available = semData.available || [];
+      wishlistBySemester[semesterKey] = (semData.selectedIds || [])
+        .map((courseId) => ({
+          courseId,
+          fullCourse: available.find(
+            (c) => c.courseNumber === courseId || c.id === courseId
+          ),
+        }))
+        .filter(({ fullCourse }) => fullCourse);
+      wishlistIdSets[semesterKey] = new Set(
+        wishlistBySemester[semesterKey].flatMap(({ courseId, fullCourse }) =>
+          [courseId, fullCourse.id].filter(Boolean)
+        )
+      );
     }
 
     const finalData = {};
@@ -81,31 +100,31 @@ export const unifiedStudyPlanSelector = selector({
         let processedCourses = baseCourses.map(course => ({ ...course }));
 
         // PHASE 1: REMOVAL PASS
-        // Remove wishlist courses that are no longer in local selections
+        // Remove wishlist courses that are no longer selected
         processedCourses = processedCourses.filter(course => {
           if (!course.type?.endsWith('-wishlist')) return true;
-          
-          const localCoursesSet = localSelectedMaps[semesterKey];
-          return localCoursesSet && localCoursesSet.has(course.id);
+          return Boolean(wishlistIdSets[semesterKey]?.has(course.id));
         });
 
         // PHASE 2: ADDITION PASS
-        // Add new locally selected courses that aren't in the unified state yet
+        // Add selected courses that aren't in the semester map yet
         const existingCourseIds = new Set(processedCourses.map(course => course.id));
-        const localCourses = localSelectedBySemester[semesterKey] || [];
+        const wishlist = wishlistBySemester[semesterKey] || [];
 
-        for (const localCourse of localCourses) {
-          if (!existingCourseIds.has(localCourse.id)) {
-            processedCourses.push({
-              name: localCourse.shortName || localCourse.id,
-              credits: localCourse.credits ? localCourse.credits / 100 : 0,
-              type: `${localCourse.classification}-wishlist`,
-              grade: null,
-              id: localCourse.id,
-              big_type: localCourse.big_type,
-              calendarEntry: localCourse.calendarEntry || [],
-            });
+        for (const { courseId, fullCourse } of wishlist) {
+          if (existingCourseIds.has(courseId) || existingCourseIds.has(fullCourse.id)) {
+            continue;
           }
+          const classification = fullCourse.classification;
+          processedCourses.push({
+            name: fullCourse.shortName || courseId,
+            credits: toEcts(fullCourse.credits, 0),
+            type: `${classification}-wishlist`,
+            grade: null,
+            id: courseId,
+            big_type: categoryTypeMap[classification] || "",
+            calendarEntry: fullCourse.calendarEntry || [],
+          });
         }
 
         // PHASE 2.5: SMART EXERCISE GROUP PROCESSING
@@ -274,6 +293,15 @@ export const transcriptViewSelector = selector({
   }
 });
 
+// The first catalog holding `courseId` (exact courseNumber or id match, as in
+// myCoursesSelector): the semester's own catalog first, then any loaded one.
+const findCatalogContaining = (courseId, ownCatalog, loadedCatalogs) => {
+  const holds = (catalog) =>
+    catalog.some((c) => c.courseNumber === courseId || c.id === courseId);
+  if (holds(ownCatalog)) return ownCatalog;
+  return loadedCatalogs.find(holds) || null;
+};
+
 /**
  * Selector to get study overview view for all programs
  * Provides semester-based planning view
@@ -305,6 +333,10 @@ export const studyOverviewViewSelector = selector({
       academicData.programs,
       mainProgramId
     );
+
+    const loadedCatalogs = Object.values(unifiedCourseData.semesters || {})
+      .map((semester) => semester.available || [])
+      .filter((available) => available.length > 0);
 
     const result = {};
 
@@ -351,11 +383,22 @@ export const studyOverviewViewSelector = selector({
           unifiedCourseData.semesters
         );
 
-        // Enrich selected courses with current data
+        // Enrich selected courses with current data. A wishlist id must resolve
+        // in this semester's catalog or, failing that, in another loaded one;
+        // one that resolves nowhere is dropped rather than shown as a 3-ECTS
+        // placeholder. Enrolled ids are kept as before.
         const enrichedSelectedCourses = allSelectedIds
-          .map(courseId => enrichCourseFromAvailable(courseId, availableCourses, {
-            enrolledIds: currentEnrolledIds
-          }))
+          .map(courseId => {
+            const catalog = currentEnrolledIds.includes(courseId)
+              ? availableCourses
+              : findCatalogContaining(courseId, availableCourses, loadedCatalogs);
+            return catalog
+              ? enrichCourseFromAvailable(courseId, catalog, {
+                  enrolledIds: currentEnrolledIds
+                })
+              : null;
+          })
+          .filter(Boolean)
           .filter(course => {
             // Filter out courses that are already in enrolledCourses (completed)
             const enrolledCourses = baseData.enrolledCourses || [];

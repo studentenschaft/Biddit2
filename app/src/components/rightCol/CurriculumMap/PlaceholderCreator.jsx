@@ -32,14 +32,14 @@ const PlaceholderCreator = () => {
     : undefined;
 
   return (
-    <div className="flex items-center gap-2 mt-2 px-1">
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-2 px-1">
       <span className="text-xs text-gray-500 whitespace-nowrap">Add a Placeholder Course:</span>
       <input
         type="text"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
         placeholder="Label (e.g. Elective)"
-        className="border border-gray-300 rounded px-2 py-1 text-sm w-36 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        className="border border-gray-300 rounded px-2 py-1 text-sm w-36 min-w-0 focus:outline-none focus:ring-1 focus:ring-blue-500"
       />
 
       {/* Credits input */}

@@ -1,9 +1,9 @@
 /**
  * similarCoursesApi
  *
- * Single source of truth for the similar-courses vector DB (query + upsert),
- * shared by the left-column smart search (`useSmartSearch`) and SimilarCourses
- * so the two never drift apart.
+ * Single source of truth for the similar-courses vector DB (query + upsert).
+ * Its only caller is `useVectorSearch`, which smart search (`useSmartSearch`)
+ * and SimilarCourses share so the two never drift apart.
  *
  * The upsert here owns the borrowed-data guardrail: it MUST refuse to write
  * courses that don't belong to the selected term (future projections or
@@ -13,9 +13,10 @@
  */
 
 import { apiClient } from "./axiosClient";
+import { SHSG_API } from "./apiEndpoints";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 
-const SIMILAR_COURSES_BASE = "https://api.shsg.ch/similar-courses";
+const SIMILAR_COURSES_BASE = `${SHSG_API}/similar-courses`;
 
 /**
  * Query similar courses from the vector DB.
@@ -40,7 +41,10 @@ export function querySimilarCourses({
   semester,
   numberOfResults = 10,
 }) {
+  // Both callers handle the failure (a 404 means "nothing embedded yet",
+  // anything else they report), so apiClient must not toast as well.
   return apiClient.get(`${SIMILAR_COURSES_BASE}/query`, authToken, {
+    suppressErrorToast: true,
     params: {
       courseDescription,
       numberOfResults,
@@ -114,7 +118,8 @@ export async function upsertSimilarCourses({
           program,
         })),
       },
-      authToken
+      authToken,
+      { suppressErrorToast: true }
     );
     return { upserted: true, semester };
   } catch (error) {

@@ -35,7 +35,9 @@ const ProgramHeader = ({ program, onHelpClick }) => {
       {/* Title - matches StudyOverview header style */}
       <div className="py-2 pl-2 pr-3 text-xl font-bold bg-gray-100 rounded flex items-center justify-between">
         <span className="flex items-center gap-2 min-w-0">
-          <span className="truncate">{name}</span>
+          <span className="line-clamp-2" title={name}>
+            {name}
+          </span>
           <span
             className="inline-flex flex-shrink-0 items-center rounded-full bg-hsg-50 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-hsg-700 ring-1 ring-hsg-700/20 cursor-help"
             data-tooltip-id="curriculum-map-beta"

@@ -12,11 +12,21 @@
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { renderHook, waitFor } from "@testing-library/react";
-import { RecoilRoot } from "recoil";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { http, HttpResponse } from "msw";
+import { RecoilRoot, useRecoilValue } from "recoil";
+import {
+  server,
+  setErrorMode,
+  ErrorSimulation,
+} from "../../../test/mocks/server";
+import { errorHandlingService } from "../../errorHandling/ErrorHandlingService";
+import { useInvalidateStudyPlan } from "../../recoil/studyPlanLoadState";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
 import { apiClient } from "../axiosClient";
+import { SHSG_API } from "../apiEndpoints";
 import { DegradedModeError } from "../degradedModeService";
+import { useCourseSelection } from "../useCourseSelection";
 import { useUnifiedCourseData } from "../useUnifiedCourseData";
 import { useStudyPlanDataSimplified } from "../useStudyPlanDataSimplified";
 
@@ -37,9 +47,7 @@ const seedWishlist = (set) => {
         enrolledIds: [],
         available: [],
         selectedIds: ["existing-course"],
-        filtered: [],
         studyPlan: ["existing-course"],
-        ratings: {},
         lastFetched: PRE_INCIDENT_TIMESTAMP,
         isFutureSemester: false,
         referenceSemester: null,
@@ -107,5 +115,186 @@ describe("useStudyPlanDataSimplified - degraded mode race", () => {
     expect(result.current.semesterData.lastFetched).toBe(
       PRE_INCIDENT_TIMESTAMP,
     );
+  });
+});
+
+describe("useStudyPlanDataSimplified - once per session", () => {
+  const HS25 = { id: "term-hs25", cisId: "cis-hs25", shortName: "HS25" };
+  const FS26 = { id: "term-fs26", cisId: "cis-fs26", shortName: "FS26" };
+  const wrapper = ({ children }) => <RecoilRoot>{children}</RecoilRoot>;
+
+  const countStudyPlanFetches = () => {
+    const counter = { hits: 0 };
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () => {
+        counter.hits++;
+        return HttpResponse.json({ HS25: ["7,035,1.00"], FS26: [] });
+      })
+    );
+    return counter;
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("fetches /study-plans once across two semester switches", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { rerender } = renderHook(
+      ({ sem }) =>
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: sem }),
+      { wrapper, initialProps: { sem: HS25 } }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    rerender({ sem: FS26 });
+    rerender({ sem: HS25 });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(counter.hits).toBe(1);
+  });
+
+  it("retries on a semester switch while nothing has loaded", async () => {
+    let hits = 0;
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () => {
+        hits++;
+        return hits === 1
+          ? HttpResponse.json({ message: "boom" }, { status: 500 })
+          : HttpResponse.json({ HS25: ["7,035,1.00"], FS26: [] });
+      })
+    );
+    // A 500 is retried with a multi-second backoff; fail the retry at once.
+    vi.spyOn(apiClient, "retryWithBackoff").mockImplementation((error) =>
+      Promise.reject(error)
+    );
+    vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result, rerender } = renderHook(
+      ({ sem }) => {
+        const { isStudyPlanLoading } = useStudyPlanDataSimplified({
+          authToken: "t",
+          selectedSemester: sem,
+        });
+        return {
+          isStudyPlanLoading,
+          state: useRecoilValue(unifiedCourseDataState),
+        };
+      },
+      { wrapper, initialProps: { sem: HS25 } }
+    );
+    await waitFor(() => expect(result.current.isStudyPlanLoading).toBe(false));
+    expect(hits).toBe(1);
+
+    rerender({ sem: FS26 });
+
+    await waitFor(() =>
+      expect(result.current.state.semesters.HS25?.selectedIds).toEqual([
+        "7,035,1.00",
+      ])
+    );
+    expect(hits).toBe(2);
+  });
+
+  // A 404 is not retried, so the failure lands at once without fake timers.
+  it("a failed load reports once", async () => {
+    server.use(
+      http.get(`${SHSG_API}/study-plans`, () =>
+        HttpResponse.json({ message: "not found" }, { status: 404 })
+      )
+    );
+    const spy = vi
+      .spyOn(errorHandlingService, "handleError")
+      .mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(
+      () => useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 }),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isStudyPlanLoading).toBe(false));
+    await waitFor(() => expect(spy).toHaveBeenCalled());
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it("refetches after the study plan is invalidated", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { result } = renderHook(
+      () => {
+        const { isStudyPlanLoading } = useStudyPlanDataSimplified({
+          authToken: "t",
+          selectedSemester: HS25,
+        });
+        return { isStudyPlanLoading, invalidate: useInvalidateStudyPlan() };
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    act(() => result.current.invalidate());
+
+    await waitFor(() => expect(counter.hits).toBe(2));
+  });
+
+  it("re-syncs from the server after a failed wishlist write", async () => {
+    const counter = countStudyPlanFetches();
+    vi.spyOn(errorHandlingService, "handleError").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { result } = renderHook(
+      () => {
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 });
+        return useCourseSelection({
+          selectedCourseIds: [],
+          selectedSemesterShortName: "HS25",
+          authToken: "t",
+        });
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    setErrorMode(ErrorSimulation.FORBIDDEN_403, "/study-plans/HS25/");
+    await act(async () => {
+      await result.current.addOrRemoveCourse({
+        id: "course-1",
+        courseNumber: "7,214,1.00",
+        semester: "HS25",
+      });
+    });
+
+    await waitFor(() => expect(counter.hits).toBe(2));
+  });
+
+  it("does not refetch after a successful wishlist write", async () => {
+    const counter = countStudyPlanFetches();
+
+    const { result } = renderHook(
+      () => {
+        useStudyPlanDataSimplified({ authToken: "t", selectedSemester: HS25 });
+        return useCourseSelection({
+          selectedCourseIds: [],
+          selectedSemesterShortName: "HS25",
+          authToken: "t",
+        });
+      },
+      { wrapper }
+    );
+    await waitFor(() => expect(counter.hits).toBe(1));
+
+    await act(async () => {
+      await result.current.addOrRemoveCourse({
+        id: "course-1",
+        courseNumber: "7,214,1.00",
+        semester: "HS25",
+      });
+    });
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(counter.hits).toBe(1);
   });
 });

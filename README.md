@@ -45,12 +45,14 @@ Biddit2 helps University of St. Gallen students browse available courses and pla
    npm run dev
    ```
 
-### Testing (COMING SOON)
+### Testing
 
-To ensure no changes break any existing features, run the testing suite with the following command (CURRENTLY STILL IN DEVELOPMENT):
+Run these from `app/`. The suite uses Vitest, Testing Library and MSW, so no test calls a real API.
 
 ```bash
-npm test
+npm test            # Vitest in watch mode
+npm run coverage    # single run with a coverage report
+npm run lint        # ESLint, 0 warnings allowed
 ```
 
 ## 🛠️ Technology Stack

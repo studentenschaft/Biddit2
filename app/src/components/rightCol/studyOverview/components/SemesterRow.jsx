@@ -60,7 +60,7 @@ const SemesterRow = ({
       </div>
 
       {/* Column 2: Course bars */}
-      <div className="col-span-6 md:col-span-8 flex flex-row h-8">
+      <div className="col-span-4 md:col-span-7 xl:col-span-8 flex flex-row h-8">
         {sortedCourses.map((course, idx) => (
           <CourseBar
             key={idx}
@@ -71,12 +71,14 @@ const SemesterRow = ({
         ))}
       </div>
 
-      {/* Column 3: ECTS total */}
-      <div className="col-span-2 md:col-span-1 text-right font-semibold">
+      {/* Column 3: ECTS total. Wider than one twelfth until xl so that
+          "11 ECTS" stays on one line; on phones the Details button in
+          column 4 also gets three twelfths, taken from the bars. */}
+      <div className="col-span-3 md:col-span-2 xl:col-span-1 text-right font-semibold">
         <span
-          className={
+          className={`whitespace-nowrap ${
             calculateSemesterCredits(courses || []) > 30 ? "text-red-500" : ""
-          }
+          }`}
         >
           {calculateSemesterCredits(courses || [])} ECTS
         </span>
@@ -88,7 +90,7 @@ const SemesterRow = ({
       </div>
 
       {/* Column 4: Grade or Details button */}
-      <div className="col-span-2 md:col-span-2 text-center font-semibold">
+      <div className="col-span-3 md:col-span-2 text-center font-semibold">
         {isCurrentSemester ? (
           <button
             onClick={(e) => {

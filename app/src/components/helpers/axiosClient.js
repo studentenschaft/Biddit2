@@ -1,12 +1,21 @@
 import axios from "axios";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
 import {
+  getAccessToken,
   getRefreshToken,
   handleAuthFailure,
 } from "../auth/tokenService";
 import { getDegradedMode, DegradedModeError } from "./degradedModeService";
+import { log } from "./log";
+import { config as appConfig } from "../../config";
 
-const SHSG_HOST = "api.shsg.ch";
+const parseUrl = (url) => {
+  try {
+    return new URL(url, window.location.origin);
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Whether a request URL targets the SHSG API host. Relative URLs (e.g. the
@@ -15,13 +24,19 @@ const SHSG_HOST = "api.shsg.ch";
  * @param {string} url
  * @returns {boolean}
  */
-export const isShsgHost = (url) => {
-  try {
-    return new URL(url, window.location.origin).hostname === SHSG_HOST;
-  } catch {
-    return false;
-  }
-};
+export const isShsgHost = (url) =>
+  parseUrl(url)?.hostname === new URL(appConfig.shsgApiBase).hostname;
+
+// Exact origin (scheme, host, port), so the token never travels over http.
+const isTokenHost = (url) =>
+  [appConfig.shsgApiBase, appConfig.unisgApiBase].some(
+    (base) => parseUrl(url)?.origin === new URL(base).origin,
+  );
+
+const withBearer = (token, headers = {}) =>
+  typeof token === "string" && token !== ""
+    ? { Authorization: `Bearer ${token}`, ...headers }
+    : headers;
 
 // Configuration constants
 const MAX_RETRIES = 3;
@@ -94,7 +109,7 @@ class ApiClient {
 
     // Request interceptor to add auth headers
     this.client.interceptors.request.use(
-      (config) => {
+      async (config) => {
         // Check if offline before making request
         if (!isOnline()) {
           emitNetworkEvent("OFFLINE");
@@ -113,13 +128,23 @@ class ApiClient {
 
         // Add default headers for SHSG API
         const defaultHeaders = {
-          "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
+          "X-ApplicationId": appConfig.unisgApplicationId,
           "X-RequestedLanguage": "EN",
           "API-Version": "1",
           "Content-Type": "application/json",
         };
 
         config.headers = { ...defaultHeaders, ...config.headers };
+
+        // Callers that pass no token get one acquired here. An explicit
+        // header always wins; a null token sends the request without one and
+        // its 401 runs the refresh path below.
+        const hasAuthorization =
+          config.headers.Authorization || config.headers.authorization;
+        if (!hasAuthorization && isTokenHost(config.url)) {
+          const token = await getAccessToken();
+          if (token) config.headers.Authorization = `Bearer ${token}`;
+        }
 
         // Initialize retry count
         config._retryCount = config._retryCount || 0;
@@ -186,7 +211,9 @@ class ApiClient {
           // surface the offline modal here regardless and never show an error
           // toast/email for it.
           emitNetworkEvent("OFFLINE");
-        } else {
+        } else if (!originalRequest?.suppressErrorToast) {
+          // Callers that handle the failure themselves (or stay silent on
+          // purpose) pass `suppressErrorToast: true` in the request config.
           errorHandlingService.handleError(error);
         }
 
@@ -278,7 +305,7 @@ class ApiClient {
     const jitter = baseDelay * 0.5 * Math.random();
     const delay = baseDelay + jitter; // e.g. 1-1.5s, 2-3s, 4-6s
 
-    console.log(
+    log.debug(
       `Retrying request (${retryCount}/${MAX_RETRIES}) after ${delay}ms:`,
       originalRequest.url,
     );
@@ -297,17 +324,14 @@ class ApiClient {
   /**
    * Make a GET request with automatic token handling
    * @param {string} url - The URL to request
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async get(url, token, config = {}) {
     return this.client.get(url, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
@@ -315,17 +339,14 @@ class ApiClient {
    * Make a POST request with automatic token handling
    * @param {string} url - The URL to request
    * @param {Object} data - Request body data
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async post(url, data, token, config = {}) {
     return this.client.post(url, data, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
@@ -333,34 +354,28 @@ class ApiClient {
    * Make a PUT request with automatic token handling
    * @param {string} url - The URL to request
    * @param {Object} data - Request body data
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async put(url, data, token, config = {}) {
     return this.client.put(url, data, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 
   /**
    * Make a DELETE request with automatic token handling
    * @param {string} url - The URL to request
-   * @param {string} token - Authentication token
+   * @param {string} [token] - Access token; omit to let the client acquire one
    * @param {Object} config - Additional axios config
    * @returns {Promise} Axios response
    */
   async delete(url, token, config = {}) {
     return this.client.delete(url, {
       ...config,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...config.headers,
-      },
+      headers: withBearer(token, config.headers),
     });
   }
 

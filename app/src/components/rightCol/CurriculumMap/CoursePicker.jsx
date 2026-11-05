@@ -16,9 +16,8 @@ import { useRecoilValue } from "recoil";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { unifiedCourseDataState } from "../../recoil/unifiedCourseDataAtom";
-import { localSelectedCoursesSemKeyState } from "../../recoil/localSelectedCoursesSemKeyAtom";
 import { curriculumPlanState, filterCurrentAndFutureSemesters } from "../../recoil/curriculumPlanAtom";
-import { normalizeCourseCredits } from "../../recoil/curriculumMapSelector";
+import { formatEcts, toEcts } from "../../../domain/credits";
 
 /**
  * PickerCourseCard - A draggable course card in the picker
@@ -43,10 +42,7 @@ const PickerCourseCard = ({ course, semesterKey }) => {
       }
     : undefined;
 
-  const normalized = normalizeCourseCredits(course.credits, null);
-  const creditsDisplay = normalized != null
-    ? (Number.isInteger(normalized) ? normalized : normalized.toFixed(1))
-    : "?";
+  const creditsDisplay = formatEcts(toEcts(course.credits));
 
   const displayName =
     course.shortName?.length > 35
@@ -98,7 +94,6 @@ PickerCourseCard.propTypes = {
  */
 const CoursePicker = ({ futureSemesters = [] }) => {
   const unifiedCourseData = useRecoilValue(unifiedCourseDataState);
-  const localSelectedCourses = useRecoilValue(localSelectedCoursesSemKeyState);
   const curriculumPlan = useRecoilValue(curriculumPlanState);
 
   const [selectedSemester, setSelectedSemester] = useState("");
@@ -137,11 +132,9 @@ const CoursePicker = ({ futureSemesters = [] }) => {
     const ids = new Set();
 
     // From wishlist
-    const wishlistCourses = localSelectedCourses[selectedSemester] || [];
-    wishlistCourses.forEach((c) => {
-      ids.add(c.id);
-      ids.add(c.courseNumber);
-    });
+    const selectedIds =
+      unifiedCourseData.semesters?.[selectedSemester]?.selectedIds || [];
+    selectedIds.forEach((id) => ids.add(id));
 
     // From curriculum plan
     const planItems = curriculumPlan.plannedItems?.[selectedSemester] || [];
@@ -152,7 +145,7 @@ const CoursePicker = ({ futureSemesters = [] }) => {
     });
 
     return ids;
-  }, [selectedSemester, localSelectedCourses, curriculumPlan.plannedItems]);
+  }, [selectedSemester, unifiedCourseData.semesters, curriculumPlan.plannedItems]);
 
   // Filter courses based on search and already-added
   const filteredCourses = useMemo(() => {

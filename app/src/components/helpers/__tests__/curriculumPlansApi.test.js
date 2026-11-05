@@ -36,6 +36,8 @@ vi.mock("../../errorHandling/ErrorHandlingService", () => ({
 
 const PROD_BASE = "https://api.shsg.ch/curriculum-plans";
 const TOKEN = "test-token-xyz";
+// usePlanManager reports every failure, so each call opts out of the interceptor toast.
+const OPT_OUT = { suppressErrorToast: true };
 
 describe("curriculumPlansApi", () => {
   beforeEach(() => {
@@ -64,11 +66,11 @@ describe("curriculumPlansApi", () => {
       const result = await getCurriculumPlans(TOKEN);
 
       expect(mockGet).toHaveBeenCalledTimes(1);
-      expect(mockGet).toHaveBeenCalledWith(PROD_BASE, TOKEN);
+      expect(mockGet).toHaveBeenCalledWith(PROD_BASE, TOKEN, OPT_OUT);
       expect(result).toBe(body);
     });
 
-    it("reports via errorHandlingService and rethrows on failure", async () => {
+    it("rethrows on failure and leaves reporting to the caller", async () => {
       const { getCurriculumPlans } = await import("../curriculumPlansApi");
       const err = Object.assign(new Error("boom"), {
         response: { status: 500 },
@@ -76,7 +78,7 @@ describe("curriculumPlansApi", () => {
       mockGet.mockRejectedValueOnce(err);
 
       await expect(getCurriculumPlans(TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
 
     it("does NOT special-case 404 (backend auto-creates default plan)", async () => {
@@ -103,17 +105,18 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/active/plan-42`,
         {},
         TOKEN,
+        OPT_OUT,
       );
       expect(result).toEqual({ ok: true });
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { setActivePlanApi } = await import("../curriculumPlansApi");
       const err = new Error("nope");
       mockPost.mockRejectedValueOnce(err);
 
       await expect(setActivePlanApi("plan-42", TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -129,16 +132,17 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42`,
         payload,
         TOKEN,
+        OPT_OUT,
       );
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { upsertPlan } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockPost.mockRejectedValueOnce(err);
 
       await expect(upsertPlan("plan-42", {}, TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -149,16 +153,16 @@ describe("curriculumPlansApi", () => {
 
       await deletePlanApi("plan-42", TOKEN);
 
-      expect(mockDelete).toHaveBeenCalledWith(`${PROD_BASE}/plan-42`, TOKEN);
+      expect(mockDelete).toHaveBeenCalledWith(`${PROD_BASE}/plan-42`, TOKEN, OPT_OUT);
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { deletePlanApi } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockDelete.mockRejectedValueOnce(err);
 
       await expect(deletePlanApi("plan-42", TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -173,16 +177,17 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/duplicate`,
         { name: "My Copy" },
         TOKEN,
+        OPT_OUT,
       );
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { duplicatePlanApi } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockPost.mockRejectedValueOnce(err);
 
       await expect(duplicatePlanApi("p", "n", TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -203,16 +208,17 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/course-ABC123`,
         data,
         TOKEN,
+        OPT_OUT,
       );
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { upsertPlacement } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockPost.mockRejectedValueOnce(err);
 
       await expect(upsertPlacement("p", "pl", {}, TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -226,16 +232,17 @@ describe("curriculumPlansApi", () => {
       expect(mockDelete).toHaveBeenCalledWith(
         `${PROD_BASE}/plan-42/course-ABC123`,
         TOKEN,
+        OPT_OUT,
       );
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { removePlacement } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockDelete.mockRejectedValueOnce(err);
 
       await expect(removePlacement("p", "pl", TOKEN)).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 
@@ -250,6 +257,7 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/semester-notes/FS26`,
         { note: "retake" },
         TOKEN,
+        OPT_OUT,
       );
     });
 
@@ -263,10 +271,11 @@ describe("curriculumPlansApi", () => {
         `${PROD_BASE}/plan-42/semester-notes/FS26`,
         { note: null },
         TOKEN,
+        OPT_OUT,
       );
     });
 
-    it("reports and rethrows on failure", async () => {
+    it("rethrows on failure without reporting", async () => {
       const { setSemesterNoteApi } = await import("../curriculumPlansApi");
       const err = new Error("fail");
       mockPost.mockRejectedValueOnce(err);
@@ -274,7 +283,7 @@ describe("curriculumPlansApi", () => {
       await expect(
         setSemesterNoteApi("p", "FS26", "x", TOKEN),
       ).rejects.toBe(err);
-      expect(mockHandleError).toHaveBeenCalledWith(err);
+      expect(mockHandleError).not.toHaveBeenCalled();
     });
   });
 });

@@ -1,40 +1,26 @@
 import { apiClient } from "../helpers/axiosClient";
-
-// error handling
-import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
+import { UNISG_API } from "../helpers/apiEndpoints";
+import { log } from "../helpers/log";
 
 /**
- * Fetches scorecard details from the API.
+ * Fetches scorecard details from the API. A failure rejects without a toast;
+ * useScorecardFetching reports it once for the whole fetch.
  *
  * @param {string} authToken - The authentication token for API requests.
  * @param {string} studyRegulationId - The ID of the study regulation.
  * @param {number} attempt - The attempt number for the scorecard.
- * @returns {Promise<Object>} A promise that resolves to the scorecard details.
+ * @returns {Promise<Object>} The scorecard details.
  */
-
 export const fetchScoreCardDetails = async (
   authToken,
   studyRegulationId,
   attempt
 ) => {
-  // Proceed with API call
-  try {
-    const response = await apiClient.get(
-      `https://integration.unisg.ch/AchievementApi/MyScoreCards/detail/byStudyRegulationId/${studyRegulationId}/byAttempt/${attempt}`,
-      authToken
-    );
-    // Log the fetched data for debugging purposes
-    console.log("ScorecardDetails data fetched: ", response.data);
-    return {
-      success: true,
-      data: response.data,
-    };
-  } catch (error) {
-    console.error("Error fetching ScorecardDetails:", error);
-    errorHandlingService.handleError(error);
-    return {
-      success: false,
-      error: "Failed to load scorecard data",
-    };
-  }
+  const response = await apiClient.get(
+    `${UNISG_API}/AchievementApi/MyScoreCards/detail/byStudyRegulationId/${studyRegulationId}/byAttempt/${attempt}`,
+    authToken,
+    { suppressErrorToast: true }
+  );
+  log.debug("ScorecardDetails data fetched: ", response.data);
+  return response.data;
 };

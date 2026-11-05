@@ -20,14 +20,9 @@
  */
 
 import { useState, useEffect } from "react";
-import axios from "axios";
-import { useUnifiedCourseData } from "./useUnifiedCourseData";
+import { loadCatalogForTerm } from "./catalogLoader";
+import { useUnifiedCourseDataWriters } from "./useUnifiedCourseDataWriters";
 import { errorHandlingService } from "../errorHandling/ErrorHandlingService";
-
-// A term shows its previous-year same-season catalog as a preview until it has
-// published at least this many courses (or if its own catalog errors). Counts
-// parent courses as returned by the API (before exercise-group flattening).
-export const REFERENCE_FALLBACK_MIN_COURSES = 10;
 
 /**
  * Custom hook for managing course information data
@@ -41,7 +36,7 @@ export const REFERENCE_FALLBACK_MIN_COURSES = 10;
 export const useCourseInfoData = (params) => {
   // ALWAYS call hooks first - never put hooks after conditional returns
   const { updateAvailableCourses: updateUnifiedAvailableCourses } =
-    useUnifiedCourseData();
+    useUnifiedCourseDataWriters();
   const [isCourseDataLoading, setIsCourseDataLoading] = useState(true);
 
   const { authToken, selectedSemester } = params || {};
@@ -51,19 +46,6 @@ export const useCourseInfoData = (params) => {
     // Without params there is nothing to fetch and no state to reset.
     if (!params) return;
 
-    const fetchTerm = (cisId) =>
-      axios.get(
-        `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${cisId}`,
-        {
-          headers: {
-            "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-            "X-RequestedLanguage": "EN",
-            "API-Version": "1",
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
     const fetchCourseData = async () => {
       // Only fetch if we have required data
       if (!selectedSemester?.cisId || !selectedSemester?.shortName) {
@@ -72,62 +54,22 @@ export const useCourseInfoData = (params) => {
       }
 
       setIsCourseDataLoading(true);
-
-      const hasReference =
-        selectedSemester.referenceCisId &&
-        selectedSemester.referenceCisId !== selectedSemester.cisId;
-
-      // Load the same-season previous-year catalog as a preview. Returns true
-      // when reference data was stored.
-      const loadReference = async (reason) => {
-        if (!hasReference) return false;
-        try {
-          const refResponse = await fetchTerm(selectedSemester.referenceCisId);
-          console.log(
-            `🔄 [${reason}] Previewing ${selectedSemester.shortName} with ${refResponse.data.length} courses from reference ${selectedSemester.referenceSemester}`
-          );
+      try {
+        const result = await loadCatalogForTerm({
+          term: selectedSemester,
+          authToken,
+        });
+        if (result.source === "none") {
+          errorHandlingService.handleError(result.error);
+        } else {
           updateUnifiedAvailableCourses(
             selectedSemester.shortName,
-            refResponse.data,
+            result.courses,
             {
-              usingReferenceData: true,
-              referenceSemester: selectedSemester.referenceSemester,
+              usingReferenceData: result.usingReferenceData,
+              referenceSemester: result.referenceSemester,
             }
           );
-          return true;
-        } catch (refError) {
-          console.warn(
-            `⚠️ Failed to fetch reference semester ${selectedSemester.referenceSemester} for ${selectedSemester.shortName}`,
-            refError
-          );
-          return false;
-        }
-      };
-
-      try {
-        const response = await fetchTerm(selectedSemester.cisId);
-        const count = response.data?.length || 0;
-        console.log(
-          `✅ Fetched ${count} course sheets for ${selectedSemester.shortName}`
-        );
-
-        // Until a term has a real, non-trivial catalog, show last year's
-        // same-season courses as a preview instead of an empty/near-empty list.
-        if (count < REFERENCE_FALLBACK_MIN_COURSES && (await loadReference("sparse"))) {
-          return;
-        }
-
-        updateUnifiedAvailableCourses(
-          selectedSemester.shortName,
-          response.data || [],
-          { usingReferenceData: false }
-        );
-      } catch (error) {
-        // The term's own catalog errored (e.g. the EventApi 500s for a term).
-        // Prefer a previous-year preview over surfacing a hard error.
-        console.error("❌ Error fetching course data:", error);
-        if (!(await loadReference("error"))) {
-          errorHandlingService.handleError(error);
         }
       } finally {
         setIsCourseDataLoading(false);

@@ -12,9 +12,10 @@
  */
 
 import { useEffect, useState, useMemo } from 'react';
-import { useUnifiedCourseData } from './useUnifiedCourseData';
+import { useUnifiedCourseDataWriters } from './useUnifiedCourseDataWriters';
 import { useRecoilValue } from 'recoil';
 import { termListState } from '../recoil/termListState';
+import { loadCatalogForTerm } from './catalogLoader';
 
 /**
  * Identifies semesters that need course data loading
@@ -76,7 +77,7 @@ const identifySemestersNeedingData = (unifiedCourseData, termListObject) => {
  */
 export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
   const termListObject = useRecoilValue(termListState);
-  const { updateAvailableCourses } = useUnifiedCourseData();
+  const { updateAvailableCourses } = useUnifiedCourseDataWriters();
   const [loadedSemesters, setLoadedSemesters] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
 
@@ -112,25 +113,15 @@ export function useUnifiedCourseLoader(authToken, unifiedCourseData) {
       // Mark as being processed
       setLoadedSemesters(prev => new Set([...prev, targetSemester]));
 
-      try {
-        const response = await fetch(
-          `https://integration.unisg.ch/EventApi/CourseInformationSheets/myLatestPublishedPossiblebyTerm/${targetSemesterInfo.cisId}`,
-          {
-            headers: {
-              "X-ApplicationId": "820e077d-4c13-45b8-b092-4599d78d45ec",
-              "X-RequestedLanguage": "EN",
-              "API-Version": "1",
-              Authorization: `Bearer ${authToken}`,
-            },
-          }
-        );
-
-        if (response.ok) {
-          const courseData = await response.json();
-          updateAvailableCourses(targetSemester, courseData);
-        }
-      } catch (error) {
-        // Silently handle errors - enrichment will fall back to course IDs
+      const result = await loadCatalogForTerm({ term: targetSemesterInfo, authToken });
+      if (result.source !== 'none') {
+        updateAvailableCourses(targetSemester, result.courses, {
+          usingReferenceData: result.usingReferenceData,
+          referenceSemester: result.referenceSemester,
+        });
+      } else if (import.meta.env.DEV) {
+        // Enrichment falls back to course IDs when the catalog cannot load.
+        console.warn(`[useUnifiedCourseLoader] Could not load catalog for ${targetSemester}:`, result.error?.message);
       }
     });
 

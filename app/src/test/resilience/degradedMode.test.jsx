@@ -10,7 +10,6 @@
  * actually holds together end to end.
  */
 
-import { useMemo } from "react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import { RecoilRoot } from "recoil";
@@ -49,15 +48,7 @@ const wrapper = ({ children }) => <RecoilRoot>{children}</RecoilRoot>;
 // course data, so a single renderHook can assert both loading flags and
 // that university data actually landed in state.
 const useHarness = () => {
-  // Real callers pass a Recoil-backed value that's stable across renders
-  // (see EventListContainer.jsx); a fresh literal here would retrigger
-  // useEventListDataManager's filter effect every render.
-  const selectionOptions = useMemo(() => ({}), []);
-  const manager = useEventListDataManager(
-    selectedSemester,
-    selectionOptions,
-    "test-token",
-  );
+  const manager = useEventListDataManager(selectedSemester, "test-token");
   const { getSemesterData } = useUnifiedCourseData();
   return { ...manager, semesterData: getSemesterData(selectedSemester.shortName) };
 };

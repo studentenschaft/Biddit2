@@ -89,6 +89,52 @@ const convertPlannedItemsToPlacements = (plannedItems = {}) => {
 };
 
 /**
+ * Replace the local plannedItems with the active plan from a server response.
+ */
+const applyPlannedItems = (set, data) => {
+  const activePlan = data.plans[data.activePlanId];
+  if (activePlan) {
+    set(curriculumPlanState, (prev) => ({
+      ...prev,
+      plannedItems: convertPlacementsToPlannedItems(activePlan.placements),
+      lastModified: activePlan.lastModified,
+    }));
+  }
+};
+
+/**
+ * Build a callback that runs `action({ planId, set }, ...args)` against the
+ * active plan and resolves to its result. `token` keys the memo, so the
+ * callback is rebuilt with a fresh `action` whenever the token changes. On failure it shows one toast
+ * (none for a DegradedModeError: the degraded-mode banner covers that) and
+ * resolves to `failureValue`.
+ */
+const useActivePlanAction = (
+  token,
+  action,
+  { errorMessage, toastId, failureValue = false, requiresActivePlan = false },
+) =>
+  useRecoilCallback(
+    ({ snapshot, set }) =>
+      async (...args) => {
+        const { activePlanId } = await snapshot.getPromise(
+          curriculumPlansRegistryState,
+        );
+        if (requiresActivePlan && !activePlanId) return failureValue;
+
+        try {
+          return await action({ planId: activePlanId, set }, ...args);
+        } catch (error) {
+          if (error?.isDegradedModeError) return failureValue;
+          console.error(`[usePlanManager] ${errorMessage}`, error);
+          toast.error(errorMessage, { toastId });
+          return failureValue;
+        }
+      },
+    [token],
+  );
+
+/**
  * Hook providing all plan management operations via API.
  * Uses useRecoilCallback for atomic read+write without extra subscriptions.
  */
@@ -221,6 +267,7 @@ const usePlanManager = () => {
             activePlanId: targetPlanId,
           }));
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error switching plan:", error);
           toast.error("Could not switch plans.", {
             toastId: "plan-switch-error",
@@ -279,6 +326,7 @@ const usePlanManager = () => {
 
           return newPlanId;
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error creating plan:", error);
           toast.error("Could not create plan.", {
             toastId: "plan-create-error",
@@ -352,6 +400,7 @@ const usePlanManager = () => {
 
           return newPlanId;
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error duplicating plan:", error);
           toast.error("Could not duplicate plan.", {
             toastId: "plan-duplicate-error",
@@ -399,6 +448,7 @@ const usePlanManager = () => {
             plans: remainingPlans,
           });
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error deleting plan:", error);
           toast.error("Could not delete plan.", {
             toastId: "plan-delete-error",
@@ -434,6 +484,7 @@ const usePlanManager = () => {
             },
           });
         } catch (error) {
+          if (error?.isDegradedModeError) return;
           console.error("[usePlanManager] Error renaming plan:", error);
           toast.error("Could not rename plan.", {
             toastId: "plan-rename-error",
@@ -453,21 +504,20 @@ const usePlanManager = () => {
    * @param {string} [shortName] - Course short name
    * @returns {Promise<boolean>} - Whether the operation was successful
    */
-  const addCourseById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (
-        courseId,
-        semesterKey,
-        categoryPath,
-        shortName = null,
-        credits = null,
-      ) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-        const placementId = `course-${courseId}`;
-
-        const placementData = {
+  const addCourseById = useActivePlanAction(
+    token,
+    async (
+      { planId, set },
+      courseId,
+      semesterKey,
+      categoryPath,
+      shortName = null,
+      credits = null,
+    ) => {
+      const data = await upsertPlacement(
+        planId,
+        `course-${courseId}`,
+        {
           type: "course",
           semester: semesterKey,
           categoryPath,
@@ -475,35 +525,13 @@ const usePlanManager = () => {
           ...(shortName && { shortName }),
           ...(credits != null && { credits }),
           addedAt: new Date().toISOString(),
-        };
-
-        try {
-          const data = await upsertPlacement(
-            registry.activePlanId,
-            placementId,
-            placementData,
-            token,
-          );
-
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error adding course:", error);
-          toast.error("Could not add course.", { toastId: "course-add-error" });
-          return false;
-        }
-      },
-    [token],
+        },
+        token,
+      );
+      applyPlannedItems(set, data);
+      return true;
+    },
+    { errorMessage: "Could not add course.", toastId: "course-add-error" },
   );
 
   /**
@@ -513,42 +541,14 @@ const usePlanManager = () => {
    * @param {string} courseId - Course ID to remove
    * @returns {Promise<boolean>} - Whether removal was successful
    */
-  const removeCourseById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (courseId) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-        const placementId = `course-${courseId}`;
-
-        try {
-          const data = await removePlacement(
-            registry.activePlanId,
-            placementId,
-            token,
-          );
-
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error removing course:", error);
-          toast.error("Could not remove course.", {
-            toastId: "course-remove-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const removeCourseById = useActivePlanAction(
+    token,
+    async ({ planId, set }, courseId) => {
+      const data = await removePlacement(planId, `course-${courseId}`, token);
+      applyPlannedItems(set, data);
+      return true;
+    },
+    { errorMessage: "Could not remove course.", toastId: "course-remove-error" },
   );
 
   /**
@@ -562,48 +562,25 @@ const usePlanManager = () => {
    * @param {Object} [extraData] - Additional data to include (type, courseId, shortName, etc.)
    * @returns {Promise<boolean>} - Whether the operation was successful
    */
-  const updatePlacementById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (placementId, toSemester, toCategoryPath, extraData = {}) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-
-        const placementData = {
-          ...extraData,
-          semester: toSemester,
-          categoryPath: toCategoryPath,
-        };
-
-        try {
-          const data = await upsertPlacement(
-            registry.activePlanId,
-            placementId,
-            placementData,
-            token,
-          );
-
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error updating placement:", error);
-          toast.error("Could not move item.", {
-            toastId: "placement-update-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const updatePlacementById = useActivePlanAction(
+    token,
+    async (
+      { planId, set },
+      placementId,
+      toSemester,
+      toCategoryPath,
+      extraData = {},
+    ) => {
+      const data = await upsertPlacement(
+        planId,
+        placementId,
+        { ...extraData, semester: toSemester, categoryPath: toCategoryPath },
+        token,
+      );
+      applyPlannedItems(set, data);
+      return true;
+    },
+    { errorMessage: "Could not move item.", toastId: "placement-update-error" },
   );
 
   /**
@@ -617,60 +594,38 @@ const usePlanManager = () => {
    * @param {string} [placeholderId] - Optional ID, auto-generated if not provided
    * @returns {Promise<string|null>} - The placeholder ID or null on failure
    */
-  const addPlaceholderById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (
-        semesterKey,
-        categoryPath,
-        credits,
-        label = "TBD",
-        placeholderId = null,
-      ) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-        const id = placeholderId || generatePlaceholderId();
-
-        const placementData = {
+  const addPlaceholderById = useActivePlanAction(
+    token,
+    async (
+      { planId, set },
+      semesterKey,
+      categoryPath,
+      credits,
+      label = "TBD",
+      placeholderId = null,
+    ) => {
+      const id = placeholderId || generatePlaceholderId();
+      const data = await upsertPlacement(
+        planId,
+        id,
+        {
           type: "placeholder",
           semester: semesterKey,
           categoryPath,
           credits,
           label,
           addedAt: new Date().toISOString(),
-        };
-
-        try {
-          // API call - response is source of truth
-          const data = await upsertPlacement(
-            registry.activePlanId,
-            id,
-            placementData,
-            token,
-          );
-
-          // Update state from API response
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return id;
-        } catch (error) {
-          console.error("[usePlanManager] Error adding placeholder:", error);
-          toast.error("Could not add placeholder.", {
-            toastId: "placeholder-add-error",
-          });
-          return null;
-        }
-      },
-    [token],
+        },
+        token,
+      );
+      applyPlannedItems(set, data);
+      return id;
+    },
+    {
+      errorMessage: "Could not add placeholder.",
+      toastId: "placeholder-add-error",
+      failureValue: null,
+    },
   );
 
   /**
@@ -680,43 +635,17 @@ const usePlanManager = () => {
    * @param {string} placeholderId - The placeholder ID to remove
    * @returns {Promise<boolean>} - Whether removal was successful
    */
-  const removePlaceholderById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (placeholderId) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-
-        try {
-          // API call - response is source of truth
-          const data = await removePlacement(
-            registry.activePlanId,
-            placeholderId,
-            token,
-          );
-
-          // Update state from API response
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error removing placeholder:", error);
-          toast.error("Could not remove placeholder.", {
-            toastId: "placeholder-remove-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const removePlaceholderById = useActivePlanAction(
+    token,
+    async ({ planId, set }, placeholderId) => {
+      const data = await removePlacement(planId, placeholderId, token);
+      applyPlannedItems(set, data);
+      return true;
+    },
+    {
+      errorMessage: "Could not remove placeholder.",
+      toastId: "placeholder-remove-error",
+    },
   );
 
   /**
@@ -829,16 +758,7 @@ const usePlanManager = () => {
             token,
           );
 
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
+          applyPlannedItems(set, data);
 
           toast.update(toastId, {
             render: `Imported ${imported} course${imported !== 1 ? "s" : ""} successfully!`,
@@ -849,6 +769,10 @@ const usePlanManager = () => {
 
           return { imported, skipped };
         } catch (error) {
+          if (error?.isDegradedModeError) {
+            toast.dismiss(toastId);
+            return { imported: 0, skipped };
+          }
           console.error("[usePlanManager] Error importing courses:", error);
           toast.update(toastId, {
             render: "Failed to import courses.",
@@ -868,80 +792,46 @@ const usePlanManager = () => {
    * @param {string} note - Note text (empty to clear)
    * @returns {Promise<boolean>} - Whether the operation was successful
    */
-  const setSemesterNoteById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (semesterKey, note) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
+  const setSemesterNoteById = useActivePlanAction(
+    token,
+    async ({ planId, set }, semesterKey, note) => {
+      const trimmedNote = (note || "").trim().slice(0, 200);
+      const data = await setSemesterNoteApi(
+        planId,
+        semesterKey,
+        trimmedNote || null,
+        token,
+      );
 
-        if (!registry.activePlanId) {
-          return false;
-        }
-
-        const trimmedNote = (note || "").trim().slice(0, 200);
-
-        try {
-          const data = await setSemesterNoteApi(
-            registry.activePlanId,
-            semesterKey,
-            trimmedNote || null,
-            token,
-          );
-
-          // Update local state with API response
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              semesterNotes: activePlan.semesterNotes || {},
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error setting semester note:", error);
-          toast.error("Could not save semester note.", {
-            toastId: "semester-note-error",
-          });
-          return false;
-        }
-      },
-    [token],
+      const activePlan = data.plans[data.activePlanId];
+      if (activePlan) {
+        set(curriculumPlanState, (prev) => ({
+          ...prev,
+          semesterNotes: activePlan.semesterNotes || {},
+          lastModified: activePlan.lastModified,
+        }));
+      }
+      return true;
+    },
+    {
+      errorMessage: "Could not save semester note.",
+      toastId: "semester-note-error",
+      requiresActivePlan: true,
+    },
   );
 
-  const updateWishlistOverridesById = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (wishlistOverrides) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-
-        if (!registry.activePlanId) return false;
-
-        try {
-          await upsertPlan(
-            registry.activePlanId,
-            { wishlistOverrides },
-            token,
-          );
-
-          set(curriculumPlanState, (prev) => ({
-            ...prev,
-            wishlistOverrides,
-          }));
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error updating wishlist overrides:", error);
-          toast.error("Could not update course visibility.", {
-            toastId: "wishlist-override-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const updateWishlistOverridesById = useActivePlanAction(
+    token,
+    async ({ planId, set }, wishlistOverrides) => {
+      await upsertPlan(planId, { wishlistOverrides }, token);
+      set(curriculumPlanState, (prev) => ({ ...prev, wishlistOverrides }));
+      return true;
+    },
+    {
+      errorMessage: "Could not update course visibility.",
+      toastId: "wishlist-override-error",
+      requiresActivePlan: true,
+    },
   );
 
   /**
@@ -951,47 +841,25 @@ const usePlanManager = () => {
    * @param {Object} [semesterNotes] - Optional semester notes to sync
    * @returns {Promise<boolean>} - Whether the sync was successful
    */
-  const syncActivePlan = useRecoilCallback(
-    ({ snapshot, set }) =>
-      async (plannedItems, semesterNotes) => {
-        const registry = await snapshot.getPromise(
-          curriculumPlansRegistryState,
-        );
-
-        if (!registry.activePlanId) return false;
-
-        try {
-          const placements = convertPlannedItemsToPlacements(plannedItems);
-          const data = await upsertPlan(
-            registry.activePlanId,
-            {
-              placements,
-              ...(semesterNotes !== undefined && { semesterNotes }),
-            },
-            token,
-          );
-
-          const activePlan = data.plans[data.activePlanId];
-          if (activePlan) {
-            set(curriculumPlanState, (prev) => ({
-              ...prev,
-              plannedItems: convertPlacementsToPlannedItems(
-                activePlan.placements,
-              ),
-              lastModified: activePlan.lastModified,
-            }));
-          }
-
-          return true;
-        } catch (error) {
-          console.error("[usePlanManager] Error syncing plan:", error);
-          toast.error("Could not save changes.", {
-            toastId: "plan-sync-error",
-          });
-          return false;
-        }
-      },
-    [token],
+  const syncActivePlan = useActivePlanAction(
+    token,
+    async ({ planId, set }, plannedItems, semesterNotes) => {
+      const data = await upsertPlan(
+        planId,
+        {
+          placements: convertPlannedItemsToPlacements(plannedItems),
+          ...(semesterNotes !== undefined && { semesterNotes }),
+        },
+        token,
+      );
+      applyPlannedItems(set, data);
+      return true;
+    },
+    {
+      errorMessage: "Could not save changes.",
+      toastId: "plan-sync-error",
+      requiresActivePlan: true,
+    },
   );
 
   return {

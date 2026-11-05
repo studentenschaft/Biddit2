@@ -37,7 +37,6 @@ const renderSelection = ({ selectedCourseIds = [], authToken = "token" } = {}) =
       useCourseSelection({
         selectedCourseIds,
         selectedSemesterShortName: "HS25",
-        index: 0,
         authToken,
       }),
     { wrapper }

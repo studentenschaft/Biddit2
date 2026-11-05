@@ -52,9 +52,10 @@ describe("ApiCustomGrades", () => {
 
       await deleteCustomGrade(TOKEN, SLASHED_ID);
 
-      const [url, token] = mockDelete.mock.calls[0];
+      const [url, token, config] = mockDelete.mock.calls[0];
       expect(url).toBe(`${API_URL}/${ENCODED_ID}`);
       expect(token).toBe(TOKEN);
+      expect(config).toEqual({ suppressErrorToast: true });
       // Regression guard: no raw slash may follow the collection path.
       expect(url.slice(API_URL.length + 1)).not.toContain("/");
     });
@@ -91,7 +92,8 @@ describe("ApiCustomGrades", () => {
       expect(mockPost).toHaveBeenCalledWith(
         API_URL,
         { courseNumber: SLASHED_ID, grade: 5.75 },
-        TOKEN
+        TOKEN,
+        { suppressErrorToast: true }
       );
     });
 
@@ -113,7 +115,9 @@ describe("ApiCustomGrades", () => {
 
       await fetchCustomGrades(TOKEN);
 
-      expect(mockGet).toHaveBeenCalledWith(API_URL, TOKEN);
+      expect(mockGet).toHaveBeenCalledWith(API_URL, TOKEN, {
+        suppressErrorToast: true,
+      });
     });
   });
 });

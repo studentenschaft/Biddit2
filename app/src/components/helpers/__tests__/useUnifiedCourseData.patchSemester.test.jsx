@@ -31,7 +31,7 @@ describe("patchSemester auto-initialization", () => {
     // The fields the rest of the app reads without guarding must exist.
     expect(semester.enrolledIds).toEqual([]);
     expect(semester.available).toEqual([]);
-    expect(semester.filtered).toEqual([]);
+    expect(semester).not.toHaveProperty("filtered");
     expect(semester.studyPlan).toEqual([]);
     expect(semester).toHaveProperty("referenceSemester", null);
     expect(semester).toHaveProperty("isProjected", false);

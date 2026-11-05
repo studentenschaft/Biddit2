@@ -11,9 +11,7 @@ import { atom } from "recoil";
  *       enrolledIds: [], // Course IDs/numbers that the user is enrolled in
  *       available: [], // All available courses for this semester (full course objects)
  *       selectedIds: [], // Course IDs/numbers that the user has selected/wishlisted
- *       filtered: [], // Filtered courses based on current filter criteria (includes selected/enrolled flags)
  *       studyPlan: [], // Raw study plan data from SHSG API for this semester: Course IDs/numbers
- *       ratings: {}, // Course ratings by courseNumber
  *       lastFetched: null, // When this data was last fetched
  *       isFutureSemester: false, // Whether semester is in the future
  *       referenceSemester: null, // Reference semester for future projections
@@ -24,6 +22,7 @@ import { atom } from "recoil";
  *     "FS25": { ... },
  *     // etc.
  *   },
+ *   ratings: {}, // SHSG course ratings by course id/number, shared by all semesters
  *   selectedSemester: null, // Currently selected semester shortName
  *   latestValidTerm: null, // Latest term with actual course data
  * }
@@ -35,6 +34,7 @@ export const unifiedCourseDataState = atom({
   key: "unifiedCourseDataState",
   default: {
     semesters: {},
+    ratings: {},
     selectedSemester: null,
     latestValidTerm: null,
     selectedCourseInfo: null, // Currently selected course for CourseInfo display

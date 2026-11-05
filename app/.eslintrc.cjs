@@ -13,13 +13,36 @@ module.exports = {
   plugins: ['react-refresh'],
   overrides: [
     {
-      // The ingestion CLI is a Node script, never bundled into the app.
-      files: ['scripts/**/*.js'],
+      // Node scripts (ingestion CLI, doc checks), never bundled into the app.
+      files: ['scripts/**/*.js', 'scripts/**/*.mjs'],
       env: { node: true, browser: false },
+      rules: { 'no-console': 'off' },
+    },
+    {
+      // The DEV-gated logger is the one place allowed to call console.log/info.
+      files: ['src/components/helpers/log.js'],
+      rules: { 'no-console': 'off' },
+    },
+    {
+      // The singleton apiClient is the only place allowed to use axios.
+      files: ['src/components/helpers/axiosClient.js'],
+      rules: { 'no-restricted-imports': 'off' },
     },
   ],
   rules: {
     'react/jsx-no-target-blank': 'off',
+    'no-console': ['error', { allow: ['warn', 'error'] }],
+    'no-restricted-imports': [
+      'error',
+      {
+        paths: [
+          {
+            name: 'axios',
+            message: 'Use apiClient from helpers/axiosClient.js',
+          },
+        ],
+      },
+    ],
     'react-refresh/only-export-components': [
       'warn',
       { allowConstantExport: true },

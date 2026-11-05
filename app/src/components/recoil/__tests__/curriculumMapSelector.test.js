@@ -10,7 +10,6 @@ import { snapshot_UNSTABLE } from 'recoil';
 import {
   _testHelpers,
   curriculumMapSelector,
-  normalizeCourseCredits,
   findCreditsInAnySemester,
   formatCreditRange,
   getRequirementThreshold,
@@ -23,6 +22,7 @@ import MBI from '../../testing/mockData/Scorecard_MBI.json';
 import BBWL from '../../testing/mockData/Scorecard_BBWL.json';
 import BIA from '../../testing/mockData/Scorecard_BIA.json';
 import BSC from '../../testing/mockData/Scorecard_BSC.json';
+import { toEcts } from '../../../domain/credits';
 
 const {
   normalizeSemesterKey,
@@ -62,32 +62,6 @@ describe('normalizeSemesterKey', () => {
 
   it('removes multiple spaces', () => {
     expect(normalizeSemesterKey('FS  25')).toBe('FS25');
-  });
-});
-
-// ── normalizeCourseCredits ────────────────────────────────────────────────
-
-describe('normalizeCourseCredits', () => {
-  it('divides raw API values (>99) by 100', () => {
-    expect(normalizeCourseCredits(600)).toBe(6);
-    expect(normalizeCourseCredits(300)).toBe(3);
-  });
-
-  it('passes through already-normalized values', () => {
-    expect(normalizeCourseCredits(6)).toBe(6);
-    expect(normalizeCourseCredits(0)).toBe(0);
-  });
-
-  it('returns the default fallback (3) when raw is missing', () => {
-    expect(normalizeCourseCredits(null)).toBe(3);
-    expect(normalizeCourseCredits(undefined)).toBe(3);
-  });
-
-  it('returns null (unknown) when an explicit null fallback is given', () => {
-    // The curriculum map passes null so unresolved credits render as "?"
-    // instead of a fabricated number.
-    expect(normalizeCourseCredits(null, null)).toBeNull();
-    expect(normalizeCourseCredits(undefined, null)).toBeNull();
   });
 });
 
@@ -131,7 +105,7 @@ describe('findCreditsInAnySemester', () => {
     // Board Governance is placed on HS27 (no catalog) but exists in HS26 → 6 ECTS,
     // instead of the "?" it showed before this fallback.
     const raw = findCreditsInAnySemester('9,120,1.00', semesters);
-    expect(normalizeCourseCredits(raw, null)).toBe(6);
+    expect(toEcts(raw)).toBe(6);
   });
 });
 
@@ -431,6 +405,16 @@ describe('estimateCompletion', () => {
     // Needs 60 more credits, avg 30/semester = 2 more semesters
     // First future semester is FS26, second is HS26
     expect(result).toBe('HS26');
+  });
+
+  it('projects past the last semester one semester at a time', () => {
+    const semesters = [{ key: 'FS26', status: 'current', totalCredits: 30 }];
+    // 30 credits left at 30 per semester: one semester after FS26
+    expect(estimateCompletion(180, 150, semesters)).toBe('HS26');
+  });
+
+  it('projects from HS into the next year', () => {
+    expect(estimateCompletion(180, 150, [{ key: 'HS26', status: 'current', totalCredits: 30 }])).toBe('FS27');
   });
 
   it('returns "TBD" when no semesters available', () => {
@@ -933,7 +917,6 @@ describe('curriculumMapSelector — enrolled course category override', () => {
               },
             ],
             selectedIds: [],
-            filtered: [],
           },
         },
         selectedSemester: SEMESTER,
@@ -984,6 +967,167 @@ describe('curriculumMapSelector — enrolled course category override', () => {
     expect(cards[0].categoryPath).toBe(P('Contextual Studies/Reflection Competences'));
     expect(cards[0].status).toBe('enrolled');
     expect(cards[0].source).toBe('enrolled');
+  });
+});
+
+describe('curriculumMapSelector — wishlist from unified selectedIds', () => {
+  const SEMESTER = 'HS25';
+  const COURSE_ID = '7,035,1.00';
+  const PROGRAM = 'Bachelor in Business Administration';
+
+  const scorecard = {
+    items: [
+      {
+        isTitle: true,
+        hierarchy: 'program',
+        description: PROGRAM,
+        maxCredits: '180',
+        items: [
+          {
+            isTitle: true,
+            hierarchy: 'core',
+            description: 'Core Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'core-comp',
+                description: 'Compulsory Subjects',
+                minCredits: '30',
+                items: [],
+              },
+            ],
+          },
+          {
+            isTitle: true,
+            hierarchy: 'ctx',
+            description: 'Contextual Studies',
+            items: [
+              {
+                isTitle: true,
+                hierarchy: 'ctx-skills',
+                description: 'Skills',
+                items: [],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  };
+
+  const AVAILABLE = [
+    {
+      id: 'event-guid-1',
+      courseNumber: COURSE_ID,
+      shortName: 'Skills: Negotiation',
+      credits: 400,
+      classification: 'Skills',
+    },
+  ];
+
+  const readMap = ({
+    selectedIds = [COURSE_ID],
+    enrolledIds = [],
+    available = AVAILABLE,
+    plannedItems = {},
+    wishlistOverrides = {},
+  } = {}) => {
+    const snapshot = snapshot_UNSTABLE(({ set }) => {
+      set(unifiedAcademicDataState, {
+        programs: {
+          [PROGRAM]: {
+            transcript: { rawScorecard: scorecard },
+            metadata: { isMainStudy: true },
+          },
+        },
+        currentProgram: PROGRAM,
+        initialization: { isLoading: false, isInitialized: true, error: null },
+      });
+      set(unifiedCourseDataState, {
+        semesters: {
+          [SEMESTER]: { enrolledIds, available, selectedIds },
+        },
+        selectedSemester: SEMESTER,
+        latestValidTerm: SEMESTER,
+        selectedCourseInfo: null,
+      });
+      set(curriculumPlanState, {
+        ...getDefaultPlanState(),
+        plannedItems,
+        wishlistOverrides,
+      });
+    });
+    return snapshot.getLoadable(curriculumMapSelector).getValue();
+  };
+
+  const P = (path) => `${PROGRAM}/${path}`;
+  const allCards = (map) =>
+    Object.values(map.coursesBySemesterAndCategory[SEMESTER]).flat();
+
+  it('a server-loaded wishlist course appears on the map after reload', () => {
+    const map = readMap();
+
+    const cell = map.coursesBySemesterAndCategory[SEMESTER][P('Contextual Studies/Skills')];
+    expect(cell).toHaveLength(1);
+    expect(cell[0]).toMatchObject({
+      id: COURSE_ID,
+      courseId: COURSE_ID,
+      name: 'Skills: Negotiation',
+      credits: 4,
+      semester: SEMESTER,
+      categoryPath: P('Contextual Studies/Skills'),
+      status: 'planned',
+      classification: 'Skills',
+      source: 'wishlist',
+    });
+  });
+
+  it('an unresolved wishlist id is not rendered', () => {
+    const map = readMap({ selectedIds: [COURSE_ID, '9,999'] });
+
+    const wishlistCards = allCards(map).filter((c) => c.source === 'wishlist');
+    expect(wishlistCards.map((c) => c.id)).toEqual([COURSE_ID]);
+  });
+
+  it('no wishlist cards while the catalog is empty', () => {
+    const map = readMap({ selectedIds: [COURSE_ID, '9,999'], available: [] });
+
+    expect(allCards(map).filter((c) => c.source === 'wishlist')).toEqual([]);
+  });
+
+  it('skips a wishlist course hidden in the active plan', () => {
+    const map = readMap({
+      wishlistOverrides: { [SEMESTER]: { removedCourseIds: [COURSE_ID] } },
+    });
+    expect(allCards(map)).toHaveLength(0);
+  });
+
+  it('renders a wishlisted course the student is enrolled in once, as enrolled', () => {
+    const map = readMap({ enrolledIds: [COURSE_ID] });
+
+    const cards = allCards(map);
+    expect(cards).toHaveLength(1);
+    expect(cards[0].source).toBe('enrolled');
+  });
+
+  it('renders a wishlisted course with a plan placement once, from the plan', () => {
+    const map = readMap({
+      plannedItems: {
+        HS26: [
+          {
+            id: `course-${COURSE_ID}`,
+            type: 'course',
+            courseId: COURSE_ID,
+            categoryPath: P('Core Studies/Compulsory Subjects'),
+          },
+        ],
+      },
+    });
+
+    expect(allCards(map)).toHaveLength(0);
+    const hs26Cards = Object.values(map.coursesBySemesterAndCategory.HS26).flat();
+    expect(hs26Cards).toHaveLength(1);
+    expect(hs26Cards[0].source).toBe('plan');
   });
 });
 

@@ -92,9 +92,7 @@ const renderList = ({ selectedIds = [] } = {}) =>
               enrolledIds: [],
               available: CATALOG,
               selectedIds,
-              filtered: CATALOG,
               studyPlan: [],
-              ratings: {},
               cisId: "cis-hs26",
               isCurrent: true,
               isProjected: false,
@@ -156,7 +154,7 @@ describe("exam conflicts in the course list", () => {
     fireEvent.mouseEnter(
       await findClashIcon("Microeconomics II", /^Exam clash with/),
     );
-    const tooltip = await screen.findByRole("tooltip");
+    const tooltip = await screen.findByRole("tooltip", {}, { timeout: 3000 });
     expect(tooltip).toHaveTextContent(
       "Exam clash with: Causal Inference. Indicative — verify officially.",
     );

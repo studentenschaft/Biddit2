@@ -431,9 +431,10 @@ export default function Calendar() {
         </div>
       ) : (
         <div className="flex flex-col w-full h-full">
-          {/* Mobile navigation toolbar: replaces the side columns below md so
-              the calendar gets the full viewport width */}
-          <div className="flex md:hidden items-center justify-between gap-1 pb-2">
+          {/* Navigation toolbar: replaces the side columns below lg so the
+              calendar gets the full width (at md the side stack squeezed the
+              week into the middle of a narrow panel) */}
+          <div className="flex lg:hidden items-center justify-between gap-1 pb-2">
             <button
               className="p-2 rounded-lg text-gray-500 hover:bg-gray-200 active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400"
               onClick={goToPrevWeek}
@@ -488,7 +489,7 @@ export default function Calendar() {
 
           <div className="flex flex-1 min-h-0 w-full">
             {/* Left navigation */}
-            <div className="hidden md:flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
+            <div className="hidden lg:flex flex-col items-center justify-center h-full ease-in-out focus-within mt-7">
               {/* Navigation buttons */}
               <div className="flex flex-col items-center gap-2 mb-4">
                 <button
@@ -564,7 +565,7 @@ export default function Calendar() {
               />
             </div>
             {/* Right navigation */}
-            <div className="hidden md:flex items-center mt-7">
+            <div className="hidden lg:flex items-center mt-7">
               <button
                 className="p-2 rounded-lg cursor-pointer hover:bg-gray-200 active:bg-gray-300"
                 onClick={goToNextWeek}

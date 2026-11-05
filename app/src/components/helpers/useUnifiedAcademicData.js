@@ -4,6 +4,7 @@ import {
   unifiedAcademicDataState,
   initializedProgramsState,
 } from "../recoil/unifiedAcademicDataAtom";
+import { log } from "./log";
 
 /**
  * Custom hook for managing unified academic data
@@ -21,11 +22,11 @@ export function useUnifiedAcademicData() {
    */
   const initializeProgram = (programName, metadata = {}) => {
     if (initializedPrograms.has(programName) || academicData.programs[programName]) {
-      console.log(`📋 Program ${programName} already initialized`);
+      log.debug(`📋 Program ${programName} already initialized`);
       return;
     }
 
-    console.log(`🚀 Initializing program ${programName}`);
+    log.debug(`🚀 Initializing program ${programName}`);
     setAcademicData((prev) => ({
       ...prev,
       programs: {
@@ -70,7 +71,7 @@ export function useUnifiedAcademicData() {
    * @param {Object} rawScorecard - Raw scorecard data from API
    */
   const updateRawScorecard = (programName, rawScorecard) => {
-    console.log(`🔄 Updating raw scorecard for ${programName}`);
+    log.debug(`🔄 Updating raw scorecard for ${programName}`);
     
     if (!academicData.programs[programName]) {
       initializeProgram(programName);
@@ -98,7 +99,7 @@ export function useUnifiedAcademicData() {
    * @param {Object} processedTranscript - Processed transcript data
    */
   const updateProcessedTranscript = (programName, processedTranscript) => {
-    console.log(`🔄 Updating processed transcript for ${programName}`);
+    log.debug(`🔄 Updating processed transcript for ${programName}`);
     
     setAcademicData((prev) => ({
       ...prev,
@@ -121,7 +122,7 @@ export function useUnifiedAcademicData() {
    * @param {Object} mergedTranscript - Merged transcript with wishlist courses
    */
   const updateMergedTranscript = (programName, mergedTranscript) => {
-    console.log(`🔄 Updating merged transcript for ${programName}`);
+    log.debug(`🔄 Updating merged transcript for ${programName}`);
     
     setAcademicData((prev) => ({
       ...prev,
@@ -145,7 +146,7 @@ export function useUnifiedAcademicData() {
    * @param {Object} semesterData - Semester course data
    */
   const updateSemesterData = (programName, semesterKey, semesterData) => {
-    console.log(`🔄 Updating semester ${semesterKey} for ${programName}`);
+    log.debug(`🔄 Updating semester ${semesterKey} for ${programName}`);
     
     if (!academicData.programs[programName]) {
       initializeProgram(programName);
@@ -182,7 +183,7 @@ export function useUnifiedAcademicData() {
    * @param {Object} progress - Progress data
    */
   const updateAcademicProgress = useCallback((programName, progress) => {
-    console.log(`🔄 Updating academic progress for ${programName}`);
+    log.debug(`🔄 Updating academic progress for ${programName}`);
     
     setAcademicData((prev) => ({
       ...prev,
@@ -207,7 +208,7 @@ export function useUnifiedAcademicData() {
    * @param {string} programName - Name of the program to set as current
    */
   const setCurrentProgram = useCallback((programName) => {
-    console.log(`🔄 Setting current program to ${programName}`);
+    log.debug(`🔄 Setting current program to ${programName}`);
     
     setAcademicData((prev) => ({
       ...prev,
